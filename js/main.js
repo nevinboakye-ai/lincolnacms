@@ -88,8 +88,10 @@
   }
 
   // Homepage intro splash — plays once per browser session, skips entirely
-  // for prefers-reduced-motion, and is dismissible by click or any keypress.
-  // The splash markup only exists on index.html, so this is a no-op elsewhere.
+  // for prefers-reduced-motion, and stays on screen until the visitor
+  // actively dismisses it (click/tap anywhere, a swipe, or any keypress).
+  // There is deliberately no auto-dismiss timer. The splash markup only
+  // exists on index.html, so this is a no-op elsewhere.
   var splash = document.getElementById('intro-splash');
   if (splash) {
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -105,12 +107,10 @@
       splash.classList.add('is-visible');
 
       var dismissed = false;
-      var autoTimer = window.setTimeout(dismissIntro, 2200);
 
       function dismissIntro() {
         if (dismissed) return;
         dismissed = true;
-        window.clearTimeout(autoTimer);
         splash.classList.add('is-leaving');
         document.body.classList.remove('intro-active');
         document.removeEventListener('keydown', dismissIntro);
@@ -119,6 +119,21 @@
 
       splash.addEventListener('click', dismissIntro);
       document.addEventListener('keydown', dismissIntro);
+
+      // Swipe detection (a deliberate drag doesn't always register as a
+      // simple tap/click on touch devices)
+      var touchStartX = 0, touchStartY = 0;
+      splash.addEventListener('touchstart', function (e) {
+        var t = e.changedTouches[0];
+        touchStartX = t.clientX;
+        touchStartY = t.clientY;
+      }, { passive: true });
+      splash.addEventListener('touchend', function (e) {
+        var t = e.changedTouches[0];
+        var dx = t.clientX - touchStartX;
+        var dy = t.clientY - touchStartY;
+        if (Math.abs(dx) > 24 || Math.abs(dy) > 24) dismissIntro();
+      }, { passive: true });
     }
   }
 

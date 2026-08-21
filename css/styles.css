@@ -1502,23 +1502,15 @@ body.intro-active { overflow: hidden; }
 
 .intro-skip {
   position: absolute;
-  bottom: var(--space-5);
+  bottom: var(--space-7);
   left: 50%;
   transform: translateX(-50%);
-  background: transparent;
-  border: none;
-  color: var(--color-text-faint);
-  font-family: var(--font-body);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  padding: var(--space-2) var(--space-3);
   opacity: 0;
+  z-index: 3;
 }
 
 .intro-skip:hover,
-.intro-skip:focus-visible { color: var(--color-gold-light); }
+.intro-skip:focus-visible { transform: translateX(-50%) translateY(-2px); }
 
 /* Entrance choreography, gated behind .is-visible so nothing animates
    (or even renders) until JS confirms this play should happen */
