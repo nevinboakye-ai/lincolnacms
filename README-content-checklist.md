@@ -24,7 +24,6 @@ Real photos are wired in for the homepage hero, the Programmes page's Sankofa te
 - `Media/about-preview.jpg`, `Media/about-story.jpg` — About page
 - `Media/study-skills.jpg`, `Media/widening-access.jpg` — Programmes page
 - `Media/sankofa-circle.jpg` — Sankofa Mentorship page (see §10)
-- `Media/opportunities-preview.jpg` — homepage opportunities teaser
 - Committee headshots on the About page: `nevin-boakye.jpg`, `jemimah-omotola.jpg`, `stephen-archer-jr.jpg`, `roberta-arthur.jpg`, `martin-oti.jpg`, `gloria-ndarigumije.jpg`
 - `Media/motm-2026-09.jpg` — September's Member of the Month (see §7d)
 
@@ -97,8 +96,10 @@ Both pages now show: **6 active members**, **20 Professional Mentors**, **10+ ev
 
 ## 7c. Homepage layout changes — done
 
-- The old static "Programmes" 3-card grid is gone; the homepage now has a Programmes teaser section styled like the Opportunities one (text + photo placeholder, "Browse programmes" link to `programmes.html`).
+- The old static "Programmes" 3-card grid is gone; and the standalone Opportunities and Programmes teaser sections (each with their own heading, text and photo) have since been removed from the homepage entirely, on both desktop and mobile.
 - The homepage Gallery section has been removed entirely. The Gallery page and its nav link are untouched — only the homepage preview section was cut.
+- The "Who we are" section's single photo is now a **5-image crossfade carousel** (pure CSS, no JS), cycling through a selection of real photos from `Media/ACMS Gallery/`. To change which photos it shows, edit the `<img class="wwa-carousel-img">` tags in `index.html`'s Who We Are section — each has a staggered negative `animation-delay` (0s, -4s, -8s, -12s, -16s) that keeps them cycling in order; keep that stagger pattern if you add/remove images.
+- Underneath, the old single "Meet the committee" link is now a 3-link stack: **Meet the committee**, **Explore our programmes**, **Browse our opportunities** — pointing at `about.html#committee`, `programmes.html` and `opportunities.html` respectively. This is now the homepage's only route into Programmes/Opportunities content (besides the main nav).
 
 ## 7d. ACMS Member of the Month (motm.html) — new, outstanding
 
@@ -109,7 +110,7 @@ New page + homepage teaser, added to the main nav (positioned between Opportunit
 - **"Previous honourees"**: a populated 3-card archive grid (`[Full Name]` placeholders) — this is a brand-new tradition with no real history yet, so treat these as examples to replace, with a note under the grid saying so. Add a new card here each month for the outgoing honouree.
 - **"Our selection process"**: three steps (Nominate → Committee review → Winner announced) plus a Nominate button — permanent template copy.
 - **Nominate CTA**: mailto link to `acms@lincolnsu.com?subject=MoTM Nomination` (appears twice: hero and process section).
-- **Homepage teaser**: section on `index.html` between the Programmes teaser and the Events carousel, linking to `motm.html`, using the same gold ribbon badge style.
+- **Homepage teaser**: section on `index.html` between "Who we are" and the Events carousel, linking to `motm.html`, using the same gold ribbon badge style.
 
 **To publish September's honouree:** in `motm.html`, replace `[Full Name]`, `[Course] · [Year]`, the bio, the quote, and the "Why selected" heading's `[Full Name]`. Swap the photo placeholder for `Media/motm-2026-09.jpg` (same filename referenced on the homepage teaser — update both if you rename it).
 
