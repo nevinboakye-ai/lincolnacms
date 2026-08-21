@@ -155,11 +155,11 @@ button { font-family: inherit; }
 }
 
 .section {
-  padding-block: var(--space-8);
+  padding-block: var(--space-7);
 }
 
 @media (max-width: 640px) {
-  .section { padding-block: var(--space-6); }
+  .section { padding-block: var(--space-5); }
 }
 
 .section-head {
@@ -732,7 +732,7 @@ body.nav-open { overflow: hidden; }
    Homepage impact section (Featured Opportunity / Upcoming Event / Our Impact)
    ========================================================= */
 
-.impact-section { padding-block: var(--space-7) var(--space-6); }
+.impact-section { padding-block: var(--space-6) var(--space-4); }
 
 .impact-grid {
   display: grid;
@@ -1101,7 +1101,7 @@ a.impact-card:focus-visible {
    ========================================================= */
 
 .page-hero {
-  padding-block: var(--space-7) var(--space-6);
+  padding-block: var(--space-6) var(--space-5);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -1124,6 +1124,83 @@ a.impact-card:focus-visible {
 
 .breadcrumb a { color: var(--color-text-muted); }
 .breadcrumb a:hover { color: var(--color-gold-light); }
+
+/* =========================================================
+   Expandable reveal panels (Events "click for more", Committee bios)
+   ========================================================= */
+
+.reveal-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 320ms var(--ease-standard);
+}
+
+.is-expanded > .reveal-panel,
+.is-expanded .reveal-panel {
+  grid-template-rows: 1fr;
+}
+
+.reveal-panel-inner { overflow: hidden; min-height: 0; }
+
+.reveal-panel-content {
+  padding-top: var(--space-4);
+  opacity: 0;
+  transition: opacity 200ms var(--ease-standard);
+}
+
+.is-expanded .reveal-panel-content {
+  opacity: 1;
+  transition-delay: 80ms;
+}
+
+/* =========================================================
+   Mobile card carousel (Committee, MoTM archive)
+   ========================================================= */
+
+.carousel-wrap--flush { margin-top: 0; }
+
+.mobile-carousel-btn { display: none; }
+
+@media (max-width: 700px) {
+  .mobile-carousel-btn { display: flex; }
+}
+
+.mobile-carousel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+
+@media (max-width: 900px) {
+  .mobile-carousel-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 700px) {
+  .mobile-carousel-grid {
+    display: flex;
+    gap: var(--space-4);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+    padding-bottom: 2px;
+  }
+  .mobile-carousel-grid::-webkit-scrollbar { display: none; }
+  .mobile-carousel-grid.is-dragging {
+    cursor: grabbing;
+    scroll-snap-type: none;
+    scroll-behavior: auto;
+  }
+  .mobile-carousel-grid > * {
+    flex: 0 0 auto;
+    width: 78%;
+    scroll-snap-align: center;
+  }
+}
 
 /* =========================================================
    Cards / grids (About, Programmes, Opportunities, Gallery)
@@ -1235,7 +1312,18 @@ a.card:hover, a.card:focus-visible {
 }
 
 /* Committee */
-.person-card { text-align: center; align-items: center; }
+.person-card {
+  position: relative;
+  text-align: center;
+  align-items: center;
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard);
+}
+.person-card.is-expanded {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 1px var(--color-gold), 0 0 28px -8px rgba(212, 166, 43, 0.5);
+}
 .person-photo {
   width: 96px;
   height: 96px;
@@ -1246,6 +1334,39 @@ a.card:hover, a.card:focus-visible {
 .person-name { font-family: var(--font-display); font-size: 1.05rem; }
 .person-role { font-size: 0.82rem; color: var(--color-gold); text-transform: uppercase; letter-spacing: 0.05em; }
 .person-course { font-size: 0.8rem; color: var(--color-text-faint); }
+
+.person-card-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-top: var(--space-3);
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard),
+              color var(--dur-base) var(--ease-standard);
+}
+.person-card-toggle-btn:hover,
+.person-card-toggle-btn:focus-visible { border-color: var(--color-gold); color: var(--color-gold-light); }
+.person-card-toggle-btn .icon { transition: transform var(--dur-base) var(--ease-standard); }
+.person-card.is-expanded .person-card-toggle-btn {
+  border-color: var(--color-gold);
+  color: var(--color-gold-light);
+}
+.person-card.is-expanded .person-card-toggle-btn .icon { transform: rotate(180deg); }
+
+.person-card .reveal-panel { grid-column: auto; width: 100%; }
+.person-bio {
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  font-size: 0.88rem;
+}
+.person-card .reveal-panel-content { padding-top: 0; }
 
 /* Values list (About) */
 .value-item { display: flex; gap: var(--space-3); align-items: flex-start; }
@@ -1270,10 +1391,20 @@ a.card:hover, a.card:focus-visible {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   scroll-margin-top: calc(var(--header-h) + 16px);
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard),
+              background var(--dur-base) var(--ease-standard);
 }
 
 @media (max-width: 700px) {
   .event-row { grid-template-columns: 1fr; text-align: left; }
+}
+
+.event-row.is-expanded {
+  border-color: var(--color-gold);
+  background: linear-gradient(160deg, rgba(212, 166, 43, 0.1), var(--color-surface) 70%);
+  box-shadow: 0 0 0 1px var(--color-gold), 0 0 34px -8px rgba(212, 166, 43, 0.55);
 }
 
 .event-row-date {
@@ -1292,6 +1423,51 @@ a.card:hover, a.card:focus-visible {
 }
 
 .event-row-title { font-family: var(--font-display); font-size: 1.4rem; margin-bottom: 4px; }
+
+.event-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (max-width: 700px) {
+  .event-row-actions { margin-top: var(--space-2); }
+}
+
+.event-row-chevron-btn {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard),
+              color var(--dur-base) var(--ease-standard);
+}
+
+.event-row-chevron-btn:hover,
+.event-row-chevron-btn:focus-visible { border-color: var(--color-gold); color: var(--color-gold-light); }
+
+.event-row-chevron-btn .icon { transition: transform var(--dur-base) var(--ease-standard); }
+
+.event-row.is-expanded .event-row-chevron-btn {
+  border-color: var(--color-gold);
+  color: var(--color-gold-light);
+}
+
+.event-row.is-expanded .event-row-chevron-btn .icon { transform: rotate(180deg); }
+
+.event-row-details .reveal-panel-content {
+  border-top: 1px solid var(--color-border-strong);
+  margin-top: var(--space-1);
+}
+
+.event-row-details .reveal-panel-content p { margin: 0; }
 
 .event-row.is-highlighted {
   border-color: var(--color-gold);
@@ -1441,7 +1617,7 @@ a.card:hover, a.card:focus-visible {
    ========================================================= */
 
 .cta-band {
-  padding-block: var(--space-7);
+  padding-block: var(--space-6);
   text-align: center;
   background: linear-gradient(160deg, var(--color-surface), var(--color-bg));
   border-top: 1px solid var(--color-border);
@@ -1534,7 +1710,7 @@ a.card:hover, a.card:focus-visible {
 .site-footer {
   position: relative;
   border-top: 1px solid var(--color-border);
-  padding-block: var(--space-7) var(--space-5);
+  padding-block: var(--space-6) var(--space-4);
   background: var(--color-bg-alt);
 }
 
@@ -1757,7 +1933,7 @@ body.intro-active { overflow: hidden; }
    ACMS Member of the Month
    ========================================================= */
 
-.motm-hero { padding-block: var(--space-7) var(--space-8); }
+.motm-hero { padding-block: var(--space-6); }
 
 .motm-hero-grid {
   display: grid;
@@ -1926,6 +2102,71 @@ body.intro-active { overflow: hidden; }
   padding: 5px 12px;
   font-size: 0.72rem;
 }
+
+.motm-hero-media .motm-quote {
+  margin: var(--space-5) 0 0;
+  padding-left: var(--space-4);
+}
+
+.motm-hero-media .motm-quote-mark { font-size: 2.8rem; top: -14px; }
+
+/* Homepage MoTM teaser card — photo sits inline with the name */
+
+.motm-teaser {
+  display: block;
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--dur-base) var(--ease-standard),
+              transform var(--dur-fast) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard);
+}
+
+.motm-teaser:hover,
+.motm-teaser:focus-visible {
+  border-color: var(--color-gold);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px -12px rgba(212, 166, 43, 0.35);
+}
+
+.motm-teaser-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.motm-teaser-media {
+  position: relative;
+  flex-shrink: 0;
+  width: 84px;
+  height: 84px;
+}
+
+.motm-teaser-media .img-placeholder,
+.motm-teaser-media img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--color-gold);
+  overflow: hidden;
+  object-fit: cover;
+}
+
+.motm-teaser-media .img-placeholder .icon { width: 30px; height: 30px; }
+
+.motm-teaser-eyebrow { margin-bottom: 2px; }
+
+.motm-teaser-name { font-size: clamp(1.4rem, 2.4vw, 1.9rem); margin-bottom: 2px; }
+
+.motm-teaser-role { color: var(--color-text-muted); font-size: 0.88rem; margin: 0; }
+
+.motm-teaser-desc { max-width: 60ch; margin-bottom: var(--space-3); }
+
+.motm-teaser .card-link { margin-top: 0; }
 
 /* Why [name] was selected */
 

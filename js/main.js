@@ -148,7 +148,7 @@
     var nextBtn = section ? section.querySelector('[data-carousel-next]') : null;
 
     function step() {
-      var slide = track.querySelector('.carousel-slide');
+      var slide = track.firstElementChild;
       return slide ? slide.getBoundingClientRect().width + 16 : track.clientWidth;
     }
 
@@ -231,6 +231,24 @@
       revealEls.forEach(function (el) { revealObserver.observe(el); });
     }
   }
+
+  // Expandable rows/cards: click anywhere on an element marked [data-expand-row]
+  // to reveal more detail (events, committee bios). Clicks that land on a real
+  // link inside the row (RSVP, "Part of the Sankofa Mentorship programme") are
+  // ignored so they still navigate normally instead of just toggling. The
+  // dedicated [data-expand-btn] inside each row also carries aria-expanded so
+  // keyboard/screen-reader users get the same toggle via Tab + Enter/Space.
+  document.querySelectorAll('[data-expand-row]').forEach(function (row) {
+    var btn = row.querySelector('[data-expand-btn]');
+    function toggle() {
+      var open = row.classList.toggle('is-expanded');
+      if (btn) btn.setAttribute('aria-expanded', String(open));
+    }
+    row.addEventListener('click', function (e) {
+      if (e.target.closest('a')) return;
+      toggle();
+    });
+  });
 
   // Briefly highlight an event row when arriving via a same-page-type anchor
   var hash = window.location.hash;
