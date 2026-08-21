@@ -685,19 +685,21 @@ a.impact-card:focus-visible {
 .impact-card--opportunity:focus-visible { border-color: rgba(111, 207, 151, 0.7); }
 
 .impact-card--event {
-  --impact-shimmer-color: rgba(239, 139, 143, 0.22);
-  background: linear-gradient(160deg, rgba(193, 39, 45, 0.22), var(--color-bg) 75%);
-  border-color: rgba(239, 139, 143, 0.35);
+  --impact-shimmer-color: rgba(232, 199, 103, 0.28);
+  background: linear-gradient(160deg, rgba(212, 166, 43, 0.24), var(--color-bg) 75%);
+  border-color: rgba(232, 199, 103, 0.4);
 }
 .impact-card--event::before { animation-delay: 1.4s; }
 .impact-card--event:hover,
-.impact-card--event:focus-visible { border-color: rgba(239, 139, 143, 0.7); }
+.impact-card--event:focus-visible { border-color: var(--color-gold-light); }
 
 .impact-card--stats {
-  --impact-shimmer-color: rgba(212, 166, 43, 0.18);
-  background: var(--color-surface);
+  --impact-shimmer-color: rgba(239, 139, 143, 0.2);
+  background: linear-gradient(160deg, rgba(193, 39, 45, 0.18), var(--color-surface) 75%);
+  border-color: rgba(239, 139, 143, 0.3);
 }
 .impact-card--stats::before { animation-delay: 2.8s; }
+.impact-card--stats:hover { border-color: rgba(239, 139, 143, 0.6); }
 
 @keyframes impact-shimmer {
   0%, 20% { background-position: 160% 0; }
@@ -809,12 +811,12 @@ a.impact-card:focus-visible {
 }
 .impact-card--opportunity:hover .impact-badge--green { background: rgba(30, 122, 70, 0.3); }
 
-.impact-badge--maroon {
-  color: #ef8b8f;
-  border-color: rgba(239, 139, 143, 0.4);
-  background: rgba(193, 39, 45, 0.15);
+.impact-badge--gold {
+  color: var(--color-gold-light);
+  border-color: rgba(232, 199, 103, 0.45);
+  background: rgba(212, 166, 43, 0.16);
 }
-.impact-card--event:hover .impact-badge--maroon { background: rgba(193, 39, 45, 0.3); }
+.impact-card--event:hover .impact-badge--gold { background: rgba(212, 166, 43, 0.3); }
 
 .impact-stats-row {
   display: flex;
