@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gallery — LACMS</title>
 <meta name="description" content="Photos from LACMS socials, mentorship sessions and events.">
-<link rel="icon" href="Media/logo.png">
+<link rel="icon" href="Media/ACMS%20Branding/logo.png">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -17,7 +17,7 @@
 <header class="site-header">
   <div class="container header-inner">
     <a class="brand" href="index.html">
-      <img class="brand-mark" src="Media/logo.png" alt="LACMS crest" width="48" height="48">
+      <img class="brand-mark" src="Media/ACMS%20Branding/logo.png" alt="LACMS crest" width="48" height="48">
       <span class="brand-mark-fallback" aria-hidden="true">LACMS</span>
       <span class="brand-name">LACMS</span>
       <span class="brand-divider" aria-hidden="true"></span>
@@ -32,8 +32,8 @@
         <li><a href="events.html">Events</a></li>
         <li><a href="programmes.html">Programmes</a></li>
         <li><a href="opportunities.html">Opportunities</a></li>
-        <li><a href="gallery.html">Gallery</a></li>
         <li><a href="motm.html">MoTM</a></li>
+        <li><a href="gallery.html">Gallery</a></li>
       </ul>
       <div class="nav-cta">
         <a class="btn btn-primary btn-glow nav-cta-desktop" href="join.html">Join the society</a>
@@ -54,8 +54,8 @@
       <li><a href="events.html">Events</a></li>
       <li><a href="programmes.html">Programmes</a></li>
       <li><a href="opportunities.html">Opportunities</a></li>
-      <li><a href="gallery.html">Gallery</a></li>
       <li><a href="motm.html">MoTM</a></li>
+      <li><a href="gallery.html">Gallery</a></li>
     </ul>
     <a class="btn btn-primary btn-glow btn-block" href="join.html">Join the society</a>
   </nav>
@@ -67,26 +67,116 @@
     <span class="eyebrow">Gallery</span>
     <h1 class="page-hero-title">Moments from the community</h1>
     <p class="page-hero-lede">A look back at LACMS socials, mentorship sessions, outreach days and the people who make it all happen.</p>
+    <div class="tricolor-bar tricolor-bar--sm" aria-hidden="true"><span></span><span></span><span></span></div>
   </section>
 
   <section class="section">
     <div class="container">
-      <div class="gallery-grid">
-        <div class="gallery-tile tall img-placeholder"><span class="img-placeholder-file">gallery-01.jpg</span></div>
-        <div class="gallery-tile img-placeholder"><span class="img-placeholder-file">gallery-02.jpg</span></div>
-        <div class="gallery-tile img-placeholder"><span class="img-placeholder-file">gallery-03.jpg</span></div>
-        <div class="gallery-tile img-placeholder"><span class="img-placeholder-file">gallery-04.jpg</span></div>
-        <div class="gallery-tile img-placeholder"><span class="img-placeholder-file">gallery-05.jpg</span></div>
-        <div class="gallery-tile tall img-placeholder"><span class="img-placeholder-file">gallery-06.jpg</span></div>
-        <div class="gallery-tile img-placeholder"><span class="img-placeholder-file">gallery-07.jpg</span></div>
-        <div class="gallery-tile img-placeholder"><span class="img-placeholder-file">gallery-08.jpg</span></div>
-        <div class="gallery-tile img-placeholder"><span class="img-placeholder-file">gallery-09.jpg</span></div>
-        <div class="gallery-tile tall img-placeholder"><span class="img-placeholder-file">gallery-10.jpg</span></div>
-        <div class="gallery-tile img-placeholder"><span class="img-placeholder-file">gallery-11.jpg</span></div>
-        <div class="gallery-tile img-placeholder"><span class="img-placeholder-file">gallery-12.jpg</span></div>
+      <div class="gallery-slideshow" data-gallery>
+        <div class="gallery-stage">
+          <img class="gallery-stage-img" data-gallery-img src="" alt="">
+          <div class="gallery-stage-loading" data-gallery-loading aria-hidden="true">Loading…</div>
+          <button type="button" class="carousel-btn carousel-btn--edge gallery-stage-prev" data-gallery-prev aria-label="Previous photo">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button type="button" class="carousel-btn carousel-btn--edge gallery-stage-next" data-gallery-next aria-label="Next photo">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+          </button>
+        </div>
+        <div class="gallery-controls-row">
+          <span class="gallery-counter" data-gallery-counter>&nbsp;</span>
+          <button type="button" class="btn btn-outline" data-gallery-shuffle>
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+            Shuffle
+          </button>
+        </div>
       </div>
     </div>
   </section>
+
+  <script>
+    (function () {
+      var FOLDER = 'Media/ACMS Gallery/';
+      var FILES = [
+        'IMG_0027.JPG', 'IMG_0028.JPG', 'IMG_0029.JPG', 'IMG_1164 2.JPG',
+        'IMG_1165.JPG', 'IMG_1166.JPG', 'IMG_1167.JPG', 'IMG_1168.JPG',
+        'IMG_1178.JPG', 'IMG_1179.JPG', 'IMG_1180.JPG', 'IMG_1181.JPG',
+        'IMG_1185.JPG', 'IMG_1196.JPG', 'IMG_1205.JPG', 'IMG_1206.JPG',
+        'IMG_1227.JPG', 'IMG_1228.JPG', 'IMG_4053.JPG', 'IMG_4996.JPG',
+        'IMG_5017.JPG', 'IMG_5019.JPG', 'IMG_8822.JPEG', 'Medball-NSG.JPG',
+        '356B96A6-9FEE-429D-A4DF-B45A6695DCFC.PNG',
+        'hero.jpg', 'sankofa-mentorship.jpg'
+      ];
+
+      var root = document.querySelector('[data-gallery]');
+      if (!root) return;
+
+      var stageImg = root.querySelector('[data-gallery-img]');
+      var loading = root.querySelector('[data-gallery-loading]');
+      var counter = root.querySelector('[data-gallery-counter]');
+      var prevBtn = root.querySelector('[data-gallery-prev]');
+      var nextBtn = root.querySelector('[data-gallery-next]');
+      var shuffleBtn = root.querySelector('[data-gallery-shuffle]');
+      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function shuffle(arr) {
+        var a = arr.slice();
+        for (var i = a.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+        }
+        return a;
+      }
+
+      var order = shuffle(FILES);
+      var index = 0;
+      var timer = null;
+
+      function show(i) {
+        index = (i + order.length) % order.length;
+        var file = order[index];
+        loading.classList.add('is-visible');
+        stageImg.classList.remove('is-visible');
+        var next = new Image();
+        next.onload = function () {
+          stageImg.src = next.src;
+          stageImg.alt = 'A photo from an LACMS event';
+          loading.classList.remove('is-visible');
+          stageImg.classList.add('is-visible');
+        };
+        next.onerror = function () {
+          loading.textContent = 'Photo unavailable';
+        };
+        next.src = encodeURI(FOLDER + file);
+        counter.textContent = (index + 1) + ' / ' + order.length;
+      }
+
+      function resetTimer() {
+        if (reduceMotion) return;
+        window.clearInterval(timer);
+        timer = window.setInterval(function () { show(index + 1); }, 5000);
+      }
+
+      prevBtn.addEventListener('click', function () { show(index - 1); resetTimer(); });
+      nextBtn.addEventListener('click', function () { show(index + 1); resetTimer(); });
+      shuffleBtn.addEventListener('click', function () {
+        order = shuffle(FILES);
+        show(0);
+        resetTimer();
+      });
+
+      root.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowLeft') { show(index - 1); resetTimer(); }
+        if (e.key === 'ArrowRight') { show(index + 1); resetTimer(); }
+      });
+
+      root.addEventListener('mouseenter', function () { window.clearInterval(timer); });
+      root.addEventListener('mouseleave', resetTimer);
+
+      show(0);
+      resetTimer();
+    })();
+  </script>
 
   <section class="cta-band">
     <div class="container">
@@ -105,7 +195,7 @@
     <div class="footer-grid">
       <div class="footer-col">
         <div class="footer-brand">
-          <img class="brand-mark" src="Media/logo.png" alt="LACMS crest" width="44" height="44">
+          <img class="brand-mark" src="Media/ACMS%20Branding/logo.png" alt="LACMS crest" width="44" height="44">
           <span class="brand-mark-fallback" aria-hidden="true">LACMS</span>
         </div>
         <p>A student-led community for African and Caribbean heritage students in medicine and healthcare at the University of Lincoln.</p>

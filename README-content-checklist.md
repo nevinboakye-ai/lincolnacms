@@ -4,18 +4,35 @@ This site is a complete, working draft built with plain HTML/CSS/JS (no build st
 
 ## 1. Logo — done
 
-`Media/logo.png` is in place and wired into every header, footer and browser tab icon.
+`Media/ACMS Branding/logo.png` is in place and wired into every header, footer and browser tab icon.
 
-## 2. Photos — outstanding
+## 1b. Media folder structure — important
 
-Drop images into `Media/` and swap the placeholder tiles for real `<img>` tags (ask your dev/committee member helping with the site, or a future Claude session, to do the swap — the filenames below are already referenced in comments/labels on each placeholder so it's a quick find-and-replace):
+Your `Media/` folder is now organised into subfolders, and every page has been updated to match:
 
-- `Media/hero.jpg` — homepage hero (full-bleed background behind the headline)
+- `Media/ACMS Branding/logo.png` — the crest, used everywhere
+- `Media/ACMS Gallery/` — every real photo: `hero.jpg` (homepage), `sankofa-mentorship.jpg` (homepage Programmes teaser), plus the ~27 event photos powering the Gallery slideshow (see §2b)
+
+**If you rename or move either folder, the whole site breaks** (this exact thing happened once already — see the git history). If you add more branding assets, put them in `Media/ACMS Branding/`; more event photos go in `Media/ACMS Gallery/` and just need adding to the `FILES` array described in §2b.
+
+Filenames with spaces (e.g. `IMG_1164 2.JPG`) work fine — the site encodes them automatically — but it's cleaner to avoid spaces in future filenames if you're naming them yourself.
+
+## 2. Photos — mostly outstanding
+
+Real photos are wired in for the homepage hero, the Programmes page's Sankofa teaser, and the whole Gallery page (see §2b). Still placeholder — drop images into `Media/ACMS Gallery/` (or wherever makes sense) and swap these:
+
 - `Media/about-preview.jpg`, `Media/about-story.jpg` — About page
-- `Media/sankofa-mentorship.jpg`, `Media/study-skills.jpg`, `Media/widening-access.jpg` — Programmes page
+- `Media/study-skills.jpg`, `Media/widening-access.jpg` — Programmes page
+- `Media/sankofa-circle.jpg` — Sankofa Mentorship page (see §10)
 - `Media/opportunities-preview.jpg` — homepage opportunities teaser
-- `Media/gallery-01.jpg` through `gallery-12.jpg` — Gallery page
 - Committee headshots on the About page: `nevin-boakye.jpg`, `jemimah-omotola.jpg`, `stephen-archer-jr.jpg`, `roberta-arthur.jpg`, `martin-oti.jpg`, `gloria-ndarigumije.jpg`
+- `Media/motm-2026-09.jpg` — September's Member of the Month (see §7d)
+
+## 2b. Gallery slideshow — done
+
+`gallery.html` is now a slideshow, not a grid: one large photo at a time, shuffled into random order on every page load, with Previous/Next buttons either side, a "Shuffle" button, autoplay every 5 seconds (pauses on hover, and is skipped entirely for visitors with reduced-motion enabled), and keyboard arrow-key support.
+
+It pulls straight from `Media/ACMS Gallery/` via a hardcoded list near the top of `gallery.html` (search for `var FILES`). **To add a new photo:** drop the file into that folder and add its filename to the `FILES` array. **To remove one:** delete its entry from the array (no need to delete the file). A few files in that folder were skipped because browsers can't display them or they're currently empty on disk — `.heic` files (`NevinEmb1.heic`, `NevinEmb2.heic`, `IMG_0192.HEIC`) and a couple of 0-byte files (`1stYearAllMedics.JPG`, `Medball_Nevin-Stephen.JPEG`, likely an iCloud sync issue) — convert the HEICs to JPG and re-sync the empty ones, then add them to the list.
 
 ## 3. Committee (about.html) — done
 
@@ -70,6 +87,8 @@ Right under the hero, `index.html` has a 3-card row: a "Featured Opportunity" ca
 - **7 Disciplines**
 - **30+ Professionals**
 
+The Gala card's eyebrow now reads "Flagship Event" (was "Upcoming Event"), and its colour theme is gold (was red) — the Our Impact card carries the red theme instead.
+
 These numbers were given as-is — confirm they're accurate before launch, and update the figures directly in `index.html` (search for `impact-stat-num`) if they change. No real photos are used in this section (both illustrations are original line art), so there's nothing to swap here unless you'd rather use real photography instead.
 
 ## 7b. Homepage "Who we are" stats + About page — done
@@ -83,18 +102,34 @@ Both pages now show: **6 active members**, **20 Professional Mentors**, **10+ ev
 
 ## 7d. ACMS Member of the Month (motm.html) — new, outstanding
 
-New page + homepage teaser, added to the main nav, mobile drawer and footer on every page.
+New page + homepage teaser, added to the main nav (positioned between Opportunities and Gallery), mobile drawer and footer on every page.
 
-- **Spotlight section** (top of `motm.html`): a full editorial profile for the current honouree — photo, a rotating gold "Member of the Month" seal overlapping the photo corner, name, course/role, category tags, a pull-quote, and a two-paragraph write-up with a drop-cap opening letter.
-- **Archive section**: currently an empty state ("this is where past honourees will live"), since this is a new tradition with no history yet. There's an HTML comment in `motm.html` right after the empty-state block showing the exact markup to duplicate for each new entry (wrap them in `<div class="grid grid--3">`).
-- **Nominate CTA**: mailto link to `acms@lincolnsu.com?subject=MoTM Nomination`.
-- **Homepage teaser**: new section on `index.html` between the Programmes teaser and the closing tagline, linking to `motm.html`.
+- **Spotlight**: eyebrow, big heading, a red/green/gold tricolour accent bar, then the current honouree — photo with a gold ribbon month badge across the corner (currently reads "September 2026"), name, course/role, a short bio, a pull-quote with a large decorative quote mark, three colour-coded category tags (red/green/gold dots), and two buttons (Nominate / How selection works).
+- **"Why [Name] was selected"**: three numbered (01/02/03) reusable criteria — these are permanent template copy, not placeholder, so they don't need editing unless you want different criteria.
+- **"Previous honourees"**: a populated 3-card archive grid (`[Full Name]` placeholders) — this is a brand-new tradition with no real history yet, so treat these as examples to replace, with a note under the grid saying so. Add a new card here each month for the outgoing honouree.
+- **"Our selection process"**: three steps (Nominate → Committee review → Winner announced) plus a Nominate button — permanent template copy.
+- **Nominate CTA**: mailto link to `acms@lincolnsu.com?subject=MoTM Nomination` (appears twice: hero and process section).
+- **Homepage teaser**: section on `index.html` between the Programmes teaser and the Events carousel, linking to `motm.html`, using the same gold ribbon badge style.
 
-**To publish August's honouree:** in `motm.html`, replace `[Full Name]`, `[Course, Year] · [Committee role, if applicable]`, the tags, the quote, and both `[Placeholder]` paragraphs. Swap the photo placeholder for `Media/motm-2026-08.jpg` (same filename referenced on the homepage teaser — update both if you rename it). Each future month: add a new `motm-archive-card` in the archive grid for the outgoing honouree, and update the spotlight section with the new one.
+**To publish September's honouree:** in `motm.html`, replace `[Full Name]`, `[Course] · [Year]`, the bio, the quote, and the "Why selected" heading's `[Full Name]`. Swap the photo placeholder for `Media/motm-2026-09.jpg` (same filename referenced on the homepage teaser — update both if you rename it).
+
+## 10. Sankofa Mentorship page (sankofa.html) — new, mostly done
+
+New dedicated page explaining the full programme, linked via "Discover more about Sankofa" on the Programmes page's Sankofa section (and the homepage's Sankofa card and Events page both now link straight here too). Not in the main nav — it's a deep-dive reached through those links.
+
+- **The significance of Sankofa**: the Akan-word meaning and philosophy, using the detail you provided.
+- **Sankofa Circles**: an 8-step visual chain (Sixth Form → Year 1–5 → F1/F2 doctor → Senior doctor/consultant) showing the continuous mentorship structure, scrolls horizontally on narrow screens.
+- **How it works**: five real (not placeholder) cards covering support direction, the F1/F2 role, the senior doctor role, termly meetings, and long-term relationships — all written from the detail you gave.
+- One remaining photo placeholder: `Media/sankofa-circle.jpg`.
+- Also updated to match: the Sankofa section on `programmes.html` itself (now real copy instead of `[Placeholder]`, plus the new "Discover more" link).
+
+## 11. Colour accents
+
+Added a reusable red/green/gold tricolour bar (`.tricolor-bar`, small variant `.tricolor-bar--sm`) under the intro text on every page-hero site-wide, plus on the MoTM and Sankofa pages — a recurring brand motif tying back to the crest, beyond the existing gold-only accents.
 
 ## 8. Design system
 
-- Colours: black/near-black background, gold accent (`#d4a62b`), with red/green used only as small event-category dots — drawn from your crest.
+- Colours: black/near-black background, gold accent (`#d4a62b`), with red/green used as event-category dots, tags and the tricolour accent bar — drawn from your crest.
 - Fonts: Playfair Display (headings) + Inter (body), loaded from Google Fonts.
 - All tokens live at the top of `css/styles.css` under `:root` if you want to adjust the palette later.
 

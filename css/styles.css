@@ -1247,18 +1247,74 @@ a.card:hover, a.card:focus-visible {
   .opp-row { grid-template-columns: 1fr; }
 }
 
-/* Gallery */
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-3);
+/* Gallery slideshow */
+.gallery-stage {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  max-height: 620px;
+  max-width: 100%;
+  margin-inline: auto;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
-@media (max-width: 900px) { .gallery-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 620px) { .gallery-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) {
+  .gallery-stage { aspect-ratio: 4 / 5; max-height: none; }
+}
 
-.gallery-tile { aspect-ratio: 1; border-radius: var(--radius-sm); overflow: hidden; }
-.gallery-tile.tall { aspect-ratio: 1 / 1.4; grid-row: span 2; }
+.gallery-stage-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--color-bg);
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+
+.gallery-stage-img.is-visible { opacity: 1; }
+
+.gallery-stage-loading {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+.gallery-stage-loading.is-visible { display: flex; }
+
+.gallery-stage-prev,
+.gallery-stage-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+.gallery-stage-prev { left: 16px; }
+.gallery-stage-next { right: 16px; }
+
+.gallery-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+}
+
+.gallery-counter {
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
 
 /* =========================================================
    CTA band
@@ -1594,7 +1650,7 @@ body.intro-active { overflow: hidden; }
   margin-bottom: var(--space-4);
 }
 
-.motm-tricolor-bar {
+.tricolor-bar {
   display: flex;
   width: 220px;
   height: 4px;
@@ -1602,10 +1658,17 @@ body.intro-active { overflow: hidden; }
   overflow: hidden;
   margin-bottom: var(--space-6);
 }
-.motm-tricolor-bar span { flex: 1; }
-.motm-tricolor-bar span:nth-child(1) { background: var(--color-red); }
-.motm-tricolor-bar span:nth-child(2) { background: var(--color-green); }
-.motm-tricolor-bar span:nth-child(3) { background: var(--color-gold); }
+.tricolor-bar span { flex: 1; }
+.tricolor-bar span:nth-child(1) { background: var(--color-red); }
+.tricolor-bar span:nth-child(2) { background: var(--color-green); }
+.tricolor-bar span:nth-child(3) { background: var(--color-gold); }
+
+.tricolor-bar--sm {
+  width: 96px;
+  height: 3px;
+  margin-top: var(--space-3);
+  margin-bottom: 0;
+}
 
 .motm-name {
   font-size: clamp(2rem, 4.2vw, 2.8rem);
@@ -1803,3 +1866,80 @@ body.intro-active { overflow: hidden; }
 
 .motm-process-step h3 { font-size: 1.02rem; margin-bottom: 2px; }
 .motm-process-step p { margin: 0; font-size: 0.92rem; }
+
+/* =========================================================
+   Sankofa Mentorship page
+   ========================================================= */
+
+.sankofa-chain-scroll {
+  overflow-x: auto;
+  padding-block: var(--space-3) var(--space-2);
+}
+
+.sankofa-chain {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  min-width: max-content;
+  padding-block: var(--space-3);
+}
+
+.sankofa-chain-line {
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  top: 41px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-red), var(--color-green), var(--color-gold));
+  z-index: 0;
+}
+
+.sankofa-chain-node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 104px;
+  text-align: center;
+}
+
+.sankofa-chain-dot {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--color-gold);
+  background: var(--color-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--color-gold-light);
+  flex-shrink: 0;
+}
+
+.sankofa-chain-node--accent .sankofa-chain-dot {
+  background: var(--color-gold);
+  color: var(--color-on-gold);
+}
+
+.sankofa-chain-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  line-height: 1.25;
+}
+
+.sankofa-meaning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(1.2rem, 2.2vw, 1.5rem);
+  color: var(--color-gold-light);
+  margin-bottom: var(--space-3);
+}
