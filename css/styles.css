@@ -1239,9 +1239,38 @@ a.card:hover, a.card:focus-visible {
   grid-template-columns: 1fr auto;
   gap: var(--space-4);
   align-items: center;
-  padding: var(--space-4);
-  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-gold);
+  border-radius: var(--radius-md);
+  transition: transform var(--dur-base) var(--ease-standard),
+              border-color var(--dur-base) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard);
+  opacity: 0;
+  transform: translateY(18px);
 }
+
+.opp-row.is-visible {
+  animation: opp-row-in 600ms var(--ease-standard) forwards;
+}
+
+@keyframes opp-row-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.opp-row:hover,
+.opp-row:focus-within {
+  transform: translateY(-3px);
+  border-left-color: var(--color-gold-light);
+  box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.5);
+}
+
+.opp-row--red { border-left-color: var(--color-red); }
+.opp-row--red:hover, .opp-row--red:focus-within { border-left-color: #ef8b8f; }
+.opp-row--green { border-left-color: var(--color-green); }
+.opp-row--green:hover, .opp-row--green:focus-within { border-left-color: #6fcf97; }
 
 @media (max-width: 620px) {
   .opp-row { grid-template-columns: 1fr; }
@@ -1412,9 +1441,20 @@ a.card:hover, a.card:focus-visible {
    ========================================================= */
 
 .site-footer {
+  position: relative;
   border-top: 1px solid var(--color-border);
   padding-block: var(--space-7) var(--space-5);
   background: var(--color-bg-alt);
+}
+
+.site-footer::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-red), var(--color-green), var(--color-gold));
 }
 
 .footer-grid {
@@ -1871,43 +1911,47 @@ body.intro-active { overflow: hidden; }
    Sankofa Mentorship page
    ========================================================= */
 
-.sankofa-chain-scroll {
+.sankofa-diagram-scroll {
   overflow-x: auto;
   padding-block: var(--space-3) var(--space-2);
 }
 
-.sankofa-chain {
+.sankofa-diagram {
   position: relative;
-  display: flex;
-  gap: var(--space-3);
-  min-width: max-content;
-  padding-block: var(--space-3);
+  width: 900px;
+  height: 600px;
+  margin-inline: auto;
 }
 
-.sankofa-chain-line {
+.sankofa-diagram-lines {
   position: absolute;
-  left: 30px;
-  right: 30px;
-  top: 41px;
-  height: 2px;
-  background: linear-gradient(90deg, var(--color-red), var(--color-green), var(--color-gold));
-  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
-.sankofa-chain-node {
-  position: relative;
+.sankofa-line { fill: none; stroke-width: 2.5; }
+.sankofa-line--gold { stroke: var(--color-gold); stroke-width: 3; }
+.sankofa-line--red { stroke: var(--color-red); stroke-opacity: 0.55; }
+.sankofa-line--green { stroke: var(--color-green); stroke-opacity: 0.55; }
+
+.sankofa-diagram-node {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-2);
-  width: 104px;
+  width: 110px;
   text-align: center;
 }
 
-.sankofa-chain-dot {
-  width: 56px;
-  height: 56px;
+.sankofa-diagram-dot {
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   border: 2px solid var(--color-gold);
   background: var(--color-bg);
@@ -1921,17 +1965,53 @@ body.intro-active { overflow: hidden; }
   flex-shrink: 0;
 }
 
-.sankofa-chain-node--accent .sankofa-chain-dot {
-  background: var(--color-gold);
-  color: var(--color-on-gold);
-}
-
-.sankofa-chain-label {
-  font-size: 0.76rem;
+.sankofa-diagram-label {
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-text-muted);
   line-height: 1.25;
 }
+
+.sankofa-diagram-node--hub {
+  width: 150px;
+}
+
+.sankofa-diagram-node--hub .sankofa-diagram-dot {
+  width: 84px;
+  height: 84px;
+  font-size: 0.74rem;
+}
+
+.sankofa-diagram-node--hub .sankofa-diagram-label {
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+
+.sankofa-diagram-node--red .sankofa-diagram-dot {
+  border-color: var(--color-red);
+  background: rgba(193, 39, 45, 0.15);
+  color: #ef8b8f;
+}
+
+.sankofa-diagram-node--green .sankofa-diagram-dot {
+  border-color: var(--color-green);
+  background: rgba(30, 122, 70, 0.15);
+  color: #6fcf97;
+}
+
+.sankofa-diagram-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: center;
+  margin-top: var(--space-3);
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.sankofa-diagram-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+.sankofa-diagram-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
 .sankofa-meaning {
   display: flex;
