@@ -81,6 +81,17 @@ Both pages now show: **6 active members**, **20 Professional Mentors**, **10+ ev
 - The old static "Programmes" 3-card grid is gone; the homepage now has a Programmes teaser section styled like the Opportunities one (text + photo placeholder, "Browse programmes" link to `programmes.html`).
 - The homepage Gallery section has been removed entirely. The Gallery page and its nav link are untouched — only the homepage preview section was cut.
 
+## 7d. ACMS Member of the Month (motm.html) — new, outstanding
+
+New page + homepage teaser, added to the main nav, mobile drawer and footer on every page.
+
+- **Spotlight section** (top of `motm.html`): a full editorial profile for the current honouree — photo, a rotating gold "Member of the Month" seal overlapping the photo corner, name, course/role, category tags, a pull-quote, and a two-paragraph write-up with a drop-cap opening letter.
+- **Archive section**: currently an empty state ("this is where past honourees will live"), since this is a new tradition with no history yet. There's an HTML comment in `motm.html` right after the empty-state block showing the exact markup to duplicate for each new entry (wrap them in `<div class="grid grid--3">`).
+- **Nominate CTA**: mailto link to `acms@lincolnsu.com?subject=MoTM Nomination`.
+- **Homepage teaser**: new section on `index.html` between the Programmes teaser and the closing tagline, linking to `motm.html`.
+
+**To publish August's honouree:** in `motm.html`, replace `[Full Name]`, `[Course, Year] · [Committee role, if applicable]`, the tags, the quote, and both `[Placeholder]` paragraphs. Swap the photo placeholder for `Media/motm-2026-08.jpg` (same filename referenced on the homepage teaser — update both if you rename it). Each future month: add a new `motm-archive-card` in the archive grid for the outgoing honouree, and update the spotlight section with the new one.
+
 ## 8. Design system
 
 - Colours: black/near-black background, gold accent (`#d4a62b`), with red/green used only as small event-category dots — drawn from your crest.
