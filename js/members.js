@@ -115,20 +115,40 @@
 
       // Once we know they're signed in, upgrade the label to their first
       // name — a much more obvious "yes, still you, still logged in" cue
-      // than a generic label that doesn't change between pages.
+      // than a generic label that doesn't change between pages. Also
+      // figure out which hub they actually belong to: a full LACMS member
+      // goes to member-hub.html as before, but an MMG-only guest has no
+      // row in `members` at all — sending them there would just hit a
+      // "couldn't find your profile" error, so point them at their own
+      // mmg-hub.html instead.
       if (loggedIn) {
         supabaseClient
           .from('members')
           .select('full_name')
           .eq('id', session.user.id)
-          .single()
-          .then(function (result) {
-            var fullName = result.data && result.data.full_name;
-            if (!fullName) return;
-            var firstName = fullName.trim().split(' ')[0];
-            memberNavLinks.forEach(function (el) {
-              setNavLinkText(el, 'Hi, ' + firstName, true);
-            });
+          .maybeSingle()
+          .then(function (memberResult) {
+            if (memberResult.data && memberResult.data.full_name) {
+              var firstName = memberResult.data.full_name.trim().split(' ')[0];
+              memberNavLinks.forEach(function (el) {
+                setNavLinkText(el, 'Hi, ' + firstName, true);
+              });
+              return;
+            }
+            supabaseClient
+              .from('mmg_guests')
+              .select('full_name')
+              .eq('id', session.user.id)
+              .maybeSingle()
+              .then(function (guestResult) {
+                var fullName = guestResult.data && guestResult.data.full_name;
+                if (!fullName) return;
+                var firstName = fullName.trim().split(' ')[0];
+                memberNavLinks.forEach(function (el) {
+                  el.href = 'mmg-hub.html';
+                  setNavLinkText(el, 'Hi, ' + firstName, true);
+                });
+              });
           });
       }
     });
@@ -713,7 +733,7 @@
 
     supabaseClient.auth.getSession().then(function (result) {
       if (result.data && result.data.session) {
-        window.location.href = 'mmg.html';
+        window.location.href = 'mmg-hub.html';
       }
     });
 
@@ -746,7 +766,7 @@
             return;
           }
           ensureMmgGuestProfile(result.data.session).then(function () {
-            window.location.href = 'mmg.html';
+            window.location.href = 'mmg-hub.html';
           });
         });
       });
@@ -787,7 +807,7 @@
           var session = result.data && result.data.session;
           if (session) {
             ensureMmgGuestProfile(session).then(function () {
-              window.location.href = 'mmg.html';
+              window.location.href = 'mmg-hub.html';
             });
             return;
           }
@@ -990,5 +1010,123 @@
       '<h3 class="feed-item-title">' + escapeHtml(row.title) + '</h3>' +
       '<p class="feed-item-body">' + escapeHtml(row.body) + '</p>' +
       '</article>';
+  }
+
+  // ---- MMG hub page: the equivalent of member-hub.html for MMG-only
+  // guests (attendees/committee from the 7 partner universities), who
+  // have no row in `members` and would otherwise hit a "couldn't find
+  // your profile" error if sent to the real members hub ----
+  var mmgHubContent = document.getElementById('mmg-hub-content');
+  if (mmgHubContent) {
+    var mmgHubAuthGate = document.getElementById('mmg-hub-auth-gate');
+    var mmgHubError = document.getElementById('mmg-hub-error');
+
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) {
+        window.location.href = 'mmg-login.html';
+        return;
+      }
+      // A full Lincoln member landing here (e.g. an old bookmark) belongs
+      // on the real members hub instead.
+      supabaseClient
+        .from('members')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle()
+        .then(function (memberResult) {
+          if (memberResult.data) {
+            window.location.href = 'member-hub.html';
+            return;
+          }
+          loadMmgHubProfile(session);
+        });
+    });
+
+    function loadMmgHubProfile(session) {
+      ensureMmgGuestProfile(session)
+        .then(function () {
+          return supabaseClient.from('mmg_guests').select('*').eq('id', session.user.id).maybeSingle();
+        })
+        .then(function (result) {
+          if (mmgHubAuthGate) mmgHubAuthGate.style.display = 'none';
+          if (result.error || !result.data) {
+            showMessage(mmgHubError, "We couldn't find your MMG account yet — try logging out and back in, or email acms@lincolnsu.com if this doesn't resolve soon.");
+            return;
+          }
+          renderMmgHubProfile(result.data, session);
+          mmgHubContent.style.display = '';
+        });
+    }
+
+    function renderMmgHubProfile(guest, session) {
+      var isPending = guest.access_level === 'pending';
+      var tierLabel = guest.access_level === 'committee' ? 'Committee' : (guest.access_level === 'attendee' ? 'Attendee' : 'Pending review');
+
+      document.querySelectorAll('[data-mmg-name-inline]').forEach(function (el) {
+        el.textContent = guest.full_name;
+      });
+
+      setMmgCardText('mmg-hub-card-name', guest.full_name);
+      setMmgCardText('mmg-hub-card-university', guest.university);
+      setMmgCardText('mmg-hub-card-access', tierLabel);
+      setMmgCardText('mmg-hub-card-tier', isPending ? 'MMG · Pending' : 'MMG · ' + tierLabel);
+
+      var statusBadge = document.getElementById('mmg-hub-card-status-badge');
+      if (statusBadge) {
+        statusBadge.className = 'member-status-badge ' + (isPending ? 'member-status-badge--pending' : 'member-status-badge--active');
+        statusBadge.innerHTML = '<span class="member-status-badge-dot" aria-hidden="true"></span>' + (isPending ? 'Pending' : 'Confirmed');
+      }
+
+      setHubText('mmg-hub-university', guest.university);
+      setHubText('mmg-hub-email', session.user.email);
+      setHubText('mmg-hub-status', tierLabel);
+
+      var pendingNote = document.getElementById('mmg-hub-pending-note');
+      if (pendingNote) pendingNote.style.display = isPending ? 'flex' : 'none';
+    }
+
+    function setHubText(id, value) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = value || '—';
+    }
+
+    var mmgHubChangePasswordToggle = document.getElementById('mmg-hub-change-password-toggle');
+    var mmgHubChangePasswordForm = document.getElementById('mmg-hub-change-password-form');
+    if (mmgHubChangePasswordToggle && mmgHubChangePasswordForm) {
+      mmgHubChangePasswordToggle.addEventListener('click', function () {
+        var isOpen = mmgHubChangePasswordForm.style.display !== 'none';
+        mmgHubChangePasswordForm.style.display = isOpen ? 'none' : 'block';
+      });
+
+      mmgHubChangePasswordForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = document.getElementById('mmg-hub-change-password-status');
+        hideMessage(statusEl);
+        var password = document.getElementById('mmg-hub-new-password').value;
+        var confirmPassword = document.getElementById('mmg-hub-new-password-confirm').value;
+
+        if (password.length < 8) {
+          showMessage(statusEl, 'Password must be at least 8 characters.');
+          return;
+        }
+        if (password !== confirmPassword) {
+          showMessage(statusEl, "Passwords don't match — try again.");
+          return;
+        }
+
+        var btn = mmgHubChangePasswordForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        supabaseClient.auth.updateUser({ password: password }).then(function (result) {
+          btn.disabled = false;
+          if (result.error) {
+            showMessage(statusEl, result.error.message);
+            return;
+          }
+          statusEl.style.color = 'var(--color-gold-light)';
+          showMessage(statusEl, 'Password updated.');
+        });
+      });
+    }
   }
 })();

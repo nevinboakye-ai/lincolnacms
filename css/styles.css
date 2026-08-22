@@ -3425,6 +3425,25 @@ body.intro-active { overflow: hidden; }
 .mmg-timeline-content h4 { margin: 0 0 4px; font-size: 1.05rem; }
 .mmg-timeline-content p { margin: 0; color: var(--color-text-muted); font-size: 0.92rem; }
 
+.mmg-timeline-sublist {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) 0 0 var(--space-3);
+  border-left: 2px dotted var(--color-border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mmg-timeline-sublist li {
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+}
+.mmg-timeline-subtime {
+  font-weight: 700;
+  color: var(--color-gold-light);
+  margin-right: 6px;
+}
+
 /* Committee panel — deliberately distinct from the attendee-tier content
    above: a bordered, glowing purple "vault" rather than a plain section,
    so committee access reads as its own elevated space. */

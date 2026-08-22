@@ -124,7 +124,9 @@ Members only ever see `is_active = true` posts, pinned first, then newest first.
 
 ## 12. Midlands Medics Gala (MMG) portal
 
-Run [`db/migrations/009-mmg-portal.sql`](db/migrations/009-mmg-portal.sql). This builds the whole MMG portal: [mmg.html](mmg.html) (public event info + exclusive gated content) and [mmg-login.html](mmg-login.html) (login/signup for people who aren't full LACMS members). The homepage's two Gala links and the events-page Gala row now point at `mmg.html` instead of the events calendar.
+Run [`db/migrations/009-mmg-portal.sql`](db/migrations/009-mmg-portal.sql). This builds the whole MMG portal: [mmg.html](mmg.html) (public event info + exclusive gated content), [mmg-login.html](mmg-login.html) (login/signup for people who aren't full LACMS members), and [mmg-hub.html](mmg-hub.html) (an MMG guest's own account page — digital pass, details, access status, change password — the equivalent of member-hub.html for people who aren't full LACMS members). The homepage's two Gala links and the events-page Gala row now point at `mmg.html` instead of the events calendar.
+
+MMG guests are routed to `mmg-hub.html`, not `member-hub.html` — the site-wide "Members hub" header link now checks which table a signed-in session actually belongs to (`members` vs `mmg_guests`) and sends them to the right one, so an MMG-only account never hits a "couldn't find your profile" error.
 
 **Before this goes live**, swap the placeholder ticket link — search `mmg.html` for `#mmg-ticket-link-todo` and replace it with wherever tickets are actually sold. Also replace the three `[Placeholder]` paragraphs (Location, Speaker list, Programme & night order) once those details are confirmed.
 
