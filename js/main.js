@@ -74,19 +74,6 @@
     el.textContent = new Date().getFullYear();
   });
 
-  // Join form has no backend yet — prevent a raw page reload and explain next steps
-  var joinForm = document.getElementById('join-form');
-  if (joinForm) {
-    joinForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var status = document.getElementById('join-form-status');
-      if (status) {
-        status.textContent = 'This form isn\'t connected yet. Please email acms@lincolnsu.com instead — see the note above.';
-        status.style.color = 'var(--color-gold-light)';
-      }
-    });
-  }
-
   // Homepage intro splash — plays once per browser session, skips entirely
   // for prefers-reduced-motion, and stays on screen until the visitor
   // actively dismisses it (click/tap anywhere, a swipe, or any keypress).
