@@ -369,7 +369,6 @@ button { font-family: inherit; }
   letter-spacing: 0.06em;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  white-space: nowrap;
 }
 
 .brand-place {
@@ -380,13 +379,16 @@ button { font-family: inherit; }
   margin-top: 2px;
 }
 
+@media (max-width: 1150px) {
+  .brand-place { display: none; }
+}
+
 @media (max-width: 640px) {
   .brand-sub { font-size: 0.58rem; }
-  .brand-place { font-size: 0.54rem; }
 }
 
 @media (max-width: 400px) {
-  .brand-sub, .brand-place { display: none; }
+  .brand-sub { display: none; }
 }
 
 .nav-primary {
@@ -572,6 +574,49 @@ button { font-family: inherit; }
 
 .mobile-drawer .nav-links a.is-signed-in .icon {
   color: var(--color-gold-light);
+}
+
+/* Compact signed-in badge — stands in for the full "Hi, [name]" pill
+   whenever there isn't room for it (tablet width, and every mobile width,
+   including with the drawer closed). Icon + a small pulsing dot only, so
+   it never competes for header space no matter how tight things get. */
+.member-nav-avatar {
+  display: none;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+  transition: border-color var(--dur-base) var(--ease-standard),
+              color var(--dur-base) var(--ease-standard);
+}
+
+.member-nav-avatar:hover,
+.member-nav-avatar:focus-visible {
+  border-color: var(--color-gold);
+  color: var(--color-gold-light);
+}
+
+.member-nav-avatar .icon { width: 20px; height: 20px; }
+
+.member-nav-avatar-dot {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #6fcf97;
+  border: 2px solid var(--color-bg);
+  animation: member-nav-dot-pulse 2.4s ease-in-out infinite;
+}
+
+@media (max-width: 1150px) {
+  .member-nav-avatar.is-signed-in { display: flex; }
 }
 
 .mobile-drawer .btn {

@@ -31,7 +31,9 @@
   // exactly like being logged out, even though the session was fine the
   // whole time.
   var memberNavLinks = document.querySelectorAll('[data-member-nav-link]');
-  if (memberNavLinks.length) {
+  var hideWhenSignedInEls = document.querySelectorAll('[data-hide-when-signed-in]');
+
+  if (memberNavLinks.length || hideWhenSignedInEls.length) {
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
       var loggedIn = !!session;
@@ -40,6 +42,13 @@
         el.href = loggedIn ? 'member-hub.html' : 'member-login.html';
         el.classList.toggle('is-signed-in', loggedIn);
         setNavLinkText(el, loggedIn ? 'Members hub' : 'Member login', loggedIn);
+      });
+
+      // "Join the society" / "Become a member" buttons are redundant once
+      // you're already a member — hide them rather than nag someone who's
+      // signed in to join a society they're already part of.
+      hideWhenSignedInEls.forEach(function (el) {
+        el.style.display = loggedIn ? 'none' : '';
       });
 
       // Once we know they're signed in, upgrade the label to their first
