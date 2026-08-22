@@ -534,6 +534,46 @@ button { font-family: inherit; }
   color: var(--color-gold-light);
 }
 
+/* Signed-in indicator — the "Member login" nav link visibly changes once
+   there's an active session, so it's obvious at a glance on any page that
+   you're still logged in, not just on the members hub itself. */
+.member-nav-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #6fcf97;
+  box-shadow: 0 0 0 3px rgba(111, 207, 151, 0.22);
+  vertical-align: middle;
+  animation: member-nav-dot-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes member-nav-dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(111, 207, 151, 0.22); }
+  50% { box-shadow: 0 0 0 5px rgba(111, 207, 151, 0.1); }
+}
+
+.nav-cta-desktop.is-signed-in {
+  background: rgba(212, 166, 43, 0.12);
+  border-color: rgba(232, 199, 103, 0.5);
+  color: var(--color-gold-light);
+}
+
+.nav-cta-desktop.is-signed-in:hover {
+  background: rgba(212, 166, 43, 0.2);
+  border-color: var(--color-gold);
+}
+
+.mobile-drawer .nav-links a.is-signed-in {
+  background: rgba(212, 166, 43, 0.12);
+  color: var(--color-gold-light);
+}
+
+.mobile-drawer .nav-links a.is-signed-in .icon {
+  color: var(--color-gold-light);
+}
+
 .mobile-drawer .btn {
   margin-top: var(--space-4);
 }

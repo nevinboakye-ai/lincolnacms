@@ -33,18 +33,42 @@
   var memberNavLinks = document.querySelectorAll('[data-member-nav-link]');
   if (memberNavLinks.length) {
     supabaseClient.auth.getSession().then(function (result) {
-      var loggedIn = !!(result.data && result.data.session);
+      var session = result.data && result.data.session;
+      var loggedIn = !!session;
+
       memberNavLinks.forEach(function (el) {
         el.href = loggedIn ? 'member-hub.html' : 'member-login.html';
-        var label = el.querySelector('[data-member-nav-label]');
-        var text = loggedIn ? 'Members hub' : 'Member login';
-        if (label) {
-          label.textContent = text;
-        } else {
-          el.textContent = text;
-        }
+        el.classList.toggle('is-signed-in', loggedIn);
+        setNavLinkText(el, loggedIn ? 'Members hub' : 'Member login', loggedIn);
       });
+
+      // Once we know they're signed in, upgrade the label to their first
+      // name — a much more obvious "yes, still you, still logged in" cue
+      // than a generic label that doesn't change between pages.
+      if (loggedIn) {
+        supabaseClient
+          .from('members')
+          .select('full_name')
+          .eq('id', session.user.id)
+          .single()
+          .then(function (result) {
+            var fullName = result.data && result.data.full_name;
+            if (!fullName) return;
+            var firstName = fullName.trim().split(' ')[0];
+            memberNavLinks.forEach(function (el) {
+              setNavLinkText(el, 'Hi, ' + firstName, true);
+            });
+          });
+      }
     });
+  }
+
+  function setNavLinkText(el, text, signedIn) {
+    var label = el.querySelector('[data-member-nav-label]');
+    var target = label || el;
+    target.innerHTML = signedIn
+      ? '<span class="member-nav-dot" aria-hidden="true"></span>' + text
+      : text;
   }
 
   // ---- Login page: sign-in form + first-time "set your password" form ----
