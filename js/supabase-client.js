@@ -18,6 +18,15 @@ var supabaseIsConfigured =
   SUPABASE_URL.indexOf('YOUR_SUPABASE') !== 0 &&
   SUPABASE_ANON_KEY.indexOf('YOUR_SUPABASE') !== 0;
 
+// Explicit (these are also the library defaults, but spelled out here so
+// it's clear the session is meant to survive page navigations and browser
+// restarts, not just last for the current tab).
 var supabaseClient = supabaseIsConfigured
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    })
   : null;

@@ -23,6 +23,30 @@
     el.style.display = 'none';
   }
 
+  // ---- Site-wide: keep the "Member login" nav link in sync with whether
+  // there's actually a signed-in session, on every single page (not just
+  // the login/hub pages). Without this, the link's label and destination
+  // were hardcoded per page, so a signed-in member browsing the rest of
+  // the site would still see "Member login" everywhere — which looks
+  // exactly like being logged out, even though the session was fine the
+  // whole time.
+  var memberNavLinks = document.querySelectorAll('[data-member-nav-link]');
+  if (memberNavLinks.length) {
+    supabaseClient.auth.getSession().then(function (result) {
+      var loggedIn = !!(result.data && result.data.session);
+      memberNavLinks.forEach(function (el) {
+        el.href = loggedIn ? 'member-hub.html' : 'member-login.html';
+        var label = el.querySelector('[data-member-nav-label]');
+        var text = loggedIn ? 'Members hub' : 'Member login';
+        if (label) {
+          label.textContent = text;
+        } else {
+          el.textContent = text;
+        }
+      });
+    });
+  }
+
   // ---- Login page: sign-in form + first-time "set your password" form ----
   // Members arrive at the set-password form via the invite/reset email link
   // Supabase sends, which redirects here with #access_token=...&type=invite
@@ -44,6 +68,14 @@
       setPasswordForm.classList.add('is-active');
     } else if (loginForm) {
       loginForm.classList.add('is-active');
+      // Already signed in (e.g. clicked an old "Member login" link or a
+      // bookmark) and not here to set a new password — no reason to show
+      // the form, just take them straight to the hub.
+      supabaseClient.auth.getSession().then(function (result) {
+        if (result.data && result.data.session) {
+          window.location.href = 'member-hub.html';
+        }
+      });
     }
 
     if (loginForm) {
