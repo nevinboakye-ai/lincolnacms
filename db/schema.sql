@@ -20,9 +20,18 @@ create table public.members (
   membership_status text not null default 'active'
     check (membership_status in ('active', 'expired', 'pending')),
   member_type text not null default 'member'
-    check (member_type in ('member', 'supporting_committee', 'executive_committee')),
+    check (member_type in (
+      'member',
+      'supporting_committee',
+      'executive_committee',
+      'senior_sankofa_mentor',
+      'junior_sankofa_mentor'
+    )),
+  committee_role text,
   created_at timestamptz not null default now()
 );
+
+comment on column public.members.committee_role is 'Optional free-text position title, e.g. President, Treasurer. Shown only when set.';
 
 comment on table public.members is 'One row per LACMS member, linked 1:1 to a Supabase Auth user. Rows are added manually by the committee via the Table Editor after inviting a member.';
 

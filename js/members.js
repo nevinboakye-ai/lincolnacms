@@ -131,8 +131,10 @@
 
     var MEMBER_TYPE_LABELS = {
       member: 'Member',
-      supporting_committee: 'Supporting Committee',
-      executive_committee: 'Executive Committee'
+      supporting_committee: 'Supporting Committee Member',
+      executive_committee: 'Executive Committee Member',
+      senior_sankofa_mentor: 'Senior Sankofa Mentor',
+      junior_sankofa_mentor: 'Junior Sankofa Mentor'
     };
 
     function renderProfile(member, session) {
@@ -147,6 +149,24 @@
       setText('member-email', session.user.email);
       setText('member-type-badge', typeLabel);
       setText('member-type-2', typeLabel);
+
+      // committee_role (e.g. "President") is optional free text — only
+      // show it, on the card and in the details list, when it's set.
+      var positionEl = document.getElementById('member-position');
+      var roleRow = document.getElementById('member-role-row');
+      if (member.committee_role) {
+        if (positionEl) {
+          positionEl.textContent = member.committee_role;
+          positionEl.style.display = '';
+        }
+        if (roleRow) {
+          roleRow.style.display = '';
+          setText('member-role-2', member.committee_role);
+        }
+      } else {
+        if (positionEl) positionEl.style.display = 'none';
+        if (roleRow) roleRow.style.display = 'none';
+      }
 
       var statusEl = document.getElementById('member-status');
       if (statusEl) {

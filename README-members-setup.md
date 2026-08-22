@@ -54,7 +54,8 @@ This is a two-step manual process for now (Phase 1 doesn't have an admin panel y
 2. **Add their profile:** Table Editor → `members` table → **Insert row**. Set:
    - `id` — open the Authentication → Users list, copy the UUID next to the person you just invited, paste it here
    - `full_name`, `course`, `year_of_study`, `membership_status` (`active` / `pending` / `expired`)
-   - `member_type` — `member`, `supporting_committee`, or `executive_committee`. Shown on the membership card.
+   - `member_type` — one of `member`, `supporting_committee`, `executive_committee`, `senior_sankofa_mentor`, `junior_sankofa_mentor`. Shown on the membership card.
+   - `committee_role` — optional free text (e.g. `President`, `Treasurer`). Leave blank for regular members — it only shows up on the card and in Your Details when set.
    - Leave `membership_number` alone — it fills itself in automatically (e.g. `LACMS-0001`)
 
 Repeat step 2 for every member. Step 1 (inviting) only needs doing once per person, ever.
