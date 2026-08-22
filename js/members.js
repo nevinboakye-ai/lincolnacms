@@ -532,6 +532,7 @@
         hideMessage(statusEl);
 
         var stage = document.getElementById('sankofa-stage').value;
+        var heritage = document.getElementById('sankofa-heritage').value;
         var aspirations = document.getElementById('sankofa-aspirations').value.trim();
         var specialty = document.getElementById('sankofa-specialty').value.trim();
         var hobbies = Array.from(sankofaForm.querySelectorAll('input[name="hobby"]:checked')).map(function (el) { return el.value; });
@@ -539,6 +540,8 @@
         if (hobbyOther) hobbies.push(hobbyOther);
         var social = parseInt(document.getElementById('sankofa-social').value, 10);
         var fitness = parseInt(document.getElementById('sankofa-fitness').value, 10);
+        var studyStyle = parseInt(document.getElementById('sankofa-study').value, 10);
+        var supportStyle = parseInt(document.getElementById('sankofa-support').value, 10);
         var communication = sankofaForm.querySelector('input[name="sankofa-communication"]:checked');
         var frequency = sankofaForm.querySelector('input[name="sankofa-frequency"]:checked');
         var lookingFor = document.getElementById('sankofa-looking-for').value.trim();
@@ -557,11 +560,14 @@
           .insert({
             member_id: sankofaSession.user.id,
             current_stage: stage,
+            heritage: heritage || null,
             career_aspirations: aspirations,
             specialty_interest: specialty || null,
             hobbies_interests: hobbies.length ? hobbies : null,
             social_preference: social,
             fitness_preference: fitness,
+            study_style: studyStyle,
+            support_style: supportStyle,
             communication_style: communication.value,
             meeting_frequency: frequency.value,
             looking_for: lookingFor,
