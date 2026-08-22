@@ -56,7 +56,7 @@ This is a two-step manual process for now (Phase 1 doesn't have an admin panel y
    - `full_name`, `course`, `year_of_study`, `membership_status` (`active` / `pending` / `expired`)
    - `member_type` — one of `member`, `supporting_committee`, `executive_committee`, `senior_sankofa_mentor`, `junior_sankofa_mentor`. Shown on the membership card.
    - `committee_role` — optional free text (e.g. `President`, `Treasurer`). Leave blank for regular members — it only shows up on the card and in Your Details when set.
-   - Leave `membership_number` alone — it fills itself in automatically (e.g. `LACMS-0001`)
+   - Leave `membership_number` alone — it fills itself in automatically (e.g. `LACMS-482`)
 
 Repeat step 2 for every member. Step 1 (inviting) only needs doing once per person, ever.
 
@@ -81,7 +81,7 @@ Everything here is committee-reviewed manually in Supabase's dashboard, same pat
 
 Run [`db/migrations/004-random-membership-numbers-and-sankofa-circle.sql`](db/migrations/004-random-membership-numbers-and-sankofa-circle.sql). This does two things:
 
-- **Membership numbers become random**, not sequential (e.g. `LACMS-73412` instead of `LACMS-0001`), so the number can't be used to guess how many members you have. This re-randomizes every existing member's number too — nothing else about their account changes.
+- **Membership numbers become random**, not sequential (e.g. `LACMS-482` instead of `LACMS-0001`), so the number can't be used to guess how many members you have. This re-randomizes every existing member's number too — nothing else about their account changes. (If you're setting this up fresh, also run [`005-membership-number-3-digits.sql`](db/migrations/005-membership-number-3-digits.sql) right after — 004 originally generated 5-digit numbers, 005 shortens the format to 3.)
 - **Adds `sankofa_eligible`** to the `members` table (defaults to `false` for everyone, including existing rows). Set it to `true` in Table Editor for Medicine and Pharmacy members, and aspiring medics/sixth formers — that's who can see the application form at `member-sankofa.html`. Everyone else sees a note explaining it's not open to them yet, instead of the form.
 
 The Sankofa application itself is now a fuller questionnaire (stage of study, career aspirations, hobbies, social/fitness preference sliders, communication style, meeting frequency, what they want from the Circle) rather than a simple mentor/mentee choice — since every member in a Circle is both mentor and mentee to one another across the years. Review submissions the same way as before, in Table Editor → `sankofa_applications`.

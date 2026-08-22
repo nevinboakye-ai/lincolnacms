@@ -48,7 +48,7 @@ begin
     return new;
   end if;
   loop
-    candidate := 'LACMS-' || lpad((floor(random() * 90000) + 10000)::int::text, 5, '0');
+    candidate := 'LACMS-' || lpad((floor(random() * 900) + 100)::int::text, 3, '0');
     exit when not exists (select 1 from public.members where membership_number = candidate);
     attempts := attempts + 1;
     if attempts > 20 then
