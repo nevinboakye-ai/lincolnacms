@@ -384,6 +384,20 @@
       document.querySelectorAll('[data-member-name-inline]').forEach(function (el) {
         el.textContent = member.full_name;
       });
+
+      // Being a LACMS member doesn't automatically mean being an MMG
+      // attendee — only show the MMG section (and the right feed inside
+      // it) once the committee has actually flagged this member.
+      if (member.mmg_attendee || member.mmg_committee) {
+        var mmgSection = document.getElementById('member-hub-mmg-section');
+        if (mmgSection) mmgSection.style.display = '';
+        loadMmgFeed('mmg_attendee_updates', 'member-hub-mmg-updates-list', 'member-hub-mmg-updates-empty', 'MMG update', 'gold');
+      }
+      if (member.mmg_committee) {
+        var mmgCommitteeSection = document.getElementById('member-hub-mmg-committee-section');
+        if (mmgCommitteeSection) mmgCommitteeSection.style.display = '';
+        loadMmgFeed('mmg_updates', 'member-hub-mmg-committee-list', 'member-hub-mmg-committee-empty', 'Planning update', 'purple');
+      }
     }
 
     function setText(id, value) {
@@ -844,10 +858,12 @@
         var exclusiveEl = document.getElementById('mmg-exclusive');
         if (exclusiveEl) exclusiveEl.style.display = '';
         loadMmgVoting(session);
+        loadMmgPerks();
+        loadMmgFeed('mmg_attendee_updates', 'mmg-general-updates-list', 'mmg-general-updates-empty', 'MMG update', 'gold');
         if (identity.tier === 'committee') {
           var committeeEl = document.getElementById('mmg-committee-section');
           if (committeeEl) committeeEl.style.display = '';
-          loadMmgUpdates();
+          loadMmgFeed('mmg_updates', 'mmg-updates-list', 'mmg-updates-empty', 'Planning update', 'purple');
         }
       });
     });
@@ -979,37 +995,133 @@
       });
   }
 
-  function loadMmgUpdates() {
-    var list = document.getElementById('mmg-updates-list');
+  // Night-exclusive perks/vouchers — same card treatment as the LACMS
+  // discount cards, just sourced from mmg_perks instead of discounts.
+  function loadMmgPerks() {
+    var list = document.getElementById('mmg-perks-list');
     if (!list) return;
     supabaseClient
-      .from('mmg_updates')
+      .from('mmg_perks')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .then(function (result) {
+        var rows = result.data || [];
+        if (!rows.length) {
+          var emptyEl = document.getElementById('mmg-perks-empty');
+          if (emptyEl) emptyEl.style.display = 'block';
+          return;
+        }
+        list.innerHTML = rows.map(renderMmgPerkCard).join('');
+      });
+  }
+
+  function renderMmgPerkCard(row) {
+    var initial = escapeHtml((row.partner_name || '?').trim().charAt(0).toUpperCase());
+    var addressHtml = row.address
+      ? '<p class="discount-address"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>' + escapeHtml(row.address) + '</span></p>'
+      : '';
+    var codeHtml = row.code
+      ? '<div class="discount-code"><span class="discount-code-label">Code</span><span class="discount-code-value">' + escapeHtml(row.code) + '</span></div>'
+      : '';
+    var linkHtml = row.link
+      ? '<a class="card-link" href="' + encodeURI(row.link) + '" target="_blank" rel="noopener">Visit partner<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>'
+      : '';
+    return '<div class="card discount-card"><span class="discount-card-badge" aria-hidden="true">' + initial + '</span><h3 class="card-title">' +
+      escapeHtml(row.partner_name) + '</h3>' + addressHtml + '<p>' +
+      escapeHtml(row.description) + '</p>' + codeHtml + linkHtml + '</div>';
+  }
+
+  // Generic update-feed loader/renderer, shared by the committee-only
+  // planning feed (mmg_updates) and the general attendee feed
+  // (mmg_attendee_updates) — same shape, different table, audience and
+  // accent colour, reused across mmg.html, mmg-hub.html and
+  // member-hub.html so there's one implementation to maintain.
+  function loadMmgFeed(tableName, listId, emptyId, tagLabel, accentClass) {
+    var list = document.getElementById(listId);
+    if (!list) return;
+    supabaseClient
+      .from(tableName)
       .select('*')
       .order('pinned', { ascending: false })
       .order('published_at', { ascending: false })
       .then(function (result) {
         var rows = result.data || [];
         if (!rows.length) {
-          var emptyEl = document.getElementById('mmg-updates-empty');
+          var emptyEl = document.getElementById(emptyId);
           if (emptyEl) emptyEl.style.display = 'block';
           return;
         }
-        list.innerHTML = rows.map(renderMmgUpdateItem).join('');
+        list.innerHTML = rows.map(function (row) {
+          return renderMmgFeedItem(row, tagLabel, accentClass);
+        }).join('');
       });
   }
 
-  function renderMmgUpdateItem(row) {
+  function renderMmgFeedItem(row, tagLabel, accentClass) {
     var pinHtml = row.pinned
       ? '<span class="feed-item-pin" title="Pinned"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 3.9a1 1 0 0 1-.75 1.6H13v6a1 1 0 1 1-2 0v-6H6.35a1 1 0 0 1-.75-1.6L9 9.5V3a1 1 0 0 1 1-1h2Z"/></svg></span>'
       : '';
-    var classes = 'feed-item feed-item--purple' + (row.pinned ? ' feed-item--pinned' : '');
+    var classes = 'feed-item feed-item--' + accentClass + (row.pinned ? ' feed-item--pinned' : '');
     return '<article class="' + classes + '">' +
       '<div class="feed-item-meta">' + pinHtml +
-      '<span class="feed-item-tag">Planning update</span>' +
+      '<span class="feed-item-tag">' + escapeHtml(tagLabel) + '</span>' +
       '<span class="feed-item-date">' + escapeHtml(timeAgo(row.published_at)) + '</span></div>' +
       '<h3 class="feed-item-title">' + escapeHtml(row.title) + '</h3>' +
       '<p class="feed-item-body">' + escapeHtml(row.body) + '</p>' +
       '</article>';
+  }
+
+  // ---- MMG portal: attendee media submission (photos/videos for the
+  // after-gala gallery/highlight video), uploaded to a private Supabase
+  // Storage bucket under the uploader's own folder ----
+  var MMG_MEDIA_MAX_BYTES = 200 * 1024 * 1024;
+
+  var mmgMediaForm = document.getElementById('mmg-media-form');
+  if (mmgMediaForm) {
+    mmgMediaForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var statusEl = document.getElementById('mmg-media-status');
+      var fileInput = document.getElementById('mmg-media-file');
+      var files = fileInput.files;
+      hideMessage(statusEl);
+      if (!files.length) return;
+
+      var oversized = Array.prototype.some.call(files, function (f) { return f.size > MMG_MEDIA_MAX_BYTES; });
+      if (oversized) {
+        statusEl.style.color = '#ef8b8f';
+        showMessage(statusEl, 'One or more files are over 200MB — try a smaller file or a compressed video.');
+        return;
+      }
+
+      supabaseClient.auth.getSession().then(function (result) {
+        var session = result.data && result.data.session;
+        if (!session) return;
+
+        var btn = mmgMediaForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        statusEl.style.color = 'var(--color-text-muted)';
+        showMessage(statusEl, 'Uploading ' + files.length + ' file' + (files.length > 1 ? 's' : '') + '…');
+
+        var uploads = Array.prototype.map.call(files, function (file) {
+          var safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+          var path = session.user.id + '/' + Date.now() + '-' + safeName;
+          return supabaseClient.storage.from('mmg-media').upload(path, file);
+        });
+
+        Promise.all(uploads).then(function (results) {
+          btn.disabled = false;
+          var failed = results.filter(function (r) { return r.error; });
+          if (failed.length) {
+            statusEl.style.color = '#ef8b8f';
+            showMessage(statusEl, 'Some files failed to upload — try again, or email acms@lincolnsu.com.');
+            return;
+          }
+          statusEl.style.color = 'var(--color-gold-light)';
+          showMessage(statusEl, 'Thank you — your media has been uploaded.');
+          mmgMediaForm.reset();
+        });
+      });
+    });
   }
 
   // ---- MMG hub page: the equivalent of member-hub.html for MMG-only
@@ -1084,6 +1196,17 @@
 
       var pendingNote = document.getElementById('mmg-hub-pending-note');
       if (pendingNote) pendingNote.style.display = isPending ? 'flex' : 'none';
+
+      if (guest.access_level === 'attendee' || guest.access_level === 'committee') {
+        var generalUpdatesSection = document.getElementById('mmg-hub-general-updates');
+        if (generalUpdatesSection) generalUpdatesSection.style.display = '';
+        loadMmgFeed('mmg_attendee_updates', 'mmg-hub-general-updates-list', 'mmg-hub-general-updates-empty', 'MMG update', 'gold');
+      }
+      if (guest.access_level === 'committee') {
+        var committeeSection = document.getElementById('mmg-hub-committee-section');
+        if (committeeSection) committeeSection.style.display = '';
+        loadMmgFeed('mmg_updates', 'mmg-hub-updates-list', 'mmg-hub-updates-empty', 'Planning update', 'purple');
+      }
     }
 
     function setHubText(id, value) {

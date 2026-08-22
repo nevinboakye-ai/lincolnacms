@@ -237,6 +237,37 @@
     });
   });
 
+  // Homepage launch countdown — live days/hours/minutes/seconds until the
+  // official 30 September 2026 launch, ticking every second.
+  var countdownEl = document.getElementById('launch-countdown');
+  if (countdownEl) {
+    var countdownTarget = new Date('2026-09-30T00:00:00');
+    var countdownDays = document.getElementById('countdown-days');
+    var countdownHours = document.getElementById('countdown-hours');
+    var countdownMinutes = document.getElementById('countdown-minutes');
+    var countdownSeconds = document.getElementById('countdown-seconds');
+    var countdownTimer;
+
+    var pad2 = function (n) { return n < 10 ? '0' + n : String(n); };
+
+    var tickCountdown = function () {
+      var diff = countdownTarget.getTime() - Date.now();
+      if (diff <= 0) {
+        countdownEl.innerHTML = '<span class="launch-countdown-live">We’re officially live!</span>';
+        if (countdownTimer) clearInterval(countdownTimer);
+        return;
+      }
+      var totalSeconds = Math.floor(diff / 1000);
+      countdownDays.textContent = pad2(Math.floor(totalSeconds / 86400));
+      countdownHours.textContent = pad2(Math.floor((totalSeconds % 86400) / 3600));
+      countdownMinutes.textContent = pad2(Math.floor((totalSeconds % 3600) / 60));
+      countdownSeconds.textContent = pad2(totalSeconds % 60);
+    };
+
+    tickCountdown();
+    countdownTimer = setInterval(tickCountdown, 1000);
+  }
+
   // Briefly highlight an event row when arriving via a same-page-type anchor
   var hash = window.location.hash;
   if (hash) {

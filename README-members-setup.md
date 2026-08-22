@@ -146,8 +146,22 @@ MMG guests are routed to `mmg-hub.html`, not `member-hub.html` — the site-wide
 
 ### Planning updates (committee only)
 
-Same pattern as the members feed — add rows in Table Editor → `mmg_updates` (**title**, **body**, **pinned**, **is_active**, **published_at**). Only people with committee-level access (Lincoln `mmg_committee = true`, or guest `access_level = committee`) can see these — enforced at the database level, not just hidden in the page.
+Same pattern as the members feed — add rows in Table Editor → `mmg_updates` (**title**, **body**, **pinned**, **is_active**, **published_at**). Only people with committee-level access (Lincoln `mmg_committee = true`, or guest `access_level = committee`) can see these — enforced at the database level, not just hidden in the page. Shown in three places: `mmg.html`'s committee panel, `mmg-hub.html` (for guest committee members), and `member-hub.html` (for Lincoln committee members).
 
 ### Awards voting
 
 Add rows in Table Editor → `mmg_award_categories` — just a **name** (e.g. "Best Dressed") and **sort_order**. Voting is write-in: anyone with attendee or committee access can type any name, one vote per category, and can change their vote while it's open. Set **voting_open** to `false` on a category to lock it (e.g. once the night starts). To see results, use the SQL Editor: `select category_id, nominee_name, count(*) from mmg_votes group by 1, 2 order by 1, count(*) desc;`.
+
+## 13. General MMG updates, night perks and attendee media
+
+Run [`db/migrations/010-mmg-updates-perks-media.sql`](db/migrations/010-mmg-updates-perks-media.sql) (needs migration 009 already applied).
+
+**General MMG updates** (separate from the committee-only planning feed) — add rows in Table Editor → `mmg_attendee_updates` (same fields as `mmg_updates`: title, body, pinned, is_active, published_at). Visible to *everyone* with attendee-or-committee access, on `mmg.html`, `mmg-hub.html` and `member-hub.html` alike — this is the one to use for anything all attendees should see (dress code reminders, timing changes, etc.), keeping it clearly separate from committee-only planning chatter.
+
+**Night-exclusive perks/vouchers** — add rows in Table Editor → `mmg_perks`. Same fields as the LACMS `discounts` table (**partner_name**, **description**, **code**, **address**, **link**, **sort_order**, **is_active**), rendered with the same card style, shown on `mmg.html` under "Perks & vouchers."
+
+**Attendee media uploads** — attendees can upload photos/videos on `mmg.html` for the after-gala gallery/highlight video. This uses Supabase Storage: the migration creates a private `mmg-media` bucket and a policy that only lets someone with attendee-or-committee access upload into their *own* folder (named after their user ID) — nobody can browse or download via the site itself, including other attendees.
+
+To review submissions: Supabase Dashboard → Storage → `mmg-media`, browse by folder. There's no "select" policy for attendees, so this only works from the dashboard (which uses the service role and bypasses storage policies), not from the site.
+
+Files over 200MB are rejected client-side with a friendly message — if you need a higher limit, that's enforced both in `js/members.js` (`MMG_MEDIA_MAX_BYTES`) and in Supabase's own per-bucket file-size limit (Dashboard → Storage → `mmg-media` → bucket settings), so raise both if needed.
