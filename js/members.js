@@ -200,7 +200,67 @@
         return;
       }
       loadProfile(session);
+      loadFeed();
     });
+
+    var FEED_CATEGORY = {
+      announcement: { label: 'Announcement', accent: 'gold' },
+      news: { label: 'News', accent: 'purple' },
+      update: { label: 'Update', accent: 'green' },
+      urgent: { label: 'Urgent', accent: 'red' }
+    };
+
+    function loadFeed() {
+      var feedList = document.getElementById('feed-list');
+      if (!feedList) return;
+      var feedSection = document.getElementById('member-feed-section');
+      var feedEmpty = document.getElementById('feed-empty');
+
+      supabaseClient
+        .from('announcements')
+        .select('*')
+        .order('pinned', { ascending: false })
+        .order('published_at', { ascending: false })
+        .then(function (result) {
+          if (feedSection) feedSection.style.display = '';
+          var rows = result.data || [];
+          if (!rows.length) {
+            if (feedEmpty) feedEmpty.style.display = 'block';
+            return;
+          }
+          feedList.innerHTML = rows.map(renderFeedItem).join('');
+        });
+    }
+
+    function renderFeedItem(row) {
+      var meta = FEED_CATEGORY[row.category] || FEED_CATEGORY.announcement;
+      var pinHtml = row.pinned
+        ? '<span class="feed-item-pin" title="Pinned"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 3.9a1 1 0 0 1-.75 1.6H13v6a1 1 0 1 1-2 0v-6H6.35a1 1 0 0 1-.75-1.6L9 9.5V3a1 1 0 0 1 1-1h2Z"/></svg></span>'
+        : '';
+      var classes = 'feed-item feed-item--' + meta.accent + (row.pinned ? ' feed-item--pinned' : '');
+      return '<article class="' + classes + '">' +
+        '<div class="feed-item-meta">' + pinHtml +
+        '<span class="feed-item-tag">' + escapeHtml(meta.label) + '</span>' +
+        '<span class="feed-item-date">' + escapeHtml(timeAgo(row.published_at)) + '</span></div>' +
+        '<h3 class="feed-item-title">' + escapeHtml(row.title) + '</h3>' +
+        '<p class="feed-item-body">' + escapeHtml(row.body) + '</p>' +
+        '</article>';
+    }
+
+    function timeAgo(dateStr) {
+      var date = new Date(dateStr);
+      if (isNaN(date.getTime())) return '';
+      var diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
+      if (diffMin < 1) return 'Just now';
+      if (diffMin < 60) return diffMin + (diffMin === 1 ? ' minute ago' : ' minutes ago');
+      var diffHr = Math.floor(diffMin / 60);
+      if (diffHr < 24) return diffHr + (diffHr === 1 ? ' hour ago' : ' hours ago');
+      var diffDay = Math.floor(diffHr / 24);
+      if (diffDay < 7) return diffDay + (diffDay === 1 ? ' day ago' : ' days ago');
+      var diffWeek = Math.floor(diffDay / 7);
+      if (diffWeek < 5) return diffWeek + (diffWeek === 1 ? ' week ago' : ' weeks ago');
+      return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
 
     function loadProfile(session) {
       supabaseClient

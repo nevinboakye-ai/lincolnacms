@@ -107,3 +107,17 @@ At minimum, apply `invite.html` now since it's the only flow actually in use tod
 Run [`db/migrations/007-discount-address.sql`](db/migrations/007-discount-address.sql). This adds an optional `address` column to `discounts` — fill it in via Table Editor with whatever's most useful for that partner: a real building address, a social media handle, or a website. If filled in, it shows on the card between the partner name and the description; leave it blank to omit it.
 
 Note: the "Lounge 11" discount card always renders in pink regardless of its position in the grid (matched by partner name) — every other discount cycles through gold/green/red/purple automatically based on order.
+
+## 11. Members news feed
+
+Run [`db/migrations/008-announcements-feed.sql`](db/migrations/008-announcements-feed.sql). This creates an `announcements` table and shows a "News & updates" feed on the members hub, between the profile card and the quick links.
+
+To post something, add a row in Table Editor → `announcements`:
+
+- **title** / **body** — the post itself. `body` supports line breaks (typed newlines show as paragraph breaks on the feed).
+- **category** — one of `announcement` (gold), `news` (purple), `update` (green), or `urgent` (red). Controls the coloured tag on the post.
+- **pinned** — set `true` to keep a post at the top of the feed with a highlighted background, above everything else regardless of date.
+- **published_at** — defaults to the moment you create the row; change it if you want to backdate or schedule how a post's date reads.
+- **is_active** — set `false` to pull a post from the feed without deleting it.
+
+Members only ever see `is_active = true` posts, pinned first, then newest first.
