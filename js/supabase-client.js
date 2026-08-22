@@ -8,8 +8,8 @@
 // Until these are filled in, the login and member hub pages will show a
 // "not configured yet" message instead of trying to connect.
 
-var SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
-var SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_PUBLIC_KEY';
+var SUPABASE_URL = 'https://ghzmhunwghubmpvqbike.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_0fOsqTreiafdlWnEo6ATmA_A7I0-zJH';
 
 // `var` (not `const`) deliberately, so these attach to `window` and stay
 // readable from js/members.js, which is loaded as a separate plain <script>
