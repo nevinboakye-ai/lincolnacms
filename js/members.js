@@ -129,14 +129,24 @@
         });
     }
 
+    var MEMBER_TYPE_LABELS = {
+      member: 'Member',
+      supporting_committee: 'Supporting Committee',
+      executive_committee: 'Executive Committee'
+    };
+
     function renderProfile(member, session) {
       var courseYear = [member.course, member.year_of_study].filter(Boolean).join(' · ');
+      var typeLabel = MEMBER_TYPE_LABELS[member.member_type] || MEMBER_TYPE_LABELS.member;
+
       setText('member-full-name', member.full_name);
       setText('member-course-year', courseYear);
       setText('member-course-year-2', courseYear);
       setText('member-number', member.membership_number);
       setText('member-number-2', member.membership_number);
       setText('member-email', session.user.email);
+      setText('member-type-badge', typeLabel);
+      setText('member-type-2', typeLabel);
 
       var statusEl = document.getElementById('member-status');
       if (statusEl) {

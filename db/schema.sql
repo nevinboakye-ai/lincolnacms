@@ -5,6 +5,10 @@
 -- that auto-generates a membership number, and a security rule that makes
 -- sure a logged-in member can only ever read their OWN row — never anyone
 -- else's. See README-members-setup.md for the full walkthrough.
+--
+-- Already ran this once on a live project? Don't re-run it — check
+-- db/migrations/ instead for anything added since, and only run files
+-- from there that you haven't applied yet.
 
 create table public.members (
   id uuid primary key references auth.users (id) on delete cascade,
@@ -15,6 +19,8 @@ create table public.members (
   year_of_study text,
   membership_status text not null default 'active'
     check (membership_status in ('active', 'expired', 'pending')),
+  member_type text not null default 'member'
+    check (member_type in ('member', 'supporting_committee', 'executive_committee')),
   created_at timestamptz not null default now()
 );
 

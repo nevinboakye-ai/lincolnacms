@@ -2499,22 +2499,25 @@ body.intro-active { overflow: hidden; }
 
 .member-card-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
 
-.member-card-brand { display: flex; align-items: center; gap: var(--space-2); }
+.member-card-brand { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
 .member-card-brand img { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
 .member-card-brand-text { font-family: var(--font-body); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; }
 
 .member-card-eyebrow {
   font-size: 0.64rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-gold);
+  text-align: right;
+  white-space: normal;
+  max-width: 140px;
 }
 
 .member-card-name { font-size: clamp(1.4rem, 3vw, 1.8rem); margin: var(--space-3) 0 2px; }
