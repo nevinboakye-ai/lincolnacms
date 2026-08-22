@@ -218,6 +218,7 @@ button { font-family: inherit; }
   font-size: 0.95rem;
   border: 1px solid transparent;
   cursor: pointer;
+  white-space: nowrap;
   transition: background var(--dur-base) var(--ease-standard),
               color var(--dur-base) var(--ease-standard),
               border-color var(--dur-base) var(--ease-standard),
@@ -424,7 +425,8 @@ button { font-family: inherit; }
   border-radius: var(--radius-pill);
 }
 
-.nav-cta { display: flex; align-items: center; }
+.nav-cta { display: flex; align-items: center; gap: var(--space-2); }
+.nav-cta > a { isolation: isolate; }
 
 .nav-toggle {
   display: none;
@@ -442,9 +444,13 @@ button { font-family: inherit; }
 .nav-toggle[aria-expanded="true"] .icon-menu { display: none; }
 .nav-toggle[aria-expanded="true"] .icon-close { display: block; }
 
+@media (max-width: 1150px) {
+  .header-inner .btn-outline.nav-cta-desktop { display: none; }
+}
+
 @media (max-width: 900px) {
   .nav-links { display: none; }
-  .header-inner .btn-primary.nav-cta-desktop { display: none; }
+  .header-inner .nav-cta-desktop { display: none; }
   .nav-toggle { display: inline-flex; }
 }
 
@@ -2421,4 +2427,172 @@ body.intro-active { overflow: hidden; }
   font-size: clamp(1.2rem, 2.2vw, 1.5rem);
   color: var(--color-gold-light);
   margin-bottom: var(--space-3);
+}
+
+/* =========================================================
+   Members Hub (login + profile + digital membership card)
+   ========================================================= */
+
+.auth-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8) 0;
+  color: var(--color-text-faint);
+  font-size: 0.9rem;
+}
+
+.auth-gate-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  border-top-color: var(--color-gold);
+  animation: auth-spin 700ms linear infinite;
+}
+
+@keyframes auth-spin { to { transform: rotate(360deg); } }
+
+.auth-error {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: rgba(193, 39, 45, 0.1);
+  border: 1px solid rgba(193, 39, 45, 0.35);
+  color: #ef8b8f;
+  font-size: 0.85rem;
+  margin-bottom: var(--space-4);
+}
+
+.auth-form { display: none; }
+.auth-form.is-active { display: block; }
+
+/* Digital membership card */
+
+.member-card {
+  position: relative;
+  overflow: hidden;
+  max-width: 420px;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-gold);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(212, 166, 43, 0.2), transparent 60%),
+    repeating-linear-gradient(135deg, rgba(212, 166, 43, 0.045) 0 2px, transparent 2px 18px),
+    linear-gradient(160deg, var(--color-surface-raised), var(--color-bg-alt));
+  box-shadow: 0 20px 50px -20px rgba(212, 166, 43, 0.4);
+}
+
+.member-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgba(232, 199, 103, 0.16) 50%, transparent 65%);
+  background-size: 220% 100%;
+  background-position: 160% 0;
+  animation: impact-shimmer 8s ease-in-out infinite;
+}
+
+.member-card-inner { position: relative; z-index: 1; }
+
+.member-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.member-card-brand { display: flex; align-items: center; gap: var(--space-2); }
+.member-card-brand img { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
+.member-card-brand-text { font-family: var(--font-body); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; }
+
+.member-card-eyebrow {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+
+.member-card-name { font-size: clamp(1.4rem, 3vw, 1.8rem); margin: var(--space-3) 0 2px; }
+.member-card-role { color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: var(--space-4); }
+
+.member-card-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--color-border-strong);
+}
+
+.member-card-number-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  margin-bottom: 2px;
+}
+
+.member-card-number {
+  font-family: 'SFMono-Regular', Menlo, monospace;
+  font-size: 1.1rem;
+  color: var(--color-gold-light);
+  letter-spacing: 0.03em;
+}
+
+.member-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.member-status-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+.member-status-badge--active { color: #6fcf97; background: rgba(30, 122, 70, 0.18); border: 1px solid rgba(111, 207, 151, 0.4); }
+.member-status-badge--expired { color: #ef8b8f; background: rgba(193, 39, 45, 0.15); border: 1px solid rgba(239, 139, 143, 0.4); }
+.member-status-badge--pending { color: var(--color-gold-light); background: rgba(212, 166, 43, 0.15); border: 1px solid rgba(232, 199, 103, 0.4); }
+
+/* Member hub layout */
+
+.member-hub-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: var(--space-7);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .member-hub-grid { grid-template-columns: 1fr; gap: var(--space-5); }
+  .member-card { max-width: 100%; }
+}
+
+.member-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+.member-info-row:first-child { padding-top: 0; }
+.member-info-row:last-child { border-bottom: none; }
+
+.member-info-label { color: var(--color-text-faint); font-size: 0.85rem; }
+.member-info-value { font-weight: 600; }
+
+.member-hub-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
 }
