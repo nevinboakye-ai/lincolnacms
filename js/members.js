@@ -375,11 +375,16 @@
 
     function renderDiscountCard(row) {
       var initial = escapeHtml((row.partner_name || '?').trim().charAt(0).toUpperCase());
+      var isLounge11 = /lounge\s*11/i.test(row.partner_name || '');
+      var cardClass = 'card discount-card' + (isLounge11 ? ' discount-card--pink' : '');
+      var addressHtml = row.address
+        ? '<p class="discount-address"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>' + escapeHtml(row.address) + '</span></p>'
+        : '';
       var codeHtml = row.code
         ? '<div class="discount-code"><span class="discount-code-label">Code</span><span class="discount-code-value">' + escapeHtml(row.code) + '</span></div>'
         : '';
-      return '<div class="card discount-card"><span class="discount-card-badge" aria-hidden="true">' + initial + '</span><h3 class="card-title">' +
-        escapeHtml(row.partner_name) + '</h3><p>' +
+      return '<div class="' + cardClass + '"><span class="discount-card-badge" aria-hidden="true">' + initial + '</span><h3 class="card-title">' +
+        escapeHtml(row.partner_name) + '</h3>' + addressHtml + '<p>' +
         escapeHtml(row.description) + '</p>' + codeHtml + cardLink(row.link, 'Visit partner') + '</div>';
     }
 

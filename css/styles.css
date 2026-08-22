@@ -2820,8 +2820,8 @@ body.intro-active { overflow: hidden; }
 .member-info-row:first-child { padding-top: 0; }
 .member-info-row:last-child { border-bottom: none; }
 
-.member-info-label { color: var(--color-text-faint); font-size: 0.85rem; }
-.member-info-value { font-weight: 600; }
+.member-info-label { color: var(--color-text-faint); font-size: 0.85rem; flex-shrink: 0; }
+.member-info-value { font-weight: 600; text-align: right; }
 
 .member-hub-actions {
   display: flex;
@@ -2973,6 +2973,17 @@ body.intro-active { overflow: hidden; }
 .discount-card:nth-of-type(4n+4):hover { border-color: #b28ff0; }
 .discount-card:nth-of-type(4n+4) .discount-card-badge { background: rgba(107, 70, 193, 0.24); color: #b28ff0; }
 
+/* Pink is reserved for specific partners (e.g. Lounge 11) rather than the
+   automatic colour cycle — placed after the nth-of-type rules so it wins
+   on equal specificity regardless of the card's position in the grid. */
+.discount-card.discount-card--pink {
+  --card-shimmer-color: rgba(239, 139, 196, 0.28);
+  background: linear-gradient(160deg, rgba(214, 51, 132, 0.2), var(--color-surface) 75%);
+  border-color: rgba(239, 139, 196, 0.38);
+}
+.discount-card.discount-card--pink:hover { border-color: #ef8bc4; }
+.discount-card.discount-card--pink .discount-card-badge { background: rgba(214, 51, 132, 0.24); color: #ef8bc4; }
+
 .discount-card-badge {
   width: 44px;
   height: 44px;
@@ -2990,6 +3001,16 @@ body.intro-active { overflow: hidden; }
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
 }
+
+.discount-address {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-faint);
+}
+.discount-address .icon { width: 14px; height: 14px; flex-shrink: 0; }
 
 .discount-code {
   display: inline-flex;
