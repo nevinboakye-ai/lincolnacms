@@ -382,10 +382,7 @@ button { font-family: inherit; }
 
 @media (max-width: 640px) {
   .brand-sub { font-size: 0.58rem; }
-}
-
-@media (max-width: 400px) {
-  .brand-sub { display: none; }
+  .brand-place { display: none; }
 }
 
 .nav-primary {
@@ -711,6 +708,13 @@ body.nav-open { overflow: hidden; }
 .hero-copy {
   max-width: 46ch;
   font-size: 1.05rem;
+}
+
+.hero-courses {
+  max-width: 46ch;
+  margin-top: var(--space-3);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
 
 .hero-actions {
