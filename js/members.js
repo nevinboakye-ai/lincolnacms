@@ -470,9 +470,10 @@
     });
   }
 
-  // ---- Sankofa Applications page ----
+  // ---- Sankofa Circle application page ----
   var sankofaFormWrap = document.getElementById('sankofa-form-wrap');
   var sankofaAlreadyApplied = document.getElementById('sankofa-already-applied');
+  var sankofaNotEligible = document.getElementById('sankofa-not-eligible');
   if (sankofaFormWrap || sankofaAlreadyApplied) {
     var sankofaAuthGate = document.getElementById('auth-gate');
     var sankofaSession = null;
@@ -484,18 +485,30 @@
         return;
       }
       sankofaSession = session;
-      checkExistingApplication(session);
+
+      supabaseClient
+        .from('members')
+        .select('sankofa_eligible')
+        .eq('id', session.user.id)
+        .single()
+        .then(function (result) {
+          if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
+          if (result.error || !result.data || !result.data.sankofa_eligible) {
+            if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
+            return;
+          }
+          checkExistingApplication(session);
+        });
     });
 
     function checkExistingApplication(session) {
       supabaseClient
         .from('sankofa_applications')
-        .select('role_applied_for, created_at')
+        .select('created_at')
         .eq('member_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .then(function (result) {
-          if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
           var existing = result.data && result.data[0];
           if (existing) {
             showAlreadyApplied(existing);
@@ -507,7 +520,6 @@
 
     function showAlreadyApplied(row) {
       if (!sankofaAlreadyApplied) return;
-      document.getElementById('sankofa-applied-role').textContent = row.role_applied_for === 'mentor' ? 'mentor' : 'mentee';
       document.getElementById('sankofa-applied-date').textContent = new Date(row.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
       sankofaAlreadyApplied.style.display = 'block';
     }
@@ -519,15 +531,21 @@
         var statusEl = document.getElementById('sankofa-status');
         hideMessage(statusEl);
 
-        var roleInput = sankofaForm.querySelector('input[name="sankofa-role"]:checked');
+        var stage = document.getElementById('sankofa-stage').value;
+        var aspirations = document.getElementById('sankofa-aspirations').value.trim();
+        var specialty = document.getElementById('sankofa-specialty').value.trim();
+        var hobbies = Array.from(sankofaForm.querySelectorAll('input[name="hobby"]:checked')).map(function (el) { return el.value; });
+        var hobbyOther = document.getElementById('sankofa-hobby-other').value.trim();
+        if (hobbyOther) hobbies.push(hobbyOther);
+        var social = parseInt(document.getElementById('sankofa-social').value, 10);
+        var fitness = parseInt(document.getElementById('sankofa-fitness').value, 10);
+        var communication = sankofaForm.querySelector('input[name="sankofa-communication"]:checked');
+        var frequency = sankofaForm.querySelector('input[name="sankofa-frequency"]:checked');
+        var lookingFor = document.getElementById('sankofa-looking-for').value.trim();
         var statement = document.getElementById('sankofa-statement').value.trim();
 
-        if (!roleInput) {
-          showMessage(statusEl, "Choose whether you're applying as a mentee or mentor.");
-          return;
-        }
-        if (!statement) {
-          showMessage(statusEl, "Tell us a little about why you're applying.");
+        if (!stage || !aspirations || !communication || !frequency || !lookingFor) {
+          showMessage(statusEl, 'Fill in the required fields before submitting.');
           return;
         }
 
@@ -536,7 +554,19 @@
 
         supabaseClient
           .from('sankofa_applications')
-          .insert({ member_id: sankofaSession.user.id, role_applied_for: roleInput.value, statement: statement })
+          .insert({
+            member_id: sankofaSession.user.id,
+            current_stage: stage,
+            career_aspirations: aspirations,
+            specialty_interest: specialty || null,
+            hobbies_interests: hobbies.length ? hobbies : null,
+            social_preference: social,
+            fitness_preference: fitness,
+            communication_style: communication.value,
+            meeting_frequency: frequency.value,
+            looking_for: lookingFor,
+            statement: statement || null
+          })
           .then(function (result) {
             btn.disabled = false;
             if (result.error) {
@@ -544,7 +574,7 @@
               return;
             }
             sankofaFormWrap.style.display = 'none';
-            showAlreadyApplied({ role_applied_for: roleInput.value, created_at: new Date().toISOString() });
+            showAlreadyApplied({ created_at: new Date().toISOString() });
           });
       });
     }

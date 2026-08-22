@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sankofa Applications — LACMS</title>
-<meta name="description" content="Apply to be a Sankofa Mentorship mentee or mentor.">
+<title>Sankofa Circle Application — LACMS</title>
+<meta name="description" content="Apply for a Sankofa Circle — open to Medicine and Pharmacy members, and aspiring medics.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
 <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -68,8 +68,8 @@
 
   <section class="page-hero container">
     <span class="eyebrow">Members Hub</span>
-    <h1 class="page-hero-title">Sankofa applications</h1>
-    <p class="page-hero-lede">Apply to join the Sankofa Mentorship programme as a mentee or a mentor.</p>
+    <h1 class="page-hero-title">Apply for a Sankofa Circle</h1>
+    <p class="page-hero-lede">Every member in a Circle is both mentor and mentee to one another across the years — this application just helps us pair you with people you'll click with. Open to Medicine and Pharmacy members, and aspiring medics.</p>
     <div class="tricolor-bar tricolor-bar--sm" aria-hidden="true"><span></span><span></span><span></span></div>
   </section>
 
@@ -88,28 +88,104 @@
 
       <p id="hub-error" class="auth-error" role="status" style="display:none;"></p>
 
+      <div id="sankofa-not-eligible" class="form-note" style="display:none;">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        <span>Sankofa Circle applications are currently open to Medicine and Pharmacy members, and aspiring medics/sixth formers. If you think this is a mistake, email <a href="mailto:acms@lincolnsu.com" style="color: var(--color-gold-light);">acms@lincolnsu.com</a>.</span>
+      </div>
+
       <div id="sankofa-already-applied" class="form-panel" style="display:none;">
         <h2 style="margin-top:0;">Application received</h2>
-        <p>You applied to be a <strong id="sankofa-applied-role">mentee</strong> on <span id="sankofa-applied-date">—</span>. The committee reviews applications on a rolling basis — you'll be contacted by email once there's an update.</p>
+        <p>You applied on <span id="sankofa-applied-date">—</span>. The committee reviews applications on a rolling basis and pairs Circles ahead of each new term — you'll be contacted by email once there's an update.</p>
       </div>
 
       <div id="sankofa-form-wrap" class="form-panel" style="display:none;">
         <form id="sankofa-form">
+
           <div class="field">
-            <label>I'm applying to be a…</label>
-            <div style="display:flex; gap: var(--space-4); margin-top: var(--space-2);">
-              <label style="display:flex; align-items:center; gap:6px; font-weight:400;">
-                <input type="radio" name="sankofa-role" value="mentee" required> Mentee
-              </label>
-              <label style="display:flex; align-items:center; gap:6px; font-weight:400;">
-                <input type="radio" name="sankofa-role" value="mentor" required> Mentor
-              </label>
+            <label for="sankofa-stage">Where are you right now?</label>
+            <select id="sankofa-stage" name="sankofa-stage" required>
+              <option value="">Select…</option>
+              <option>Sixth form / aspiring medic</option>
+              <option>Medicine, Year 1</option>
+              <option>Medicine, Year 2</option>
+              <option>Medicine, Year 3</option>
+              <option>Medicine, Year 4</option>
+              <option>Medicine, Year 5</option>
+              <option>Medicine, Year 6</option>
+              <option>Pharmacy</option>
+              <option>Foundation doctor / early career</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="sankofa-aspirations">What do you want your career in medicine to look like?</label>
+            <textarea id="sankofa-aspirations" name="sankofa-aspirations" placeholder="Specialty you're drawn to, the kind of doctor you want to be, what matters most to you about the path ahead…" required></textarea>
+          </div>
+
+          <div class="field">
+            <label for="sankofa-specialty">Any specialties you're curious about? <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+            <input type="text" id="sankofa-specialty" name="sankofa-specialty" placeholder="e.g. Paediatrics, Surgery, GP, not sure yet">
+          </div>
+
+          <div class="field">
+            <label>Hobbies &amp; interests <span style="font-weight:400; color: var(--color-text-faint);">(pick any that apply)</span></label>
+            <div class="checkbox-grid">
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Sports & fitness">Sports &amp; fitness</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Gaming">Gaming</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Reading">Reading</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Music">Music</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Art & creativity">Art &amp; creativity</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Cooking & baking">Cooking &amp; baking</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Travel">Travel</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Volunteering">Volunteering</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Faith & spirituality">Faith &amp; spirituality</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Fashion & beauty">Fashion &amp; beauty</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Film & TV">Film &amp; TV</label>
+              <label class="checkbox-option"><input type="checkbox" name="hobby" value="Academic societies">Academic societies</label>
+            </div>
+            <input type="text" id="sankofa-hobby-other" name="sankofa-hobby-other" placeholder="Anything else? (optional)" style="margin-top: var(--space-2);">
+          </div>
+
+          <div class="field">
+            <label for="sankofa-social">Homebody or always out?</label>
+            <input type="range" id="sankofa-social" name="sankofa-social" min="1" max="5" value="3">
+            <div class="range-field-labels"><span>Homebody</span><span>Right in the middle</span><span>Always out</span></div>
+          </div>
+
+          <div class="field">
+            <label for="sankofa-fitness">Into the gym / fitness?</label>
+            <input type="range" id="sankofa-fitness" name="sankofa-fitness" min="1" max="5" value="3">
+            <div class="range-field-labels"><span>Not really</span><span>Sometimes</span><span>Gym regular</span></div>
+          </div>
+
+          <div class="field">
+            <label>How do you like to stay in touch?</label>
+            <div style="display:flex; flex-wrap:wrap; gap: var(--space-4); margin-top: var(--space-2);">
+              <label class="checkbox-option"><input type="radio" name="sankofa-communication" value="casual" required>Casual chats</label>
+              <label class="checkbox-option"><input type="radio" name="sankofa-communication" value="structured" required>Structured catch-ups</label>
+              <label class="checkbox-option"><input type="radio" name="sankofa-communication" value="mix" required>A mix of both</label>
             </div>
           </div>
+
           <div class="field">
-            <label for="sankofa-statement">Tell us a bit about why</label>
-            <textarea id="sankofa-statement" name="sankofa-statement" placeholder="What are you hoping to get from — or offer to — a Sankofa Circle?" required></textarea>
+            <label>How often would you like your Circle to meet?</label>
+            <div style="display:flex; flex-wrap:wrap; gap: var(--space-4); margin-top: var(--space-2);">
+              <label class="checkbox-option"><input type="radio" name="sankofa-frequency" value="weekly" required>Weekly</label>
+              <label class="checkbox-option"><input type="radio" name="sankofa-frequency" value="fortnightly" required>Fortnightly</label>
+              <label class="checkbox-option"><input type="radio" name="sankofa-frequency" value="monthly" required>Monthly</label>
+            </div>
           </div>
+
+          <div class="field">
+            <label for="sankofa-looking-for">What are you hoping to get from your Sankofa Circle?</label>
+            <textarea id="sankofa-looking-for" name="sankofa-looking-for" placeholder="Academic advice, someone who gets it, career guidance, just a friendly face…" required></textarea>
+          </div>
+
+          <div class="field">
+            <label for="sankofa-statement">Anything else you'd like us to know? <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+            <textarea id="sankofa-statement" name="sankofa-statement"></textarea>
+          </div>
+
           <button type="submit" class="btn btn-primary btn-block">Submit application</button>
           <p id="sankofa-status" class="auth-error" role="status" style="display:none;"></p>
         </form>
