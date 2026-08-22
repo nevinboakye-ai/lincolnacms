@@ -1587,6 +1587,7 @@ a.card:hover, a.card:focus-visible {
 }
 
 .event-row-title { font-family: var(--font-display); font-size: 1.4rem; margin-bottom: 4px; }
+.event-row-title a:hover { text-decoration: underline; }
 
 .event-row-actions {
   display: flex;
@@ -3144,3 +3145,100 @@ body.intro-active { overflow: hidden; }
   white-space: pre-line;
   line-height: 1.6;
 }
+
+/* MMG portal — flagship-event gold treatment on the hero, a two-tab
+   login/signup switcher, and a write-in voting grid. */
+.page-hero--mmg {
+  background: radial-gradient(ellipse at 15% 0%, rgba(212, 166, 43, 0.12), transparent 60%);
+  border-bottom-color: rgba(232, 199, 103, 0.3);
+}
+
+.mmg-auth-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  margin-bottom: var(--space-5);
+}
+
+.mmg-auth-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
+}
+
+.mmg-auth-tab.is-active {
+  background: var(--color-gold);
+  color: var(--color-on-gold);
+}
+
+.vote-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.vote-card {
+  position: relative;
+  border-left: 3px solid var(--color-gold);
+}
+
+.vote-card--closed { border-left-color: var(--color-border-strong); opacity: 0.75; }
+
+.vote-card-icon {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(212, 166, 43, 0.16);
+  color: var(--color-gold-light);
+}
+.vote-card-icon .icon { width: 18px; height: 18px; }
+
+.vote-current {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-faint);
+}
+.vote-current strong { color: var(--color-gold-light); }
+
+.vote-closed-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-faint);
+}
+
+.vote-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.vote-form input[type="text"] {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+.vote-form input[type="text"]:focus { outline: none; border-color: var(--color-gold); }
+
+.vote-form-status {
+  font-size: 0.82rem;
+  color: var(--color-gold-light);
+}
+.vote-form-status--error { color: #ef8b8f; }

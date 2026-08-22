@@ -31,6 +31,54 @@
       .replace(/"/g, '&quot;');
   }
 
+  // Shared by the members-hub feed and the MMG portal feeds.
+  function timeAgo(dateStr) {
+    var date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    var diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
+    if (diffMin < 1) return 'Just now';
+    if (diffMin < 60) return diffMin + (diffMin === 1 ? ' minute ago' : ' minutes ago');
+    var diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return diffHr + (diffHr === 1 ? ' hour ago' : ' hours ago');
+    var diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 7) return diffDay + (diffDay === 1 ? ' day ago' : ' days ago');
+    var diffWeek = Math.floor(diffDay / 7);
+    if (diffWeek < 5) return diffWeek + (diffWeek === 1 ? ' week ago' : ' weeks ago');
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  // MMG portal: makes sure a self-registered external guest ends up with a
+  // row in mmg_guests. Called after both sign-up and sign-in, since with
+  // email confirmation on, signUp() doesn't return a live session — the
+  // row can only actually be created once they have one, i.e. on their
+  // first real sign-in after confirming. full_name/university survive
+  // that gap because signUp() stores them in the user's own metadata.
+  // No-ops for full Lincoln members (they already have a members row).
+  function ensureMmgGuestProfile(session) {
+    return supabaseClient
+      .from('members')
+      .select('id')
+      .eq('id', session.user.id)
+      .maybeSingle()
+      .then(function (memberResult) {
+        if (memberResult.data) return;
+        return supabaseClient
+          .from('mmg_guests')
+          .select('id')
+          .eq('id', session.user.id)
+          .maybeSingle()
+          .then(function (guestResult) {
+            if (guestResult.data) return;
+            var meta = session.user.user_metadata || {};
+            return supabaseClient.from('mmg_guests').insert({
+              id: session.user.id,
+              full_name: meta.full_name || session.user.email,
+              university: meta.university || 'Not specified'
+            });
+          });
+      });
+  }
+
   // ---- Site-wide: keep the "Member login" nav link in sync with whether
   // there's actually a signed-in session, on every single page (not just
   // the login/hub pages). Without this, the link's label and destination
@@ -245,21 +293,6 @@
         '<h3 class="feed-item-title">' + escapeHtml(row.title) + '</h3>' +
         '<p class="feed-item-body">' + escapeHtml(row.body) + '</p>' +
         '</article>';
-    }
-
-    function timeAgo(dateStr) {
-      var date = new Date(dateStr);
-      if (isNaN(date.getTime())) return '';
-      var diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
-      if (diffMin < 1) return 'Just now';
-      if (diffMin < 60) return diffMin + (diffMin === 1 ? ' minute ago' : ' minutes ago');
-      var diffHr = Math.floor(diffMin / 60);
-      if (diffHr < 24) return diffHr + (diffHr === 1 ? ' hour ago' : ' hours ago');
-      var diffDay = Math.floor(diffHr / 24);
-      if (diffDay < 7) return diffDay + (diffDay === 1 ? ' day ago' : ' days ago');
-      var diffWeek = Math.floor(diffDay / 7);
-      if (diffWeek < 5) return diffWeek + (diffWeek === 1 ? ' week ago' : ' weeks ago');
-      return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     }
 
     function loadProfile(session) {
@@ -668,5 +701,270 @@
           });
       });
     }
+  }
+
+  // ---- MMG portal login/signup page ----
+  var mmgSigninForm = document.getElementById('mmg-signin-form');
+  var mmgSignupForm = document.getElementById('mmg-signup-form');
+  if (mmgSigninForm || mmgSignupForm) {
+    var mmgTabSignin = document.getElementById('mmg-tab-signin');
+    var mmgTabSignup = document.getElementById('mmg-tab-signup');
+    var mmgSignupConfirmation = document.getElementById('mmg-signup-confirmation');
+
+    supabaseClient.auth.getSession().then(function (result) {
+      if (result.data && result.data.session) {
+        window.location.href = 'mmg.html';
+      }
+    });
+
+    function switchMmgTab(tab) {
+      var showSignup = tab === 'signup';
+      mmgSigninForm.classList.toggle('is-active', !showSignup);
+      mmgSignupForm.classList.toggle('is-active', showSignup);
+      mmgSignupConfirmation.classList.remove('is-active');
+      mmgTabSignin.classList.toggle('is-active', !showSignup);
+      mmgTabSignin.setAttribute('aria-selected', String(!showSignup));
+      mmgTabSignup.classList.toggle('is-active', showSignup);
+      mmgTabSignup.setAttribute('aria-selected', String(showSignup));
+    }
+    if (mmgTabSignin) mmgTabSignin.addEventListener('click', function () { switchMmgTab('signin'); });
+    if (mmgTabSignup) mmgTabSignup.addEventListener('click', function () { switchMmgTab('signup'); });
+
+    if (mmgSigninForm) {
+      mmgSigninForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = document.getElementById('mmg-signin-status');
+        hideMessage(statusEl);
+        var email = document.getElementById('mmg-signin-email').value.trim();
+        var password = document.getElementById('mmg-signin-password').value;
+        var btn = mmgSigninForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        supabaseClient.auth.signInWithPassword({ email: email, password: password }).then(function (result) {
+          if (result.error) {
+            showMessage(statusEl, result.error.message);
+            btn.disabled = false;
+            return;
+          }
+          ensureMmgGuestProfile(result.data.session).then(function () {
+            window.location.href = 'mmg.html';
+          });
+        });
+      });
+    }
+
+    if (mmgSignupForm) {
+      mmgSignupForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = document.getElementById('mmg-signup-status');
+        hideMessage(statusEl);
+        var name = document.getElementById('mmg-signup-name').value.trim();
+        var university = document.getElementById('mmg-signup-university').value.trim();
+        var email = document.getElementById('mmg-signup-email').value.trim();
+        var password = document.getElementById('mmg-signup-password').value;
+        var confirmPassword = document.getElementById('mmg-signup-confirm').value;
+
+        if (password.length < 8) {
+          showMessage(statusEl, 'Password must be at least 8 characters.');
+          return;
+        }
+        if (password !== confirmPassword) {
+          showMessage(statusEl, "Passwords don't match — try again.");
+          return;
+        }
+
+        var btn = mmgSignupForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        supabaseClient.auth.signUp({
+          email: email,
+          password: password,
+          options: { data: { full_name: name, university: university } }
+        }).then(function (result) {
+          btn.disabled = false;
+          if (result.error) {
+            showMessage(statusEl, result.error.message);
+            return;
+          }
+          var session = result.data && result.data.session;
+          if (session) {
+            ensureMmgGuestProfile(session).then(function () {
+              window.location.href = 'mmg.html';
+            });
+            return;
+          }
+          mmgSigninForm.classList.remove('is-active');
+          mmgSignupForm.classList.remove('is-active');
+          mmgSignupConfirmation.classList.add('is-active');
+        });
+      });
+    }
+  }
+
+  // ---- MMG portal page: tier resolution, exclusive content, voting,
+  // committee planning feed ----
+  var mmgAuthGate = document.getElementById('mmg-auth-gate');
+  if (mmgAuthGate) {
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) {
+        mmgAuthGate.style.display = 'none';
+        var signedOutEl = document.getElementById('mmg-signed-out');
+        if (signedOutEl) signedOutEl.style.display = '';
+        return;
+      }
+      ensureMmgGuestProfile(session).then(function () {
+        return resolveMmgTier(session);
+      }).then(function (tier) {
+        mmgAuthGate.style.display = 'none';
+        if (tier === 'none') {
+          var pendingEl = document.getElementById('mmg-pending');
+          if (pendingEl) pendingEl.style.display = 'flex';
+          return;
+        }
+        var exclusiveEl = document.getElementById('mmg-exclusive');
+        if (exclusiveEl) exclusiveEl.style.display = '';
+        loadMmgVoting(session);
+        if (tier === 'committee') {
+          var committeeEl = document.getElementById('mmg-committee-section');
+          if (committeeEl) committeeEl.style.display = '';
+          loadMmgUpdates();
+        }
+      });
+    });
+  }
+
+  function resolveMmgTier(session) {
+    return supabaseClient
+      .from('members')
+      .select('mmg_attendee, mmg_committee')
+      .eq('id', session.user.id)
+      .maybeSingle()
+      .then(function (result) {
+        if (result.data) {
+          if (result.data.mmg_committee) return 'committee';
+          if (result.data.mmg_attendee) return 'attendee';
+          return 'none';
+        }
+        return supabaseClient
+          .from('mmg_guests')
+          .select('access_level')
+          .eq('id', session.user.id)
+          .maybeSingle()
+          .then(function (guestResult) {
+            var level = guestResult.data && guestResult.data.access_level;
+            return (level === 'committee' || level === 'attendee') ? level : 'none';
+          });
+      });
+  }
+
+  function loadMmgVoting(session) {
+    var list = document.getElementById('mmg-vote-list');
+    if (!list) return;
+    Promise.all([
+      supabaseClient.from('mmg_award_categories').select('*').order('sort_order', { ascending: true }),
+      supabaseClient.from('mmg_votes').select('category_id, nominee_name').eq('voter_id', session.user.id)
+    ]).then(function (results) {
+      var categories = results[0].data || [];
+      var myVotes = {};
+      (results[1].data || []).forEach(function (v) { myVotes[v.category_id] = v.nominee_name; });
+
+      if (!categories.length) {
+        var emptyEl = document.getElementById('mmg-vote-empty');
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+
+      list.innerHTML = categories.map(function (cat) {
+        return renderVoteCard(cat, myVotes[cat.id]);
+      }).join('');
+
+      list.querySelectorAll('.vote-form').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          submitMmgVote(form, session);
+        });
+      });
+    });
+  }
+
+  function renderVoteCard(cat, myVote) {
+    var closed = !cat.voting_open;
+    var currentHtml = myVote
+      ? '<p class="vote-current">You voted: <strong>' + escapeHtml(myVote) + '</strong></p>'
+      : '';
+    var bodyHtml = closed
+      ? '<p class="vote-closed-note">Voting is closed for this category.</p>'
+      : '<form class="vote-form" data-category-id="' + cat.id + '">' +
+          '<input type="text" name="nominee" placeholder="Type a name" value="' + escapeHtml(myVote || '') + '" required>' +
+          '<button type="submit" class="btn btn-outline">' + (myVote ? 'Change vote' : 'Submit vote') + '</button>' +
+          '<span class="vote-form-status" role="status"></span>' +
+        '</form>';
+    return '<div class="card vote-card' + (closed ? ' vote-card--closed' : '') + '">' +
+      '<span class="vote-card-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4a1 1 0 0 0-1 1c0 2.5 1.5 4 4 4M17 6h3a1 1 0 0 1 1 1c0 2.5-1.5 4-4 4"/></svg></span>' +
+      '<h3 class="card-title">' + escapeHtml(cat.name) + '</h3>' +
+      currentHtml + bodyHtml +
+      '</div>';
+  }
+
+  function submitMmgVote(form, session) {
+    var categoryId = form.getAttribute('data-category-id');
+    var input = form.querySelector('input[name="nominee"]');
+    var btn = form.querySelector('button[type="submit"]');
+    var statusEl = form.querySelector('.vote-form-status');
+    var nominee = input.value.trim();
+    if (!nominee) return;
+
+    btn.disabled = true;
+    supabaseClient
+      .from('mmg_votes')
+      .upsert({
+        category_id: categoryId,
+        voter_id: session.user.id,
+        nominee_name: nominee,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'category_id,voter_id' })
+      .then(function (result) {
+        btn.disabled = false;
+        if (result.error) {
+          statusEl.textContent = result.error.message;
+          statusEl.classList.add('vote-form-status--error');
+          return;
+        }
+        btn.textContent = 'Change vote';
+        statusEl.classList.remove('vote-form-status--error');
+        statusEl.textContent = 'Vote saved.';
+      });
+  }
+
+  function loadMmgUpdates() {
+    var list = document.getElementById('mmg-updates-list');
+    if (!list) return;
+    supabaseClient
+      .from('mmg_updates')
+      .select('*')
+      .order('pinned', { ascending: false })
+      .order('published_at', { ascending: false })
+      .then(function (result) {
+        var rows = result.data || [];
+        if (!rows.length) {
+          var emptyEl = document.getElementById('mmg-updates-empty');
+          if (emptyEl) emptyEl.style.display = 'block';
+          return;
+        }
+        list.innerHTML = rows.map(renderMmgUpdateItem).join('');
+      });
+  }
+
+  function renderMmgUpdateItem(row) {
+    var pinHtml = row.pinned
+      ? '<span class="feed-item-pin" title="Pinned"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 3.9a1 1 0 0 1-.75 1.6H13v6a1 1 0 1 1-2 0v-6H6.35a1 1 0 0 1-.75-1.6L9 9.5V3a1 1 0 0 1 1-1h2Z"/></svg></span>'
+      : '';
+    var classes = 'feed-item feed-item--purple' + (row.pinned ? ' feed-item--pinned' : '');
+    return '<article class="' + classes + '">' +
+      '<div class="feed-item-meta">' + pinHtml +
+      '<span class="feed-item-tag">Planning update</span>' +
+      '<span class="feed-item-date">' + escapeHtml(timeAgo(row.published_at)) + '</span></div>' +
+      '<h3 class="feed-item-title">' + escapeHtml(row.title) + '</h3>' +
+      '<p class="feed-item-body">' + escapeHtml(row.body) + '</p>' +
+      '</article>';
   }
 })();

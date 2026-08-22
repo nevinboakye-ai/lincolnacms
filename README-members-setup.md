@@ -121,3 +121,31 @@ To post something, add a row in Table Editor → `announcements`:
 - **is_active** — set `false` to pull a post from the feed without deleting it.
 
 Members only ever see `is_active = true` posts, pinned first, then newest first.
+
+## 12. Midlands Medics Gala (MMG) portal
+
+Run [`db/migrations/009-mmg-portal.sql`](db/migrations/009-mmg-portal.sql). This builds the whole MMG portal: [mmg.html](mmg.html) (public event info + exclusive gated content) and [mmg-login.html](mmg-login.html) (login/signup for people who aren't full LACMS members). The homepage's two Gala links and the events-page Gala row now point at `mmg.html` instead of the events calendar.
+
+**Before this goes live**, swap the placeholder ticket link — search `mmg.html` for `#mmg-ticket-link-todo` and replace it with wherever tickets are actually sold. Also replace the three `[Placeholder]` paragraphs (Location, Speaker list, Programme & night order) once those details are confirmed.
+
+### Two separate kinds of MMG access
+
+**Existing Lincoln LACMS members** don't need a new account — their normal login already works on the portal. But being a LACMS member doesn't automatically mean being an MMG attendee, so nothing exclusive shows until you flip a flag for them:
+
+- Table Editor → `members` → find the person → set **mmg_attendee** to `true` to unlock location, programme, speaker list and voting.
+- Set **mmg_committee** to `true` to *also* unlock the planning-updates feed (this implies attendee access too, no need to set both).
+
+**Attendees and partner-committee members from the other 7 universities** aren't Lincoln students and can't become LACMS members via the Students' Union, so they get their own account instead, self-registered on `mmg-login.html`:
+
+- They fill in name, university, email and password themselves — no invite needed from you.
+- Every new signup lands in Table Editor → `mmg_guests` with **access_level** = `pending`, and can see nothing exclusive yet.
+- Once you've verified they're legitimate (checking against a ticket list, or who partner committees confirm), change **access_level** to `attendee` or `committee` for them. That's it — the portal picks it up on their next visit.
+- Their signup uses Supabase's normal "Confirm signup" email — already branded if you applied the template from [Section 9](#9-branded-auth-emails).
+
+### Planning updates (committee only)
+
+Same pattern as the members feed — add rows in Table Editor → `mmg_updates` (**title**, **body**, **pinned**, **is_active**, **published_at**). Only people with committee-level access (Lincoln `mmg_committee = true`, or guest `access_level = committee`) can see these — enforced at the database level, not just hidden in the page.
+
+### Awards voting
+
+Add rows in Table Editor → `mmg_award_categories` — just a **name** (e.g. "Best Dressed") and **sort_order**. Voting is write-in: anyone with attendee or committee access can type any name, one vote per category, and can change their vote while it's open. Set **voting_open** to `false` on a category to lock it (e.g. once the night starts). To see results, use the SQL Editor: `select category_id, nominee_name, count(*) from mmg_votes group by 1, 2 order by 1, count(*) desc;`.
