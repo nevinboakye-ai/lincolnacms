@@ -40,8 +40,9 @@
   // whole time.
   var memberNavLinks = document.querySelectorAll('[data-member-nav-link]');
   var hideWhenSignedInEls = document.querySelectorAll('[data-hide-when-signed-in]');
+  var showWhenSignedInEls = document.querySelectorAll('[data-show-when-signed-in]');
 
-  if (memberNavLinks.length || hideWhenSignedInEls.length) {
+  if (memberNavLinks.length || hideWhenSignedInEls.length || showWhenSignedInEls.length) {
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
       var loggedIn = !!session;
@@ -57,6 +58,11 @@
       // signed in to join a society they're already part of.
       hideWhenSignedInEls.forEach(function (el) {
         el.style.display = loggedIn ? 'none' : '';
+      });
+
+      // "Log out" only makes sense once there's actually a session to end.
+      showWhenSignedInEls.forEach(function (el) {
+        el.style.display = loggedIn ? '' : 'none';
       });
 
       // Once we know they're signed in, upgrade the label to their first
@@ -79,6 +85,17 @@
       }
     });
   }
+
+  // ---- Site-wide: "Log out" buttons in the header and mobile drawer ----
+  var signOutButtons = document.querySelectorAll('[data-signout-btn]');
+  signOutButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      supabaseClient.auth.signOut().then(function () {
+        window.location.href = 'index.html';
+      });
+    });
+  });
 
   function setNavLinkText(el, text, signedIn) {
     var label = el.querySelector('[data-member-nav-label]');
