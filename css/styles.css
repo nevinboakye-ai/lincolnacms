@@ -1417,8 +1417,9 @@ a.card:hover, a.card:focus-visible {
 /* Committee */
 .person-card {
   position: relative;
-  text-align: center;
-  align-items: center;
+  padding: 0;
+  text-align: left;
+  align-items: stretch;
   cursor: pointer;
   transition: border-color var(--dur-base) var(--ease-standard),
               box-shadow var(--dur-base) var(--ease-standard);
@@ -1427,12 +1428,14 @@ a.card:hover, a.card:focus-visible {
   border-color: var(--color-gold);
   box-shadow: 0 0 0 1px var(--color-gold), 0 0 28px -8px rgba(212, 166, 43, 0.5);
 }
+
+/* Full-bleed photo — the whole card is the portrait, name/role/course
+   sit on a gradient scrim over the bottom of it rather than below it. */
 .person-photo {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: inherit;
   overflow: hidden;
-  margin-bottom: var(--space-2);
 }
 
 .person-photo img {
@@ -1440,25 +1443,52 @@ a.card:hover, a.card:focus-visible {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 500ms var(--ease-standard);
 }
-.person-name { font-family: var(--font-display); font-size: 1.05rem; }
-.person-role { font-size: 0.82rem; color: var(--color-gold); text-transform: uppercase; letter-spacing: 0.05em; }
-.person-course { font-size: 0.8rem; color: var(--color-text-faint); }
+
+.person-card:hover .person-photo img,
+.person-card.is-expanded .person-photo img {
+  transform: scale(1.05);
+}
+
+.person-photo-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(10, 10, 12, 0.95) 0%, rgba(10, 10, 12, 0.6) 35%, rgba(10, 10, 12, 0) 68%);
+  pointer-events: none;
+}
+
+.person-photo-info {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--space-4);
+}
+
+.person-name { font-family: var(--font-display); font-size: 1.1rem; color: var(--color-text); }
+.person-role { font-size: 0.8rem; color: var(--color-gold-light); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+.person-course { font-size: 0.78rem; color: rgba(245, 241, 230, 0.72); margin-top: 2px; }
 
 .person-card-toggle-btn {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  margin-top: var(--space-3);
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: 1px solid var(--color-border-strong);
-  background: transparent;
-  color: var(--color-text-muted);
+  border: 1px solid rgba(245, 241, 230, 0.35);
+  background: rgba(10, 10, 12, 0.5);
+  backdrop-filter: blur(4px);
+  color: var(--color-text);
   cursor: pointer;
   transition: border-color var(--dur-base) var(--ease-standard),
-              color var(--dur-base) var(--ease-standard);
+              color var(--dur-base) var(--ease-standard),
+              background var(--dur-base) var(--ease-standard);
 }
 .person-card-toggle-btn:hover,
 .person-card-toggle-btn:focus-visible { border-color: var(--color-gold); color: var(--color-gold-light); }
@@ -1466,17 +1496,20 @@ a.card:hover, a.card:focus-visible {
 .person-card.is-expanded .person-card-toggle-btn {
   border-color: var(--color-gold);
   color: var(--color-gold-light);
+  background: rgba(212, 166, 43, 0.25);
 }
 .person-card.is-expanded .person-card-toggle-btn .icon { transform: rotate(180deg); }
 
 .person-card .reveal-panel { grid-column: auto; width: 100%; }
 .person-bio {
   margin: 0;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border);
   font-size: 0.88rem;
+  text-align: left;
 }
-.person-card .reveal-panel-content { padding-top: 0; }
+.person-card .reveal-panel-content {
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
 
 /* Values list (About) */
 .value-item { display: flex; gap: var(--space-3); align-items: flex-start; }
