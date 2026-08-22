@@ -710,9 +710,19 @@ body.nav-open { overflow: hidden; }
   font-size: 1.05rem;
 }
 
-.hero-courses {
+.hero-courses-label {
   max-width: 46ch;
   margin-top: var(--space-3);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-gold-light);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hero-courses {
+  max-width: 46ch;
+  margin-top: 4px;
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
