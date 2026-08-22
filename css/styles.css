@@ -2905,3 +2905,122 @@ body.intro-active { overflow: hidden; }
 .quick-link-card--purple:hover, .quick-link-card--purple:focus-visible { border-color: #b28ff0; }
 .quick-link-card--purple .card-tag { color: #241849; background: #b28ff0; }
 .quick-link-card--purple .quick-link-icon { background: rgba(107, 70, 193, 0.28); color: #b28ff0; }
+
+/* Discount / partner perk cards — colour-cycled with a shimmer sweep, a
+   floating badge and a pulsing coupon-style code chip, so partner deals
+   feel like real living businesses instead of a plain static grid. */
+.discount-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--dur-base) var(--ease-standard),
+              border-color var(--dur-base) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard);
+}
+
+.discount-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, var(--card-shimmer-color) 50%, transparent 65%);
+  background-size: 220% 100%;
+  background-position: 160% 0;
+  animation: impact-shimmer 9s ease-in-out infinite;
+}
+
+.discount-card > * { position: relative; z-index: 1; }
+
+.discount-card:hover, .discount-card:focus-within {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 32px -18px rgba(0, 0, 0, 0.55);
+}
+
+.discount-card:nth-of-type(4n+1)::before { animation-delay: 0s; }
+.discount-card:nth-of-type(4n+2)::before { animation-delay: 2s; }
+.discount-card:nth-of-type(4n+3)::before { animation-delay: 4s; }
+.discount-card:nth-of-type(4n+4)::before { animation-delay: 6s; }
+
+.discount-card:nth-of-type(4n+1) {
+  --card-shimmer-color: rgba(232, 199, 103, 0.3);
+  background: linear-gradient(160deg, rgba(212, 166, 43, 0.16), var(--color-surface) 75%);
+  border-color: rgba(232, 199, 103, 0.35);
+}
+.discount-card:nth-of-type(4n+1):hover { border-color: var(--color-gold-light); }
+.discount-card:nth-of-type(4n+1) .discount-card-badge { background: rgba(212, 166, 43, 0.22); color: var(--color-gold-light); }
+
+.discount-card:nth-of-type(4n+2) {
+  --card-shimmer-color: rgba(111, 207, 151, 0.24);
+  background: linear-gradient(160deg, rgba(30, 122, 70, 0.18), var(--color-surface) 75%);
+  border-color: rgba(111, 207, 151, 0.32);
+}
+.discount-card:nth-of-type(4n+2):hover { border-color: #6fcf97; }
+.discount-card:nth-of-type(4n+2) .discount-card-badge { background: rgba(30, 122, 70, 0.22); color: #6fcf97; }
+
+.discount-card:nth-of-type(4n+3) {
+  --card-shimmer-color: rgba(239, 139, 143, 0.24);
+  background: linear-gradient(160deg, rgba(193, 39, 45, 0.18), var(--color-surface) 75%);
+  border-color: rgba(239, 139, 143, 0.32);
+}
+.discount-card:nth-of-type(4n+3):hover { border-color: #ef8b8f; }
+.discount-card:nth-of-type(4n+3) .discount-card-badge { background: rgba(193, 39, 45, 0.2); color: #ef8b8f; }
+
+.discount-card:nth-of-type(4n+4) {
+  --card-shimmer-color: rgba(178, 143, 240, 0.26);
+  background: linear-gradient(160deg, rgba(107, 70, 193, 0.22), var(--color-surface) 75%);
+  border-color: rgba(178, 143, 240, 0.36);
+}
+.discount-card:nth-of-type(4n+4):hover { border-color: #b28ff0; }
+.discount-card:nth-of-type(4n+4) .discount-card-badge { background: rgba(107, 70, 193, 0.24); color: #b28ff0; }
+
+.discount-card-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  animation: discount-badge-float 3.6s ease-in-out infinite;
+}
+
+@keyframes discount-badge-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.discount-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  animation: discount-code-pulse 2.6s ease-in-out infinite;
+}
+
+.discount-code-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+.discount-code-value {
+  font-family: 'SFMono-Regular', Menlo, monospace;
+  color: var(--color-gold-light);
+  font-weight: 600;
+}
+
+@keyframes discount-code-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 199, 103, 0.22); }
+  50% { box-shadow: 0 0 0 5px rgba(232, 199, 103, 0); }
+}
+
+.discount-card .card-link .icon {
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+.discount-card:hover .card-link .icon { transform: translateX(4px); }

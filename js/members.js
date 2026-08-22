@@ -357,10 +357,12 @@
     }
 
     function renderDiscountCard(row) {
+      var initial = escapeHtml((row.partner_name || '?').trim().charAt(0).toUpperCase());
       var codeHtml = row.code
-        ? '<p style="font-family:\'SFMono-Regular\',Menlo,monospace;color:var(--color-gold-light);margin:0 0 var(--space-2);">' + escapeHtml(row.code) + '</p>'
+        ? '<div class="discount-code"><span class="discount-code-label">Code</span><span class="discount-code-value">' + escapeHtml(row.code) + '</span></div>'
         : '';
-      return '<div class="card"><h3 class="card-title">' + escapeHtml(row.partner_name) + '</h3><p>' +
+      return '<div class="card discount-card"><span class="discount-card-badge" aria-hidden="true">' + initial + '</span><h3 class="card-title">' +
+        escapeHtml(row.partner_name) + '</h3><p>' +
         escapeHtml(row.description) + '</p>' + codeHtml + cardLink(row.link, 'Visit partner') + '</div>';
     }
 
