@@ -1525,11 +1525,22 @@ a.card:hover, a.card:focus-visible {
 .event-row-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
 @media (max-width: 700px) {
   .event-row-actions { margin-top: var(--space-2); }
+}
+
+.member-register-btn:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.member-register-btn.is-registered {
+  border-color: #6fcf97;
+  color: #6fcf97;
 }
 
 .chevron-toggle-btn {

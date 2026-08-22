@@ -230,6 +230,40 @@
     </div>
   </section>
 
+  <section class="section" id="nominate">
+    <div class="container" style="max-width: 640px;">
+      <div class="section-head">
+        <span class="eyebrow">Members</span>
+        <h2>Nominate from your account</h2>
+      </div>
+
+      <div id="nominate-not-signed-in" class="form-note">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        <span><a href="member-login.html" style="color: var(--color-gold-light);">Log in</a> to submit a nomination directly from your account — or use the "Nominate a member" button above to email us instead.</span>
+      </div>
+
+      <div id="nominate-form-wrap" class="form-panel" style="display:none;">
+        <form id="nominate-form">
+          <div class="field">
+            <label for="nominate-name">Who are you nominating?</label>
+            <input type="text" id="nominate-name" name="nominate-name" placeholder="Full name" required>
+          </div>
+          <div class="field">
+            <label for="nominate-reason">Why do they deserve it?</label>
+            <textarea id="nominate-reason" name="nominate-reason" placeholder="What have they done that stood out this month?" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Submit nomination</button>
+          <p id="nominate-status" class="auth-error" role="status" style="display:none;"></p>
+        </form>
+      </div>
+
+      <div id="nominate-confirmation" class="form-panel" style="display:none;">
+        <h3 style="margin-top:0;">Nomination submitted</h3>
+        <p style="margin-bottom:0;">Thanks — the committee reviews nominations each month when picking the next Member of the Month.</p>
+      </div>
+    </div>
+  </section>
+
   <section class="cta-band">
     <div class="container">
       <span class="eyebrow">Want to be recognised?</span>

@@ -23,6 +23,14 @@
     el.style.display = 'none';
   }
 
+  function escapeHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   // ---- Site-wide: keep the "Member login" nav link in sync with whether
   // there's actually a signed-in session, on every single page (not just
   // the login/hub pages). Without this, the link's label and destination
@@ -191,6 +199,8 @@
           }
           renderProfile(result.data, session);
           hubContent.style.display = '';
+          var linksSection = document.getElementById('member-hub-content-links');
+          if (linksSection) linksSection.style.display = '';
         });
     }
 
@@ -257,6 +267,285 @@
         supabaseClient.auth.signOut().then(function () {
           window.location.href = 'member-login.html';
         });
+      });
+    }
+
+    var changePasswordToggle = document.getElementById('change-password-toggle');
+    var changePasswordForm = document.getElementById('change-password-form');
+    if (changePasswordToggle && changePasswordForm) {
+      changePasswordToggle.addEventListener('click', function () {
+        var isOpen = changePasswordForm.style.display !== 'none';
+        changePasswordForm.style.display = isOpen ? 'none' : 'block';
+      });
+
+      changePasswordForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = document.getElementById('change-password-status');
+        hideMessage(statusEl);
+        var password = document.getElementById('new-password').value;
+        var confirmPassword = document.getElementById('new-password-confirm').value;
+
+        if (password.length < 8) {
+          showMessage(statusEl, 'Password must be at least 8 characters.');
+          return;
+        }
+        if (password !== confirmPassword) {
+          showMessage(statusEl, "Passwords don't match — try again.");
+          return;
+        }
+
+        var btn = changePasswordForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        supabaseClient.auth.updateUser({ password: password }).then(function (result) {
+          btn.disabled = false;
+          if (result.error) {
+            showMessage(statusEl, result.error.message);
+            return;
+          }
+          changePasswordForm.reset();
+          statusEl.className = 'auth-error';
+          statusEl.style.color = '#6fcf97';
+          statusEl.style.borderColor = 'rgba(111, 207, 151, 0.35)';
+          statusEl.style.background = 'rgba(30, 122, 70, 0.1)';
+          showMessage(statusEl, 'Password updated.');
+        });
+      });
+    }
+  }
+
+  // ---- Members Perks page: discounts + members-first opportunities ----
+  var perksContent = document.getElementById('member-perks-content');
+  if (perksContent) {
+    var perksAuthGate = document.getElementById('auth-gate');
+
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) {
+        window.location.href = 'member-login.html';
+        return;
+      }
+      loadPerks();
+    });
+
+    function loadPerks() {
+      Promise.all([
+        supabaseClient.from('discounts').select('*').order('sort_order', { ascending: true }),
+        supabaseClient.from('member_opportunities').select('*').order('sort_order', { ascending: true })
+      ]).then(function (results) {
+        if (perksAuthGate) perksAuthGate.style.display = 'none';
+        perksContent.style.display = '';
+
+        renderPerkList(results[0].data, document.getElementById('discounts-list'), document.getElementById('discounts-empty'), renderDiscountCard);
+        renderPerkList(results[1].data, document.getElementById('member-opportunities-list'), document.getElementById('member-opportunities-empty'), renderOpportunityCard);
+      });
+    }
+
+    function renderPerkList(rows, listEl, emptyEl, cardFn) {
+      if (!listEl) return;
+      rows = rows || [];
+      if (!rows.length) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+      listEl.innerHTML = rows.map(cardFn).join('');
+    }
+
+    function cardLink(url, label) {
+      if (!url) return '';
+      return '<a class="card-link" href="' + encodeURI(url) + '" target="_blank" rel="noopener">' + label +
+        '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>';
+    }
+
+    function renderDiscountCard(row) {
+      var codeHtml = row.code
+        ? '<p style="font-family:\'SFMono-Regular\',Menlo,monospace;color:var(--color-gold-light);margin:0 0 var(--space-2);">' + escapeHtml(row.code) + '</p>'
+        : '';
+      return '<div class="card"><h3 class="card-title">' + escapeHtml(row.partner_name) + '</h3><p>' +
+        escapeHtml(row.description) + '</p>' + codeHtml + cardLink(row.link, 'Visit partner') + '</div>';
+    }
+
+    function renderOpportunityCard(row) {
+      return '<div class="card"><h3 class="card-title">' + escapeHtml(row.title) + '</h3><p>' +
+        escapeHtml(row.description) + '</p>' + cardLink(row.link, 'Learn more') + '</div>';
+    }
+  }
+
+  // ---- Events page: member registration (alongside the existing RSVP
+  // mailto link, which stays available to everyone including logged-out
+  // visitors) ----
+  var registerButtons = document.querySelectorAll('.member-register-btn');
+  if (registerButtons.length) {
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) return;
+
+      registerButtons.forEach(function (btn) { btn.style.display = ''; });
+
+      supabaseClient
+        .from('event_registrations')
+        .select('event_slug')
+        .eq('member_id', session.user.id)
+        .then(function (result) {
+          var registeredSlugs = (result.data || []).map(function (r) { return r.event_slug; });
+          registerButtons.forEach(function (btn) {
+            if (registeredSlugs.indexOf(btn.getAttribute('data-event-slug')) !== -1) {
+              markRegistered(btn);
+            }
+          });
+        });
+
+      registerButtons.forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (btn.disabled) return;
+          var slug = btn.getAttribute('data-event-slug');
+          var name = btn.getAttribute('data-event-name');
+          btn.disabled = true;
+          supabaseClient
+            .from('event_registrations')
+            .insert({ member_id: session.user.id, event_slug: slug, event_name: name })
+            .then(function (result) {
+              if (result.error) {
+                btn.disabled = false;
+                btn.textContent = 'Try again';
+                return;
+              }
+              markRegistered(btn);
+            });
+        });
+      });
+
+      function markRegistered(btn) {
+        btn.disabled = true;
+        btn.classList.add('is-registered');
+        btn.textContent = "You're registered";
+      }
+    });
+  }
+
+  // ---- MoTM page: nomination form for signed-in members. Unlike the hub/
+  // perks/Sankofa pages, this doesn't redirect anyone away — the page stays
+  // fully public, it just swaps the "log in to nominate" note for the real
+  // form once a session is confirmed. ----
+  var nominateForm = document.getElementById('nominate-form');
+  var nominateNotSignedIn = document.getElementById('nominate-not-signed-in');
+  var nominateFormWrap = document.getElementById('nominate-form-wrap');
+  if (nominateForm && nominateNotSignedIn && nominateFormWrap) {
+    var nominateSession = null;
+
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) return;
+      nominateSession = session;
+      nominateNotSignedIn.style.display = 'none';
+      nominateFormWrap.style.display = 'block';
+    });
+
+    nominateForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var statusEl = document.getElementById('nominate-status');
+      hideMessage(statusEl);
+
+      var name = document.getElementById('nominate-name').value.trim();
+      var reason = document.getElementById('nominate-reason').value.trim();
+      if (!name || !reason) {
+        showMessage(statusEl, 'Fill in both fields before submitting.');
+        return;
+      }
+
+      var btn = nominateForm.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      supabaseClient
+        .from('motm_nominations')
+        .insert({ nominator_id: nominateSession.user.id, nominee_name: name, reason: reason })
+        .then(function (result) {
+          btn.disabled = false;
+          if (result.error) {
+            showMessage(statusEl, result.error.message);
+            return;
+          }
+          nominateFormWrap.style.display = 'none';
+          document.getElementById('nominate-confirmation').style.display = 'block';
+        });
+    });
+  }
+
+  // ---- Sankofa Applications page ----
+  var sankofaFormWrap = document.getElementById('sankofa-form-wrap');
+  var sankofaAlreadyApplied = document.getElementById('sankofa-already-applied');
+  if (sankofaFormWrap || sankofaAlreadyApplied) {
+    var sankofaAuthGate = document.getElementById('auth-gate');
+    var sankofaSession = null;
+
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) {
+        window.location.href = 'member-login.html';
+        return;
+      }
+      sankofaSession = session;
+      checkExistingApplication(session);
+    });
+
+    function checkExistingApplication(session) {
+      supabaseClient
+        .from('sankofa_applications')
+        .select('role_applied_for, created_at')
+        .eq('member_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .then(function (result) {
+          if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
+          var existing = result.data && result.data[0];
+          if (existing) {
+            showAlreadyApplied(existing);
+          } else if (sankofaFormWrap) {
+            sankofaFormWrap.style.display = 'block';
+          }
+        });
+    }
+
+    function showAlreadyApplied(row) {
+      if (!sankofaAlreadyApplied) return;
+      document.getElementById('sankofa-applied-role').textContent = row.role_applied_for === 'mentor' ? 'mentor' : 'mentee';
+      document.getElementById('sankofa-applied-date').textContent = new Date(row.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      sankofaAlreadyApplied.style.display = 'block';
+    }
+
+    var sankofaForm = document.getElementById('sankofa-form');
+    if (sankofaForm) {
+      sankofaForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = document.getElementById('sankofa-status');
+        hideMessage(statusEl);
+
+        var roleInput = sankofaForm.querySelector('input[name="sankofa-role"]:checked');
+        var statement = document.getElementById('sankofa-statement').value.trim();
+
+        if (!roleInput) {
+          showMessage(statusEl, "Choose whether you're applying as a mentee or mentor.");
+          return;
+        }
+        if (!statement) {
+          showMessage(statusEl, "Tell us a little about why you're applying.");
+          return;
+        }
+
+        var btn = sankofaForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+
+        supabaseClient
+          .from('sankofa_applications')
+          .insert({ member_id: sankofaSession.user.id, role_applied_for: roleInput.value, statement: statement })
+          .then(function (result) {
+            btn.disabled = false;
+            if (result.error) {
+              showMessage(statusEl, result.error.message);
+              return;
+            }
+            sankofaFormWrap.style.display = 'none';
+            showAlreadyApplied({ role_applied_for: roleInput.value, created_at: new Date().toISOString() });
+          });
       });
     }
   }
