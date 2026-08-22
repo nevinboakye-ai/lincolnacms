@@ -3242,3 +3242,232 @@ body.intro-active { overflow: hidden; }
   color: var(--color-gold-light);
 }
 .vote-form-status--error { color: #ef8b8f; }
+
+.vote-card {
+  transition: transform var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
+}
+.vote-card:hover { transform: translateY(-3px); border-color: var(--color-gold); }
+
+/* MMG hero — a slow shimmer sweep and drifting glow behind the flagship
+   gold wash, so it reads as a special occasion, not just another page. */
+.page-hero--mmg {
+  position: relative;
+  overflow: hidden;
+}
+.page-hero--mmg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 20% 30%, rgba(212, 166, 43, 0.22), transparent 55%);
+  animation: mmg-hero-drift 10s ease-in-out infinite;
+}
+.page-hero--mmg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgba(232, 199, 103, 0.14) 50%, transparent 65%);
+  background-size: 220% 100%;
+  background-position: 160% 0;
+  animation: impact-shimmer 9s ease-in-out infinite;
+}
+.page-hero--mmg > * { position: relative; z-index: 1; }
+
+@keyframes mmg-hero-drift {
+  0%, 100% { opacity: 0.7; transform: translate(0, 0); }
+  50% { opacity: 1; transform: translate(2%, -3%); }
+}
+
+/* Reveal the "why it exists" value props and event-details panel with a
+   gentle staggered entrance instead of a flat, static load. */
+.hero-grid .value-item {
+  opacity: 0;
+  animation: feed-item-in 0.55s var(--ease-standard) forwards;
+}
+.hero-grid .value-item:nth-child(1) { animation-delay: 0.05s; }
+.hero-grid .value-item:nth-child(2) { animation-delay: 0.15s; }
+.hero-grid .value-item:nth-child(3) { animation-delay: 0.25s; }
+
+.hero-grid .form-panel {
+  position: relative;
+  overflow: hidden;
+}
+.hero-grid .form-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgba(232, 199, 103, 0.1) 50%, transparent 65%);
+  background-size: 220% 100%;
+  background-position: 160% 0;
+  animation: impact-shimmer 8s ease-in-out infinite;
+}
+.hero-grid .form-panel > * { position: relative; z-index: 1; }
+
+/* Signed-in welcome strip, above the digital card */
+.mmg-welcome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-4);
+  opacity: 0;
+  animation: feed-item-in 0.5s var(--ease-standard) forwards;
+}
+
+.mmg-welcome-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6fcf97;
+  box-shadow: 0 0 8px rgba(111, 207, 151, 0.7);
+  flex-shrink: 0;
+  animation: mmg-welcome-pulse 2s ease-in-out infinite;
+}
+
+@keyframes mmg-welcome-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* MMG digital attendee/committee card — reuses the membership-card
+   visual language so it reads as an equally premium credential. */
+.mmg-card-wrap {
+  max-width: 420px;
+  margin: 0 0 var(--space-7);
+  opacity: 0;
+  animation: feed-item-in 0.55s var(--ease-standard) 0.1s forwards;
+}
+
+.mmg-info-card {
+  position: relative;
+}
+.mmg-info-icon {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(212, 166, 43, 0.16);
+  color: var(--color-gold-light);
+  margin-bottom: var(--space-1);
+}
+.mmg-info-icon .icon { width: 18px; height: 18px; }
+
+/* Programme timeline */
+.mmg-timeline-card { padding: var(--space-5); }
+
+.mmg-timeline {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-4);
+}
+
+.mmg-timeline-item {
+  display: flex;
+  gap: var(--space-4);
+  opacity: 0;
+  animation: feed-item-in 0.5s var(--ease-standard) forwards;
+}
+.mmg-timeline-item:nth-child(1) { animation-delay: 0.02s; }
+.mmg-timeline-item:nth-child(2) { animation-delay: 0.08s; }
+.mmg-timeline-item:nth-child(3) { animation-delay: 0.14s; }
+.mmg-timeline-item:nth-child(4) { animation-delay: 0.2s; }
+.mmg-timeline-item:nth-child(5) { animation-delay: 0.26s; }
+.mmg-timeline-item:nth-child(6) { animation-delay: 0.32s; }
+.mmg-timeline-item:nth-child(7) { animation-delay: 0.38s; }
+
+.mmg-timeline-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.mmg-timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  box-shadow: 0 0 0 4px var(--color-surface), 0 0 10px rgba(232, 199, 103, 0.6);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.mmg-timeline-line {
+  width: 2px;
+  flex: 1;
+  min-height: var(--space-4);
+  background: linear-gradient(var(--color-gold), var(--color-border));
+  margin-top: 4px;
+}
+
+.mmg-timeline-content { padding-bottom: var(--space-5); }
+.mmg-timeline-item:last-child .mmg-timeline-content { padding-bottom: 0; }
+
+.mmg-timeline-time {
+  display: block;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+  color: var(--color-gold-light);
+  margin-bottom: 2px;
+}
+
+.mmg-timeline-content h4 { margin: 0 0 4px; font-size: 1.05rem; }
+.mmg-timeline-content p { margin: 0; color: var(--color-text-muted); font-size: 0.92rem; }
+
+/* Committee panel — deliberately distinct from the attendee-tier content
+   above: a bordered, glowing purple "vault" rather than a plain section,
+   so committee access reads as its own elevated space. */
+.mmg-committee-panel {
+  position: relative;
+  overflow: hidden;
+  margin-top: var(--space-8);
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(178, 143, 240, 0.4);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(107, 70, 193, 0.2), transparent 55%),
+    linear-gradient(160deg, var(--color-surface-raised), var(--color-bg-alt));
+  box-shadow: 0 20px 50px -25px rgba(107, 70, 193, 0.5);
+}
+
+.mmg-committee-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgba(178, 143, 240, 0.16) 50%, transparent 65%);
+  background-size: 220% 100%;
+  background-position: 160% 0;
+  animation: impact-shimmer 9s ease-in-out infinite;
+}
+
+.mmg-committee-panel > * { position: relative; z-index: 1; }
+
+.mmg-committee-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #b28ff0;
+  background: rgba(107, 70, 193, 0.22);
+  border: 1px solid rgba(178, 143, 240, 0.4);
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  margin-bottom: var(--space-3);
+}
+.mmg-committee-badge .icon { width: 14px; height: 14px; }

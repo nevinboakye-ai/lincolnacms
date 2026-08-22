@@ -179,19 +179,110 @@
       </div>
 
       <div id="mmg-exclusive" style="display:none;">
-        <div class="grid grid--2" style="margin-bottom: var(--space-5);">
-          <div class="card">
-            <h3 class="card-title">Location</h3>
-            <p>[Placeholder] Venue to be announced here closer to the date.</p>
-          </div>
-          <div class="card">
-            <h3 class="card-title">Speaker list</h3>
-            <p>[Placeholder] Confirmed speakers will be listed here as they're locked in.</p>
+
+        <div class="mmg-welcome" id="mmg-welcome">
+          <span class="mmg-welcome-dot" aria-hidden="true"></span>
+          <span id="mmg-welcome-text">You're signed in and ready for MMG.</span>
+        </div>
+
+        <div class="mmg-card-wrap">
+          <div class="member-card mmg-card">
+            <div class="member-card-inner">
+              <div class="member-card-top">
+                <div class="member-card-brand">
+                  <img src="Media/ACMS%20Branding/logo.png" alt="">
+                  <span class="member-card-brand-text">LACMS</span>
+                </div>
+                <span class="member-card-eyebrow" id="mmg-card-tier">MMG · Attendee</span>
+              </div>
+              <h2 class="member-card-name" id="mmg-card-name">—</h2>
+              <p class="member-card-position" id="mmg-card-university">—</p>
+              <p class="member-card-role">Midlands Medics Gala &middot; 21 November 2026</p>
+              <div class="member-card-bottom">
+                <div>
+                  <div class="member-card-number-label">Access level</div>
+                  <div class="member-card-number" id="mmg-card-access">Attendee</div>
+                </div>
+                <span class="member-status-badge member-status-badge--active">
+                  <span class="member-status-badge-dot" aria-hidden="true"></span> Confirmed
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="card" style="margin-bottom: var(--space-7);">
+
+        <div class="grid grid--2" style="margin-bottom: var(--space-5);">
+          <div class="card mmg-info-card">
+            <span class="mmg-info-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg></span>
+            <h3 class="card-title">Location</h3>
+            <p>To be announced — we'll confirm the venue here closer to the date.</p>
+          </div>
+          <div class="card mmg-info-card">
+            <span class="mmg-info-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg></span>
+            <h3 class="card-title">Speaker list</h3>
+            <p>To be announced — confirmed speakers will be listed here as they're locked in.</p>
+          </div>
+        </div>
+
+        <div class="card mmg-timeline-card" style="margin-bottom: var(--space-7);">
           <h3 class="card-title">Programme &amp; night order</h3>
-          <p>[Placeholder] The full run of the evening — arrivals, dinner, awards, speeches and the after-party — will be published here.</p>
+          <div class="mmg-timeline">
+            <div class="mmg-timeline-item">
+              <div class="mmg-timeline-marker" aria-hidden="true"><span class="mmg-timeline-dot"></span><span class="mmg-timeline-line"></span></div>
+              <div class="mmg-timeline-content">
+                <span class="mmg-timeline-time">6:00pm</span>
+                <h4>Doors open</h4>
+              </div>
+            </div>
+            <div class="mmg-timeline-item">
+              <div class="mmg-timeline-marker" aria-hidden="true"><span class="mmg-timeline-dot"></span><span class="mmg-timeline-line"></span></div>
+              <div class="mmg-timeline-content">
+                <span class="mmg-timeline-time">7:00pm</span>
+                <h4>Doors close</h4>
+                <p>Last entry — with a little flexibility for late arrivals.</p>
+              </div>
+            </div>
+            <div class="mmg-timeline-item">
+              <div class="mmg-timeline-marker" aria-hidden="true"><span class="mmg-timeline-dot"></span><span class="mmg-timeline-line"></span></div>
+              <div class="mmg-timeline-content">
+                <span class="mmg-timeline-time">7:00 – 7:30pm</span>
+                <h4>Networking</h4>
+                <p>Meet attendees from every university, plus the doctors and healthcare professionals joining us for the night.</p>
+              </div>
+            </div>
+            <div class="mmg-timeline-item">
+              <div class="mmg-timeline-marker" aria-hidden="true"><span class="mmg-timeline-dot"></span><span class="mmg-timeline-line"></span></div>
+              <div class="mmg-timeline-content">
+                <span class="mmg-timeline-time">7:40 – 8:00pm</span>
+                <h4>Panel discussions</h4>
+                <p>Two panels — a professional panel with senior doctors, and a "Beyond Medicine" panel with students making an impact on and off their course.</p>
+              </div>
+            </div>
+            <div class="mmg-timeline-item">
+              <div class="mmg-timeline-marker" aria-hidden="true"><span class="mmg-timeline-dot"></span><span class="mmg-timeline-line"></span></div>
+              <div class="mmg-timeline-content">
+                <span class="mmg-timeline-time">8:00 – 9:30pm</span>
+                <h4>Dinner is served</h4>
+                <p>African-Caribbean cuisine, with a few light-hearted awards handed out during the meal — voted on the night.</p>
+              </div>
+            </div>
+            <div class="mmg-timeline-item">
+              <div class="mmg-timeline-marker" aria-hidden="true"><span class="mmg-timeline-dot"></span><span class="mmg-timeline-line"></span></div>
+              <div class="mmg-timeline-content">
+                <span class="mmg-timeline-time">9:00 – 9:20pm</span>
+                <h4>Recognition awards</h4>
+                <p>Celebrating impact across the community.</p>
+              </div>
+            </div>
+            <div class="mmg-timeline-item">
+              <div class="mmg-timeline-marker" aria-hidden="true"><span class="mmg-timeline-dot"></span></div>
+              <div class="mmg-timeline-content">
+                <span class="mmg-timeline-time">9:20 – 11:00pm</span>
+                <h4>The party</h4>
+                <p>Dancing, photography and more, to close out the night.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="section-head">
@@ -203,7 +294,11 @@
         <p id="mmg-vote-empty" style="display:none; color: var(--color-text-faint);">Voting hasn't opened yet — check back closer to the night.</p>
       </div>
 
-      <div id="mmg-committee-section" style="display:none; margin-top: var(--space-8);">
+      <div id="mmg-committee-section" class="mmg-committee-panel" style="display:none;">
+        <span class="mmg-committee-badge">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          Committee access
+        </span>
         <div class="section-head">
           <span class="eyebrow">Committee only</span>
           <h2>Planning updates</h2>

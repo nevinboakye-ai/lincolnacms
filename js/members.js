@@ -812,18 +812,19 @@
         return;
       }
       ensureMmgGuestProfile(session).then(function () {
-        return resolveMmgTier(session);
-      }).then(function (tier) {
+        return resolveMmgIdentity(session);
+      }).then(function (identity) {
         mmgAuthGate.style.display = 'none';
-        if (tier === 'none') {
+        if (identity.tier === 'none') {
           var pendingEl = document.getElementById('mmg-pending');
           if (pendingEl) pendingEl.style.display = 'flex';
           return;
         }
+        renderMmgIdentity(identity);
         var exclusiveEl = document.getElementById('mmg-exclusive');
         if (exclusiveEl) exclusiveEl.style.display = '';
         loadMmgVoting(session);
-        if (tier === 'committee') {
+        if (identity.tier === 'committee') {
           var committeeEl = document.getElementById('mmg-committee-section');
           if (committeeEl) committeeEl.style.display = '';
           loadMmgUpdates();
@@ -832,28 +833,51 @@
     });
   }
 
-  function resolveMmgTier(session) {
+  function resolveMmgIdentity(session) {
     return supabaseClient
       .from('members')
-      .select('mmg_attendee, mmg_committee')
+      .select('full_name, mmg_attendee, mmg_committee')
       .eq('id', session.user.id)
       .maybeSingle()
       .then(function (result) {
         if (result.data) {
-          if (result.data.mmg_committee) return 'committee';
-          if (result.data.mmg_attendee) return 'attendee';
-          return 'none';
+          var tier = result.data.mmg_committee ? 'committee' : (result.data.mmg_attendee ? 'attendee' : 'none');
+          return { tier: tier, fullName: result.data.full_name, university: 'University of Lincoln' };
         }
         return supabaseClient
           .from('mmg_guests')
-          .select('access_level')
+          .select('full_name, university, access_level')
           .eq('id', session.user.id)
           .maybeSingle()
           .then(function (guestResult) {
             var level = guestResult.data && guestResult.data.access_level;
-            return (level === 'committee' || level === 'attendee') ? level : 'none';
+            var tier = (level === 'committee' || level === 'attendee') ? level : 'none';
+            var meta = session.user.user_metadata || {};
+            return {
+              tier: tier,
+              fullName: (guestResult.data && guestResult.data.full_name) || meta.full_name || session.user.email,
+              university: (guestResult.data && guestResult.data.university) || meta.university || ''
+            };
           });
       });
+  }
+
+  function renderMmgIdentity(identity) {
+    var firstName = (identity.fullName || '').trim().split(' ')[0] || 'there';
+    var tierLabel = identity.tier === 'committee' ? 'Committee' : 'Attendee';
+
+    var welcomeText = document.getElementById('mmg-welcome-text');
+    if (welcomeText) welcomeText.textContent = 'Welcome back, ' + firstName + ' — you’re attending MMG.';
+
+    setMmgCardText('mmg-card-name', identity.fullName);
+    setMmgCardText('mmg-card-university', identity.university);
+    setMmgCardText('mmg-card-access', tierLabel);
+    setMmgCardText('mmg-card-tier', 'MMG · ' + tierLabel);
+  }
+
+  function setMmgCardText(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value || '—';
   }
 
   function loadMmgVoting(session) {
