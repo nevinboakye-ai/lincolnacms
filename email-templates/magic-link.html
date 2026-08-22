@@ -1,0 +1,105 @@
+<!--
+  LACMS Supabase auth email template.
+  Paste the BODY of this file into Supabase Dashboard -> Authentication -> Email Templates.
+  Variables like {{ .ConfirmationURL }} are filled in automatically by Supabase — leave them as-is.
+-->
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>LACMS</title>
+<!--[if mso]>
+<style>
+  table { border-collapse: collapse; }
+  * { font-family: Georgia, 'Times New Roman', serif !important; }
+</style>
+<![endif]-->
+<style>
+  body, table, td { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+  body { margin: 0; padding: 0; width: 100% !important; background: #f4f1ea; }
+  img { border: 0; outline: none; text-decoration: none; }
+  a { text-decoration: none; }
+  @media (max-width: 620px) {
+    .lacms-wrap { width: 100% !important; }
+    .lacms-pad { padding-left: 20px !important; padding-right: 20px !important; }
+  }
+</style>
+</head>
+<body style="margin:0; padding:0; background:#f4f1ea;">
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">Use this secure link to sign in to your LACMS members' account.</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1ea;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+        <table role="presentation" class="lacms-wrap" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:600px; background:#ffffff; border-radius:14px; overflow:hidden; border:1px solid #e7e1d2;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#0a0a0c; padding: 36px 40px 28px 40px;" align="center">
+              <img src="https://lincolnacms.uk/Media/ACMS%20Branding/ACMS%20Logo.png" width="56" height="56" alt="LACMS crest" style="display:block; margin: 0 auto 14px auto; border-radius:50%;">
+              <div style="font-family: Georgia, 'Times New Roman', serif; font-size: 22px; font-weight: 700; letter-spacing: 0.02em; color: #f5f1e6;">LACMS</div>
+              <div style="font-family: Arial, Helvetica, sans-serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #d4a62b; margin-top: 6px;">Lincoln African Caribbean Medical Society</div>
+            </td>
+          </tr>
+
+          <!-- Tricolor bar -->
+          <tr>
+            <td style="padding:0; line-height:0; font-size:0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                <td width="33.33%" height="4" style="background:#c1272d; line-height:4px; font-size:1px;">&nbsp;</td>
+                <td width="33.33%" height="4" style="background:#1e7a46; line-height:4px; font-size:1px;">&nbsp;</td>
+                <td width="33.34%" height="4" style="background:#d4a62b; line-height:4px; font-size:1px;">&nbsp;</td>
+              </tr></table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td class="lacms-pad" style="padding: 40px 40px 8px 40px;">
+              <div style="font-family: Georgia, 'Times New Roman', serif; font-size: 26px; line-height: 1.3; color: #16140f; font-weight: 700; margin-bottom: 16px;">Sign in to LACMS</div>
+              <div style="font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.65; color: #4b473d;">
+                Click below to securely sign in to your LACMS members' account.
+                This link is single-use and will expire shortly, so please use it soon.
+              </div>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td class="lacms-pad" align="left" style="padding: 24px 40px 8px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                <td align="center" style="border-radius: 8px; background: #d4a62b;">
+                  <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block; padding: 14px 30px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 700; color: #16140f; letter-spacing: 0.01em;">Sign in to LACMS</a>
+                </td>
+              </tr></table>
+            </td>
+          </tr>
+
+          <!-- Fallback link -->
+          <tr>
+            <td class="lacms-pad" style="padding: 20px 40px 36px 40px;">
+              <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.6; color: #9a9484;">
+                If the button above doesn't work, copy and paste this link into your browser:<br>
+                <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#8a6a13; word-break: break-all;">{{ .ConfirmationURL }}</a>
+              </div>
+              <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.6; color: #9a9484; margin-top: 14px;">If you didn't request this sign-in link, you can safely ignore this email — no changes will be made to your account.</div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f4f1ea; padding: 24px 40px; border-top: 1px solid #e7e1d2;" align="center">
+              <div style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #9a9484; line-height:1.6;">
+                Lincoln African Caribbean Medical Society &middot; University of Lincoln<br>
+                <a href="https://lincolnacms.uk" target="_blank" style="color:#8a6a13;">lincolnacms.uk</a>
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
