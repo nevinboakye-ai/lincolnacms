@@ -547,7 +547,7 @@
         var lookingFor = document.getElementById('sankofa-looking-for').value.trim();
         var statement = document.getElementById('sankofa-statement').value.trim();
 
-        if (!stage || !aspirations || !communication || !frequency || !lookingFor) {
+        if (!stage || !aspirations || !specialty || !communication || !frequency || !lookingFor) {
           showMessage(statusEl, 'Fill in the required fields before submitting.');
           return;
         }

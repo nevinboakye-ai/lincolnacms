@@ -102,7 +102,7 @@
         <form id="sankofa-form">
 
           <div class="field">
-            <label for="sankofa-stage">Where are you right now?</label>
+            <label for="sankofa-stage">What is your current stage?</label>
             <select id="sankofa-stage" name="sankofa-stage" required>
               <option value="">Select…</option>
               <option>Sixth form / aspiring medic</option>
@@ -122,7 +122,8 @@
           </div>
 
           <div class="field">
-            <label for="sankofa-heritage">Where's your family from? <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+            <label for="sankofa-heritage">What is your country of heritage? <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+            <span class="hint" style="display:block; margin-bottom: var(--space-2);">Helps us pair Circles more thoughtfully.</span>
             <select id="sankofa-heritage" name="sankofa-heritage">
               <option value="">Select…</option>
               <optgroup label="African">
@@ -210,8 +211,8 @@
           </div>
 
           <div class="field">
-            <label for="sankofa-specialty">Any specialties or career paths you're curious about? <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
-            <input type="text" id="sankofa-specialty" name="sankofa-specialty" placeholder="e.g. Paediatrics, Surgery, Clinical Pharmacy, Community Pharmacy, not sure yet">
+            <label for="sankofa-specialty">Any specialties or career paths you're curious about?</label>
+            <input type="text" id="sankofa-specialty" name="sankofa-specialty" placeholder="e.g. Paediatrics, Surgery, Clinical Pharmacy, Community Pharmacy, not sure yet" required>
           </div>
 
           <div class="field">

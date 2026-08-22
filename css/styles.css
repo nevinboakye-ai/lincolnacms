@@ -2738,3 +2738,79 @@ body.intro-active { overflow: hidden; }
   gap: var(--space-3);
   margin-top: var(--space-5);
 }
+
+/* Members area quick-link cards — a splash of colour + a slow shimmer
+   sweep per card, reusing the homepage impact-card technique, so this
+   section feels as considered as the rest of the site instead of a
+   plain grid of grey boxes. */
+.quick-link-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-link-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, var(--card-shimmer-color) 50%, transparent 65%);
+  background-size: 220% 100%;
+  background-position: 160% 0;
+  animation: impact-shimmer 8s ease-in-out infinite;
+}
+
+.quick-link-card > * { position: relative; z-index: 1; }
+
+.quick-link-card:nth-of-type(1)::before { animation-delay: 0s; }
+.quick-link-card:nth-of-type(2)::before { animation-delay: 1.6s; }
+.quick-link-card:nth-of-type(3)::before { animation-delay: 3.2s; }
+.quick-link-card:nth-of-type(4)::before { animation-delay: 4.8s; }
+
+.quick-link-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-bottom: var(--space-1);
+}
+
+.quick-link-icon .icon { width: 20px; height: 20px; }
+
+.quick-link-card--gold {
+  --card-shimmer-color: rgba(232, 199, 103, 0.3);
+  background: linear-gradient(160deg, rgba(212, 166, 43, 0.18), var(--color-surface) 75%);
+  border-color: rgba(232, 199, 103, 0.4);
+}
+.quick-link-card--gold:hover, .quick-link-card--gold:focus-visible { border-color: var(--color-gold-light); }
+.quick-link-card--gold .card-tag { color: var(--color-on-gold); background: var(--color-gold); }
+.quick-link-card--gold .quick-link-icon { background: rgba(212, 166, 43, 0.2); color: var(--color-gold-light); }
+
+.quick-link-card--green {
+  --card-shimmer-color: rgba(111, 207, 151, 0.26);
+  background: linear-gradient(160deg, rgba(30, 122, 70, 0.2), var(--color-surface) 75%);
+  border-color: rgba(111, 207, 151, 0.35);
+}
+.quick-link-card--green:hover, .quick-link-card--green:focus-visible { border-color: #6fcf97; }
+.quick-link-card--green .card-tag { color: #0c2b1a; background: #6fcf97; }
+.quick-link-card--green .quick-link-icon { background: rgba(30, 122, 70, 0.25); color: #6fcf97; }
+
+.quick-link-card--red {
+  --card-shimmer-color: rgba(239, 139, 143, 0.26);
+  background: linear-gradient(160deg, rgba(193, 39, 45, 0.2), var(--color-surface) 75%);
+  border-color: rgba(239, 139, 143, 0.35);
+}
+.quick-link-card--red:hover, .quick-link-card--red:focus-visible { border-color: #ef8b8f; }
+.quick-link-card--red .card-tag { color: #3d0f11; background: #ef8b8f; }
+.quick-link-card--red .quick-link-icon { background: rgba(193, 39, 45, 0.22); color: #ef8b8f; }
+
+.quick-link-card--purple {
+  --card-shimmer-color: rgba(178, 143, 240, 0.28);
+  background: linear-gradient(160deg, rgba(107, 70, 193, 0.24), var(--color-surface) 75%);
+  border-color: rgba(178, 143, 240, 0.4);
+}
+.quick-link-card--purple:hover, .quick-link-card--purple:focus-visible { border-color: #b28ff0; }
+.quick-link-card--purple .card-tag { color: #241849; background: #b28ff0; }
+.quick-link-card--purple .quick-link-icon { background: rgba(107, 70, 193, 0.28); color: #b28ff0; }
