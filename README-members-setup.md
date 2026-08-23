@@ -272,3 +272,11 @@ Run [`db/migrations/017-pending-members-network-visibility.sql`](db/migrations/0
 - Committee and Supporting Committee cards are always gold with a slow pulsing glow — the colour now fills the whole card, not just the left edge — regardless of which course accent colour their section landed on.
 - Professional cards are always green, also filling the whole card. Same "special" treatment as committee, different colour, no glow — so the two read as distinct at a glance.
 - Regular member cards are unchanged: a plain card with the course section's accent colour on the left edge only.
+
+## 23. Perks, Sankofa applications and MoTM nominations — committee-only for now
+
+No migration needed — this is a front-end change only. Discounts & members-first opportunities, Sankofa Circle applications, and Member of the Month nominations aren't actually live yet, so — until you're ready to launch each one — only committee members (Executive or Supporting Committee **member_type**) see the real card and page; everyone else (regular members and professionals) sees a visually locked "Coming soon" card on the hub, and a matching locked message if they go to the page directly (`member-perks.html`, `member-sankofa.html`, `motm.html#nominate`).
+
+This is entirely driven by `member_type` — there's no separate switch to flip. **To launch one of these features for everyone**, that's a code change (removing the committee check in `js/members.js` — search for `checkIsCommittee`), not a Table Editor setting; ask me when you're ready and I'll flip it.
+
+The homepage's "Discounts & Opportunities" card follows the same rule — it only unlocks to link to `member-perks.html` for committee members, staying on the locked default (pointing at `member-login.html`) for everyone else, since there's no point linking anywhere that just shows "Coming soon".

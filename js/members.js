@@ -54,6 +54,37 @@
       .then(function (result) { return result.data || null; });
   }
 
+  function isCommitteeMember(member) {
+    return !!member && (member.member_type === 'executive_committee' || member.member_type === 'supporting_committee');
+  }
+
+  // Perks, Sankofa applications and MoTM nominations are committee-only
+  // for now — "coming soon" for everyone else, including professionals
+  // (who are never committee, so this only ever needs to check
+  // `members`). Shared by the hub, perks, MoTM and Sankofa pages.
+  function checkIsCommittee(session) {
+    return supabaseClient
+      .from('members')
+      .select('member_type')
+      .eq('id', session.user.id)
+      .maybeSingle()
+      .then(function (result) { return isCommitteeMember(result.data); });
+  }
+
+  // Professionals are stored as "Dr Andrew Smith" — a plain
+  // split(' ')[0] greets them "Hi, Dr", dropping their actual name.
+  // This keeps a recognised title attached to the first real name
+  // instead ("Dr Andrew"). Falls back to a plain first name otherwise.
+  var NAME_TITLES = { dr: 1, mr: 1, mrs: 1, ms: 1, miss: 1, prof: 1, professor: 1 };
+  function greetingName(fullName) {
+    var parts = (fullName || '').trim().split(/\s+/);
+    if (!parts.length || !parts[0]) return '';
+    if (parts.length > 1 && NAME_TITLES[parts[0].toLowerCase().replace(/\.$/, '')]) {
+      return parts[0] + ' ' + parts[1];
+    }
+    return parts[0];
+  }
+
   // Shared by the members-hub feed and the MMG portal feeds.
   function timeAgo(dateStr) {
     var date = new Date(dateStr);
@@ -218,9 +249,8 @@
                 // members hub too, just with a different profile there).
                 getProfessionalRow(session).then(function (proRow) {
                   if (!proRow || !proRow.full_name) return;
-                  var proFirstName = proRow.full_name.trim().split(' ')[0];
                   memberNavLinks.forEach(function (el) {
-                    setNavLinkText(el, 'Hi, ' + proFirstName, true);
+                    setNavLinkText(el, 'Hi, ' + greetingName(proRow.full_name), true);
                   });
                 });
               });
@@ -242,36 +272,24 @@
 
   // ---- Homepage: the "Discounts & Opportunities" impact card starts
   // locked (pointing at member-login.html) and only unlocks — new href,
-  // "you have access" badge — once we've actually confirmed a LACMS
-  // membership. Signed out, or an MMG-only guest with no `members` row,
-  // both correctly stay on the locked default. ----
+  // "you have access" badge — for committee members, since the perks
+  // page itself is committee-only for now ("coming soon" for everyone
+  // else). Signed out, non-committee members and professionals all
+  // correctly stay on the locked default. ----
   var perksImpactCard = document.getElementById('perks-impact-card');
   if (perksImpactCard) {
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
       if (!session) return;
-      function unlock() {
+      checkIsCommittee(session).then(function (isCommittee) {
+        if (!isCommittee) return;
         perksImpactCard.href = 'member-perks.html';
         var badge = document.getElementById('perks-impact-badge');
         if (badge) {
           badge.className = 'impact-badge impact-badge--green';
           badge.innerHTML = '<span class="impact-badge-dot" aria-hidden="true"></span> You have access';
         }
-      }
-      supabaseClient
-        .from('members')
-        .select('id')
-        .eq('id', session.user.id)
-        .maybeSingle()
-        .then(function (memberResult) {
-          if (memberResult.data) {
-            unlock();
-            return;
-          }
-          getProfessionalRow(session).then(function (proRow) {
-            if (proRow) unlock();
-          });
-        });
+      });
     });
   }
 
@@ -435,7 +453,7 @@
           if (result.data) {
             if (authGate) authGate.style.display = 'none';
             renderProfile(result.data, session);
-            showHubContent(false);
+            showHubContent(isCommitteeMember(result.data));
             return;
           }
           // No members row yet — they might be a member the committee
@@ -447,7 +465,7 @@
             if (claimedRow) {
               if (authGate) authGate.style.display = 'none';
               renderProfile(claimedRow, session);
-              showHubContent(false);
+              showHubContent(isCommitteeMember(claimedRow));
               return;
             }
             loadProfessionalProfile(session);
@@ -471,23 +489,31 @@
             return;
           }
           renderProfessionalProfile(proRow, session);
-          showHubContent(true);
+          // Professionals are never committee members.
+          showHubContent(false);
         });
       });
     }
 
     // Shared by both profile types — reveals the hub content/links grid,
-    // and toggles which variant of the Sankofa quick-link card shows:
-    // professionals aren't part of Sankofa mentorship yet, so they see a
-    // "coming soon" card instead of the real apply link.
-    function showHubContent(isProfessional) {
+    // and toggles the locked/live variant of each not-yet-launched card
+    // (Perks, Sankofa, MoTM nominations): only committee members see the
+    // real thing right now, everyone else sees a locked "coming soon"
+    // card in its place.
+    function showHubContent(isCommittee) {
       hubContent.style.display = '';
       var linksSection = document.getElementById('member-hub-content-links');
       if (linksSection) linksSection.style.display = '';
-      var applyCard = document.getElementById('sankofa-apply-card');
-      var comingSoonCard = document.getElementById('sankofa-coming-soon-card');
-      if (applyCard) applyCard.style.display = isProfessional ? 'none' : '';
-      if (comingSoonCard) comingSoonCard.style.display = isProfessional ? '' : 'none';
+      togglePair('perks-card', 'perks-locked-card', isCommittee);
+      togglePair('sankofa-apply-card', 'sankofa-coming-soon-card', isCommittee);
+      togglePair('motm-nominate-card', 'motm-locked-card', isCommittee);
+    }
+
+    function togglePair(liveId, lockedId, isCommittee) {
+      var live = document.getElementById(liveId);
+      var locked = document.getElementById(lockedId);
+      if (live) live.style.display = isCommittee ? '' : 'none';
+      if (locked) locked.style.display = isCommittee ? 'none' : '';
     }
 
     var MEMBER_TYPE_LABELS = {
@@ -711,6 +737,7 @@
   var perksContent = document.getElementById('member-perks-content');
   if (perksContent) {
     var perksAuthGate = document.getElementById('auth-gate');
+    var perksLocked = document.getElementById('perks-locked');
 
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
@@ -718,7 +745,14 @@
         window.location.href = 'member-login.html';
         return;
       }
-      loadPerks();
+      checkIsCommittee(session).then(function (isCommittee) {
+        if (!isCommittee) {
+          if (perksAuthGate) perksAuthGate.style.display = 'none';
+          if (perksLocked) perksLocked.style.display = 'flex';
+          return;
+        }
+        loadPerks();
+      });
     });
 
     function loadPerks() {
@@ -912,24 +946,13 @@
       nominateSession = session;
       nominateNotSignedIn.style.display = 'none';
 
-      supabaseClient
-        .from('members')
-        .select('id')
-        .eq('id', session.user.id)
-        .maybeSingle()
-        .then(function (memberResult) {
-          if (memberResult.data) {
-            nominateFormWrap.style.display = 'block';
-            return;
-          }
-          getProfessionalRow(session).then(function (proRow) {
-            if (proRow) {
-              nominateFormWrap.style.display = 'block';
-            } else if (nominateLocked) {
-              nominateLocked.style.display = 'flex';
-            }
-          });
-        });
+      checkIsCommittee(session).then(function (isCommittee) {
+        if (isCommittee) {
+          nominateFormWrap.style.display = 'block';
+        } else if (nominateLocked) {
+          nominateLocked.style.display = 'flex';
+        }
+      });
     });
 
     nominateForm.addEventListener('submit', function (e) {
@@ -1105,19 +1128,27 @@
       }
       sankofaSession = session;
 
-      supabaseClient
-        .from('members')
-        .select('sankofa_eligible')
-        .eq('id', session.user.id)
-        .single()
-        .then(function (result) {
+      checkIsCommittee(session).then(function (isCommittee) {
+        if (!isCommittee) {
           if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
-          if (result.error || !result.data || !result.data.sankofa_eligible) {
-            if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
-            return;
-          }
-          checkExistingApplication(session);
-        });
+          var comingSoonNote = document.getElementById('sankofa-coming-soon-note');
+          if (comingSoonNote) comingSoonNote.style.display = 'flex';
+          return;
+        }
+        supabaseClient
+          .from('members')
+          .select('sankofa_eligible')
+          .eq('id', session.user.id)
+          .single()
+          .then(function (result) {
+            if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
+            if (result.error || !result.data || !result.data.sankofa_eligible) {
+              if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
+              return;
+            }
+            checkExistingApplication(session);
+          });
+      });
     });
 
     function checkExistingApplication(session) {
@@ -2135,7 +2166,10 @@
       var grid = document.getElementById('network-professionals-grid');
       if (!rows.length) return;
       gridWrap.style.display = '';
-      grid.innerHTML = rows.map(renderNetworkProfessionalCard).join('');
+      var sorted = rows.slice().sort(function (a, b) {
+        return (a.full_name || '').localeCompare(b.full_name || '');
+      });
+      grid.innerHTML = sorted.map(renderNetworkProfessionalCard).join('');
     }
 
     function renderNetworkProfessionalCard(p) {

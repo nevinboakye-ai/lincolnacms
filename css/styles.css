@@ -3115,6 +3115,20 @@ body.intro-active { overflow: hidden; }
 .quick-link-card--pink .card-tag { color: #4a0f2c; background: #ef8bc4; }
 .quick-link-card--pink .quick-link-icon { background: rgba(214, 51, 132, 0.24); color: #ef8bc4; }
 
+/* Not-yet-launched hub cards (Perks, Sankofa, MoTM nominations) shown to
+   anyone who isn't committee — visually locked rather than coloured:
+   no shimmer, a dimmed padlock icon, dashed border, muted text. It's a
+   <div> not an <a>, so there's nothing to click through to. */
+.quick-link-card--locked {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.03), var(--color-surface) 75%);
+  border-color: var(--color-border);
+  border-style: dashed;
+  opacity: 0.8;
+}
+.quick-link-card--locked::before { display: none; }
+.quick-link-card--locked .quick-link-icon { background: var(--color-bg-alt); color: var(--color-text-faint); }
+.quick-link-card--locked .card-title { color: var(--color-text-faint); }
+
 /* Discount / partner perk cards — colour-cycled with a shimmer sweep, a
    floating badge and a pulsing coupon-style code chip, so partner deals
    feel like real living businesses instead of a plain static grid. */
