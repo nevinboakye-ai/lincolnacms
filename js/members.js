@@ -47,6 +47,46 @@
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  // Shared by every discount/perk card (LACMS discounts and MMG night
+  // perks alike) — the code stays blurred behind a "Reveal code" button
+  // until clicked, then a "Copy" button appears. Click handling for both
+  // buttons is delegated site-wide, below, so this only needs to emit
+  // the markup.
+  function renderCodeReveal(code) {
+    if (!code) return '';
+    return '<div class="discount-code">' +
+      '<span class="discount-code-label">Code</span>' +
+      '<span class="discount-code-scratch">' +
+        '<span class="discount-code-value">' + escapeHtml(code) + '</span>' +
+        '<button type="button" class="discount-code-reveal-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>Reveal code</button>' +
+      '</span>' +
+      '<button type="button" class="discount-code-copy-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button>' +
+    '</div>';
+  }
+
+  // Site-wide delegated handling for the two buttons above — delegated
+  // because discount/perk cards are always inserted after page load, so
+  // binding directly to them at parse time would miss every one.
+  document.addEventListener('click', function (e) {
+    var revealBtn = e.target.closest('.discount-code-reveal-btn');
+    if (revealBtn) {
+      var revealWrap = revealBtn.closest('.discount-code');
+      if (revealWrap) revealWrap.classList.add('is-revealed');
+      return;
+    }
+    var copyBtn = e.target.closest('.discount-code-copy-btn');
+    if (copyBtn) {
+      var copyWrap = copyBtn.closest('.discount-code');
+      var valueEl = copyWrap && copyWrap.querySelector('.discount-code-value');
+      if (!valueEl || !navigator.clipboard) return;
+      navigator.clipboard.writeText(valueEl.textContent).then(function () {
+        var original = copyBtn.innerHTML;
+        copyBtn.textContent = 'Copied!';
+        setTimeout(function () { copyBtn.innerHTML = original; }, 1500);
+      });
+    }
+  });
+
   // MMG portal: makes sure a self-registered external guest ends up with a
   // row in mmg_guests. Called after both sign-up and sign-in, since with
   // email confirmation on, signUp() doesn't return a live session — the
@@ -507,18 +547,81 @@
       var addressHtml = row.address
         ? '<p class="discount-address"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>' + escapeHtml(row.address) + '</span></p>'
         : '';
-      var codeHtml = row.code
-        ? '<div class="discount-code"><span class="discount-code-label">Code</span><span class="discount-code-value">' + escapeHtml(row.code) + '</span></div>'
-        : '';
+      var codeHtml = renderCodeReveal(row.code);
       return '<div class="' + cardClass + '"><span class="discount-card-badge" aria-hidden="true">' + initial + '</span><h3 class="card-title">' +
         escapeHtml(row.partner_name) + '</h3>' + addressHtml + '<p>' +
         escapeHtml(row.description) + '</p>' + codeHtml + cardLink(row.link, 'Visit partner') + '</div>';
     }
 
     function renderOpportunityCard(row) {
-      return '<div class="card"><h3 class="card-title">' + escapeHtml(row.title) + '</h3><p>' +
+      var tagHtml = row.category ? '<span class="card-tag">' + escapeHtml(row.category) + '</span>' : '';
+      return '<div class="card">' + tagHtml + '<h3 class="card-title"' + (row.category ? ' style="margin-top: var(--space-2);"' : '') + '>' + escapeHtml(row.title) + '</h3><p>' +
         escapeHtml(row.description) + '</p>' + cardLink(row.link, 'Learn more') + '</div>';
     }
+  }
+
+  // ---- Opportunities page: public preview, gated. Signed-out visitors
+  // (and MMG-only guests) see the first couple of rows, with the rest
+  // rendered behind a blurred gradient and a "sign in" card. Any signed-
+  // in LACMS member sees the full list. Same member_opportunities table
+  // as the members hub's "Members-first opportunities" section — one
+  // source of truth, just shown differently depending on who's looking.
+  var OPPORTUNITIES_PREVIEW_COUNT = 2;
+  var oppListEl = document.getElementById('opportunities-list');
+  if (oppListEl) {
+    supabaseClient
+      .from('member_opportunities')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .then(function (result) {
+        var rows = result.data || [];
+        if (!rows.length) return;
+
+        supabaseClient.auth.getSession().then(function (sessionResult) {
+          var session = sessionResult.data && sessionResult.data.session;
+          if (!session) {
+            renderOpportunitiesGated(rows, false);
+            return;
+          }
+          supabaseClient
+            .from('members')
+            .select('id')
+            .eq('id', session.user.id)
+            .maybeSingle()
+            .then(function (memberResult) {
+              renderOpportunitiesGated(rows, !!memberResult.data);
+            });
+        });
+      });
+  }
+
+  function renderOpportunitiesGated(rows, isMember) {
+    var visibleRows = isMember ? rows : rows.slice(0, OPPORTUNITIES_PREVIEW_COUNT);
+    var lockedRows = isMember ? [] : rows.slice(OPPORTUNITIES_PREVIEW_COUNT);
+
+    oppListEl.innerHTML = visibleRows.map(renderOpportunityRow).join('');
+
+    if (lockedRows.length) {
+      var lockWrap = document.getElementById('opportunities-locked-wrap');
+      var lockedRowsEl = document.getElementById('opportunities-locked-rows');
+      if (lockWrap && lockedRowsEl) {
+        lockedRowsEl.innerHTML = lockedRows.map(renderOpportunityRow).join('');
+        lockWrap.style.display = '';
+      }
+    }
+  }
+
+  function renderOpportunityRow(row) {
+    var tagHtml = row.category ? '<span class="card-tag">' + escapeHtml(row.category) + '</span>' : '';
+    var isMailto = row.link && row.link.indexOf('mailto:') === 0;
+    var linkHtml = row.link
+      ? '<a class="btn btn-outline" href="' + encodeURI(row.link) + '"' + (isMailto ? '' : ' target="_blank" rel="noopener"') + '>Learn more</a>'
+      : '';
+    return '<div class="opp-row is-visible">' +
+      '<div>' + tagHtml + '<h2 class="card-title" style="margin-top: var(--space-2);">' + escapeHtml(row.title) + '</h2><p>' + escapeHtml(row.description) + '</p></div>' +
+      '<div class="opp-row-actions">' + linkHtml + '</div>' +
+      '</div>';
   }
 
   // ---- Events page: member registration (alongside the existing RSVP
@@ -1163,9 +1266,7 @@
     var addressHtml = row.address
       ? '<p class="discount-address"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>' + escapeHtml(row.address) + '</span></p>'
       : '';
-    var codeHtml = row.code
-      ? '<div class="discount-code"><span class="discount-code-label">Code</span><span class="discount-code-value">' + escapeHtml(row.code) + '</span></div>'
-      : '';
+    var codeHtml = renderCodeReveal(row.code);
     var linkHtml = row.link
       ? '<a class="card-link" href="' + encodeURI(row.link) + '" target="_blank" rel="noopener">Visit partner<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>'
       : '';

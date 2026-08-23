@@ -1587,6 +1587,81 @@ a.card:hover, a.card:focus-visible {
 }
 .login-choice-icon .icon { width: 22px; height: 22px; }
 
+/* Programmes page — each programme gets the same shimmer/gradient/hover
+   treatment as the homepage impact cards, colour-coded per programme,
+   scaled up to hold a full two-column text+photo layout rather than a
+   compact teaser. */
+.programme-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.programme-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  padding: var(--space-6);
+  opacity: 0;
+  animation: feed-item-in 0.6s var(--ease-standard) forwards;
+  transition: transform var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
+}
+.programme-card-list .programme-card:nth-child(1) { animation-delay: 0.05s; }
+.programme-card-list .programme-card:nth-child(2) { animation-delay: 0.15s; }
+.programme-card-list .programme-card:nth-child(3) { animation-delay: 0.25s; }
+
+.programme-card:hover { transform: translateY(-4px); }
+
+.programme-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, var(--card-shimmer-color) 50%, transparent 65%);
+  background-size: 220% 100%;
+  background-position: 160% 0;
+  animation: impact-shimmer 9s ease-in-out infinite;
+}
+
+.programme-card > * { position: relative; z-index: 1; }
+
+.programme-card-icon {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-bottom: var(--space-3);
+}
+.programme-card-icon .icon { width: 22px; height: 22px; }
+
+.programme-card--gold {
+  --card-shimmer-color: rgba(232, 199, 103, 0.28);
+  background: linear-gradient(160deg, rgba(212, 166, 43, 0.14), var(--color-surface) 70%);
+  border-color: rgba(232, 199, 103, 0.35);
+}
+.programme-card--gold:hover { border-color: var(--color-gold-light); }
+.programme-card--gold .programme-card-icon { background: rgba(212, 166, 43, 0.2); color: var(--color-gold-light); }
+
+.programme-card--green {
+  --card-shimmer-color: rgba(111, 207, 151, 0.24);
+  background: linear-gradient(160deg, rgba(30, 122, 70, 0.16), var(--color-surface) 70%);
+  border-color: rgba(111, 207, 151, 0.32);
+}
+.programme-card--green:hover { border-color: #6fcf97; }
+.programme-card--green .programme-card-icon { background: rgba(30, 122, 70, 0.22); color: #6fcf97; }
+
+.programme-card--purple {
+  --card-shimmer-color: rgba(178, 143, 240, 0.26);
+  background: linear-gradient(160deg, rgba(107, 70, 193, 0.18), var(--color-surface) 70%);
+  border-color: rgba(178, 143, 240, 0.34);
+}
+.programme-card--purple:hover { border-color: #b28ff0; }
+.programme-card--purple .programme-card-icon { background: rgba(107, 70, 193, 0.22); color: #b28ff0; }
+
 /* Timeline (Events) */
 .event-list { display: flex; flex-direction: column; gap: var(--space-4); }
 .event-row {
@@ -1900,6 +1975,58 @@ a.card:hover, a.card:focus-visible {
 }
 
 .opp-row-details .reveal-panel-content p { margin: 0; }
+
+/* Opportunities page — locked preview for signed-out visitors: the
+   remaining rows render behind a blur + gradient fade with a floating
+   "sign in" card, rather than just being hidden outright. */
+.opportunities-locked-wrap {
+  position: relative;
+  margin-top: var(--space-4);
+  min-height: 240px;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
+.opportunities-locked-wrap #opportunities-locked-rows {
+  filter: blur(3px);
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+
+.opportunities-locked-fade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 0%, var(--color-bg) 88%);
+}
+
+.opportunities-locked-cta {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  transform: translateX(-50%);
+  width: min(92%, 420px);
+  text-align: center;
+  background: var(--color-surface-raised);
+  border: 1px solid rgba(232, 199, 103, 0.35);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: 0 24px 55px -20px rgba(0, 0, 0, 0.65);
+}
+
+.opportunities-locked-icon {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(212, 166, 43, 0.16);
+  color: var(--color-gold-light);
+  margin-bottom: var(--space-3);
+}
+.opportunities-locked-icon .icon { width: 22px; height: 22px; }
 
 @media (max-width: 620px) {
   .opp-row { grid-template-columns: 1fr; }
@@ -3091,12 +3218,71 @@ body.intro-active { overflow: hidden; }
   font-family: 'SFMono-Regular', Menlo, monospace;
   color: var(--color-gold-light);
   font-weight: 600;
+  filter: blur(5px);
+  user-select: none;
+  transition: filter var(--dur-base) var(--ease-standard);
 }
+
+.discount-code.is-revealed .discount-code-value {
+  filter: none;
+  user-select: text;
+  animation: discount-code-reveal-flash 0.7s var(--ease-standard);
+}
+
+@keyframes discount-code-reveal-flash {
+  0% { text-shadow: 0 0 14px rgba(232, 199, 103, 0.9); }
+  100% { text-shadow: 0 0 0 rgba(232, 199, 103, 0); }
+}
+
+.discount-code-scratch { position: relative; display: inline-flex; align-items: center; }
+
+.discount-code-reveal-btn {
+  position: absolute;
+  inset: -4px -9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: rgba(212, 166, 43, 0.18);
+  color: var(--color-gold-light);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+}
+.discount-code-reveal-btn:hover { background: rgba(212, 166, 43, 0.28); transform: scale(1.03); }
+.discount-code-reveal-btn .icon { width: 13px; height: 13px; flex-shrink: 0; }
+
+.discount-code.is-revealed .discount-code-reveal-btn { display: none; }
+
+.discount-code-copy-btn {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-faint);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
+}
+.discount-code-copy-btn:hover { color: var(--color-gold-light); border-color: var(--color-gold-light); }
+.discount-code-copy-btn .icon { width: 12px; height: 12px; }
+.discount-code.is-revealed .discount-code-copy-btn { display: inline-flex; }
 
 @keyframes discount-code-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(232, 199, 103, 0.22); }
   50% { box-shadow: 0 0 0 5px rgba(232, 199, 103, 0); }
 }
+.discount-code.is-revealed { animation: none; }
 
 .discount-card .card-link .icon {
   transition: transform var(--dur-fast) var(--ease-standard);

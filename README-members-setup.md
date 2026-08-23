@@ -179,3 +179,20 @@ Run [`db/migrations/011-motm-winners-table.sql`](db/migrations/011-motm-winners-
 If there's no current-winner row yet, both `motm.html` and the homepage teaser show a graceful "To be announced / coming soon" state instead of anything looking unfinished — no need to add a placeholder row just to avoid that.
 
 Nominating is a LACMS member exclusive — MMG-only guest accounts now see a locked message instead of the form, enforced at the database level (not just hidden in the UI), so it can't be bypassed via a direct API call either.
+
+## 15. Opportunities — public preview, gated, one source of truth
+
+Run [`db/migrations/012-opportunities-public-and-seed.sql`](db/migrations/012-opportunities-public-and-seed.sql). This adds a **category** column to `member_opportunities`, opens it up to public (anon) read, and seeds it with the same 5 example opportunities that used to be hardcoded on `opportunities.html`.
+
+`opportunities.html` and member-perks.html's "Members-first opportunities" section now both read from this **same table** — there's only one place to manage opportunities going forward: Table Editor → `member_opportunities` (title, description, category, link, sort_order, is_active).
+
+On the public `opportunities.html` page specifically:
+- **Signed-out visitors** see the first 2 (`OPPORTUNITIES_PREVIEW_COUNT` in `js/members.js`), with the rest rendered behind a blurred gradient and a "Sign in to see more" card.
+- **Signed-in LACMS members** see the full list, no gate.
+- **MMG-only guests** are treated the same as signed-out visitors here — this is a LACMS member benefit specifically, not an MMG one.
+
+The RLS policy on `member_opportunities` allows public read now (previously `authenticated` only) — this is a deliberate choice: these are recruitment postings, not sensitive data, so the "members only" framing is about encouraging sign-up, not real data protection. The gating itself happens in `js/members.js`, not the database.
+
+## 16. Discount/perk codes — reveal instead of shown outright
+
+Discount codes (LACMS `discounts` and MMG `mmg_perks` alike) are now hidden behind a "Reveal code" button rather than shown in plain text — blurred until clicked, then a "Copy" button appears next to it. No setup needed; this is purely front-end (`renderCodeReveal()` in `js/members.js`, shared by both discount card renderers) and works automatically for any row that has a **code** filled in.
