@@ -335,3 +335,7 @@ Run [`db/migrations/025-president-dashboard.sql`](db/migrations/025-president-da
 **Layout**: a stats row up top, a "Needs a nudge" list combining everyone across every account type who hasn't finished setting up (including still-pending invites that haven't been sent from `pending_members` yet), then LACMS Members grouped by course and year, Professionals, and MMG/partner-university guests grouped by access level (Committee / Attendee / Pending review).
 
 No Table Editor setup needed beyond running the migration — everything else is automatic.
+
+## 31. Fix: dashboard failed to load with a "structure of query" error
+
+Run [`db/migrations/026-president-dashboard-email-type-fix.sql`](db/migrations/026-president-dashboard-email-type-fix.sql) (needs migration 025 already applied). `auth.users.email` is actually `character varying(255)` in Postgres, not `text` — the three `president_get_*` functions that join `auth.users` declared their return type as plain `text`, which Postgres rejects as a mismatch. This just adds an explicit `::text` cast; nothing else changes.
