@@ -1342,22 +1342,26 @@
       '</article>';
   }
 
-  // ---- MMG portal: attendee media submission (photos/videos for the
-  // after-gala gallery/highlight video), uploaded to a private Supabase
-  // Storage bucket under the uploader's own folder ----
-  var MMG_MEDIA_MAX_BYTES = 200 * 1024 * 1024;
+  // ---- Shared: media-submission forms that upload straight to a
+  // private Supabase Storage bucket, under the uploader's own folder.
+  // Used by the MMG portal (after-gala photos/videos) and the gallery
+  // page (member submissions for the committee to review) alike — same
+  // flow, different bucket and status copy.
+  var MEDIA_UPLOAD_MAX_BYTES = 200 * 1024 * 1024;
 
-  var mmgMediaForm = document.getElementById('mmg-media-form');
-  if (mmgMediaForm) {
-    mmgMediaForm.addEventListener('submit', function (e) {
+  function bindMediaUploadForm(formId, fileInputId, statusId, bucketName) {
+    var form = document.getElementById(formId);
+    if (!form) return;
+
+    form.addEventListener('submit', function (e) {
       e.preventDefault();
-      var statusEl = document.getElementById('mmg-media-status');
-      var fileInput = document.getElementById('mmg-media-file');
+      var statusEl = document.getElementById(statusId);
+      var fileInput = document.getElementById(fileInputId);
       var files = fileInput.files;
       hideMessage(statusEl);
       if (!files.length) return;
 
-      var oversized = Array.prototype.some.call(files, function (f) { return f.size > MMG_MEDIA_MAX_BYTES; });
+      var oversized = Array.prototype.some.call(files, function (f) { return f.size > MEDIA_UPLOAD_MAX_BYTES; });
       if (oversized) {
         statusEl.style.color = '#ef8b8f';
         showMessage(statusEl, 'One or more files are over 200MB — try a smaller file or a compressed video.');
@@ -1368,7 +1372,7 @@
         var session = result.data && result.data.session;
         if (!session) return;
 
-        var btn = mmgMediaForm.querySelector('button[type="submit"]');
+        var btn = form.querySelector('button[type="submit"]');
         btn.disabled = true;
         statusEl.style.color = 'var(--color-text-muted)';
         showMessage(statusEl, 'Uploading ' + files.length + ' file' + (files.length > 1 ? 's' : '') + '…');
@@ -1376,7 +1380,7 @@
         var uploads = Array.prototype.map.call(files, function (file) {
           var safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
           var path = session.user.id + '/' + Date.now() + '-' + safeName;
-          return supabaseClient.storage.from('mmg-media').upload(path, file);
+          return supabaseClient.storage.from(bucketName).upload(path, file);
         });
 
         Promise.all(uploads).then(function (results) {
@@ -1389,9 +1393,33 @@
           }
           statusEl.style.color = 'var(--color-gold-light)';
           showMessage(statusEl, 'Thank you — your media has been uploaded.');
-          mmgMediaForm.reset();
+          form.reset();
         });
       });
+    });
+  }
+
+  bindMediaUploadForm('mmg-media-form', 'mmg-media-file', 'mmg-media-status', 'mmg-media');
+  bindMediaUploadForm('gallery-media-form', 'gallery-media-file', 'gallery-media-status', 'gallery-submissions');
+
+  // ---- Gallery page: submission form is LACMS-member gated — swap the
+  // "log in" note for the real form once membership is confirmed ----
+  var gallerySignedOut = document.getElementById('gallery-submit-signed-out');
+  var galleryFormWrap = document.getElementById('gallery-submit-form-wrap');
+  if (gallerySignedOut && galleryFormWrap) {
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) return;
+      supabaseClient
+        .from('members')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle()
+        .then(function (memberResult) {
+          if (!memberResult.data) return;
+          gallerySignedOut.style.display = 'none';
+          galleryFormWrap.style.display = 'block';
+        });
     });
   }
 
@@ -1521,6 +1549,215 @@
           showMessage(statusEl, 'Password updated.');
         });
       });
+    }
+  }
+
+  // ---- LACMS News page: public feed, member-only likes and comments.
+  // Guests see posts and live like/comment counts (kept in sync by DB
+  // triggers) but can't interact; a signed-in LACMS member gets a
+  // working like button and a comment thread. MMG-only guests are
+  // treated the same as signed-out visitors here — this is a LACMS
+  // member feature specifically. ----
+  var newsFeedListEl = document.getElementById('news-feed-list');
+  if (newsFeedListEl) {
+    var newsSession = null;
+    var newsIsMember = false;
+    var newsAuthorName = '';
+
+    supabaseClient
+      .from('news_posts')
+      .select('*')
+      .eq('is_active', true)
+      .order('pinned', { ascending: false })
+      .order('published_at', { ascending: false })
+      .then(function (result) {
+        var rows = result.data || [];
+        if (!rows.length) {
+          var emptyEl = document.getElementById('news-feed-empty');
+          if (emptyEl) emptyEl.style.display = 'block';
+          return;
+        }
+
+        supabaseClient.auth.getSession().then(function (sessionResult) {
+          newsSession = sessionResult.data && sessionResult.data.session;
+          if (!newsSession) {
+            renderNewsFeed(rows, []);
+            return;
+          }
+          supabaseClient
+            .from('members')
+            .select('full_name')
+            .eq('id', newsSession.user.id)
+            .maybeSingle()
+            .then(function (memberResult) {
+              if (!memberResult.data) {
+                renderNewsFeed(rows, []);
+                return;
+              }
+              newsIsMember = true;
+              newsAuthorName = memberResult.data.full_name;
+
+              var postIds = rows.map(function (r) { return r.id; });
+              supabaseClient
+                .from('news_likes')
+                .select('post_id')
+                .eq('member_id', newsSession.user.id)
+                .in('post_id', postIds)
+                .then(function (likesResult) {
+                  var likedIds = (likesResult.data || []).map(function (l) { return l.post_id; });
+                  renderNewsFeed(rows, likedIds);
+                });
+            });
+        });
+      });
+
+    function renderNewsFeed(rows, likedIds) {
+      newsFeedListEl.innerHTML = rows.map(function (row) {
+        return renderNewsPost(row, likedIds.indexOf(row.id) !== -1);
+      }).join('');
+    }
+
+    function renderNewsPost(row, isLiked) {
+      var pinHtml = row.pinned
+        ? '<span class="feed-item-pin" title="Pinned"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 3.9a1 1 0 0 1-.75 1.6H13v6a1 1 0 1 1-2 0v-6H6.35a1 1 0 0 1-.75-1.6L9 9.5V3a1 1 0 0 1 1-1h2Z"/></svg></span>'
+        : '';
+      var mediaHtml = row.image_url
+        ? '<div class="news-post-media"><img src="' + encodeURI(row.image_url) + '" alt="" loading="lazy"></div>'
+        : '';
+      var commentsInner = newsIsMember
+        ? '<div class="news-comments-list" id="news-comments-list-' + row.id + '"></div>' +
+          '<form class="news-comment-form" data-post-id="' + row.id + '">' +
+            '<input type="text" class="news-comment-input" maxlength="500" placeholder="Write a comment…" required>' +
+            '<button type="submit" class="btn btn-outline">Post</button>' +
+          '</form>'
+        : '<p class="news-locked-note"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span><a href="login.html">Log in</a> as a LACMS member to see and join the conversation.</span></p>';
+
+      return '<article class="news-post' + (row.pinned ? ' news-post--pinned' : '') + '" data-post-id="' + row.id + '">' +
+        mediaHtml +
+        '<div class="news-post-body">' +
+          '<div class="feed-item-meta">' + pinHtml + '<span class="feed-item-tag">News</span><span class="feed-item-date">' + escapeHtml(timeAgo(row.published_at)) + '</span></div>' +
+          '<h2 class="news-post-title">' + escapeHtml(row.title) + '</h2>' +
+          '<p class="news-post-text">' + escapeHtml(row.body) + '</p>' +
+          '<div class="news-post-actions">' +
+            '<button type="button" class="news-like-btn' + (isLiked ? ' is-liked' : '') + '" data-post-id="' + row.id + '" data-liked="' + (isLiked ? '1' : '0') + '">' +
+              '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 8.6a4.6 4.6 0 0 0-7.9-3.2L12 6.3l-.9-.9a4.6 4.6 0 1 0-6.5 6.5L12 19.5l7.4-7.6a4.6 4.6 0 0 0 1.4-3.3z"/></svg>' +
+              '<span class="news-like-count">' + row.like_count + '</span>' +
+            '</button>' +
+            '<button type="button" class="news-comment-toggle-btn" data-post-id="' + row.id + '">' +
+              '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+              '<span class="news-comment-count">' + row.comment_count + '</span> Comments' +
+            '</button>' +
+          '</div>' +
+          '<div class="news-comments-panel" id="news-comments-' + row.id + '" style="display:none;">' + commentsInner + '</div>' +
+        '</div>' +
+      '</article>';
+    }
+
+    function renderNewsComment(row) {
+      return '<div class="news-comment">' +
+        '<div class="news-comment-meta"><span class="news-comment-author">' + escapeHtml(row.author_name) + '</span><span class="news-comment-date">' + escapeHtml(timeAgo(row.created_at)) + '</span></div>' +
+        '<p class="news-comment-body">' + escapeHtml(row.body) + '</p>' +
+      '</div>';
+    }
+
+    var newsLoadedComments = {};
+
+    newsFeedListEl.addEventListener('click', function (e) {
+      var likeBtn = e.target.closest('.news-like-btn');
+      if (likeBtn) {
+        if (!newsIsMember) {
+          window.location.href = 'login.html';
+          return;
+        }
+        var postId = likeBtn.getAttribute('data-post-id');
+        var countEl = likeBtn.querySelector('.news-like-count');
+        var wasLiked = likeBtn.getAttribute('data-liked') === '1';
+        var newCount = parseInt(countEl.textContent, 10) + (wasLiked ? -1 : 1);
+        likeBtn.setAttribute('data-liked', wasLiked ? '0' : '1');
+        likeBtn.classList.toggle('is-liked', !wasLiked);
+        countEl.textContent = newCount;
+        if (!wasLiked) {
+          likeBtn.classList.add('is-liked-anim');
+          setTimeout(function () { likeBtn.classList.remove('is-liked-anim'); }, 400);
+        }
+
+        var request = wasLiked
+          ? supabaseClient.from('news_likes').delete().eq('post_id', postId).eq('member_id', newsSession.user.id)
+          : supabaseClient.from('news_likes').insert({ post_id: postId, member_id: newsSession.user.id });
+
+        request.then(function (result) {
+          if (result.error) {
+            // Roll back the optimistic update on failure
+            likeBtn.setAttribute('data-liked', wasLiked ? '1' : '0');
+            likeBtn.classList.toggle('is-liked', wasLiked);
+            countEl.textContent = parseInt(countEl.textContent, 10) + (wasLiked ? 1 : -1);
+          }
+        });
+        return;
+      }
+
+      var toggleBtn = e.target.closest('.news-comment-toggle-btn');
+      if (toggleBtn) {
+        var pid = toggleBtn.getAttribute('data-post-id');
+        var panel = document.getElementById('news-comments-' + pid);
+        if (!panel) return;
+        var isOpen = panel.style.display !== 'none';
+        panel.style.display = isOpen ? 'none' : 'block';
+        if (!isOpen && newsIsMember && !newsLoadedComments[pid]) {
+          newsLoadedComments[pid] = true;
+          loadNewsComments(pid);
+        }
+      }
+    });
+
+    newsFeedListEl.addEventListener('submit', function (e) {
+      var form = e.target.closest('.news-comment-form');
+      if (!form) return;
+      e.preventDefault();
+      var postId = form.getAttribute('data-post-id');
+      var input = form.querySelector('.news-comment-input');
+      var body = input.value.trim();
+      if (!body) return;
+
+      var btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      supabaseClient
+        .from('news_comments')
+        .insert({ post_id: postId, member_id: newsSession.user.id, author_name: newsAuthorName, body: body })
+        .select()
+        .single()
+        .then(function (result) {
+          btn.disabled = false;
+          if (result.error) return;
+          input.value = '';
+          var listEl = document.getElementById('news-comments-list-' + postId);
+          if (listEl) {
+            var emptyNote = listEl.querySelector('.news-comments-empty');
+            if (emptyNote) emptyNote.remove();
+            listEl.insertAdjacentHTML('beforeend', renderNewsComment(result.data));
+          }
+          var post = newsFeedListEl.querySelector('.news-post[data-post-id="' + postId + '"]');
+          var countEl = post && post.querySelector('.news-comment-count');
+          if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) + 1;
+        });
+    });
+
+    function loadNewsComments(postId) {
+      var listEl = document.getElementById('news-comments-list-' + postId);
+      if (!listEl) return;
+      supabaseClient
+        .from('news_comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true })
+        .then(function (result) {
+          var rows = result.data || [];
+          if (!rows.length) {
+            listEl.innerHTML = '<p class="news-comments-empty">No comments yet — be the first.</p>';
+            return;
+          }
+          listEl.innerHTML = rows.map(renderNewsComment).join('');
+        });
     }
   }
 })();

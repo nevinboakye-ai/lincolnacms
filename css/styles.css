@@ -466,7 +466,7 @@ button { font-family: inherit; }
 .nav-toggle[aria-expanded="true"] .icon-menu { display: none; }
 .nav-toggle[aria-expanded="true"] .icon-close { display: block; }
 
-@media (max-width: 1280px) {
+@media (max-width: 1360px) {
   .nav-links { display: none; }
   .header-inner .nav-cta-desktop { display: none; }
   .nav-toggle { display: inline-flex; }
@@ -631,7 +631,7 @@ button { font-family: inherit; }
   animation: member-nav-dot-pulse 2.4s ease-in-out infinite;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1360px) {
   .member-nav-avatar.is-signed-in { display: flex; }
 }
 
@@ -3403,6 +3403,152 @@ body.intro-active { overflow: hidden; }
   white-space: pre-line;
   line-height: 1.6;
 }
+
+/* LACMS News page — feed of posts with member-only like/comment. Each
+   post reuses the feed-item-meta/tag/date/pin language for visual
+   consistency with the other feeds on the site. */
+.news-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.news-post {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  opacity: 0;
+  animation: feed-item-in 0.55s var(--ease-standard) forwards;
+}
+.news-feed-list .news-post:nth-child(1) { animation-delay: 0.03s; }
+.news-feed-list .news-post:nth-child(2) { animation-delay: 0.1s; }
+.news-feed-list .news-post:nth-child(3) { animation-delay: 0.17s; }
+.news-feed-list .news-post:nth-child(n+4) { animation-delay: 0.24s; }
+
+.news-post--pinned {
+  border-color: rgba(232, 199, 103, 0.4);
+  background: linear-gradient(160deg, rgba(232, 199, 103, 0.08), var(--color-surface) 65%);
+}
+
+.news-post-media { aspect-ratio: 16 / 9; overflow: hidden; }
+.news-post-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.news-post-body { padding: var(--space-5); }
+
+.news-post-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  margin: 0 0 var(--space-2);
+}
+
+.news-post-text {
+  margin: 0;
+  color: var(--color-text-muted);
+  white-space: pre-line;
+  line-height: 1.65;
+}
+
+.news-post-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.news-like-btn,
+.news-comment-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--color-text-faint);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 2px;
+  transition: color var(--dur-base) var(--ease-standard);
+}
+.news-like-btn:hover,
+.news-comment-toggle-btn:hover { color: var(--color-text); }
+
+.news-like-btn .icon { width: 19px; height: 19px; transition: transform var(--dur-fast) var(--ease-standard); }
+
+.news-like-btn.is-liked { color: #ef8b8f; }
+.news-like-btn.is-liked .icon { fill: currentColor; }
+.news-like-btn.is-liked-anim .icon { animation: news-like-pop 0.4s var(--ease-standard); }
+
+@keyframes news-like-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.news-comment-toggle-btn .icon { width: 18px; height: 18px; }
+
+.news-comments-panel {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.news-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.news-comment {
+  background: var(--color-bg-alt);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+.news-comment-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.news-comment-author { font-weight: 700; font-size: 0.85rem; color: var(--color-gold-light); }
+.news-comment-date { font-size: 0.76rem; color: var(--color-text-faint); }
+.news-comment-body { margin: 0; font-size: 0.9rem; color: var(--color-text-muted); white-space: pre-line; }
+
+.news-comments-empty { font-size: 0.85rem; color: var(--color-text-faint); margin: 0 0 var(--space-3); }
+
+.news-comment-form {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.news-comment-input {
+  flex: 1;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+.news-comment-input:focus { outline: none; border-color: var(--color-gold); }
+
+.news-locked-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--color-text-faint);
+}
+.news-locked-note a { color: var(--color-gold-light); font-weight: 600; }
+.news-locked-note .icon { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* MMG portal — flagship-event gold treatment on the hero, a two-tab
    login/signup switcher, and a write-in voting grid. */

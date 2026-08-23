@@ -196,3 +196,25 @@ The RLS policy on `member_opportunities` allows public read now (previously `aut
 ## 16. Discount/perk codes — reveal instead of shown outright
 
 Discount codes (LACMS `discounts` and MMG `mmg_perks` alike) are now hidden behind a "Reveal code" button rather than shown in plain text — blurred until clicked, then a "Copy" button appears next to it. No setup needed; this is purely front-end (`renderCodeReveal()` in `js/members.js`, shared by both discount card renderers) and works automatically for any row that has a **code** filled in.
+
+## 17. Gallery submissions
+
+Run [`db/migrations/013-gallery-submissions-and-news.sql`](db/migrations/013-gallery-submissions-and-news.sql) (also covers News below). LACMS members can now submit photos/videos on `gallery.html` for the committee to review — same pattern as the MMG media uploads, into a private `gallery-submissions` bucket, one folder per member.
+
+To review submissions: Supabase Dashboard → Storage → `gallery-submissions`, browse by folder. Approved photos/videos don't go live automatically — copy them into `Media/ACMS Gallery/` and add the filename to the `FILES` array near the top of `gallery.html`'s inline script, same as any other gallery photo.
+
+## 18. LACMS News — a real feed, editable from Table Editor
+
+Same migration as above creates `news_posts`, `news_likes`, and `news_comments`, and seeds three placeholder posts so [news.html](news.html) isn't empty on first load — edit or delete them from Table Editor whenever you're ready.
+
+**Posting news** — add rows in Table Editor → `news_posts`:
+- **title** / **body** — the post itself. `body` supports line breaks.
+- **image_url** — optional, a public image URL shown at the top of the post.
+- **pinned** — keeps a post at the top with a highlighted gold background, above everything else regardless of date.
+- **published_at** — defaults to now(); change it to backdate or schedule how a post's date reads.
+- **is_active** — set `false` to pull a post without deleting it.
+- **like_count** / **comment_count** — don't edit these by hand, they're kept in sync automatically by triggers whenever someone likes or comments.
+
+**Who sees what**: the news feed itself (posts, and their like/comment counts) is fully public — anyone can browse `news.html`, signed in or not. Liking and commenting are LACMS-member exclusives (not available to MMG-only guests): a guest sees a "Log in as a LACMS member" prompt in place of the comment box, and clicking Like sends them to the login chooser. This is enforced by RLS, not just hidden in the UI — individual like/comment rows are never readable by anyone except the member who made them (and the committee, via the dashboard), only the aggregate counts on `news_posts` are public.
+
+To moderate a comment: Table Editor → `news_comments`, delete the row — `comment_count` on the parent post updates automatically via the same trigger.
