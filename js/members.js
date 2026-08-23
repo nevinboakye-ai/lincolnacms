@@ -2056,7 +2056,12 @@
     var networkAllMembers = [];
     var networkAllProfessionals = [];
 
-    var NETWORK_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing & Midwifery', 'Paramedic Science'];
+    // Matched as a substring, not an exact string — course is always
+    // saved with the full degree title attached (e.g. "Medicine BMBS
+    // BMedSci", "Nursing and Midwifery BSc (Hons)"), so an exact-match
+    // lookup against these plain names would never hit and everything
+    // would fall through to alphabetical order instead.
+    var NETWORK_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing and Midwifery', 'Paramedic Science'];
     var NETWORK_ACCENTS = ['gold', 'green', 'red', 'purple'];
     var NETWORK_ACCENT_COLORS = {
       gold: { accent: 'var(--color-gold)', light: 'var(--color-gold-light)', bg: 'rgba(212, 166, 43, 0.18)' },
@@ -2109,8 +2114,11 @@
     }
 
     function courseSortKey(course) {
-      var idx = NETWORK_COURSE_ORDER.indexOf(course);
-      return idx === -1 ? 999 : idx;
+      var lower = (course || '').toLowerCase();
+      for (var i = 0; i < NETWORK_COURSE_ORDER.length; i++) {
+        if (lower.indexOf(NETWORK_COURSE_ORDER[i].toLowerCase()) !== -1) return i;
+      }
+      return 999;
     }
 
     function yearSortKey(year) {
