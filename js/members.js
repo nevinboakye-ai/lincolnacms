@@ -337,10 +337,14 @@
 
   // ---- Login page: sign-in form + first-time "set your password" form ----
   // Members arrive at the set-password form via the invite/reset email link
-  // Supabase sends, which redirects here with #access_token=...&type=invite
-  // (or type=recovery) in the URL — Supabase's client reads that hash on
-  // load and establishes a session, so all we do is detect the hash and
-  // switch which form is visible.
+  // Supabase sends. Older/implicit-flow projects redirect here with
+  // #access_token=...&type=invite (or type=recovery) in the URL hash;
+  // newer projects (PKCE flow — this one included, per its publishable-key
+  // format) redirect with ?code=... in the query string instead, often with
+  // no `type` param at all. Checking only the hash meant every invite link
+  // silently fell through to the plain login form instead — this site has
+  // no other flow (no OAuth, no magic links) that ever produces a `code`
+  // param, so treating its mere presence as "set a password" is safe here.
   var loginForm = document.getElementById('login-form');
   var setPasswordForm = document.getElementById('set-password-form');
 
@@ -349,7 +353,12 @@
     var setPasswordStatus = document.getElementById('set-password-status');
 
     var hash = window.location.hash || '';
-    var isRecoveryFlow = hash.indexOf('type=invite') !== -1 || hash.indexOf('type=recovery') !== -1;
+    var search = window.location.search || '';
+    var isRecoveryFlow = hash.indexOf('type=invite') !== -1
+      || hash.indexOf('type=recovery') !== -1
+      || search.indexOf('type=invite') !== -1
+      || search.indexOf('type=recovery') !== -1
+      || /[?&]code=/.test(search);
 
     if (isRecoveryFlow && setPasswordForm) {
       if (loginForm) loginForm.classList.remove('is-active');
