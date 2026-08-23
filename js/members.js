@@ -2729,8 +2729,7 @@
         renderOnlineNow(members, professionals, mmgGuests, courseAccent);
         renderStats(members, pendingMembers, professionals, mmgGuests);
         renderAttentionList(members, pendingMembers, professionals, mmgGuests);
-        renderMembersSection(members, courseAccent);
-        renderProfessionalsSection(professionals);
+        renderPeopleSection(members, professionals, courseAccent);
         renderMmgSection(mmgGuests);
 
         dashLastLoaded = new Date();
@@ -2946,44 +2945,39 @@
       return map;
     }
 
-    // Flat, sorted by who's been active most recently — not grouped by
-    // course/year any more, so anyone active rises straight to the top
-    // regardless of what they study. Each avatar keeps a course colour
-    // (via courseAccent, built once in loadPresidentDashboard so it's
-    // identical to whatever renderOnlineNow is using) purely as a
-    // visual identifier, independent of how the rows are ordered.
-    function renderMembersSection(members, courseAccent) {
-      var wrap = document.getElementById('members-sections');
-      document.getElementById('members-count-line').textContent = members.length + (members.length === 1 ? ' member' : ' members') + ' total, most recently active first';
-      if (!members.length) {
-        wrap.innerHTML = '<p style="color: var(--color-text-faint);">No members yet.</p>';
+    // Members and professionals share one flat roster, sorted by who's
+    // been active most recently — not grouped by course/year, and not
+    // segregated by account type either, so anyone active rises straight
+    // to the top regardless of what they study or whether they're a
+    // student or a supporting professional. A member's avatar still
+    // keeps its course colour (via courseAccent, built once in
+    // loadPresidentDashboard so it's identical to whatever
+    // renderOnlineNow is using); a professional's stays the fixed
+    // Network green from its roster-avatar--professional class.
+    function renderPeopleSection(members, professionals, courseAccent) {
+      var wrap = document.getElementById('people-sections');
+      var total = members.length + professionals.length;
+      document.getElementById('people-count-line').textContent = total + (total === 1 ? ' person' : ' people') + ' total, most recently active first';
+      if (!total) {
+        wrap.innerHTML = '<p style="color: var(--color-text-faint);">No members or professionals yet.</p>';
         return;
       }
 
-      var sorted = members.slice().sort(dashByActivity);
-      wrap.innerHTML = '<div class="roster-table" id="members-table">' + sorted.map(function (m) {
-        var courseYear = [m.course, m.year_of_study].filter(Boolean).join(' · ');
-        var detail = [courseYear, m.committee_role, (m.mmg_attendee || m.mmg_committee) ? 'MMG' : null].filter(Boolean).join(' · ');
-        var course = (m.course || '').trim() || 'Course not set';
-        return renderRosterRow(m.full_name, detail, m, 'member', courseAccent[course]);
+      var people = members.map(function (m) { return { row: m, type: 'member' }; })
+        .concat(professionals.map(function (p) { return { row: p, type: 'professional' }; }))
+        .sort(function (a, b) { return dashByActivity(a.row, b.row); });
+
+      wrap.innerHTML = '<div class="roster-table" id="people-table">' + people.map(function (person) {
+        var m = person.row;
+        if (person.type === 'member') {
+          var courseYear = [m.course, m.year_of_study].filter(Boolean).join(' · ');
+          var detail = [courseYear, m.committee_role, (m.mmg_attendee || m.mmg_committee) ? 'MMG' : null].filter(Boolean).join(' · ');
+          var course = (m.course || '').trim() || 'Course not set';
+          return renderRosterRow(m.full_name, detail, m, 'member', courseAccent[course]);
+        }
+        var proDetail = [m.title, m.organisation].filter(Boolean).join(' · ');
+        return renderRosterRow(m.full_name, proDetail, m, 'professional');
       }).join('') + '</div>';
-    }
-
-    function renderProfessionalsSection(professionals) {
-      var table = document.getElementById('professionals-table');
-      var emptyEl = document.getElementById('professionals-empty');
-      document.getElementById('professionals-count-line').textContent = professionals.length + (professionals.length === 1 ? ' professional' : ' professionals') + ' total';
-      if (!professionals.length) {
-        emptyEl.style.display = 'block';
-        table.innerHTML = '';
-        return;
-      }
-      emptyEl.style.display = 'none';
-      var sorted = professionals.slice().sort(dashByActivity);
-      table.innerHTML = sorted.map(function (p) {
-        var detail = [p.title, p.organisation].filter(Boolean).join(' · ');
-        return renderRosterRow(p.full_name, detail, p, 'professional');
-      }).join('');
     }
 
     var MMG_ACCESS_LABELS = { committee: 'Committee', attendee: 'Attendee', pending: 'Pending review' };
@@ -3074,7 +3068,7 @@
           var hasVisible = !!section.querySelector('.roster-row:not(.is-hidden-by-search)');
           section.classList.toggle('is-hidden-by-search', !hasVisible);
         });
-        ['attention-table', 'members-table', 'professionals-table'].forEach(function (id) {
+        ['attention-table', 'people-table'].forEach(function (id) {
           var table = document.getElementById(id);
           if (!table) return;
           var hasVisible = !!table.querySelector('.roster-row:not(.is-hidden-by-search)');
