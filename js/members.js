@@ -2032,6 +2032,26 @@
       return match ? parseInt(match[1], 10) : 999;
     }
 
+    // Pending and confirmed members are added by whoever's adding them,
+    // at different times, and free-text year_of_study drifts as a
+    // result — "Year 2", "2nd year" and "Year Two" all mean the same
+    // thing but would otherwise land in three separate groups. This
+    // folds any of those into one canonical "Year N" bucket so a
+    // pending and a confirmed member in the same academic year always
+    // show up in the same row. Genuinely non-numeric labels (e.g.
+    // "Foundation Doctor") are left as their own group, unchanged.
+    var YEAR_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7 };
+    function yearGroupLabel(year) {
+      var raw = (year || '').trim();
+      if (!raw) return 'Year not set';
+      var lower = raw.toLowerCase();
+      var digitMatch = /(\d+)/.exec(lower);
+      if (digitMatch) return 'Year ' + parseInt(digitMatch[1], 10);
+      var wordMatch = /\b(one|two|three|four|five|six|seven)\b/.exec(lower);
+      if (wordMatch) return 'Year ' + YEAR_WORDS[wordMatch[1]];
+      return raw;
+    }
+
     function networkInitials(name) {
       var parts = (name || '').trim().split(/\s+/);
       if (!parts.length || !parts[0]) return '?';
@@ -2065,7 +2085,7 @@
 
         var byYear = {};
         courseMembers.forEach(function (m) {
-          var year = (m.year_of_study || '').trim() || 'Year not set';
+          var year = yearGroupLabel(m.year_of_study);
           if (!byYear[year]) byYear[year] = [];
           byYear[year].push(m);
         });
@@ -2105,7 +2125,7 @@
         linkedinHtml +
         '<span class="network-card-avatar">' + escapeHtml(networkInitials(m.full_name)) + '</span>' +
         '<span class="network-card-name">' + escapeHtml(m.full_name) + '</span>' +
-        '<span class="network-card-meta">' + escapeHtml([m.course, m.year_of_study].filter(Boolean).join(' · ') || '—') + '</span>' +
+        '<span class="network-card-meta">' + escapeHtml([m.course, m.year_of_study ? yearGroupLabel(m.year_of_study) : ''].filter(Boolean).join(' · ') || '—') + '</span>' +
         badgeHtml +
         '</button>';
     }
@@ -2198,7 +2218,7 @@
           '<span class="network-modal-avatar" style="background: var(--color-bg-alt); color: var(--color-gold-light);">' + escapeHtml(networkInitials(record.full_name)) + '</span>' +
           '<h2 class="network-modal-name" id="network-modal-name">' + escapeHtml(record.full_name) + '</h2>' +
           (roleLabel ? '<p class="network-modal-role">' + escapeHtml(roleLabel) + '</p>' : '') +
-          '<p class="network-modal-meta">' + escapeHtml([record.course, record.year_of_study].filter(Boolean).join(' · ') || '—') + '</p>' +
+          '<p class="network-modal-meta">' + escapeHtml([record.course, record.year_of_study ? yearGroupLabel(record.year_of_study) : ''].filter(Boolean).join(' · ') || '—') + '</p>' +
           bioHtml +
           linkedinBtn(record.linkedin_url);
       } else {
