@@ -3201,6 +3201,18 @@ body.intro-active { overflow: hidden; }
 .quick-link-card--pink .card-tag { color: #4a0f2c; background: #ef8bc4; }
 .quick-link-card--pink .quick-link-icon { background: rgba(214, 51, 132, 0.24); color: #ef8bc4; }
 
+/* Reserved for the president-only dashboard card — deliberately a new
+   colour none of the others use, so it reads as distinct from the rest
+   of the grid the one time it's ever shown. */
+.quick-link-card--blue {
+  --card-shimmer-color: rgba(122, 178, 240, 0.28);
+  background: linear-gradient(160deg, rgba(37, 99, 193, 0.22), var(--color-surface) 75%);
+  border-color: rgba(122, 178, 240, 0.4);
+}
+.quick-link-card--blue:hover, .quick-link-card--blue:focus-visible { border-color: #7ab2f0; }
+.quick-link-card--blue .card-tag { color: #0c2340; background: #7ab2f0; }
+.quick-link-card--blue .quick-link-icon { background: rgba(37, 99, 193, 0.26); color: #7ab2f0; }
+
 /* Not-yet-launched hub cards (Perks, Sankofa, MoTM nominations) shown to
    anyone who isn't committee — visually locked rather than coloured:
    no shimmer, a dimmed padlock icon, dashed border, muted text. It's a
@@ -3573,6 +3585,161 @@ body.intro-active { overflow: hidden; }
   font-size: 0.82rem;
   color: var(--color-text-faint);
   white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------
+   President's activity dashboard — stat tiles + a dense roster table
+   reused across every section (attention list, members, professionals,
+   MMG guests) so the "who's online / when did they last log in" reading
+   stays consistent no matter which group is being scanned.
+   ------------------------------------------------------------------ */
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-7);
+}
+.dash-stat {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+.dash-stat-num {
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+.dash-stat-label {
+  margin-top: var(--space-2);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+.dash-stat--online { border-color: rgba(111, 207, 151, 0.35); }
+.dash-stat--online .dash-stat-num { color: #6fcf97; }
+.dash-stat--pending { border-color: rgba(239, 139, 143, 0.35); }
+.dash-stat--pending .dash-stat-num { color: #ef8b8f; }
+
+.dash-section-count {
+  color: var(--color-text-faint);
+  font-size: 0.9rem;
+  margin: 0 0 var(--space-4);
+}
+
+.dash-course-section { margin-bottom: var(--space-6); }
+.dash-course-title {
+  font-size: 1.1rem;
+  margin: 0 0 var(--space-3);
+  color: var(--color-gold-light);
+}
+.dash-year-group { margin-bottom: var(--space-4); }
+.dash-year-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  margin: 0 0 var(--space-2);
+}
+
+.roster-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--space-3);
+}
+.roster-row {
+  display: grid;
+  grid-template-columns: 1fr 190px 100px 100px;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+.roster-row:last-child { border-bottom: none; }
+
+.roster-main { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.roster-avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.78rem;
+  background: rgba(212, 166, 43, 0.18);
+  color: var(--color-gold-light);
+}
+.roster-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roster-detail {
+  font-size: 0.8rem;
+  color: var(--color-text-faint);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  justify-self: start;
+}
+.roster-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.roster-status--online { color: #0c2b1a; background: #6fcf97; }
+.roster-status--active { color: var(--color-text-muted); background: var(--color-bg-alt); border: 1px solid var(--color-border-strong); }
+.roster-status--stuck { color: #4a2f0a; background: var(--color-gold-light); }
+.roster-status--unopened { color: var(--color-text-faint); background: transparent; border: 1px dashed var(--color-border-strong); }
+
+.roster-time {
+  font-size: 0.8rem;
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+.roster-time::before {
+  content: attr(data-label) ': ';
+  display: none;
+}
+
+@media (max-width: 780px) {
+  .roster-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+  .roster-status { justify-self: start; margin-top: 4px; }
+  .roster-time::before { display: inline; color: var(--color-text-faint); }
 }
 
 /* Members hub news/announcements feed — a colour-tagged list (not a card

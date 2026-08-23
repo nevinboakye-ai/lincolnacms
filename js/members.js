@@ -13,6 +13,12 @@
   }
   notConfiguredEls.forEach(function (el) { el.style.display = 'none'; });
 
+  // The one account allowed onto the president-only activity dashboard —
+  // client-side use of this is purely a UX shortcut (hiding the card/
+  // redirecting early); the actual security boundary is is_president()
+  // on the database side, which every president_get_* RPC checks itself.
+  var PRESIDENT_UID = '22044cd2-6804-4142-96c4-5c475ce9347a';
+
   function showMessage(el, message) {
     if (!el) return;
     el.textContent = message;
@@ -70,6 +76,28 @@
       .maybeSingle()
       .then(function (result) { return isCommitteeMember(result.data); });
   }
+
+  // ---- Site-wide presence heartbeat: powers the president's "currently
+  // online" view. Not a live socket — just a timestamp upserted every
+  // couple of minutes for whoever's signed in, on whichever page they
+  // happen to be on (member, professional, or MMG guest alike). The
+  // dashboard treats "seen in the last 5 minutes" as online, which this
+  // 2-minute interval comfortably covers even if a beat or two is missed
+  // (a backgrounded tab, a slow connection). ----
+  supabaseClient.auth.getSession().then(function (result) {
+    var session = result.data && result.data.session;
+    if (!session) return;
+
+    function beat() {
+      supabaseClient.from('member_presence').upsert({ id: session.user.id, last_seen_at: new Date().toISOString() });
+    }
+
+    beat();
+    setInterval(beat, 120000);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') beat();
+    });
+  });
 
   // Professionals are stored as "Dr Andrew Smith" — a plain
   // split(' ')[0] greets them "Hi, Dr", dropping their actual name.
@@ -167,7 +195,8 @@
             return supabaseClient.from('mmg_guests').insert({
               id: session.user.id,
               full_name: meta.full_name || session.user.email,
-              university: meta.university || 'Not specified'
+              university: meta.university || 'Not specified',
+              activated_at: new Date().toISOString()
             });
           });
       });
@@ -420,7 +449,12 @@
               btn.disabled = false;
               return;
             }
-            window.location.href = 'member-hub.html';
+            // Marks this account "fully set up" for the president's
+            // dashboard — awaited before navigating away so the request
+            // isn't cut off mid-flight by the redirect.
+            supabaseClient.rpc('mark_account_activated').then(function () {
+              window.location.href = 'member-hub.html';
+            });
           });
       });
     }
@@ -441,6 +475,13 @@
       loadProfile(session);
       loadFeed();
       loadRecentJoins();
+
+      // The president-only dashboard card — hidden from literally
+      // everyone else, not just styled as locked. See PRESIDENT_UID.
+      if (session.user.id === PRESIDENT_UID) {
+        var presidentCard = document.getElementById('president-dashboard-card');
+        if (presidentCard) presidentCard.style.display = '';
+      }
     });
 
     var FEED_CATEGORY = {
@@ -2612,6 +2653,285 @@
       modal.style.display = 'none';
       modal.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = '';
+    }
+  }
+
+  // ---- President's activity dashboard — client-side check here is only
+  // ever a UX shortcut (redirect away, don't bother rendering). The real
+  // security boundary is is_president() inside every president_get_*
+  // RPC, which raises for anyone else regardless of what this page does. ----
+  var presidentContent = document.getElementById('president-content');
+  if (presidentContent) {
+    var presidentAuthGate = document.getElementById('auth-gate');
+    var presidentHubError = document.getElementById('hub-error');
+    var ONLINE_WINDOW_MS = 5 * 60 * 1000;
+
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) {
+        window.location.href = 'member-login.html';
+        return;
+      }
+      if (session.user.id !== PRESIDENT_UID) {
+        window.location.href = 'member-hub.html';
+        return;
+      }
+      loadPresidentDashboard();
+      // Keeps "online now" honest without needing a manual reload —
+      // only while the tab is actually visible, so it isn't polling
+      // Supabase in the background for a tab nobody's looking at.
+      setInterval(function () {
+        if (document.visibilityState === 'visible') loadPresidentDashboard();
+      }, 45000);
+    });
+
+    function loadPresidentDashboard() {
+      Promise.all([
+        supabaseClient.rpc('president_get_members'),
+        supabaseClient.rpc('president_get_pending_members'),
+        supabaseClient.rpc('president_get_professionals'),
+        supabaseClient.rpc('president_get_mmg_guests')
+      ]).then(function (results) {
+        if (presidentAuthGate) presidentAuthGate.style.display = 'none';
+
+        if (results[0].error || results[1].error || results[2].error || results[3].error) {
+          showMessage(presidentHubError, "Couldn't load the dashboard right now — try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.");
+          return;
+        }
+
+        presidentContent.style.display = '';
+
+        var members = results[0].data || [];
+        var pendingMembers = results[1].data || [];
+        var professionals = results[2].data || [];
+        var mmgGuests = results[3].data || [];
+
+        renderStats(members, pendingMembers, professionals, mmgGuests);
+        renderAttentionList(members, pendingMembers, professionals, mmgGuests);
+        renderMembersSection(members);
+        renderProfessionalsSection(professionals);
+        renderMmgSection(mmgGuests);
+      });
+    }
+
+    function presidentIsOnline(row) {
+      if (!row.last_seen_at) return false;
+      return (Date.now() - new Date(row.last_seen_at).getTime()) < ONLINE_WINDOW_MS;
+    }
+
+    // Four states, ordered by what actually needs attention: someone
+    // who opened their invite but never finished setting a password
+    // (exactly the bug fixed earlier this session) is far more
+    // actionable than someone who's simply never opened it yet.
+    function presidentStatus(row) {
+      if (presidentIsOnline(row)) {
+        return { label: 'Online now', cls: 'online' };
+      }
+      if (row.activated_at) {
+        var lastActivity = row.last_seen_at || row.last_sign_in_at;
+        return { label: lastActivity ? 'Active · ' + timeAgo(lastActivity) : 'Active', cls: 'active' };
+      }
+      if (row.last_sign_in_at) {
+        return { label: 'Invite opened, not finished', cls: 'stuck' };
+      }
+      return { label: "Hasn't opened invite", cls: 'unopened' };
+    }
+
+    function presidentInitials(name) {
+      var parts = (name || '').trim().split(/\s+/);
+      if (!parts.length || !parts[0]) return '?';
+      var first = parts[0].charAt(0);
+      var last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+      return (first + last).toUpperCase();
+    }
+
+    function renderRosterRow(name, detail, row) {
+      var status = presidentStatus(row);
+      var activatedLabel = row.activated_at ? timeAgo(row.activated_at) : '—';
+      var loginLabel = row.last_sign_in_at ? timeAgo(row.last_sign_in_at) : '—';
+      return '<div class="roster-row">' +
+        '<div class="roster-main">' +
+        '<span class="roster-avatar">' + escapeHtml(presidentInitials(name)) + '</span>' +
+        '<div><div class="roster-name">' + escapeHtml(name || 'Unnamed') + '</div>' +
+        (detail ? '<div class="roster-detail">' + escapeHtml(detail) + '</div>' : '') +
+        '</div></div>' +
+        '<span class="roster-status roster-status--' + status.cls + '">' + escapeHtml(status.label) + '</span>' +
+        '<span class="roster-time" data-label="Set up">' + escapeHtml(activatedLabel) + '</span>' +
+        '<span class="roster-time" data-label="Last login">' + escapeHtml(loginLabel) + '</span>' +
+        '</div>';
+    }
+
+    function renderStats(members, pendingMembers, professionals, mmgGuests) {
+      var real = members.concat(professionals).concat(mmgGuests);
+      var onlineCount = real.filter(presidentIsOnline).length;
+      var activatedCount = real.filter(function (r) { return !!r.activated_at; }).length;
+      var needsAttentionCount = real.filter(function (r) { return !r.activated_at; }).length + pendingMembers.length;
+      var totalCount = real.length + pendingMembers.length;
+
+      var stats = [
+        { num: totalCount, label: 'Total accounts', cls: '' },
+        { num: onlineCount, label: 'Online now', cls: 'online' },
+        { num: activatedCount, label: 'Fully set up', cls: '' },
+        { num: needsAttentionCount, label: 'Needs a nudge', cls: 'pending' }
+      ];
+      document.getElementById('dash-stats').innerHTML = stats.map(function (s) {
+        return '<div class="dash-stat dash-stat--' + s.cls + '"><div class="dash-stat-num">' + s.num + '</div><div class="dash-stat-label">' + escapeHtml(s.label) + '</div></div>';
+      }).join('');
+    }
+
+    function renderAttentionList(members, pendingMembers, professionals, mmgGuests) {
+      var table = document.getElementById('attention-table');
+      var emptyEl = document.getElementById('attention-empty');
+      var items = [];
+
+      members.forEach(function (m) {
+        if (m.activated_at) return;
+        items.push({ name: m.full_name, detail: [m.course, m.year_of_study].filter(Boolean).join(' · ') || 'LACMS member', row: m });
+      });
+      professionals.forEach(function (p) {
+        if (p.activated_at) return;
+        items.push({ name: p.full_name, detail: p.title || 'Professional', row: p });
+      });
+      mmgGuests.forEach(function (g) {
+        if (g.activated_at) return;
+        items.push({ name: g.full_name, detail: g.university || 'MMG guest', row: g });
+      });
+      pendingMembers.forEach(function (pm) {
+        items.push({
+          name: pm.full_name,
+          detail: [pm.course, pm.year_of_study].filter(Boolean).join(' · ') || 'Not yet invited',
+          row: {},
+          isPending: true
+        });
+      });
+
+      if (!items.length) {
+        emptyEl.style.display = 'block';
+        table.innerHTML = '';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      table.innerHTML = items.map(function (it) {
+        if (it.isPending) {
+          return '<div class="roster-row">' +
+            '<div class="roster-main">' +
+            '<span class="roster-avatar">' + escapeHtml(presidentInitials(it.name)) + '</span>' +
+            '<div><div class="roster-name">' + escapeHtml(it.name) + '</div><div class="roster-detail">' + escapeHtml(it.detail) + '</div></div>' +
+            '</div>' +
+            '<span class="roster-status roster-status--unopened">Not yet invited</span>' +
+            '<span class="roster-time" data-label="Set up">—</span><span class="roster-time" data-label="Last login">—</span>' +
+            '</div>';
+        }
+        return renderRosterRow(it.name, it.detail, it.row);
+      }).join('');
+    }
+
+    // Same substring-matching approach as the Network page (course is
+    // always saved with the full degree title attached), duplicated
+    // locally rather than shared since this page's script scope is
+    // entirely separate from member-network.html's.
+    var DASH_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing and Midwifery', 'Paramedic Science'];
+    function dashCourseSortKey(course) {
+      var lower = (course || '').toLowerCase();
+      for (var i = 0; i < DASH_COURSE_ORDER.length; i++) {
+        if (lower.indexOf(DASH_COURSE_ORDER[i].toLowerCase()) !== -1) return i;
+      }
+      return 999;
+    }
+    function dashYearSortKey(year) {
+      var match = /(\d+)/.exec(year || '');
+      return match ? parseInt(match[1], 10) : 999;
+    }
+
+    function renderMembersSection(members) {
+      var wrap = document.getElementById('members-sections');
+      document.getElementById('members-count-line').textContent = members.length + (members.length === 1 ? ' member' : ' members') + ' total';
+      if (!members.length) {
+        wrap.innerHTML = '<p style="color: var(--color-text-faint);">No members yet.</p>';
+        return;
+      }
+
+      var byCourse = {};
+      members.forEach(function (m) {
+        var course = (m.course || '').trim() || 'Course not set';
+        if (!byCourse[course]) byCourse[course] = [];
+        byCourse[course].push(m);
+      });
+      var courses = Object.keys(byCourse).sort(function (a, b) {
+        var diff = dashCourseSortKey(a) - dashCourseSortKey(b);
+        return diff !== 0 ? diff : a.localeCompare(b);
+      });
+
+      wrap.innerHTML = courses.map(function (course) {
+        var courseMembers = byCourse[course];
+        var byYear = {};
+        courseMembers.forEach(function (m) {
+          var year = (m.year_of_study || '').trim() || 'Year not set';
+          if (!byYear[year]) byYear[year] = [];
+          byYear[year].push(m);
+        });
+        var years = Object.keys(byYear).sort(function (a, b) {
+          var diff = dashYearSortKey(a) - dashYearSortKey(b);
+          return diff !== 0 ? diff : a.localeCompare(b);
+        });
+
+        var yearGroupsHtml = years.map(function (year) {
+          var yearMembers = byYear[year].slice().sort(function (a, b) { return (a.full_name || '').localeCompare(b.full_name || ''); });
+          var rowsHtml = yearMembers.map(function (m) {
+            var detail = [m.committee_role, (m.mmg_attendee || m.mmg_committee) ? 'MMG' : null].filter(Boolean).join(' · ');
+            return renderRosterRow(m.full_name, detail, m);
+          }).join('');
+          return '<div class="dash-year-group"><h3 class="dash-year-label">' + escapeHtml(year) + '</h3><div class="roster-table">' + rowsHtml + '</div></div>';
+        }).join('');
+
+        return '<div class="dash-course-section"><h2 class="dash-course-title">' + escapeHtml(course) + '</h2>' + yearGroupsHtml + '</div>';
+      }).join('');
+    }
+
+    function renderProfessionalsSection(professionals) {
+      var table = document.getElementById('professionals-table');
+      var emptyEl = document.getElementById('professionals-empty');
+      document.getElementById('professionals-count-line').textContent = professionals.length + (professionals.length === 1 ? ' professional' : ' professionals') + ' total';
+      if (!professionals.length) {
+        emptyEl.style.display = 'block';
+        table.innerHTML = '';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      var sorted = professionals.slice().sort(function (a, b) { return (a.full_name || '').localeCompare(b.full_name || ''); });
+      table.innerHTML = sorted.map(function (p) {
+        var detail = [p.title, p.organisation].filter(Boolean).join(' · ');
+        return renderRosterRow(p.full_name, detail, p);
+      }).join('');
+    }
+
+    var MMG_ACCESS_LABELS = { committee: 'Committee', attendee: 'Attendee', pending: 'Pending review' };
+    var MMG_ACCESS_ORDER = ['committee', 'attendee', 'pending'];
+    function renderMmgSection(mmgGuests) {
+      var wrap = document.getElementById('mmg-sections');
+      document.getElementById('mmg-count-line').textContent = mmgGuests.length + (mmgGuests.length === 1 ? ' guest' : ' guests') + ' total';
+      if (!mmgGuests.length) {
+        wrap.innerHTML = '<p style="color: var(--color-text-faint);">No MMG guest accounts yet.</p>';
+        return;
+      }
+
+      var byLevel = {};
+      mmgGuests.forEach(function (g) {
+        var level = g.access_level || 'pending';
+        if (!byLevel[level]) byLevel[level] = [];
+        byLevel[level].push(g);
+      });
+      var levels = Object.keys(byLevel).sort(function (a, b) {
+        return MMG_ACCESS_ORDER.indexOf(a) - MMG_ACCESS_ORDER.indexOf(b);
+      });
+
+      wrap.innerHTML = levels.map(function (level) {
+        var levelGuests = byLevel[level].slice().sort(function (a, b) { return (a.full_name || '').localeCompare(b.full_name || ''); });
+        var rowsHtml = levelGuests.map(function (g) {
+          return renderRosterRow(g.full_name, g.university, g);
+        }).join('');
+        return '<div class="dash-course-section"><h2 class="dash-course-title">' + escapeHtml(MMG_ACCESS_LABELS[level] || level) + '</h2><div class="roster-table">' + rowsHtml + '</div></div>';
+      }).join('');
     }
   }
 })();

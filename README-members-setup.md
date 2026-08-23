@@ -321,3 +321,17 @@ Run [`db/migrations/023-announcement-posted-by.sql`](db/migrations/023-announcem
 ## 29. MMG update bylines too
 
 Run [`db/migrations/024-mmg-update-posted-by.sql`](db/migrations/024-mmg-update-posted-by.sql). Same **posted_by** field as Section 28, added to both `mmg_updates` (the committee-only planning feed) and `mmg_attendee_updates` (the general feed all attendees see) — add it in Table Editor on either table, same as announcements. Both feeds share one render function, so this covers every place they show up (`mmg.html`, `mmg-hub.html`, and the MMG sections on `member-hub.html`) in one go.
+
+## 30. President's activity dashboard
+
+Run [`db/migrations/025-president-dashboard.sql`](db/migrations/025-president-dashboard.sql) (needs migrations 009, 015, 016 already applied). A private, president-only page — `president-dashboard.html` — showing every account on the site (LACMS members, professionals, pending invites, and MMG/partner-university guests): who's finished setting up, when they last logged in, and who's on the site right now.
+
+**Who can see it**: exactly one Supabase Auth account, hardcoded by its user ID in `is_president()` (SQL) and `PRESIDENT_UID` (`js/members.js`) — not a role like `committee_role = 'President'`, so it never accidentally follows a Table Editor edit. The dashboard card only appears on the members hub for that one account, and even if someone guessed the page's URL directly, every `president_get_*` function it calls independently checks `is_president()` on the database side and refuses anyone else — the page-level check is just a UX shortcut, not the actual security boundary. **If the presidency ever changes hands**, update the UUID in both of those places (ask me and I'll do it) — Authentication → Users in the Supabase dashboard is where you find the new account's ID.
+
+**How "fully set up" is tracked**: a new `activated_at` column on `members`, `network_professionals` and `mmg_guests`, set automatically — for members/professionals, the moment they finish `updateUser({password})` on the invite flow; for MMG guests, the moment their self-signup completes (there's no separate password step for them). This is deliberately not inferred from Supabase's own `last_sign_in_at`, since that timestamp gets set the moment an invite link is opened — before a password is ever chosen — which is exactly the bug from earlier this session. The dashboard actually surfaces that distinction: anyone who has a login recorded but never finished setup shows as **"Invite opened, not finished"** rather than being lumped in with people who never opened their invite at all.
+
+**How "online now" is tracked**: a lightweight heartbeat, not a live connection — `js/members.js` upserts a timestamp to a new `member_presence` table every 2 minutes for whoever's signed in, on any page, regardless of account type. The dashboard treats anyone seen in the last 5 minutes as online. The dashboard itself also auto-refreshes every 45 seconds (only while the tab is actually visible) so this stays current without manual reloading.
+
+**Layout**: a stats row up top, a "Needs a nudge" list combining everyone across every account type who hasn't finished setting up (including still-pending invites that haven't been sent from `pending_members` yet), then LACMS Members grouped by course and year, Professionals, and MMG/partner-university guests grouped by access level (Committee / Attendee / Pending review).
+
+No Table Editor setup needed beyond running the migration — everything else is automatic.
