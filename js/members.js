@@ -2056,7 +2056,7 @@
     var networkAllMembers = [];
     var networkAllProfessionals = [];
 
-    var NETWORK_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing & Midwifery', 'Nursing', 'Midwifery', 'Paramedic Science'];
+    var NETWORK_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing & Midwifery', 'Paramedic Science'];
     var NETWORK_ACCENTS = ['gold', 'green', 'red', 'purple'];
     var NETWORK_ACCENT_COLORS = {
       gold: { accent: 'var(--color-gold)', light: 'var(--color-gold-light)', bg: 'rgba(212, 166, 43, 0.18)' },
