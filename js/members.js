@@ -481,6 +481,67 @@
       });
     }
 
+    var networkProfileToggle = document.getElementById('network-profile-toggle');
+    var networkProfileForm = document.getElementById('network-profile-form');
+    if (networkProfileToggle && networkProfileForm) {
+      var networkProfileLoaded = false;
+
+      networkProfileToggle.addEventListener('click', function () {
+        var isOpen = networkProfileForm.style.display !== 'none';
+        networkProfileForm.style.display = isOpen ? 'none' : 'block';
+        if (!isOpen && !networkProfileLoaded) {
+          networkProfileLoaded = true;
+          supabaseClient.auth.getSession().then(function (result) {
+            var session = result.data && result.data.session;
+            if (!session) return;
+            supabaseClient
+              .from('member_profiles')
+              .select('linkedin_url, bio')
+              .eq('id', session.user.id)
+              .maybeSingle()
+              .then(function (profileResult) {
+                if (!profileResult.data) return;
+                document.getElementById('network-linkedin').value = profileResult.data.linkedin_url || '';
+                document.getElementById('network-bio').value = profileResult.data.bio || '';
+              });
+          });
+        }
+      });
+
+      networkProfileForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = document.getElementById('network-profile-status');
+        hideMessage(statusEl);
+        var linkedinUrl = document.getElementById('network-linkedin').value.trim();
+        var bio = document.getElementById('network-bio').value.trim();
+
+        supabaseClient.auth.getSession().then(function (result) {
+          var session = result.data && result.data.session;
+          if (!session) return;
+
+          var btn = networkProfileForm.querySelector('button[type="submit"]');
+          btn.disabled = true;
+          supabaseClient
+            .from('member_profiles')
+            .upsert({
+              id: session.user.id,
+              linkedin_url: linkedinUrl || null,
+              bio: bio || null,
+              updated_at: new Date().toISOString()
+            })
+            .then(function (upsertResult) {
+              btn.disabled = false;
+              if (upsertResult.error) {
+                showMessage(statusEl, upsertResult.error.message);
+                return;
+              }
+              statusEl.style.color = 'var(--color-gold-light)';
+              showMessage(statusEl, 'Saved — this is what other members see on your Network card.');
+            });
+        });
+      });
+    }
+
     var changePasswordToggle = document.getElementById('change-password-toggle');
     var changePasswordForm = document.getElementById('change-password-form');
     if (changePasswordToggle && changePasswordForm) {
@@ -1758,6 +1819,274 @@
           }
           listEl.innerHTML = rows.map(renderNewsComment).join('');
         });
+    }
+  }
+
+  // ---- LACMS Network page: every active member (via the
+  // get_network_members() RPC, since `members` itself only allows
+  // reading your own row), grouped by course then year, plus a
+  // committee-curated professionals section. Auth-gated like the rest
+  // of the members hub. ----
+  var NETWORK_LINKEDIN_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6.94 5a1.94 1.94 0 1 1-3.88 0 1.94 1.94 0 0 1 3.88 0zM3.5 8.5h3.4V21H3.5V8.5zm6.1 0h3.26v1.7h.05c.45-.86 1.56-1.77 3.21-1.77 3.43 0 4.06 2.26 4.06 5.2V21h-3.4v-5.7c0-1.36-.03-3.1-1.89-3.1-1.9 0-2.19 1.48-2.19 3v5.8h-3.4V8.5z"/></svg>';
+
+  var networkContent = document.getElementById('network-content');
+  if (networkContent) {
+    var networkAuthGate = document.getElementById('auth-gate');
+    var networkHubError = document.getElementById('hub-error');
+    var networkAllMembers = [];
+    var networkAllProfessionals = [];
+
+    var NETWORK_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing & Midwifery', 'Nursing', 'Midwifery', 'Paramedic Science'];
+    var NETWORK_ACCENTS = ['gold', 'green', 'red', 'purple'];
+    var NETWORK_ACCENT_COLORS = {
+      gold: { accent: 'var(--color-gold)', light: 'var(--color-gold-light)', bg: 'rgba(212, 166, 43, 0.18)' },
+      green: { accent: '#6fcf97', light: '#6fcf97', bg: 'rgba(30, 122, 70, 0.2)' },
+      red: { accent: '#ef8b8f', light: '#ef8b8f', bg: 'rgba(193, 39, 45, 0.2)' },
+      purple: { accent: '#b28ff0', light: '#b28ff0', bg: 'rgba(107, 70, 193, 0.22)' }
+    };
+    var NETWORK_TYPE_LABELS = {
+      supporting_committee: 'Supporting Committee',
+      executive_committee: 'Executive Committee',
+      senior_sankofa_mentor: 'Senior Sankofa Mentor',
+      junior_sankofa_mentor: 'Junior Sankofa Mentor'
+    };
+    var NETWORK_PROFESSIONAL_CATEGORY_LABELS = {
+      senior_doctor: 'Senior Doctor / Consultant',
+      alumni_doctor: 'Alumni Doctor',
+      pharmacist: 'Pharmacist',
+      other: 'Professional'
+    };
+
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) {
+        window.location.href = 'member-login.html';
+        return;
+      }
+      loadNetwork();
+    });
+
+    function loadNetwork() {
+      Promise.all([
+        supabaseClient.rpc('get_network_members'),
+        supabaseClient.from('network_professionals').select('*').order('sort_order', { ascending: true })
+      ]).then(function (results) {
+        if (networkAuthGate) networkAuthGate.style.display = 'none';
+
+        if (results[0].error) {
+          showMessage(networkHubError, "We couldn't load the Network right now — try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.");
+          return;
+        }
+
+        networkAllMembers = results[0].data || [];
+        networkAllProfessionals = (results[1] && results[1].data) || [];
+
+        if (!networkAllMembers.length && !networkAllProfessionals.length) {
+          document.getElementById('network-empty').style.display = 'block';
+          return;
+        }
+
+        networkContent.style.display = '';
+        renderNetworkMembers(networkAllMembers);
+        renderNetworkProfessionals(networkAllProfessionals);
+        updateNetworkCount(networkAllMembers.length + networkAllProfessionals.length);
+        wireNetworkInteractions();
+      });
+    }
+
+    function courseSortKey(course) {
+      var idx = NETWORK_COURSE_ORDER.indexOf(course);
+      return idx === -1 ? 999 : idx;
+    }
+
+    function yearSortKey(year) {
+      var match = /(\d+)/.exec(year || '');
+      return match ? parseInt(match[1], 10) : 999;
+    }
+
+    function networkInitials(name) {
+      var parts = (name || '').trim().split(/\s+/);
+      if (!parts.length || !parts[0]) return '?';
+      var first = parts[0].charAt(0);
+      var last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+      return (first + last).toUpperCase();
+    }
+
+    function updateNetworkCount(n) {
+      var el = document.getElementById('network-count');
+      if (el) el.textContent = n + (n === 1 ? ' person' : ' people') + ' in the network';
+    }
+
+    function renderNetworkMembers(members) {
+      var wrap = document.getElementById('network-members-sections');
+      var byCourse = {};
+      members.forEach(function (m) {
+        var course = (m.course || '').trim() || 'Course not set';
+        if (!byCourse[course]) byCourse[course] = [];
+        byCourse[course].push(m);
+      });
+
+      var courses = Object.keys(byCourse).sort(function (a, b) {
+        var diff = courseSortKey(a) - courseSortKey(b);
+        return diff !== 0 ? diff : a.localeCompare(b);
+      });
+
+      wrap.innerHTML = courses.map(function (course, i) {
+        var colors = NETWORK_ACCENT_COLORS[NETWORK_ACCENTS[i % NETWORK_ACCENTS.length]];
+        var courseMembers = byCourse[course];
+
+        var byYear = {};
+        courseMembers.forEach(function (m) {
+          var year = (m.year_of_study || '').trim() || 'Year not set';
+          if (!byYear[year]) byYear[year] = [];
+          byYear[year].push(m);
+        });
+        var years = Object.keys(byYear).sort(function (a, b) {
+          var diff = yearSortKey(a) - yearSortKey(b);
+          return diff !== 0 ? diff : a.localeCompare(b);
+        });
+
+        var yearGroupsHtml = years.map(function (year) {
+          var yearMembers = byYear[year].slice().sort(function (a, b) {
+            return (a.full_name || '').localeCompare(b.full_name || '');
+          });
+          return '<div class="network-year-group">' +
+            '<h3 class="network-year-label">' + escapeHtml(year) + '</h3>' +
+            '<div class="network-grid">' + yearMembers.map(renderNetworkMemberCard).join('') + '</div>' +
+            '</div>';
+        }).join('');
+
+        return '<div class="network-course-section" style="--network-accent:' + colors.accent + '; --network-accent-light:' + colors.light + '; --network-accent-bg:' + colors.bg + ';">' +
+          '<div class="network-course-head"><h2>' + escapeHtml(course) + '</h2><span class="network-course-count">' + courseMembers.length + (courseMembers.length === 1 ? ' member' : ' members') + '</span></div>' +
+          yearGroupsHtml +
+          '</div>';
+      }).join('');
+    }
+
+    function renderNetworkMemberCard(m) {
+      var roleLabel = m.committee_role || NETWORK_TYPE_LABELS[m.member_type];
+      var badgeHtml = roleLabel ? '<span class="network-card-badge">' + escapeHtml(roleLabel) + '</span>' : '';
+      var linkedinHtml = m.linkedin_url ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
+      return '<button type="button" class="network-card" data-network-type="member" data-network-id="' + m.id + '">' +
+        linkedinHtml +
+        '<span class="network-card-avatar">' + escapeHtml(networkInitials(m.full_name)) + '</span>' +
+        '<span class="network-card-name">' + escapeHtml(m.full_name) + '</span>' +
+        '<span class="network-card-meta">' + escapeHtml([m.course, m.year_of_study].filter(Boolean).join(' · ') || '—') + '</span>' +
+        badgeHtml +
+        '</button>';
+    }
+
+    function renderNetworkProfessionals(rows) {
+      var gridWrap = document.getElementById('network-professionals-wrap');
+      var grid = document.getElementById('network-professionals-grid');
+      if (!rows.length) return;
+      gridWrap.style.display = '';
+      grid.innerHTML = rows.map(renderNetworkProfessionalCard).join('');
+    }
+
+    function renderNetworkProfessionalCard(p) {
+      var linkedinHtml = p.linkedin_url ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
+      var avatarHtml = p.photo_url
+        ? '<img src="' + encodeURI(p.photo_url) + '" alt="">'
+        : escapeHtml(networkInitials(p.full_name));
+      return '<button type="button" class="network-card" data-network-type="professional" data-network-id="' + p.id + '">' +
+        linkedinHtml +
+        '<span class="network-card-avatar">' + avatarHtml + '</span>' +
+        '<span class="network-card-name">' + escapeHtml(p.full_name) + '</span>' +
+        '<span class="network-card-meta">' + escapeHtml(p.title) + '</span>' +
+        '<span class="network-card-badge">' + escapeHtml(NETWORK_PROFESSIONAL_CATEGORY_LABELS[p.category] || 'Professional') + '</span>' +
+        '</button>';
+    }
+
+    function wireNetworkInteractions() {
+      networkContent.addEventListener('click', function (e) {
+        var card = e.target.closest('.network-card');
+        if (!card) return;
+        openNetworkModal(card.getAttribute('data-network-id'), card.getAttribute('data-network-type'));
+      });
+
+      document.querySelectorAll('[data-network-modal-close]').forEach(function (el) {
+        el.addEventListener('click', closeNetworkModal);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeNetworkModal();
+      });
+
+      var searchInput = document.getElementById('network-search-input');
+      if (searchInput) {
+        searchInput.addEventListener('input', function () {
+          var query = searchInput.value.trim().toLowerCase();
+          var anyVisible = false;
+
+          document.querySelectorAll('.network-card').forEach(function (card) {
+            var name = card.querySelector('.network-card-name').textContent.toLowerCase();
+            var match = !query || name.indexOf(query) !== -1;
+            card.classList.toggle('is-hidden-by-search', !match);
+            if (match) anyVisible = true;
+          });
+          document.querySelectorAll('.network-year-group').forEach(function (group) {
+            group.classList.toggle('is-hidden-by-search', !group.querySelector('.network-card:not(.is-hidden-by-search)'));
+          });
+          document.querySelectorAll('.network-course-section').forEach(function (section) {
+            section.classList.toggle('is-hidden-by-search', !section.querySelector('.network-card:not(.is-hidden-by-search)'));
+          });
+          var profWrap = document.getElementById('network-professionals-wrap');
+          if (networkAllProfessionals.length) {
+            profWrap.classList.toggle('is-hidden-by-search', !profWrap.querySelector('.network-card:not(.is-hidden-by-search)'));
+          }
+
+          document.getElementById('network-search-empty').style.display = anyVisible ? 'none' : 'block';
+          updateNetworkCount(document.querySelectorAll('.network-card:not(.is-hidden-by-search)').length);
+        });
+      }
+    }
+
+    function openNetworkModal(id, type) {
+      var record = type === 'member'
+        ? networkAllMembers.filter(function (m) { return m.id === id; })[0]
+        : networkAllProfessionals.filter(function (p) { return String(p.id) === id; })[0];
+      if (!record) return;
+
+      var modal = document.getElementById('network-modal');
+      var body = document.getElementById('network-modal-body');
+      var linkedinBtn = function (url) {
+        return url ? '<a class="network-modal-linkedin" href="' + encodeURI(url) + '" target="_blank" rel="noopener">' + NETWORK_LINKEDIN_ICON + 'View LinkedIn</a>' : '';
+      };
+
+      if (type === 'member') {
+        var roleLabel = record.committee_role || NETWORK_TYPE_LABELS[record.member_type];
+        body.innerHTML =
+          '<span class="network-modal-avatar" style="background: var(--color-bg-alt); color: var(--color-gold-light);">' + escapeHtml(networkInitials(record.full_name)) + '</span>' +
+          '<h2 class="network-modal-name" id="network-modal-name">' + escapeHtml(record.full_name) + '</h2>' +
+          (roleLabel ? '<p class="network-modal-role">' + escapeHtml(roleLabel) + '</p>' : '') +
+          '<p class="network-modal-meta">' + escapeHtml([record.course, record.year_of_study].filter(Boolean).join(' · ') || '—') + '</p>' +
+          (record.bio
+            ? '<p class="network-modal-bio">' + escapeHtml(record.bio) + '</p>'
+            : '<p class="network-modal-bio" style="font-style:italic; color: var(--color-text-faint);">No bio added yet.</p>') +
+          linkedinBtn(record.linkedin_url);
+      } else {
+        var avatarHtml = record.photo_url
+          ? '<img src="' + encodeURI(record.photo_url) + '" alt="">'
+          : escapeHtml(networkInitials(record.full_name));
+        body.innerHTML =
+          '<span class="network-modal-avatar" style="background: var(--color-bg-alt); color: var(--color-gold-light);">' + avatarHtml + '</span>' +
+          '<h2 class="network-modal-name" id="network-modal-name">' + escapeHtml(record.full_name) + '</h2>' +
+          '<p class="network-modal-role">' + escapeHtml(record.title) + '</p>' +
+          (record.organisation ? '<p class="network-modal-meta">' + escapeHtml(record.organisation) + '</p>' : '') +
+          (record.bio ? '<p class="network-modal-bio">' + escapeHtml(record.bio) + '</p>' : '') +
+          linkedinBtn(record.linkedin_url);
+      }
+
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeNetworkModal() {
+      var modal = document.getElementById('network-modal');
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
     }
   }
 })();

@@ -143,9 +143,26 @@
           </div>
 
           <div class="member-hub-actions">
+            <a class="btn btn-outline" href="member-network.html">View the Network</a>
+            <button type="button" id="network-profile-toggle" class="btn btn-outline">Edit network profile</button>
             <button type="button" id="change-password-toggle" class="btn btn-outline">Change password</button>
             <button type="button" id="logout-btn" class="btn btn-outline">Log out</button>
           </div>
+
+          <form id="network-profile-form" style="display:none; margin-top: var(--space-4);">
+            <p style="margin-top:0; color: var(--color-text-muted); font-size: 0.9rem;">Shown on your card in <a href="member-network.html" style="color: var(--color-gold-light);">the Network</a> — both are optional.</p>
+            <div class="field">
+              <label for="network-linkedin">LinkedIn URL</label>
+              <input type="url" id="network-linkedin" name="network-linkedin" placeholder="https://www.linkedin.com/in/yourname">
+            </div>
+            <div class="field">
+              <label for="network-bio">Short bio</label>
+              <textarea id="network-bio" name="network-bio" maxlength="280" placeholder="A sentence or two about you — interests, specialty, whatever you'd want a fellow member to know."></textarea>
+              <span class="hint">280 characters max.</span>
+            </div>
+            <button type="submit" class="btn btn-primary">Save profile</button>
+            <p id="network-profile-status" class="auth-error" role="status" style="display:none;"></p>
+          </form>
 
           <form id="change-password-form" style="display:none; margin-top: var(--space-4);">
             <div class="field">
@@ -227,6 +244,17 @@
           <h3 class="card-title">Nominate for Member of the Month</h3>
           <p>Put forward someone who's gone above and beyond this month.</p>
           <span class="card-link">Nominate
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </a>
+        <a class="card quick-link-card quick-link-card--pink" href="member-network.html">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><path d="M2 20c0-3.3 2.7-6 6-6h2c3.3 0 6 2.7 6 6"/><circle cx="17" cy="8" r="2.4"/><path d="M22 20c0-2.6-1.8-4.7-4.2-5.4"/></svg>
+          </span>
+          <span class="card-tag">Network</span>
+          <h3 class="card-title">Meet the LACMS Network</h3>
+          <p>Every member by course and year, plus the professionals supporting Sankofa mentorship.</p>
+          <span class="card-link">Browse the network
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </span>
         </a>
