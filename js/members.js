@@ -431,6 +431,7 @@
       }
       loadProfile(session);
       loadFeed();
+      loadNetworkActivity();
     });
 
     var FEED_CATEGORY = {
@@ -474,6 +475,46 @@
         '<span class="feed-item-date">' + escapeHtml(timeAgo(row.published_at)) + '</span></div>' +
         '<h3 class="feed-item-title">' + escapeHtml(row.title) + '</h3>' +
         '<p class="feed-item-body">' + escapeHtml(row.body) + '</p>' +
+        '</article>';
+    }
+
+    // "So-and-so just joined the LACMS Network" — one row per new
+    // `members` insert, logged automatically by a database trigger
+    // (migration 020), so this covers both a member the committee adds
+    // directly and a pending_members row getting claimed on first
+    // login. Shown to members and professionals alike, in whichever
+    // order Postgres logged them.
+    function loadNetworkActivity() {
+      var activityList = document.getElementById('network-activity-list');
+      if (!activityList) return;
+      var activitySection = document.getElementById('network-activity-section');
+      var activityEmpty = document.getElementById('network-activity-empty');
+
+      supabaseClient
+        .from('network_join_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(8)
+        .then(function (result) {
+          if (result.error) return;
+          if (activitySection) activitySection.style.display = '';
+          var rows = result.data || [];
+          if (!rows.length) {
+            if (activityEmpty) activityEmpty.style.display = 'block';
+            return;
+          }
+          activityList.innerHTML = rows.map(renderNetworkActivityItem).join('');
+        });
+    }
+
+    function renderNetworkActivityItem(row) {
+      var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
+      return '<article class="feed-item feed-item--green">' +
+        '<div class="feed-item-meta">' +
+        '<span class="feed-item-tag">New member</span>' +
+        '<span class="feed-item-date">' + escapeHtml(timeAgo(row.created_at)) + '</span></div>' +
+        '<h3 class="feed-item-title">' + escapeHtml(row.full_name) + ' just joined the LACMS Network</h3>' +
+        (courseYear ? '<p class="feed-item-body">' + escapeHtml(courseYear) + '</p>' : '') +
         '</article>';
     }
 
@@ -2083,7 +2124,52 @@
         return;
       }
       loadNetwork();
+      loadRecentJoins();
     });
+
+    // A compact "N people just joined" banner, fed by the same
+    // network_join_events table (migration 020) as the member-hub.html
+    // feed — only surfaced here if someone's actually joined recently,
+    // so it never sits around claiming to be "recent" forever.
+    function loadRecentJoins() {
+      var banner = document.getElementById('network-recent-joins');
+      var bannerText = document.getElementById('network-recent-joins-text');
+      if (!banner || !bannerText) return;
+
+      var since = new Date();
+      since.setDate(since.getDate() - 14);
+      var sinceIso = since.toISOString();
+
+      Promise.all([
+        supabaseClient
+          .from('network_join_events')
+          .select('full_name')
+          .gte('created_at', sinceIso)
+          .order('created_at', { ascending: false })
+          .limit(3),
+        supabaseClient
+          .from('network_join_events')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', sinceIso)
+      ]).then(function (results) {
+        var rows = (results[0] && results[0].data) || [];
+        var total = (results[1] && results[1].count) || rows.length;
+        if (!rows.length) return;
+
+        var names = rows.map(function (r) { return '<strong>' + escapeHtml(r.full_name) + '</strong>'; });
+        var extra = total - names.length;
+        var text;
+        if (names.length === 1) {
+          text = names[0] + ' just joined the Network.';
+        } else if (extra <= 0) {
+          text = names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' just joined the Network.';
+        } else {
+          text = names.join(', ') + ' and ' + extra + (extra === 1 ? ' other' : ' others') + ' just joined the Network.';
+        }
+        bannerText.innerHTML = text;
+        banner.style.display = 'flex';
+      });
+    }
 
     function loadNetwork() {
       Promise.all([

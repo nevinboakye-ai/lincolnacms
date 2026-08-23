@@ -290,3 +290,15 @@ Run [`db/migrations/018-professional-network-profile-fix.sql`](db/migrations/018
 Run [`db/migrations/019-professional-bio-linkedin.sql`](db/migrations/019-professional-bio-linkedin.sql) (needs migration 015 already applied). Fixing Section 24 let a professional save without an error, but the bio still didn't appear on their card — "Edit network profile" always wrote to `member_profiles`, which only the LACMS-member side of the directory reads. A professional's own card comes from their `network_professionals` row instead, which has its own separate `bio`/`linkedin_url` columns.
 
 The form now saves to the right place automatically depending on who's signed in — no Table Editor changes needed, and nothing to configure. Under the hood, a professional's save goes through a new `update_professional_profile()` function rather than a direct table update, so they can only ever touch their own bio and LinkedIn — not their committee-set title, category or active status, which live in the same table.
+
+## 26. "Just joined the Network" activity feed
+
+Run [`db/migrations/020-network-join-notifications.sql`](db/migrations/020-network-join-notifications.sql) (needs migration 015 already applied). No setup after that — it's fully automatic.
+
+**How it works**: a database trigger fires every time a new row lands in `members` — whether that's you adding someone the normal way, or a `pending_members` row getting claimed automatically on someone's first login ([Section 21](#21-adding-a-member-before-theyve-signed-up)). Either way, it logs a `network_join_events` row (name, course, year, captured at that moment — so the feed still reads correctly even if that member's details change later, or they eventually leave).
+
+**Where it shows up**:
+- **member-hub.html** — a "Recently joined" feed section, styled the same as the announcements feed, showing the 8 most recent joins to any signed-in member or professional.
+- **member-network.html** — a small banner near the top ("Kwame Asante and 2 others just joined the Network") whenever someone's joined in the last 14 days. It disappears on its own once there's been no activity for a while, rather than sitting there claiming to be "recent" forever.
+
+**To hide a specific announcement** (without deleting the join record itself): Table Editor → `network_join_events` → set **is_visible** to `false` on that row.
