@@ -3348,21 +3348,30 @@ body.intro-active { overflow: hidden; }
 }
 .discount-card:hover .card-link .icon { transform: translateX(4px); }
 
-/* Members hub "just joined the Network" ticker — pinned at the top of
-   the page, one item visible at a time via a sliding track, so recent
-   activity is always in view without ever growing the page. Auto-
-   advances, pauses on hover/focus, and responds to prev/next clicks or
-   a touch swipe. */
+/* "Just joined the Network" ticker — one item visible at a time via a
+   sliding track, so recent activity is always in view without ever
+   growing the page. Auto-advances, pauses on hover/focus, and responds
+   to prev/next clicks or a touch swipe. --ticker-item-accent* are set
+   in JS on every slide change, so the ticker's own border and icon
+   always match whichever person is currently showing — the same
+   colour their real Network card uses. */
 .network-ticker {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-left: 3px solid #6fcf97;
+  border-left: 3px solid var(--ticker-item-accent, #6fcf97);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   margin-bottom: var(--space-6);
+  transition: border-color var(--dur-base) var(--ease-standard);
+}
+
+/* Committee joins get the same pulsing gold glow their card has,
+   regardless of which course accent it would otherwise be. */
+.network-ticker.is-committee {
+  animation: network-committee-glow 3.2s ease-in-out infinite;
 }
 
 .network-ticker-icon {
@@ -3373,8 +3382,9 @@ body.intro-active { overflow: hidden; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(30, 122, 70, 0.2);
-  color: #6fcf97;
+  background: var(--ticker-item-accent-bg, rgba(30, 122, 70, 0.2));
+  color: var(--ticker-item-accent-light, #6fcf97);
+  transition: background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
 }
 .network-ticker-icon .icon { width: 18px; height: 18px; }
 

@@ -2099,6 +2099,11 @@
     var networkHubError = document.getElementById('hub-error');
     var networkAllMembers = [];
     var networkAllProfessionals = [];
+    // Populated by renderNetworkMembers() — course name -> the exact
+    // accent colours its section is currently using, so the ticker can
+    // colour a member's join event to match their real card instead of
+    // recomputing a cycle that could drift out of sync with it.
+    var networkCourseAccents = {};
 
     // Matched as a substring, not an exact string — course is always
     // saved with the full degree title attached (e.g. "Medicine BMBS
@@ -2127,7 +2132,6 @@
         return;
       }
       loadNetwork();
-      loadNetworkActivity();
     });
 
     // "So-and-so just joined the LACMS Network" — one row per new
@@ -2157,10 +2161,30 @@
         });
     }
 
+    // Each slide carries the same accent its person's real Network card
+    // uses — a course's live colour for a member (falling back to gold
+    // if that course currently has no section, e.g. it's since gone
+    // quiet), a fixed green for a professional, and committee's gold +
+    // glow overriding either. Stashed as data-attributes so switching
+    // slides is just reading them back, not recomputing a lookup.
     function renderNetworkTickerItem(row) {
-      var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
-      var meta = [courseYear, timeAgo(row.created_at)].filter(Boolean).join(' · ');
-      return '<div class="network-ticker-item">' +
+      var isProfessional = row.event_type === 'professional';
+      var meta, colors, isCommittee;
+
+      if (isProfessional) {
+        meta = [row.title, timeAgo(row.created_at)].filter(Boolean).join(' · ');
+        colors = NETWORK_ACCENT_COLORS.green;
+        isCommittee = false;
+      } else {
+        var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
+        meta = [courseYear, timeAgo(row.created_at)].filter(Boolean).join(' · ');
+        var courseKey = (row.course || '').trim() || 'Course not set';
+        colors = networkCourseAccents[courseKey] || NETWORK_ACCENT_COLORS.gold;
+        isCommittee = row.member_type === 'executive_committee' || row.member_type === 'supporting_committee';
+      }
+      if (isCommittee) colors = NETWORK_ACCENT_COLORS.gold;
+
+      return '<div class="network-ticker-item" data-accent="' + colors.accent + '" data-accent-light="' + colors.light + '" data-accent-bg="' + colors.bg + '" data-committee="' + (isCommittee ? '1' : '0') + '">' +
         '<span class="network-ticker-item-title">' + escapeHtml(row.full_name) + ' just joined the Network</span>' +
         '<span class="network-ticker-item-meta">' + escapeHtml(meta) + '</span>' +
         '</div>';
@@ -2178,6 +2202,13 @@
       function render() {
         track.style.transform = 'translateX(-' + (index * 100) + '%)';
         if (counter) counter.textContent = (index + 1) + ' / ' + count;
+        var current = track.children[index];
+        if (current) {
+          ticker.style.setProperty('--ticker-item-accent', current.getAttribute('data-accent'));
+          ticker.style.setProperty('--ticker-item-accent-light', current.getAttribute('data-accent-light'));
+          ticker.style.setProperty('--ticker-item-accent-bg', current.getAttribute('data-accent-bg'));
+          ticker.classList.toggle('is-committee', current.getAttribute('data-committee') === '1');
+        }
       }
 
       function go(delta) {
@@ -2291,11 +2322,13 @@
     }
 
     function renderNetworkHistoryRow(row) {
-      var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
+      var subtitle = row.event_type === 'professional'
+        ? [row.title, row.organisation].filter(Boolean).join(' · ')
+        : [row.course, row.year_of_study].filter(Boolean).join(' · ');
       return '<div class="network-history-row">' +
         '<div class="network-history-info">' +
         '<div class="network-history-name">' + escapeHtml(row.full_name) + '</div>' +
-        (courseYear ? '<div class="network-history-course">' + escapeHtml(courseYear) + '</div>' : '') +
+        (subtitle ? '<div class="network-history-course">' + escapeHtml(subtitle) + '</div>' : '') +
         '</div>' +
         '<div class="network-history-time">' + escapeHtml(timeAgo(row.created_at)) + '</div>' +
         '</div>';
@@ -2326,6 +2359,9 @@
         renderNetworkProfessionals(networkAllProfessionals);
         updateNetworkCount(networkAllMembers.length + networkAllProfessionals.length);
         wireNetworkInteractions();
+        // Runs after renderNetworkMembers() so networkCourseAccents is
+        // already populated — the ticker's colours depend on it.
+        loadNetworkActivity();
       });
     }
 
@@ -2389,8 +2425,10 @@
         return diff !== 0 ? diff : a.localeCompare(b);
       });
 
+      networkCourseAccents = {};
       wrap.innerHTML = courses.map(function (course, i) {
         var colors = NETWORK_ACCENT_COLORS[NETWORK_ACCENTS[i % NETWORK_ACCENTS.length]];
+        networkCourseAccents[course] = colors;
         var courseMembers = byCourse[course];
 
         var byYear = {};
