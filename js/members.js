@@ -79,11 +79,11 @@
 
   // ---- Site-wide presence heartbeat: powers the president's "currently
   // online" view. Not a live socket — just a timestamp upserted every
-  // couple of minutes for whoever's signed in, on whichever page they
-  // happen to be on (member, professional, or MMG guest alike). The
-  // dashboard treats "seen in the last 5 minutes" as online, which this
-  // 2-minute interval comfortably covers even if a beat or two is missed
-  // (a backgrounded tab, a slow connection). ----
+  // 30 seconds for whoever's signed in, on whichever page they happen to
+  // be on (member, professional, or MMG guest alike). The dashboard
+  // treats "seen in the last 5 minutes" as online — with a 30-second
+  // beat that's ten missed beats of headroom before someone actually
+  // using the site would ever wrongly drop out of "online". ----
   supabaseClient.auth.getSession().then(function (result) {
     var session = result.data && result.data.session;
     if (!session) return;
@@ -98,7 +98,7 @@
     }
 
     beat();
-    setInterval(beat, 120000);
+    setInterval(beat, 30000);
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible') beat();
     });
@@ -2670,6 +2670,7 @@
     var presidentAuthGate = document.getElementById('auth-gate');
     var presidentHubError = document.getElementById('hub-error');
     var ONLINE_WINDOW_MS = 5 * 60 * 1000;
+    var presidentUserId = null;
 
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
@@ -2681,18 +2682,8 @@
         window.location.href = 'member-hub.html';
         return;
       }
-      // The site-wide heartbeat (elsewhere in this file) already beats
-      // on page load too, but that's a separate async call with no
-      // ordering guarantee against the fetch below — awaiting one
-      // explicitly here means the president's own row is always fresh
-      // by the time the dashboard actually reads it back, rather than
-      // depending on which of the two happens to land first.
-      supabaseClient
-        .from('member_presence')
-        .upsert({ id: session.user.id, last_seen_at: new Date().toISOString() })
-        .then(function () {
-          loadPresidentDashboard();
-        });
+      presidentUserId = session.user.id;
+      loadPresidentDashboard();
       // Keeps "online now" honest without needing a manual reload —
       // only while the tab is actually visible, so it isn't polling
       // Supabase in the background for a tab nobody's looking at.
@@ -2702,12 +2693,24 @@
     });
 
     function loadPresidentDashboard() {
-      Promise.all([
-        supabaseClient.rpc('president_get_members'),
-        supabaseClient.rpc('president_get_pending_members'),
-        supabaseClient.rpc('president_get_professionals'),
-        supabaseClient.rpc('president_get_mmg_guests')
-      ]).then(function (results) {
+      // Re-beats the president's own presence every single time this
+      // runs (initial load, the 45s auto-refresh, and manual refresh
+      // alike) rather than relying on the separate site-wide heartbeat's
+      // own independent timing — whoever is looking at this page right
+      // now is, by definition, using the site right now, so their own
+      // row should never be able to go stale while they're on it.
+      var beatOwnPresence = presidentUserId
+        ? supabaseClient.from('member_presence').upsert({ id: presidentUserId, last_seen_at: new Date().toISOString() })
+        : Promise.resolve();
+
+      beatOwnPresence.then(function () {
+        return Promise.all([
+          supabaseClient.rpc('president_get_members'),
+          supabaseClient.rpc('president_get_pending_members'),
+          supabaseClient.rpc('president_get_professionals'),
+          supabaseClient.rpc('president_get_mmg_guests')
+        ]);
+      }).then(function (results) {
         if (presidentAuthGate) presidentAuthGate.style.display = 'none';
 
         if (results[0].error || results[1].error || results[2].error || results[3].error) {
