@@ -205,6 +205,33 @@
     });
   });
 
+  // ---- Homepage: the "Discounts & Opportunities" impact card starts
+  // locked (pointing at member-login.html) and only unlocks — new href,
+  // "you have access" badge — once we've actually confirmed a LACMS
+  // membership. Signed out, or an MMG-only guest with no `members` row,
+  // both correctly stay on the locked default. ----
+  var perksImpactCard = document.getElementById('perks-impact-card');
+  if (perksImpactCard) {
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) return;
+      supabaseClient
+        .from('members')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle()
+        .then(function (memberResult) {
+          if (!memberResult.data) return;
+          perksImpactCard.href = 'member-perks.html';
+          var badge = document.getElementById('perks-impact-badge');
+          if (badge) {
+            badge.className = 'impact-badge impact-badge--green';
+            badge.innerHTML = '<span class="impact-badge-dot" aria-hidden="true"></span> You have access';
+          }
+        });
+    });
+  }
+
   function setNavLinkText(el, text, signedIn) {
     var label = el.querySelector('[data-member-nav-label]');
     var target = label || el;

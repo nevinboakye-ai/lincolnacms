@@ -879,7 +879,7 @@ body.nav-open { overflow: hidden; }
 
 .impact-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-4);
   align-items: stretch;
 }
@@ -945,6 +945,15 @@ a.impact-card:focus-visible {
 }
 .impact-card--stats::before { animation-delay: 2.8s; }
 .impact-card--stats:hover { border-color: rgba(239, 139, 143, 0.6); }
+
+.impact-card--perks {
+  --impact-shimmer-color: rgba(178, 143, 240, 0.24);
+  background: linear-gradient(160deg, rgba(107, 70, 193, 0.22), var(--color-bg) 75%);
+  border-color: rgba(178, 143, 240, 0.35);
+}
+.impact-card--perks::before { animation-delay: 2.1s; }
+.impact-card--perks:hover,
+.impact-card--perks:focus-visible { border-color: #b28ff0; }
 
 @keyframes impact-shimmer {
   0%, 20% { background-position: 160% 0; }
@@ -1062,6 +1071,13 @@ a.impact-card:focus-visible {
   background: rgba(212, 166, 43, 0.16);
 }
 .impact-card--event:hover .impact-badge--gold { background: rgba(212, 166, 43, 0.3); }
+
+.impact-badge--purple {
+  color: #b28ff0;
+  border-color: rgba(178, 143, 240, 0.45);
+  background: rgba(107, 70, 193, 0.18);
+}
+.impact-card--perks:hover .impact-badge--purple { background: rgba(107, 70, 193, 0.32); }
 
 .impact-stats-row {
   display: flex;
