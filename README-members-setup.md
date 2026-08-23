@@ -280,3 +280,7 @@ No migration needed — this is a front-end change only. Discounts & members-fir
 This is entirely driven by `member_type` — there's no separate switch to flip. **To launch one of these features for everyone**, that's a code change (removing the committee check in `js/members.js` — search for `checkIsCommittee`), not a Table Editor setting; ask me when you're ready and I'll flip it.
 
 The homepage's "Discounts & Opportunities" card follows the same rule — it only unlocks to link to `member-perks.html` for committee members, staying on the locked default (pointing at `member-login.html`) for everyone else, since there's no point linking anywhere that just shows "Coming soon".
+
+## 24. Fix: professionals couldn't save a Network bio
+
+Run [`db/migrations/018-professional-network-profile-fix.sql`](db/migrations/018-professional-network-profile-fix.sql) (needs migration 015 already applied). A professional saving their LinkedIn/bio from "Edit network profile" on the members hub hit `new row violates row-level security policy for table "member_profiles"` — the insert policy from Section 19 only ever checked `is_lacms_member()`, so a professional (who isn't a LACMS member) could never create their first row there. This adds the same `is_professional()` check used everywhere else a professional needs member-equivalent access.
