@@ -94,9 +94,21 @@
 
       <div id="network-content" style="display:none;">
 
-        <div id="network-recent-joins" class="network-recent-joins" style="display:none;">
-          <svg class="icon network-recent-joins-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22.5 20v-1a4 4 0 0 0-3-3.87"/><path d="M16.5 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <span id="network-recent-joins-text"></span>
+        <div id="network-ticker" class="network-ticker" style="display:none;">
+          <span class="network-ticker-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22.5 20v-1a4 4 0 0 0-3-3.87"/><path d="M16.5 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <button type="button" class="network-ticker-nav" id="network-ticker-prev" aria-label="Previous network activity">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="network-ticker-viewport">
+            <div class="network-ticker-track" id="network-ticker-track"></div>
+          </div>
+          <button type="button" class="network-ticker-nav" id="network-ticker-next" aria-label="Next network activity">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <span class="network-ticker-counter" id="network-ticker-counter"></span>
+          <button type="button" class="network-ticker-viewall" id="network-ticker-viewall">View all</button>
         </div>
 
         <div class="network-search-row">
@@ -187,6 +199,18 @@
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
     </button>
     <div id="network-modal-body"></div>
+  </div>
+</div>
+
+<div id="network-history-modal" class="network-modal" style="display:none;" aria-hidden="true">
+  <div class="network-modal-backdrop" data-network-history-close></div>
+  <div class="network-modal-panel" role="dialog" aria-modal="true" aria-labelledby="network-history-title">
+    <button type="button" class="network-modal-close" data-network-history-close aria-label="Close">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+    </button>
+    <h2 id="network-history-title" class="network-modal-name" style="font-size: 1.3rem;">Network join history</h2>
+    <p id="network-history-count" class="network-modal-meta">Loading…</p>
+    <div id="network-history-list" class="network-history-list"></div>
   </div>
 </div>
 

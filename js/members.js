@@ -431,7 +431,7 @@
       }
       loadProfile(session);
       loadFeed();
-      loadNetworkActivity();
+      loadRecentJoins();
     });
 
     var FEED_CATEGORY = {
@@ -478,176 +478,47 @@
         '</article>';
     }
 
-    // "So-and-so just joined the LACMS Network" — one row per new
-    // `members` insert, logged automatically by a database trigger
-    // (migration 020), so this covers both a member the committee adds
-    // directly and a pending_members row getting claimed on first
-    // login. Pinned at the top of the hub as a compact single-item
-    // ticker (not a stacked feed) so it stays visible without taking up
-    // real estate — anyone who missed activity while they were away
-    // sees it all here, one at a time, the moment they log back in.
-    function loadNetworkActivity() {
-      var ticker = document.getElementById('network-ticker');
-      var track = document.getElementById('network-ticker-track');
-      if (!ticker || !track) return;
+    // A compact "N people just joined" banner, fed by network_join_events
+    // (migration 020) — only surfaced here if someone's actually joined
+    // recently, so it never sits around claiming to be "recent" forever.
+    function loadRecentJoins() {
+      var banner = document.getElementById('network-recent-joins');
+      var bannerText = document.getElementById('network-recent-joins-text');
+      if (!banner || !bannerText) return;
 
-      supabaseClient
-        .from('network_join_events')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(12)
-        .then(function (result) {
-          if (result.error) return;
-          var rows = result.data || [];
-          if (!rows.length) return;
-          track.innerHTML = rows.map(renderNetworkTickerItem).join('');
-          ticker.style.display = 'flex';
-          initNetworkTicker(ticker, rows.length);
-        });
-    }
+      var since = new Date();
+      since.setDate(since.getDate() - 14);
+      var sinceIso = since.toISOString();
 
-    function renderNetworkTickerItem(row) {
-      var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
-      var meta = [courseYear, timeAgo(row.created_at)].filter(Boolean).join(' · ');
-      return '<div class="network-ticker-item">' +
-        '<span class="network-ticker-item-title">' + escapeHtml(row.full_name) + ' just joined the Network</span>' +
-        '<span class="network-ticker-item-meta">' + escapeHtml(meta) + '</span>' +
-        '</div>';
-    }
+      Promise.all([
+        supabaseClient
+          .from('network_join_events')
+          .select('full_name')
+          .gte('created_at', sinceIso)
+          .order('created_at', { ascending: false })
+          .limit(3),
+        supabaseClient
+          .from('network_join_events')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', sinceIso)
+      ]).then(function (results) {
+        var rows = (results[0] && results[0].data) || [];
+        var total = (results[1] && results[1].count) || rows.length;
+        if (!rows.length) return;
 
-    function initNetworkTicker(ticker, count) {
-      var track = document.getElementById('network-ticker-track');
-      var prevBtn = document.getElementById('network-ticker-prev');
-      var nextBtn = document.getElementById('network-ticker-next');
-      var counter = document.getElementById('network-ticker-counter');
-      var viewport = ticker.querySelector('.network-ticker-viewport');
-      var index = 0;
-      var timer = null;
-
-      function render() {
-        track.style.transform = 'translateX(-' + (index * 100) + '%)';
-        if (counter) counter.textContent = (index + 1) + ' / ' + count;
-      }
-
-      function go(delta) {
-        index = (index + delta + count) % count;
-        render();
-      }
-
-      function stopAuto() {
-        if (timer) clearInterval(timer);
-        timer = null;
-      }
-
-      function startAuto() {
-        stopAuto();
-        if (count < 2) return;
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        timer = setInterval(function () { go(1); }, 6000);
-      }
-
-      if (count < 2) {
-        if (prevBtn) prevBtn.style.display = 'none';
-        if (nextBtn) nextBtn.style.display = 'none';
-        if (counter) counter.style.display = 'none';
-      } else {
-        if (prevBtn) prevBtn.addEventListener('click', function () { go(-1); startAuto(); });
-        if (nextBtn) nextBtn.addEventListener('click', function () { go(1); startAuto(); });
-        ticker.addEventListener('mouseenter', stopAuto);
-        ticker.addEventListener('mouseleave', startAuto);
-        ticker.addEventListener('focusin', stopAuto);
-        ticker.addEventListener('focusout', startAuto);
-
-        var touchStartX = null;
-        if (viewport) {
-          viewport.addEventListener('touchstart', function (e) {
-            touchStartX = e.touches[0].clientX;
-            stopAuto();
-          }, { passive: true });
-          viewport.addEventListener('touchend', function (e) {
-            if (touchStartX === null) return;
-            var dx = e.changedTouches[0].clientX - touchStartX;
-            if (dx > 40) go(-1);
-            else if (dx < -40) go(1);
-            touchStartX = null;
-            startAuto();
-          }, { passive: true });
+        var names = rows.map(function (r) { return '<strong>' + escapeHtml(r.full_name) + '</strong>'; });
+        var extra = total - names.length;
+        var text;
+        if (names.length === 1) {
+          text = names[0] + ' just joined the Network.';
+        } else if (extra <= 0) {
+          text = names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' just joined the Network.';
+        } else {
+          text = names.join(', ') + ' and ' + extra + (extra === 1 ? ' other' : ' others') + ' just joined the Network.';
         }
-      }
-
-      render();
-      startAuto();
-    }
-
-    // The ticker only ever shows the 12 most recent joins — "View all"
-    // opens the full, permanent history (every member who's ever
-    // joined, oldest activity never pruned) in a scrollable modal,
-    // reusing the same modal shell as the Network's profile popup.
-    var networkHistoryLoaded = false;
-    var networkTickerViewAll = document.getElementById('network-ticker-viewall');
-    if (networkTickerViewAll) {
-      networkTickerViewAll.addEventListener('click', openNetworkHistoryModal);
-    }
-    document.querySelectorAll('[data-network-history-close]').forEach(function (el) {
-      el.addEventListener('click', closeNetworkHistoryModal);
-    });
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') closeNetworkHistoryModal();
-    });
-
-    function openNetworkHistoryModal() {
-      var modal = document.getElementById('network-history-modal');
-      if (!modal) return;
-      modal.style.display = 'flex';
-      modal.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
-      if (!networkHistoryLoaded) {
-        networkHistoryLoaded = true;
-        loadNetworkHistory();
-      }
-    }
-
-    function closeNetworkHistoryModal() {
-      var modal = document.getElementById('network-history-modal');
-      if (!modal || modal.style.display === 'none') return;
-      modal.style.display = 'none';
-      modal.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
-    }
-
-    function loadNetworkHistory() {
-      var list = document.getElementById('network-history-list');
-      var countEl = document.getElementById('network-history-count');
-      if (!list) return;
-
-      supabaseClient
-        .from('network_join_events')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .then(function (result) {
-          var rows = result.data || [];
-          if (countEl) {
-            countEl.textContent = rows.length
-              ? rows.length + (rows.length === 1 ? ' member, all time' : ' members, all time')
-              : '';
-          }
-          if (!rows.length) {
-            list.innerHTML = '<p style="color: var(--color-text-faint); margin-top: var(--space-2);">No join history yet.</p>';
-            return;
-          }
-          list.innerHTML = rows.map(renderNetworkHistoryRow).join('');
-        });
-    }
-
-    function renderNetworkHistoryRow(row) {
-      var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
-      return '<div class="network-history-row">' +
-        '<div class="network-history-info">' +
-        '<div class="network-history-name">' + escapeHtml(row.full_name) + '</div>' +
-        (courseYear ? '<div class="network-history-course">' + escapeHtml(courseYear) + '</div>' : '') +
-        '</div>' +
-        '<div class="network-history-time">' + escapeHtml(timeAgo(row.created_at)) + '</div>' +
-        '</div>';
+        bannerText.innerHTML = text;
+        banner.style.display = 'flex';
+      });
     }
 
     function loadProfile(session) {
@@ -2256,51 +2127,178 @@
         return;
       }
       loadNetwork();
-      loadRecentJoins();
+      loadNetworkActivity();
     });
 
-    // A compact "N people just joined" banner, fed by the same
-    // network_join_events table (migration 020) as the member-hub.html
-    // feed — only surfaced here if someone's actually joined recently,
-    // so it never sits around claiming to be "recent" forever.
-    function loadRecentJoins() {
-      var banner = document.getElementById('network-recent-joins');
-      var bannerText = document.getElementById('network-recent-joins-text');
-      if (!banner || !bannerText) return;
+    // "So-and-so just joined the LACMS Network" — one row per new
+    // `members` insert, logged automatically by a database trigger
+    // (migration 020), so this covers both a member the committee adds
+    // directly and a pending_members row getting claimed on first
+    // login. A compact single-item ticker (not a stacked feed) so it
+    // stays visible without taking up real estate — anyone who missed
+    // activity while they were away sees it all here, one at a time.
+    function loadNetworkActivity() {
+      var ticker = document.getElementById('network-ticker');
+      var track = document.getElementById('network-ticker-track');
+      if (!ticker || !track) return;
 
-      var since = new Date();
-      since.setDate(since.getDate() - 14);
-      var sinceIso = since.toISOString();
+      supabaseClient
+        .from('network_join_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(12)
+        .then(function (result) {
+          if (result.error) return;
+          var rows = result.data || [];
+          if (!rows.length) return;
+          track.innerHTML = rows.map(renderNetworkTickerItem).join('');
+          ticker.style.display = 'flex';
+          initNetworkTicker(ticker, rows.length);
+        });
+    }
 
-      Promise.all([
-        supabaseClient
-          .from('network_join_events')
-          .select('full_name')
-          .gte('created_at', sinceIso)
-          .order('created_at', { ascending: false })
-          .limit(3),
-        supabaseClient
-          .from('network_join_events')
-          .select('id', { count: 'exact', head: true })
-          .gte('created_at', sinceIso)
-      ]).then(function (results) {
-        var rows = (results[0] && results[0].data) || [];
-        var total = (results[1] && results[1].count) || rows.length;
-        if (!rows.length) return;
+    function renderNetworkTickerItem(row) {
+      var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
+      var meta = [courseYear, timeAgo(row.created_at)].filter(Boolean).join(' · ');
+      return '<div class="network-ticker-item">' +
+        '<span class="network-ticker-item-title">' + escapeHtml(row.full_name) + ' just joined the Network</span>' +
+        '<span class="network-ticker-item-meta">' + escapeHtml(meta) + '</span>' +
+        '</div>';
+    }
 
-        var names = rows.map(function (r) { return '<strong>' + escapeHtml(r.full_name) + '</strong>'; });
-        var extra = total - names.length;
-        var text;
-        if (names.length === 1) {
-          text = names[0] + ' just joined the Network.';
-        } else if (extra <= 0) {
-          text = names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' just joined the Network.';
-        } else {
-          text = names.join(', ') + ' and ' + extra + (extra === 1 ? ' other' : ' others') + ' just joined the Network.';
+    function initNetworkTicker(ticker, count) {
+      var track = document.getElementById('network-ticker-track');
+      var prevBtn = document.getElementById('network-ticker-prev');
+      var nextBtn = document.getElementById('network-ticker-next');
+      var counter = document.getElementById('network-ticker-counter');
+      var viewport = ticker.querySelector('.network-ticker-viewport');
+      var index = 0;
+      var timer = null;
+
+      function render() {
+        track.style.transform = 'translateX(-' + (index * 100) + '%)';
+        if (counter) counter.textContent = (index + 1) + ' / ' + count;
+      }
+
+      function go(delta) {
+        index = (index + delta + count) % count;
+        render();
+      }
+
+      function stopAuto() {
+        if (timer) clearInterval(timer);
+        timer = null;
+      }
+
+      function startAuto() {
+        stopAuto();
+        if (count < 2) return;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        timer = setInterval(function () { go(1); }, 6000);
+      }
+
+      if (count < 2) {
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (counter) counter.style.display = 'none';
+      } else {
+        if (prevBtn) prevBtn.addEventListener('click', function () { go(-1); startAuto(); });
+        if (nextBtn) nextBtn.addEventListener('click', function () { go(1); startAuto(); });
+        ticker.addEventListener('mouseenter', stopAuto);
+        ticker.addEventListener('mouseleave', startAuto);
+        ticker.addEventListener('focusin', stopAuto);
+        ticker.addEventListener('focusout', startAuto);
+
+        var touchStartX = null;
+        if (viewport) {
+          viewport.addEventListener('touchstart', function (e) {
+            touchStartX = e.touches[0].clientX;
+            stopAuto();
+          }, { passive: true });
+          viewport.addEventListener('touchend', function (e) {
+            if (touchStartX === null) return;
+            var dx = e.changedTouches[0].clientX - touchStartX;
+            if (dx > 40) go(-1);
+            else if (dx < -40) go(1);
+            touchStartX = null;
+            startAuto();
+          }, { passive: true });
         }
-        bannerText.innerHTML = text;
-        banner.style.display = 'flex';
-      });
+      }
+
+      render();
+      startAuto();
+    }
+
+    // The ticker only ever shows the 12 most recent joins — "View all"
+    // opens the full, permanent history (every member who's ever
+    // joined, oldest activity never pruned) in a scrollable modal,
+    // reusing the same modal shell as the Network's own profile popup.
+    var networkHistoryLoaded = false;
+    var networkTickerViewAll = document.getElementById('network-ticker-viewall');
+    if (networkTickerViewAll) {
+      networkTickerViewAll.addEventListener('click', openNetworkHistoryModal);
+    }
+    document.querySelectorAll('[data-network-history-close]').forEach(function (el) {
+      el.addEventListener('click', closeNetworkHistoryModal);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeNetworkHistoryModal();
+    });
+
+    function openNetworkHistoryModal() {
+      var modal = document.getElementById('network-history-modal');
+      if (!modal) return;
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      if (!networkHistoryLoaded) {
+        networkHistoryLoaded = true;
+        loadNetworkHistory();
+      }
+    }
+
+    function closeNetworkHistoryModal() {
+      var modal = document.getElementById('network-history-modal');
+      if (!modal || modal.style.display === 'none') return;
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+
+    function loadNetworkHistory() {
+      var list = document.getElementById('network-history-list');
+      var countEl = document.getElementById('network-history-count');
+      if (!list) return;
+
+      supabaseClient
+        .from('network_join_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .then(function (result) {
+          var rows = result.data || [];
+          if (countEl) {
+            countEl.textContent = rows.length
+              ? rows.length + (rows.length === 1 ? ' member, all time' : ' members, all time')
+              : '';
+          }
+          if (!rows.length) {
+            list.innerHTML = '<p style="color: var(--color-text-faint); margin-top: var(--space-2);">No join history yet.</p>';
+            return;
+          }
+          list.innerHTML = rows.map(renderNetworkHistoryRow).join('');
+        });
+    }
+
+    function renderNetworkHistoryRow(row) {
+      var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
+      return '<div class="network-history-row">' +
+        '<div class="network-history-info">' +
+        '<div class="network-history-name">' + escapeHtml(row.full_name) + '</div>' +
+        (courseYear ? '<div class="network-history-course">' + escapeHtml(courseYear) + '</div>' : '') +
+        '</div>' +
+        '<div class="network-history-time">' + escapeHtml(timeAgo(row.created_at)) + '</div>' +
+        '</div>';
     }
 
     function loadNetwork() {
