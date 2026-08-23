@@ -260,3 +260,15 @@ Run [`db/migrations/016-pending-members.sql`](db/migrations/016-pending-members.
 3. Done. The moment they set their password and land on the members hub, their `pending_members` row is automatically turned into a real `members` row (membership number generated as normal) and removed from `pending_members` — no manual UUID-pasting needed.
 
 The original process from Section 5 (invite first, copy the UUID, add the `members` row yourself) still works exactly as before if you prefer it — this is an alternative for when you want someone's profile ready and waiting before they've had a chance to sign up, not a replacement. Nobody can read or write `pending_members` directly, from the site or via the API — not even a signed-in member — it's only ever touched from Table Editor and by the `security definer` `claim_member_profile()` function.
+
+## 22. Pending members in the Network, and card styling
+
+Run [`db/migrations/017-pending-members-network-visibility.sql`](db/migrations/017-pending-members-network-visibility.sql) (needs migration 016 already applied). Someone you've pre-added in `pending_members` ([Section 21](#21-adding-a-member-before-theyve-signed-up)) now shows up in the Network too, grouped under their course/year like everyone else, with a muted, dashed "Pending" card instead of a normal one — so other members can see they're on their way in, without it looking like a confirmed profile.
+
+**To hide a pending person from the Network** (but keep them pending — they'll still be claimed normally once they sign up): Table Editor → `pending_members` → set **visible_in_network** to `false` on their row.
+
+**Network card styling**, tightened up in the same pass:
+- The role/category badge on every Network card now sits at a fixed position at the bottom, regardless of how many lines the name or title above it wraps to.
+- Committee and Supporting Committee cards are always gold with a slow pulsing glow — the colour now fills the whole card, not just the left edge — regardless of which course accent colour their section landed on.
+- Professional cards are always green, also filling the whole card. Same "special" treatment as committee, different colour, no glow — so the two read as distinct at a glance.
+- Regular member cards are unchanged: a plain card with the course section's accent colour on the left edge only.

@@ -2092,11 +2092,15 @@
     }
 
     function renderNetworkMemberCard(m) {
-      var roleLabel = m.committee_role || NETWORK_TYPE_LABELS[m.member_type];
+      // A pending row (added before they've signed up) always shows a
+      // plain "Pending" badge — even if they're destined to be
+      // committee once they join, they aren't yet, so the committee
+      // gold treatment is reserved for confirmed members.
+      var roleLabel = m.is_pending ? 'Pending' : (m.committee_role || NETWORK_TYPE_LABELS[m.member_type]);
       var badgeHtml = roleLabel ? '<span class="network-card-badge">' + escapeHtml(roleLabel) + '</span>' : '';
       var linkedinHtml = m.linkedin_url ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
-      var isCommittee = m.member_type === 'executive_committee' || m.member_type === 'supporting_committee';
-      var cardClass = 'network-card' + (isCommittee ? ' network-card--committee' : '');
+      var isCommittee = !m.is_pending && (m.member_type === 'executive_committee' || m.member_type === 'supporting_committee');
+      var cardClass = 'network-card' + (isCommittee ? ' network-card--committee' : '') + (m.is_pending ? ' network-card--pending' : '');
       return '<button type="button" class="' + cardClass + '" data-network-type="member" data-network-id="' + m.id + '">' +
         linkedinHtml +
         '<span class="network-card-avatar">' + escapeHtml(networkInitials(m.full_name)) + '</span>' +
@@ -2119,7 +2123,7 @@
       var avatarHtml = p.photo_url
         ? '<img src="' + encodeURI(p.photo_url) + '" alt="">'
         : escapeHtml(networkInitials(p.full_name));
-      return '<button type="button" class="network-card" data-network-type="professional" data-network-id="' + p.id + '">' +
+      return '<button type="button" class="network-card network-card--professional" data-network-type="professional" data-network-id="' + p.id + '">' +
         linkedinHtml +
         '<span class="network-card-avatar">' + avatarHtml + '</span>' +
         '<span class="network-card-name">' + escapeHtml(p.full_name) + '</span>' +
@@ -2184,15 +2188,18 @@
       };
 
       if (type === 'member') {
-        var roleLabel = record.committee_role || NETWORK_TYPE_LABELS[record.member_type];
+        var roleLabel = record.is_pending ? 'Pending' : (record.committee_role || NETWORK_TYPE_LABELS[record.member_type]);
+        var bioHtml = record.is_pending
+          ? '<p class="network-modal-bio" style="font-style:italic; color: var(--color-text-faint);">Still finishing sign-up — their full profile will appear here once they\'ve joined LACMS.</p>'
+          : (record.bio
+              ? '<p class="network-modal-bio">' + escapeHtml(record.bio) + '</p>'
+              : '<p class="network-modal-bio" style="font-style:italic; color: var(--color-text-faint);">No bio added yet.</p>');
         body.innerHTML =
           '<span class="network-modal-avatar" style="background: var(--color-bg-alt); color: var(--color-gold-light);">' + escapeHtml(networkInitials(record.full_name)) + '</span>' +
           '<h2 class="network-modal-name" id="network-modal-name">' + escapeHtml(record.full_name) + '</h2>' +
           (roleLabel ? '<p class="network-modal-role">' + escapeHtml(roleLabel) + '</p>' : '') +
           '<p class="network-modal-meta">' + escapeHtml([record.course, record.year_of_study].filter(Boolean).join(' · ') || '—') + '</p>' +
-          (record.bio
-            ? '<p class="network-modal-bio">' + escapeHtml(record.bio) + '</p>'
-            : '<p class="network-modal-bio" style="font-style:italic; color: var(--color-text-faint);">No bio added yet.</p>') +
+          bioHtml +
           linkedinBtn(record.linkedin_url);
       } else {
         var avatarHtml = record.photo_url

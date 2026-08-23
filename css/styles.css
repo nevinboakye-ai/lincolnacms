@@ -3718,14 +3718,23 @@ body.intro-active { overflow: hidden; }
 }
 
 /* Committee & Supporting Committee cards get a fixed gold identity
-   (overriding whichever course accent their section landed on) plus a
-   slow pulsing glow, so leadership stands out from regular member cards
-   wherever they appear. Professionals get a colour change only, not
-   this animation, so the two "special" treatments read differently. */
+   (overriding whichever course accent their section landed on), the
+   accent colour filling the whole card rather than just the left edge,
+   plus a slow pulsing glow — leadership stands out from regular member
+   cards wherever they appear. Professionals get the same full-card
+   fill treatment in green, but no glow, so the two "special"
+   treatments still read differently from each other. Regular member
+   cards keep the plain left-edge accent only (the base .network-card
+   rule, untouched). */
+.network-card--committee,
+.network-card--professional {
+  border-left-width: 4px;
+}
 .network-card--committee {
   --network-accent: var(--color-gold);
   --network-accent-light: var(--color-gold-light);
   --network-accent-bg: rgba(212, 166, 43, 0.18);
+  background: linear-gradient(160deg, rgba(212, 166, 43, 0.32), rgba(212, 166, 43, 0.08) 60%, var(--color-surface) 100%);
   animation: network-committee-glow 3.2s ease-in-out infinite;
 }
 .network-card--committee .network-card-badge {
@@ -3735,6 +3744,23 @@ body.intro-active { overflow: hidden; }
 @keyframes network-committee-glow {
   0%, 100% { box-shadow: 0 0 0 1px rgba(212, 166, 43, 0.2); }
   50% { box-shadow: 0 0 0 1px rgba(212, 166, 43, 0.4), 0 0 16px rgba(212, 166, 43, 0.35); }
+}
+
+.network-card--professional {
+  background: linear-gradient(160deg, rgba(30, 122, 70, 0.36), rgba(30, 122, 70, 0.08) 60%, var(--color-surface) 100%);
+}
+
+/* Pending members (added before they've signed up) get a muted, dashed
+   treatment — visually flagged as "not confirmed yet" rather than given
+   any of the accent colours real members and professionals get. */
+.network-card--pending {
+  opacity: 0.75;
+  border-left-style: dashed;
+}
+.network-card--pending .network-card-badge {
+  color: var(--color-text-faint);
+  background: transparent;
+  border: 1px dashed var(--color-border-strong);
 }
 
 /* Profile modal */
