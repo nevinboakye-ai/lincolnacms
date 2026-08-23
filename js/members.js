@@ -469,12 +469,16 @@
         ? '<span class="feed-item-pin" title="Pinned"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 3.9a1 1 0 0 1-.75 1.6H13v6a1 1 0 1 1-2 0v-6H6.35a1 1 0 0 1-.75-1.6L9 9.5V3a1 1 0 0 1 1-1h2Z"/></svg></span>'
         : '';
       var classes = 'feed-item feed-item--' + meta.accent + (row.pinned ? ' feed-item--pinned' : '');
+      var fromHtml = row.posted_by
+        ? '<p class="feed-item-from">— ' + escapeHtml(row.posted_by) + '</p>'
+        : '';
       return '<article class="' + classes + '">' +
         '<div class="feed-item-meta">' + pinHtml +
         '<span class="feed-item-tag">' + escapeHtml(meta.label) + '</span>' +
         '<span class="feed-item-date">' + escapeHtml(timeAgo(row.published_at)) + '</span></div>' +
         '<h3 class="feed-item-title">' + escapeHtml(row.title) + '</h3>' +
         '<p class="feed-item-body">' + escapeHtml(row.body) + '</p>' +
+        fromHtml +
         '</article>';
     }
 

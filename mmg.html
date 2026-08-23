@@ -141,11 +141,17 @@
             <span class="member-info-label">Location</span>
             <span class="member-info-value">Attendees only</span>
           </div>
-          <a class="btn btn-primary btn-glow btn-block" href="#mmg-ticket-link-todo" style="margin-top: var(--space-4);">
-            Get your ticket
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </a>
-          <p style="margin-top: var(--space-3); margin-bottom: 0; font-size: 0.85rem; color: var(--color-text-faint);">You'll leave this site to complete your purchase. Already got a ticket? <a href="mmg-login.html" style="color: var(--color-gold-light);">Create your portal account</a> if you're not a Lincoln LACMS member.</p>
+          <div class="ticket-countdown" id="ticket-countdown" aria-live="polite">
+            <span class="ticket-countdown-label">Tickets release in</span>
+            <div class="ticket-countdown-timer">
+              <div class="ticket-countdown-unit"><span class="ticket-countdown-num" id="ticket-countdown-days">00</span><span class="ticket-countdown-unit-label">Days</span></div>
+              <div class="ticket-countdown-unit"><span class="ticket-countdown-num" id="ticket-countdown-hours">00</span><span class="ticket-countdown-unit-label">Hrs</span></div>
+              <div class="ticket-countdown-unit"><span class="ticket-countdown-num" id="ticket-countdown-minutes">00</span><span class="ticket-countdown-unit-label">Min</span></div>
+              <div class="ticket-countdown-unit"><span class="ticket-countdown-num" id="ticket-countdown-seconds">00</span><span class="ticket-countdown-unit-label">Sec</span></div>
+            </div>
+            <span class="ticket-countdown-date">Monday 12 October 2026</span>
+          </div>
+          <p style="margin-top: var(--space-3); margin-bottom: 0; font-size: 0.85rem; color: var(--color-text-faint);">Already got a ticket, or attending from a partner university? <a href="mmg-login.html" style="color: var(--color-gold-light);">Create your portal account</a> if you're not a Lincoln LACMS member.</p>
         </div>
 
       </div>

@@ -309,3 +309,11 @@ Run [`db/migrations/020-network-join-notifications.sql`](db/migrations/020-netwo
 **Professionals show up too** — run [`db/migrations/022-professional-join-events.sql`](db/migrations/022-professional-join-events.sql) (needs 020 already applied). Same idea as members: a trigger logs a join event the moment you add someone to `network_professionals`, and existing professionals are backfilled using their own `created_at`. Nothing else to configure — the hub banner and the Network ticker both already read from the same table, so professionals just start appearing in both.
 
 **On the Network page, the ticker colours each slide to match that person's real card** — a member's course accent (whatever colour that course's section currently has, e.g. gold for Medicine), a fixed green for a professional (same as the Professionals section), and committee's gold pulsing glow overriding either. This is computed from the live directory as it renders, so if a course's colour ever shifts (new courses appearing/disappearing changes the cycle), the ticker always matches what's actually on the page below it rather than drifting out of sync.
+
+## 27. MMG ticket countdown
+
+No migration needed — this is a front-end change only. The "Get your ticket" button on `mmg.html` is now a live countdown to **12 October 2026** (when tickets actually go on sale), ticking down in days/hours/minutes/seconds. Once that date passes, it automatically swaps to "Tickets are live — check back for the link!" — update `mmg.html` with the real ticket link at that point (search for `ticket-countdown-live` in `css/styles.css` if you want to restyle that moment, or ask me and I'll wire up the real button then). To change the release date, edit the date in `js/main.js` — search for `ticketTarget`.
+
+## 28. Announcement bylines — say who a post is from
+
+Run [`db/migrations/023-announcement-posted-by.sql`](db/migrations/023-announcement-posted-by.sql). Adds an optional **posted_by** field to `announcements` (Table Editor) — e.g. "Nevin Boakye, President" or "LACMS Committee" — shown as a small byline under the post on the members hub feed. Leave it blank on any post and no byline shows, so nothing changes for existing announcements until you fill it in.

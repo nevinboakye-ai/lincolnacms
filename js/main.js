@@ -268,6 +268,37 @@
     countdownTimer = setInterval(tickCountdown, 1000);
   }
 
+  // MMG ticket countdown — stands in for the "Get your ticket" button
+  // until tickets actually go on sale, 12 October 2026.
+  var ticketCountdownEl = document.getElementById('ticket-countdown');
+  if (ticketCountdownEl) {
+    var ticketTarget = new Date('2026-10-12T00:00:00');
+    var ticketDays = document.getElementById('ticket-countdown-days');
+    var ticketHours = document.getElementById('ticket-countdown-hours');
+    var ticketMinutes = document.getElementById('ticket-countdown-minutes');
+    var ticketSeconds = document.getElementById('ticket-countdown-seconds');
+    var ticketTimer;
+
+    var ticketPad2 = function (n) { return n < 10 ? '0' + n : String(n); };
+
+    var tickTicketCountdown = function () {
+      var diff = ticketTarget.getTime() - Date.now();
+      if (diff <= 0) {
+        ticketCountdownEl.innerHTML = '<span class="ticket-countdown-live">Tickets are live — check back for the link!</span>';
+        if (ticketTimer) clearInterval(ticketTimer);
+        return;
+      }
+      var totalSeconds = Math.floor(diff / 1000);
+      ticketDays.textContent = ticketPad2(Math.floor(totalSeconds / 86400));
+      ticketHours.textContent = ticketPad2(Math.floor((totalSeconds % 86400) / 3600));
+      ticketMinutes.textContent = ticketPad2(Math.floor((totalSeconds % 3600) / 60));
+      ticketSeconds.textContent = ticketPad2(totalSeconds % 60);
+    };
+
+    tickTicketCountdown();
+    ticketTimer = setInterval(tickTicketCountdown, 1000);
+  }
+
   // Briefly highlight an event row when arriving via a same-page-type anchor
   var hash = window.location.hash;
   if (hash) {
