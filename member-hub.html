@@ -105,6 +105,7 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
         <span class="network-ticker-counter" id="network-ticker-counter"></span>
+        <button type="button" class="network-ticker-viewall" id="network-ticker-viewall">View all</button>
       </div>
 
       <div id="member-hub-content" class="member-hub-grid" style="display:none;">
@@ -429,6 +430,18 @@
     </div>
   </div>
 </footer>
+
+<div id="network-history-modal" class="network-modal" style="display:none;" aria-hidden="true">
+  <div class="network-modal-backdrop" data-network-history-close></div>
+  <div class="network-modal-panel" role="dialog" aria-modal="true" aria-labelledby="network-history-title">
+    <button type="button" class="network-modal-close" data-network-history-close aria-label="Close">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+    </button>
+    <h2 id="network-history-title" class="network-modal-name" style="font-size: 1.3rem;">Network join history</h2>
+    <p id="network-history-count" class="network-modal-meta">Loading…</p>
+    <div id="network-history-list" class="network-history-list"></div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>

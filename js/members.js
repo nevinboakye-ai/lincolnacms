@@ -579,6 +579,77 @@
       startAuto();
     }
 
+    // The ticker only ever shows the 12 most recent joins — "View all"
+    // opens the full, permanent history (every member who's ever
+    // joined, oldest activity never pruned) in a scrollable modal,
+    // reusing the same modal shell as the Network's profile popup.
+    var networkHistoryLoaded = false;
+    var networkTickerViewAll = document.getElementById('network-ticker-viewall');
+    if (networkTickerViewAll) {
+      networkTickerViewAll.addEventListener('click', openNetworkHistoryModal);
+    }
+    document.querySelectorAll('[data-network-history-close]').forEach(function (el) {
+      el.addEventListener('click', closeNetworkHistoryModal);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeNetworkHistoryModal();
+    });
+
+    function openNetworkHistoryModal() {
+      var modal = document.getElementById('network-history-modal');
+      if (!modal) return;
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      if (!networkHistoryLoaded) {
+        networkHistoryLoaded = true;
+        loadNetworkHistory();
+      }
+    }
+
+    function closeNetworkHistoryModal() {
+      var modal = document.getElementById('network-history-modal');
+      if (!modal || modal.style.display === 'none') return;
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+
+    function loadNetworkHistory() {
+      var list = document.getElementById('network-history-list');
+      var countEl = document.getElementById('network-history-count');
+      if (!list) return;
+
+      supabaseClient
+        .from('network_join_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .then(function (result) {
+          var rows = result.data || [];
+          if (countEl) {
+            countEl.textContent = rows.length
+              ? rows.length + (rows.length === 1 ? ' member, all time' : ' members, all time')
+              : '';
+          }
+          if (!rows.length) {
+            list.innerHTML = '<p style="color: var(--color-text-faint); margin-top: var(--space-2);">No join history yet.</p>';
+            return;
+          }
+          list.innerHTML = rows.map(renderNetworkHistoryRow).join('');
+        });
+    }
+
+    function renderNetworkHistoryRow(row) {
+      var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
+      return '<div class="network-history-row">' +
+        '<div class="network-history-info">' +
+        '<div class="network-history-name">' + escapeHtml(row.full_name) + '</div>' +
+        (courseYear ? '<div class="network-history-course">' + escapeHtml(courseYear) + '</div>' : '') +
+        '</div>' +
+        '<div class="network-history-time">' + escapeHtml(timeAgo(row.created_at)) + '</div>' +
+        '</div>';
+    }
+
     function loadProfile(session) {
       supabaseClient
         .from('members')
