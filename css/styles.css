@@ -3689,6 +3689,7 @@ body.intro-active { overflow: hidden; }
   background: var(--network-accent-bg, rgba(212, 166, 43, 0.18));
   padding: 3px 9px;
   border-radius: var(--radius-pill);
+  margin-top: auto;
 }
 
 .network-card-linkedin {
