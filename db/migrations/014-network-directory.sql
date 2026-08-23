@@ -6,45 +6,16 @@
 -- Run. See README-members-setup.md for the full walkthrough.
 
 -- ---------------------------------------------------------------------
--- The `members` table's only existing RLS policy is "a member can read
--- their own row and nothing else" (by design, from Phase 1). The
--- Network needs every member to browse everyone else's basic details —
--- rather than loosening that policy (which would also expose email and
--- membership_number to any member who queried the table directly), this
--- function returns only the safe subset of columns a directory actually
--- needs, and is SECURITY DEFINER so it can read the whole table
--- internally while still gating on "the caller must be a member
--- themselves" via is_lacms_member(). Also joins in member_profiles
--- (below) for the optional LinkedIn/bio a member has added themselves.
-create or replace function public.get_network_members()
-returns table (
-  id uuid,
-  full_name text,
-  course text,
-  year_of_study text,
-  member_type text,
-  committee_role text,
-  linkedin_url text,
-  bio text
-)
-language sql
-security definer
-stable
-set search_path = public
-as $$
-  select m.id, m.full_name, m.course, m.year_of_study, m.member_type, m.committee_role,
-         p.linkedin_url, p.bio
-  from public.members m
-  left join public.member_profiles p on p.id = m.id
-  where public.is_lacms_member() and m.membership_status = 'active';
-$$;
-
--- ---------------------------------------------------------------------
 -- Member profiles — the optional extras a member adds about themself
 -- (LinkedIn, short bio) from their own hub. Kept separate from `members`
 -- entirely, rather than adding self-editable columns to it, so there's
 -- no risk of a member ever being able to touch committee-controlled
 -- fields like membership_status or member_type.
+--
+-- Created before get_network_members() below, since that function is
+-- LANGUAGE SQL and Postgres checks every table it references exists
+-- at CREATE FUNCTION time (unlike a plpgsql function, which only checks
+-- at call time).
 create table public.member_profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   linkedin_url text,
@@ -71,6 +42,40 @@ create policy "A member can update their own profile extras"
   with check (id = auth.uid());
 
 comment on column public.member_profiles.bio is 'Optional — shown on the member''s Network profile card. Plain text, no formatting.';
+
+-- ---------------------------------------------------------------------
+-- The `members` table's only existing RLS policy is "a member can read
+-- their own row and nothing else" (by design, from Phase 1). The
+-- Network needs every member to browse everyone else's basic details —
+-- rather than loosening that policy (which would also expose email and
+-- membership_number to any member who queried the table directly), this
+-- function returns only the safe subset of columns a directory actually
+-- needs, and is SECURITY DEFINER so it can read the whole table
+-- internally while still gating on "the caller must be a member
+-- themselves" via is_lacms_member(). Also joins in member_profiles
+-- (above) for the optional LinkedIn/bio a member has added themselves.
+create or replace function public.get_network_members()
+returns table (
+  id uuid,
+  full_name text,
+  course text,
+  year_of_study text,
+  member_type text,
+  committee_role text,
+  linkedin_url text,
+  bio text
+)
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select m.id, m.full_name, m.course, m.year_of_study, m.member_type, m.committee_role,
+         p.linkedin_url, p.bio
+  from public.members m
+  left join public.member_profiles p on p.id = m.id
+  where public.is_lacms_member() and m.membership_status = 'active';
+$$;
 
 -- ---------------------------------------------------------------------
 -- Professionals — senior doctors, consultants, alumni doctors, pharmacists
