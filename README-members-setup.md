@@ -332,9 +332,11 @@ Run [`db/migrations/025-president-dashboard.sql`](db/migrations/025-president-da
 
 **How "online now" is tracked**: a lightweight heartbeat, not a live connection — `js/members.js` upserts a timestamp to a new `member_presence` table every 30 seconds for whoever's signed in, on any page, regardless of account type. The dashboard treats anyone seen in the last 5 minutes as online, which at a 30-second beat is a wide safety margin — ten missed beats' worth — before someone actually using the site would ever wrongly drop out of "online". The dashboard page itself also re-beats its own presence every time it loads or refreshes (not just relying on the site-wide heartbeat's own independent timing), so the person actually looking at the dashboard can never see themselves show as offline. It also auto-refreshes every 45 seconds (only while the tab is actually visible) so this stays current without manual reloading.
 
-**Layout**: a stats row up top, a "Needs a nudge" list combining everyone across every account type who hasn't finished setting up (including still-pending invites that haven't been sent from `pending_members` yet), then LACMS Members grouped by course and year, Professionals, and MMG/partner-university guests grouped by access level (Committee / Attendee / Pending review).
+**Layout**: a prominent green "Online right now" panel right at the top — the first thing on the page — then a stats row, a "Needs a nudge" list combining everyone across every account type who hasn't finished setting up (including still-pending invites that haven't been sent from `pending_members` yet), then LACMS Members, Professionals, and MMG/partner-university guests (the last one still grouped by access level — Committee / Attendee / Pending review — since that's a meaningful tier, not an academic grouping). Members, Professionals and each MMG tier are all sorted by **who's been active most recently**, not grouped by course/year — whoever's using the site right now naturally rises to the top of their section. Each member's avatar still carries their course's colour from the Network page (Medicine gold, then green/red/purple as further courses appear) purely as a visual identifier, independent of the sort order.
 
-No Table Editor setup needed beyond running the migration — everything else is automatic.
+**One-click correction**: whether someone genuinely finished setup can't always be told apart from "only ever opened the invite" using the data Supabase exposes — both look identical from the outside (see [Section 33](#33-fix-false-logged-in-status-and-a-manual-override-for-the-ones-auto-detection-cant-tell) below). Any row that isn't yet marked as set up shows a **"Mark active"** button — use it once you have direct confirmation from that person (starting with yourself) rather than guessing.
+
+No Table Editor setup needed beyond running the migrations — everything else is automatic.
 
 ## 31. Fix: dashboard failed to load with a "structure of query" error
 
@@ -365,3 +367,17 @@ Run [`db/migrations/027-fix-false-activation-and-manual-override.sql`](db/migrat
 **"Mark active" button**: every roster row that isn't yet activated now has a small "Mark active" button — one click, no Table Editor needed. Use it for anyone you have direct confirmation from (starting with your own account, and anyone like Roberta who's told you it worked). Going forward, every *new* invite is still tracked automatically and correctly — this override is only for the accounts affected by the old backfill.
 
 **Also fixes "I'm on the dashboard right now but it doesn't say I'm online"**: the page now explicitly refreshes your own presence and waits for it to land before its first data fetch, closing a timing gap where the dashboard could momentarily read your presence before that page-load's own heartbeat had finished writing.
+
+## 34. Fix: "Active just now" not counted in the online number, tighter presence, sort by activity
+
+No migration needed — front-end only.
+
+**The bug**: the "Active · X ago" label and the online/count logic were reading two different signals. The label fell back to `last_sign_in_at` when there was no heartbeat yet, so it could show "Active · Just now" from a fresh login — while the online check only ever looked at the heartbeat (`last_seen_at`), missed that same fresh login, and didn't count them. Both now read from one shared function, so the label and the count can never disagree again.
+
+**Tighter presence, still just a heartbeat, not a live socket**: the site-wide beat interval dropped from 2 minutes to 30 seconds, giving the 5-minute online window ten missed beats of headroom instead of two. The dashboard also re-beats its own presence on *every* load and refresh now, not just the first one — so however long you leave the tab open, your own row can't go stale.
+
+**"Active" is now green**, not a neutral grey pill, so a genuinely-active person stands out from someone who's merely been invited.
+
+**Members, Professionals and each MMG tier are now sorted by most-recently-active first** — course/year grouping is gone from the Members section entirely. Each member's avatar still carries their course's Network colour (computed fresh each load, so it can never drift out of sync with the actual Network page), it's just no longer used to group rows into sections.
+
+**Also fixed**: a long course + year detail line (e.g. "Medicine BMBS BMedSci · Year Three") could overflow past its column and visually collide with the status pill next to it — the wrapping element was missing `min-width: 0`, the usual cause of an ellipsis rule not actually kicking in inside a flex/grid layout.

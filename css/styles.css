@@ -3771,15 +3771,6 @@ body.intro-active { overflow: hidden; }
   margin: 0 0 var(--space-3);
   color: var(--color-gold-light);
 }
-.dash-year-group { margin-bottom: var(--space-4); }
-.dash-year-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text-faint);
-  margin: 0 0 var(--space-2);
-}
 
 .roster-table {
   display: flex;
@@ -3817,6 +3808,7 @@ body.intro-active { overflow: hidden; }
 .roster-mark-active:disabled { opacity: 0.6; cursor: default; }
 
 .roster-main { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.roster-info { min-width: 0; overflow: hidden; }
 .roster-avatar {
   flex-shrink: 0;
   width: 32px;
@@ -3868,7 +3860,7 @@ body.intro-active { overflow: hidden; }
   flex-shrink: 0;
 }
 .roster-status--online { color: #0c2b1a; background: #6fcf97; }
-.roster-status--active { color: var(--color-text-muted); background: var(--color-bg-alt); border: 1px solid var(--color-border-strong); }
+.roster-status--active { color: #6fcf97; background: rgba(30, 122, 70, 0.16); border: 1px solid rgba(111, 207, 151, 0.4); }
 .roster-status--stuck { color: #4a2f0a; background: var(--color-gold-light); }
 .roster-status--unopened { color: var(--color-text-faint); background: transparent; border: 1px dashed var(--color-border-strong); }
 

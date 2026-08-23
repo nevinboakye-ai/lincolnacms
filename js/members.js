@@ -2724,11 +2724,12 @@
         var pendingMembers = results[1].data || [];
         var professionals = results[2].data || [];
         var mmgGuests = results[3].data || [];
+        var courseAccent = buildCourseAccentMap(members);
 
-        renderOnlineNow(members, professionals, mmgGuests);
+        renderOnlineNow(members, professionals, mmgGuests, courseAccent);
         renderStats(members, pendingMembers, professionals, mmgGuests);
         renderAttentionList(members, pendingMembers, professionals, mmgGuests);
-        renderMembersSection(members);
+        renderMembersSection(members, courseAccent);
         renderProfessionalsSection(professionals);
         renderMmgSection(mmgGuests);
 
@@ -2751,9 +2752,35 @@
     // them, even though they can't actually sign back in yet. Requiring
     // activated_at here is what keeps them showing as "invite opened,
     // not finished" instead of wrongly appearing online.
+    // The single source of truth for "how recently was this person
+    // active" — a fresh sign-in counts even a beat or two before their
+    // first heartbeat has had a chance to land, so this never
+    // contradicts itself the way checking last_seen_at alone did
+    // (which could show "Active · Just now" from a fresh login while
+    // simultaneously not counting toward "online" at all).
+    function presidentLastActivity(row) {
+      return row.last_seen_at || row.last_sign_in_at || null;
+    }
+
     function presidentIsOnline(row) {
-      if (!row.activated_at || !row.last_seen_at) return false;
-      return (Date.now() - new Date(row.last_seen_at).getTime()) < ONLINE_WINDOW_MS;
+      if (!row.activated_at) return false;
+      var lastActivity = presidentLastActivity(row);
+      if (!lastActivity) return false;
+      return (Date.now() - new Date(lastActivity).getTime()) < ONLINE_WINDOW_MS;
+    }
+
+    // Most-recently-active first, across every roster on the page —
+    // whoever's using the site right now (or most recently did) always
+    // rises to the top, rather than being buried inside a course/year
+    // group. Anyone with no activity at all (never signed in) sorts to
+    // the bottom, alphabetically among themselves.
+    function dashByActivity(a, b) {
+      var ta = presidentLastActivity(a);
+      var tb = presidentLastActivity(b);
+      var na = ta ? new Date(ta).getTime() : -1;
+      var nb = tb ? new Date(tb).getTime() : -1;
+      if (na !== nb) return nb - na;
+      return (a.full_name || '').localeCompare(b.full_name || '');
     }
 
     // Four states, ordered by what actually needs attention: someone
@@ -2765,7 +2792,7 @@
         return { label: 'Online now', cls: 'online' };
       }
       if (row.activated_at) {
-        var lastActivity = row.last_seen_at || row.last_sign_in_at;
+        var lastActivity = presidentLastActivity(row);
         return { label: lastActivity ? 'Active · ' + timeAgo(lastActivity) : 'Active', cls: 'active' };
       }
       if (row.last_sign_in_at) {
@@ -2782,7 +2809,7 @@
       return (first + last).toUpperCase();
     }
 
-    function renderRosterRow(name, detail, row, type) {
+    function renderRosterRow(name, detail, row, type, accent) {
       var status = presidentStatus(row);
       var activatedLabel = row.activated_at ? timeAgo(row.activated_at) : '—';
       var loginLabel = row.last_sign_in_at ? timeAgo(row.last_sign_in_at) : '—';
@@ -2793,10 +2820,16 @@
       var markActiveBtn = (!row.activated_at && row.id)
         ? '<button type="button" class="roster-mark-active" data-mark-active data-id="' + escapeHtml(row.id) + '" data-type="' + escapeHtml(type || 'member') + '">Mark active</button>'
         : '';
+      // A member's avatar carries their course's Network colour; a
+      // professional/MMG guest keeps their fixed type colour from the
+      // roster-avatar--{type} class instead (no accent passed for those).
+      var avatarStyle = accent && DASH_ACCENT_COLORS[accent]
+        ? ' style="background:' + DASH_ACCENT_COLORS[accent].bg + '; color:' + DASH_ACCENT_COLORS[accent].fg + ';"'
+        : '';
       return '<div class="roster-row" data-name="' + escapeHtml((name || '').toLowerCase()) + '">' +
         '<div class="roster-main">' +
-        '<span class="roster-avatar roster-avatar--' + (type || 'member') + '">' + escapeHtml(presidentInitials(name)) + '</span>' +
-        '<div><div class="roster-name">' + escapeHtml(name || 'Unnamed') + '</div>' +
+        '<span class="roster-avatar roster-avatar--' + (type || 'member') + '"' + avatarStyle + '>' + escapeHtml(presidentInitials(name)) + '</span>' +
+        '<div class="roster-info"><div class="roster-name">' + escapeHtml(name || 'Unnamed') + '</div>' +
         (detail ? '<div class="roster-detail">' + escapeHtml(detail) + '</div>' : '') +
         '</div></div>' +
         '<span class="roster-status roster-status--' + status.cls + '">' + escapeHtml(status.label) + '</span>' +
@@ -2862,7 +2895,7 @@
           return '<div class="roster-row" data-name="' + escapeHtml((it.name || '').toLowerCase()) + '">' +
             '<div class="roster-main">' +
             '<span class="roster-avatar roster-avatar--' + it.type + '">' + escapeHtml(presidentInitials(it.name)) + '</span>' +
-            '<div><div class="roster-name">' + escapeHtml(it.name) + '</div><div class="roster-detail">' + escapeHtml(it.detail) + '</div></div>' +
+            '<div class="roster-info"><div class="roster-name">' + escapeHtml(it.name) + '</div><div class="roster-detail">' + escapeHtml(it.detail) + '</div></div>' +
             '</div>' +
             '<span class="roster-status roster-status--unopened">Not yet invited</span>' +
             '<span class="roster-time" data-label="Set up">—</span><span class="roster-time" data-label="Last login">—</span>' +
@@ -2872,11 +2905,20 @@
       }).join('');
     }
 
-    // Same substring-matching approach as the Network page (course is
-    // always saved with the full degree title attached), duplicated
-    // locally rather than shared since this page's script scope is
-    // entirely separate from member-network.html's.
+    // Same substring-matching approach and colour cycle as the Network
+    // page (course is always saved with the full degree title attached,
+    // and this is the same accent language used there — Medicine gold,
+    // then green/red/purple for whichever courses follow it) — dupli-
+    // cated locally rather than shared since this page's script scope
+    // is entirely separate from member-network.html's.
     var DASH_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing and Midwifery', 'Paramedic Science'];
+    var DASH_ACCENTS = ['gold', 'green', 'red', 'purple'];
+    var DASH_ACCENT_COLORS = {
+      gold: { bg: 'rgba(212, 166, 43, 0.22)', fg: 'var(--color-gold-light)' },
+      green: { bg: 'rgba(30, 122, 70, 0.22)', fg: '#6fcf97' },
+      red: { bg: 'rgba(193, 39, 45, 0.22)', fg: '#ef8b8f' },
+      purple: { bg: 'rgba(107, 70, 193, 0.24)', fg: '#b28ff0' }
+    };
     function dashCourseSortKey(course) {
       var lower = (course || '').toLowerCase();
       for (var i = 0; i < DASH_COURSE_ORDER.length; i++) {
@@ -2884,54 +2926,47 @@
       }
       return 999;
     }
-    function dashYearSortKey(year) {
-      var match = /(\d+)/.exec(year || '');
-      return match ? parseInt(match[1], 10) : 999;
+
+    // members are no longer visually grouped by course (sorted by
+    // activity instead — see dashByActivity), but each course still
+    // gets a consistent colour so it's recognisable at a glance, same
+    // as a course's section colour on the Network page.
+    function buildCourseAccentMap(members) {
+      var courses = [];
+      members.forEach(function (m) {
+        var course = (m.course || '').trim() || 'Course not set';
+        if (courses.indexOf(course) === -1) courses.push(course);
+      });
+      courses.sort(function (a, b) {
+        var diff = dashCourseSortKey(a) - dashCourseSortKey(b);
+        return diff !== 0 ? diff : a.localeCompare(b);
+      });
+      var map = {};
+      courses.forEach(function (course, i) { map[course] = DASH_ACCENTS[i % DASH_ACCENTS.length]; });
+      return map;
     }
 
-    function renderMembersSection(members) {
+    // Flat, sorted by who's been active most recently — not grouped by
+    // course/year any more, so anyone active rises straight to the top
+    // regardless of what they study. Each avatar keeps a course colour
+    // (via courseAccent, built once in loadPresidentDashboard so it's
+    // identical to whatever renderOnlineNow is using) purely as a
+    // visual identifier, independent of how the rows are ordered.
+    function renderMembersSection(members, courseAccent) {
       var wrap = document.getElementById('members-sections');
-      document.getElementById('members-count-line').textContent = members.length + (members.length === 1 ? ' member' : ' members') + ' total';
+      document.getElementById('members-count-line').textContent = members.length + (members.length === 1 ? ' member' : ' members') + ' total, most recently active first';
       if (!members.length) {
         wrap.innerHTML = '<p style="color: var(--color-text-faint);">No members yet.</p>';
         return;
       }
 
-      var byCourse = {};
-      members.forEach(function (m) {
+      var sorted = members.slice().sort(dashByActivity);
+      wrap.innerHTML = '<div class="roster-table" id="members-table">' + sorted.map(function (m) {
+        var courseYear = [m.course, m.year_of_study].filter(Boolean).join(' · ');
+        var detail = [courseYear, m.committee_role, (m.mmg_attendee || m.mmg_committee) ? 'MMG' : null].filter(Boolean).join(' · ');
         var course = (m.course || '').trim() || 'Course not set';
-        if (!byCourse[course]) byCourse[course] = [];
-        byCourse[course].push(m);
-      });
-      var courses = Object.keys(byCourse).sort(function (a, b) {
-        var diff = dashCourseSortKey(a) - dashCourseSortKey(b);
-        return diff !== 0 ? diff : a.localeCompare(b);
-      });
-
-      wrap.innerHTML = courses.map(function (course) {
-        var courseMembers = byCourse[course];
-        var byYear = {};
-        courseMembers.forEach(function (m) {
-          var year = (m.year_of_study || '').trim() || 'Year not set';
-          if (!byYear[year]) byYear[year] = [];
-          byYear[year].push(m);
-        });
-        var years = Object.keys(byYear).sort(function (a, b) {
-          var diff = dashYearSortKey(a) - dashYearSortKey(b);
-          return diff !== 0 ? diff : a.localeCompare(b);
-        });
-
-        var yearGroupsHtml = years.map(function (year) {
-          var yearMembers = byYear[year].slice().sort(function (a, b) { return (a.full_name || '').localeCompare(b.full_name || ''); });
-          var rowsHtml = yearMembers.map(function (m) {
-            var detail = [m.committee_role, (m.mmg_attendee || m.mmg_committee) ? 'MMG' : null].filter(Boolean).join(' · ');
-            return renderRosterRow(m.full_name, detail, m, 'member');
-          }).join('');
-          return '<div class="dash-year-group"><h3 class="dash-year-label">' + escapeHtml(year) + '</h3><div class="roster-table">' + rowsHtml + '</div></div>';
-        }).join('');
-
-        return '<div class="dash-course-section"><h2 class="dash-course-title">' + escapeHtml(course) + '</h2>' + yearGroupsHtml + '</div>';
-      }).join('');
+        return renderRosterRow(m.full_name, detail, m, 'member', courseAccent[course]);
+      }).join('') + '</div>';
     }
 
     function renderProfessionalsSection(professionals) {
@@ -2944,7 +2979,7 @@
         return;
       }
       emptyEl.style.display = 'none';
-      var sorted = professionals.slice().sort(function (a, b) { return (a.full_name || '').localeCompare(b.full_name || ''); });
+      var sorted = professionals.slice().sort(dashByActivity);
       table.innerHTML = sorted.map(function (p) {
         var detail = [p.title, p.organisation].filter(Boolean).join(' · ');
         return renderRosterRow(p.full_name, detail, p, 'professional');
@@ -2972,7 +3007,7 @@
       });
 
       wrap.innerHTML = levels.map(function (level) {
-        var levelGuests = byLevel[level].slice().sort(function (a, b) { return (a.full_name || '').localeCompare(b.full_name || ''); });
+        var levelGuests = byLevel[level].slice().sort(dashByActivity);
         var rowsHtml = levelGuests.map(function (g) {
           return renderRosterRow(g.full_name, g.university, g, 'mmg');
         }).join('');
@@ -2981,14 +3016,19 @@
     }
 
     // "Online right now" — its own prominent panel above everything
-    // else, fed by the same three account lists as renderStats().
-    function renderOnlineNow(members, professionals, mmgGuests) {
+    // else, fed by the same three account lists as renderStats(). Member
+    // chips carry the same course colour as their roster row/Network
+    // card (courseAccent, built once per load in loadPresidentDashboard).
+    function renderOnlineNow(members, professionals, mmgGuests, courseAccent) {
       var list = document.getElementById('online-now-list');
       var emptyEl = document.getElementById('online-now-empty');
       var countEl = document.getElementById('online-now-count');
 
       var online = []
-        .concat(members.filter(presidentIsOnline).map(function (m) { return { name: m.full_name, type: 'member' }; }))
+        .concat(members.filter(presidentIsOnline).map(function (m) {
+          var course = (m.course || '').trim() || 'Course not set';
+          return { name: m.full_name, type: 'member', accent: courseAccent[course] };
+        }))
         .concat(professionals.filter(presidentIsOnline).map(function (p) { return { name: p.full_name, type: 'professional' }; }))
         .concat(mmgGuests.filter(presidentIsOnline).map(function (g) { return { name: g.full_name, type: 'mmg' }; }))
         .sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
@@ -3002,8 +3042,11 @@
       }
       emptyEl.style.display = 'none';
       list.innerHTML = online.map(function (person) {
+        var avatarStyle = person.accent && DASH_ACCENT_COLORS[person.accent]
+          ? ' style="background:' + DASH_ACCENT_COLORS[person.accent].bg + '; color:' + DASH_ACCENT_COLORS[person.accent].fg + ';"'
+          : '';
         return '<div class="online-now-chip" data-name="' + escapeHtml((person.name || '').toLowerCase()) + '">' +
-          '<span class="online-now-chip-avatar online-now-chip-avatar--' + person.type + '">' + escapeHtml(presidentInitials(person.name)) + '</span>' +
+          '<span class="online-now-chip-avatar online-now-chip-avatar--' + person.type + '"' + avatarStyle + '>' + escapeHtml(presidentInitials(person.name)) + '</span>' +
           '<span><span class="online-now-chip-name">' + escapeHtml(person.name) + '</span> ' +
           '<span class="online-now-chip-type">' + (person.type === 'mmg' ? 'MMG' : person.type) + '</span></span>' +
           '</div>';
@@ -3027,15 +3070,11 @@
           if (matches) anyVisible = true;
         });
 
-        document.querySelectorAll('.dash-year-group').forEach(function (group) {
-          var hasVisible = !!group.querySelector('.roster-row:not(.is-hidden-by-search)');
-          group.classList.toggle('is-hidden-by-search', !hasVisible);
-        });
-        document.querySelectorAll('#members-sections .dash-course-section, #mmg-sections .dash-course-section').forEach(function (section) {
+        document.querySelectorAll('#mmg-sections .dash-course-section').forEach(function (section) {
           var hasVisible = !!section.querySelector('.roster-row:not(.is-hidden-by-search)');
           section.classList.toggle('is-hidden-by-search', !hasVisible);
         });
-        ['attention-table', 'professionals-table'].forEach(function (id) {
+        ['attention-table', 'members-table', 'professionals-table'].forEach(function (id) {
           var table = document.getElementById(id);
           if (!table) return;
           var hasVisible = !!table.querySelector('.roster-row:not(.is-hidden-by-search)');
