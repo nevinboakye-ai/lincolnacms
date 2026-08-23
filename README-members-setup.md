@@ -60,6 +60,8 @@ This is a two-step manual process for now (Phase 1 doesn't have an admin panel y
 
 Repeat step 2 for every member. Step 1 (inviting) only needs doing once per person, ever.
 
+Prefer to add their profile before inviting them instead? See [Section 21](#21-adding-a-member-before-theyve-signed-up).
+
 ## 6. Test it
 
 Log in as that member at `member-login.html` (or click "Member login" in the nav) and confirm the membership card shows their real name, course, year and membership number.
@@ -247,3 +249,14 @@ If you have professionals already in the table from before this migration, add t
 **What a professional account can access**: the Network (browsing members and other professionals), Discounts & members-first opportunities, and Member of the Month nominations — same as a full LACMS member. **What it can't**: applying for a Sankofa Circle — the hub shows a "Coming soon" card in that spot instead, since a dedicated Sankofa platform for professionals (seeing who's in their circle, etc.) is planned as a separate future build, not part of this feature.
 
 Under the hood, this works through two new functions: `claim_professional_profile()` links the account (`security definer`, since before claiming they have no RLS access to their own row yet), and `is_professional()` is the same shape as `is_lacms_member()` — used by the Network directory and MoTM nomination policies to grant professionals the same access as members without duplicating logic. Discounts and opportunities needed no database changes — both were already open to any authenticated user or the public respectively; the gating there is purely about which UI a signed-in professional sees.
+
+## 21. Adding a member before they've signed up
+
+Run [`db/migrations/016-pending-members.sql`](db/migrations/016-pending-members.sql). This is what [Section 5](#5-add-your-first-member)'s original two-step process couldn't do: `members.id` is a person's Supabase Auth UUID, which only exists once they've actually signed up — trying to add their profile first hits `null value in column "id" ... violates not-null constraint`, since there's no UUID yet to put there.
+
+**To pre-add someone:**
+1. Table Editor → **pending_members** → Insert row. Same fields as `members` — **email** (this has to match exactly what you invite them with next), **full_name**, **course**, **year_of_study**, **member_type**, **committee_role**, **sankofa_eligible**, **mmg_attendee**, **mmg_committee** — just no `id` or `membership_number`, since those don't exist yet.
+2. Whenever you're ready, invite them: Authentication → Users → **Invite user**, using that same email.
+3. Done. The moment they set their password and land on the members hub, their `pending_members` row is automatically turned into a real `members` row (membership number generated as normal) and removed from `pending_members` — no manual UUID-pasting needed.
+
+The original process from Section 5 (invite first, copy the UUID, add the `members` row yourself) still works exactly as before if you prefer it — this is an alternative for when you want someone's profile ready and waiting before they've had a chance to sign up, not a replacement. Nobody can read or write `pending_members` directly, from the site or via the API — not even a signed-in member — it's only ever touched from Table Editor and by the `security definer` `claim_member_profile()` function.

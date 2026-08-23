@@ -3709,11 +3709,32 @@ body.intro-active { overflow: hidden; }
    throughout the rest of the site. */
 
 /* Professionals grid reuses .network-grid/.network-card with a fixed
-   accent — set once on the wrapping container. */
+   green accent — set once on the wrapping container — so doctors and
+   pharmacists read as a distinct group from student cards at a glance. */
 #network-professionals-wrap {
+  --network-accent: #6fcf97;
+  --network-accent-light: #6fcf97;
+  --network-accent-bg: rgba(30, 122, 70, 0.2);
+}
+
+/* Committee & Supporting Committee cards get a fixed gold identity
+   (overriding whichever course accent their section landed on) plus a
+   slow pulsing glow, so leadership stands out from regular member cards
+   wherever they appear. Professionals get a colour change only, not
+   this animation, so the two "special" treatments read differently. */
+.network-card--committee {
   --network-accent: var(--color-gold);
   --network-accent-light: var(--color-gold-light);
   --network-accent-bg: rgba(212, 166, 43, 0.18);
+  animation: network-committee-glow 3.2s ease-in-out infinite;
+}
+.network-card--committee .network-card-badge {
+  color: var(--color-on-gold);
+  background: var(--color-gold);
+}
+@keyframes network-committee-glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(212, 166, 43, 0.2); }
+  50% { box-shadow: 0 0 0 1px rgba(212, 166, 43, 0.4), 0 0 16px rgba(212, 166, 43, 0.35); }
 }
 
 /* Profile modal */

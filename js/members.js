@@ -438,7 +438,20 @@
             showHubContent(false);
             return;
           }
-          loadProfessionalProfile(session);
+          // No members row yet — they might be a member the committee
+          // pre-added before they signed up (a pending_members row,
+          // matched and claimed by email), or a professional. Try both
+          // before giving up.
+          supabaseClient.rpc('claim_member_profile').then(function (claimResult) {
+            var claimedRow = claimResult.data && claimResult.data[0];
+            if (claimedRow) {
+              if (authGate) authGate.style.display = 'none';
+              renderProfile(claimedRow, session);
+              showHubContent(false);
+              return;
+            }
+            loadProfessionalProfile(session);
+          });
         });
     }
 
@@ -2082,7 +2095,9 @@
       var roleLabel = m.committee_role || NETWORK_TYPE_LABELS[m.member_type];
       var badgeHtml = roleLabel ? '<span class="network-card-badge">' + escapeHtml(roleLabel) + '</span>' : '';
       var linkedinHtml = m.linkedin_url ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
-      return '<button type="button" class="network-card" data-network-type="member" data-network-id="' + m.id + '">' +
+      var isCommittee = m.member_type === 'executive_committee' || m.member_type === 'supporting_committee';
+      var cardClass = 'network-card' + (isCommittee ? ' network-card--committee' : '');
+      return '<button type="button" class="' + cardClass + '" data-network-type="member" data-network-id="' + m.id + '">' +
         linkedinHtml +
         '<span class="network-card-avatar">' + escapeHtml(networkInitials(m.full_name)) + '</span>' +
         '<span class="network-card-name">' + escapeHtml(m.full_name) + '</span>' +
