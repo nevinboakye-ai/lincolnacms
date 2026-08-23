@@ -2706,16 +2706,34 @@
         var professionals = results[2].data || [];
         var mmgGuests = results[3].data || [];
 
+        renderOnlineNow(members, professionals, mmgGuests);
         renderStats(members, pendingMembers, professionals, mmgGuests);
         renderAttentionList(members, pendingMembers, professionals, mmgGuests);
         renderMembersSection(members);
         renderProfessionalsSection(professionals);
         renderMmgSection(mmgGuests);
+
+        dashLastLoaded = new Date();
+        var updatedLabel = document.getElementById('dash-updated-label');
+        if (updatedLabel) updatedLabel.textContent = 'Updated just now';
+
+        // Search filters this freshly-rendered DOM immediately, so
+        // switching between an auto-refresh and an active search term
+        // never shows a stale, unfiltered flash.
+        if (dashSearchInput && dashSearchInput.value.trim()) {
+          dashSearchInput.dispatchEvent(new Event('input'));
+        }
       });
     }
 
+    // Someone who's only ever clicked an invite link (but never finished
+    // setting a password) already has a live Supabase session — that's
+    // enough for the site-wide heartbeat to ping member_presence for
+    // them, even though they can't actually sign back in yet. Requiring
+    // activated_at here is what keeps them showing as "invite opened,
+    // not finished" instead of wrongly appearing online.
     function presidentIsOnline(row) {
-      if (!row.last_seen_at) return false;
+      if (!row.activated_at || !row.last_seen_at) return false;
       return (Date.now() - new Date(row.last_seen_at).getTime()) < ONLINE_WINDOW_MS;
     }
 
@@ -2745,13 +2763,13 @@
       return (first + last).toUpperCase();
     }
 
-    function renderRosterRow(name, detail, row) {
+    function renderRosterRow(name, detail, row, type) {
       var status = presidentStatus(row);
       var activatedLabel = row.activated_at ? timeAgo(row.activated_at) : '—';
       var loginLabel = row.last_sign_in_at ? timeAgo(row.last_sign_in_at) : '—';
-      return '<div class="roster-row">' +
+      return '<div class="roster-row" data-name="' + escapeHtml((name || '').toLowerCase()) + '">' +
         '<div class="roster-main">' +
-        '<span class="roster-avatar">' + escapeHtml(presidentInitials(name)) + '</span>' +
+        '<span class="roster-avatar roster-avatar--' + (type || 'member') + '">' + escapeHtml(presidentInitials(name)) + '</span>' +
         '<div><div class="roster-name">' + escapeHtml(name || 'Unnamed') + '</div>' +
         (detail ? '<div class="roster-detail">' + escapeHtml(detail) + '</div>' : '') +
         '</div></div>' +
@@ -2786,21 +2804,22 @@
 
       members.forEach(function (m) {
         if (m.activated_at) return;
-        items.push({ name: m.full_name, detail: [m.course, m.year_of_study].filter(Boolean).join(' · ') || 'LACMS member', row: m });
+        items.push({ name: m.full_name, detail: [m.course, m.year_of_study].filter(Boolean).join(' · ') || 'LACMS member', row: m, type: 'member' });
       });
       professionals.forEach(function (p) {
         if (p.activated_at) return;
-        items.push({ name: p.full_name, detail: p.title || 'Professional', row: p });
+        items.push({ name: p.full_name, detail: p.title || 'Professional', row: p, type: 'professional' });
       });
       mmgGuests.forEach(function (g) {
         if (g.activated_at) return;
-        items.push({ name: g.full_name, detail: g.university || 'MMG guest', row: g });
+        items.push({ name: g.full_name, detail: g.university || 'MMG guest', row: g, type: 'mmg' });
       });
       pendingMembers.forEach(function (pm) {
         items.push({
           name: pm.full_name,
           detail: [pm.course, pm.year_of_study].filter(Boolean).join(' · ') || 'Not yet invited',
           row: {},
+          type: 'member',
           isPending: true
         });
       });
@@ -2813,16 +2832,16 @@
       emptyEl.style.display = 'none';
       table.innerHTML = items.map(function (it) {
         if (it.isPending) {
-          return '<div class="roster-row">' +
+          return '<div class="roster-row" data-name="' + escapeHtml((it.name || '').toLowerCase()) + '">' +
             '<div class="roster-main">' +
-            '<span class="roster-avatar">' + escapeHtml(presidentInitials(it.name)) + '</span>' +
+            '<span class="roster-avatar roster-avatar--' + it.type + '">' + escapeHtml(presidentInitials(it.name)) + '</span>' +
             '<div><div class="roster-name">' + escapeHtml(it.name) + '</div><div class="roster-detail">' + escapeHtml(it.detail) + '</div></div>' +
             '</div>' +
             '<span class="roster-status roster-status--unopened">Not yet invited</span>' +
             '<span class="roster-time" data-label="Set up">—</span><span class="roster-time" data-label="Last login">—</span>' +
             '</div>';
         }
-        return renderRosterRow(it.name, it.detail, it.row);
+        return renderRosterRow(it.name, it.detail, it.row, it.type);
       }).join('');
     }
 
@@ -2879,7 +2898,7 @@
           var yearMembers = byYear[year].slice().sort(function (a, b) { return (a.full_name || '').localeCompare(b.full_name || ''); });
           var rowsHtml = yearMembers.map(function (m) {
             var detail = [m.committee_role, (m.mmg_attendee || m.mmg_committee) ? 'MMG' : null].filter(Boolean).join(' · ');
-            return renderRosterRow(m.full_name, detail, m);
+            return renderRosterRow(m.full_name, detail, m, 'member');
           }).join('');
           return '<div class="dash-year-group"><h3 class="dash-year-label">' + escapeHtml(year) + '</h3><div class="roster-table">' + rowsHtml + '</div></div>';
         }).join('');
@@ -2901,7 +2920,7 @@
       var sorted = professionals.slice().sort(function (a, b) { return (a.full_name || '').localeCompare(b.full_name || ''); });
       table.innerHTML = sorted.map(function (p) {
         var detail = [p.title, p.organisation].filter(Boolean).join(' · ');
-        return renderRosterRow(p.full_name, detail, p);
+        return renderRosterRow(p.full_name, detail, p, 'professional');
       }).join('');
     }
 
@@ -2928,10 +2947,95 @@
       wrap.innerHTML = levels.map(function (level) {
         var levelGuests = byLevel[level].slice().sort(function (a, b) { return (a.full_name || '').localeCompare(b.full_name || ''); });
         var rowsHtml = levelGuests.map(function (g) {
-          return renderRosterRow(g.full_name, g.university, g);
+          return renderRosterRow(g.full_name, g.university, g, 'mmg');
         }).join('');
         return '<div class="dash-course-section"><h2 class="dash-course-title">' + escapeHtml(MMG_ACCESS_LABELS[level] || level) + '</h2><div class="roster-table">' + rowsHtml + '</div></div>';
       }).join('');
     }
+
+    // "Online right now" — its own prominent panel above everything
+    // else, fed by the same three account lists as renderStats().
+    function renderOnlineNow(members, professionals, mmgGuests) {
+      var list = document.getElementById('online-now-list');
+      var emptyEl = document.getElementById('online-now-empty');
+      var countEl = document.getElementById('online-now-count');
+
+      var online = []
+        .concat(members.filter(presidentIsOnline).map(function (m) { return { name: m.full_name, type: 'member' }; }))
+        .concat(professionals.filter(presidentIsOnline).map(function (p) { return { name: p.full_name, type: 'professional' }; }))
+        .concat(mmgGuests.filter(presidentIsOnline).map(function (g) { return { name: g.full_name, type: 'mmg' }; }))
+        .sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
+
+      countEl.textContent = online.length;
+
+      if (!online.length) {
+        emptyEl.style.display = 'block';
+        list.innerHTML = '';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      list.innerHTML = online.map(function (person) {
+        return '<div class="online-now-chip" data-name="' + escapeHtml((person.name || '').toLowerCase()) + '">' +
+          '<span class="online-now-chip-avatar online-now-chip-avatar--' + person.type + '">' + escapeHtml(presidentInitials(person.name)) + '</span>' +
+          '<span><span class="online-now-chip-name">' + escapeHtml(person.name) + '</span> ' +
+          '<span class="online-now-chip-type">' + (person.type === 'mmg' ? 'MMG' : person.type) + '</span></span>' +
+          '</div>';
+      }).join('');
+    }
+
+    // Search filters every roster row and online chip on the page by
+    // name, cascading up to hide any course/year group that's left with
+    // nothing visible inside it — the same pattern the Network page
+    // uses, applied across all four sections plus the online panel at
+    // once rather than per-section.
+    var dashSearchInput = document.getElementById('dash-search-input');
+    if (dashSearchInput) {
+      dashSearchInput.addEventListener('input', function () {
+        var query = dashSearchInput.value.trim().toLowerCase();
+        var anyVisible = false;
+
+        document.querySelectorAll('#president-content .roster-row, #president-content .online-now-chip').forEach(function (el) {
+          var matches = !query || (el.getAttribute('data-name') || '').indexOf(query) !== -1;
+          el.classList.toggle('is-hidden-by-search', !matches);
+          if (matches) anyVisible = true;
+        });
+
+        document.querySelectorAll('.dash-year-group').forEach(function (group) {
+          var hasVisible = !!group.querySelector('.roster-row:not(.is-hidden-by-search)');
+          group.classList.toggle('is-hidden-by-search', !hasVisible);
+        });
+        document.querySelectorAll('#members-sections .dash-course-section, #mmg-sections .dash-course-section').forEach(function (section) {
+          var hasVisible = !!section.querySelector('.roster-row:not(.is-hidden-by-search)');
+          section.classList.toggle('is-hidden-by-search', !hasVisible);
+        });
+        ['attention-table', 'professionals-table'].forEach(function (id) {
+          var table = document.getElementById(id);
+          if (!table) return;
+          var hasVisible = !!table.querySelector('.roster-row:not(.is-hidden-by-search)');
+          table.classList.toggle('is-hidden-by-search', !hasVisible && !!query);
+        });
+
+        var searchEmpty = document.getElementById('dash-search-empty');
+        if (searchEmpty) searchEmpty.style.display = query && !anyVisible ? 'block' : 'none';
+      });
+    }
+
+    // Live "Updated Xs ago" label + manual refresh, so the auto-refresh
+    // this page already does every 45s feels visible and trustworthy
+    // rather than invisible and easy to distrust.
+    var dashLastLoaded = null;
+    var dashRefreshBtn = document.getElementById('dash-refresh-btn');
+    if (dashRefreshBtn) {
+      dashRefreshBtn.addEventListener('click', function () {
+        dashRefreshBtn.classList.add('is-spinning');
+        loadPresidentDashboard();
+        setTimeout(function () { dashRefreshBtn.classList.remove('is-spinning'); }, 600);
+      });
+    }
+    setInterval(function () {
+      var label = document.getElementById('dash-updated-label');
+      if (!label || !dashLastLoaded) return;
+      label.textContent = 'Updated ' + timeAgo(dashLastLoaded);
+    }, 1000);
   }
 })();

@@ -339,3 +339,17 @@ No Table Editor setup needed beyond running the migration — everything else is
 ## 31. Fix: dashboard failed to load with a "structure of query" error
 
 Run [`db/migrations/026-president-dashboard-email-type-fix.sql`](db/migrations/026-president-dashboard-email-type-fix.sql) (needs migration 025 already applied). `auth.users.email` is actually `character varying(255)` in Postgres, not `text` — the three `president_get_*` functions that join `auth.users` declared their return type as plain `text`, which Postgres rejects as a mismatch. This just adds an explicit `::text` cast; nothing else changes.
+
+## 32. Dashboard: fixed false "online" status, added a live Online Now panel, and a redesign
+
+No migration needed — front-end only.
+
+**Fixed**: someone who's only ever clicked an invite link (but never finished choosing a password) already has a live Supabase session — that was enough for the site-wide presence heartbeat to record them, making them wrongly appear "online" on the dashboard even though they can't actually sign back in. "Online" now also requires `activated_at` to be set, so someone stuck mid-invite correctly shows **"Invite opened, not finished"** instead.
+
+**New — "Online right now"**: a dedicated, glowing green panel pinned at the very top of the page, above the stat tiles — a pulsing dot, a live count, and a chip per person actually online. It's the one thing on the page designed to be seen at a glance rather than read.
+
+**New — search**: one search box filters every section at once (online panel, needs-a-nudge, members, professionals, MMG guests), collapsing any course/year group left with nothing visible inside it.
+
+**New — live "Updated Xs ago" + manual refresh**: the existing 45-second auto-refresh now has a visible ticking label and a refresh button, so it's obvious the data is current without needing to guess.
+
+**New — colour-coded by account type**: member/professional/MMG guest avatars now use the same gold/green/purple language as the Network page, so account type reads at a glance across every roster row.

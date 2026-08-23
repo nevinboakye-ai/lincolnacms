@@ -3593,6 +3593,139 @@ body.intro-active { overflow: hidden; }
    MMG guests) so the "who's online / when did they last log in" reading
    stays consistent no matter which group is being scanned.
    ------------------------------------------------------------------ */
+.dash-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.dash-refresh {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.dash-updated-label {
+  font-size: 0.8rem;
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+.dash-refresh-btn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
+}
+.dash-refresh-btn:hover { border-color: #6fcf97; color: #6fcf97; }
+.dash-refresh-btn .icon { width: 16px; height: 16px; }
+.dash-refresh-btn.is-spinning .icon { animation: dash-spin 0.6s linear; }
+@keyframes dash-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* "Online right now" is the one thing on this page meant to grab
+   attention at a glance, so it gets its own glowing green panel above
+   everything else, rather than just another status pill buried in a
+   table further down. */
+.online-now {
+  background: linear-gradient(160deg, rgba(30, 122, 70, 0.16), var(--color-surface) 75%);
+  border: 1px solid rgba(111, 207, 151, 0.4);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-7);
+  animation: online-now-glow 3.2s ease-in-out infinite;
+}
+@keyframes online-now-glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(111, 207, 151, 0.12); }
+  50% { box-shadow: 0 0 0 1px rgba(111, 207, 151, 0.3), 0 0 26px rgba(111, 207, 151, 0.22); }
+}
+.online-now-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.online-now-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #6fcf97;
+}
+.online-now-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #6fcf97;
+  flex-shrink: 0;
+  animation: online-now-pulse 1.8s ease-in-out infinite;
+}
+@keyframes online-now-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(111, 207, 151, 0.55); }
+  70% { box-shadow: 0 0 0 9px rgba(111, 207, 151, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(111, 207, 151, 0); }
+}
+.online-now-count {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: #6fcf97;
+  background: rgba(30, 122, 70, 0.25);
+  padding: 2px 12px;
+  border-radius: var(--radius-pill);
+}
+.online-now-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.online-now-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-surface-raised);
+  border: 1px solid rgba(111, 207, 151, 0.3);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px 6px 6px;
+}
+.online-now-chip-avatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.7rem;
+  background: rgba(212, 166, 43, 0.18);
+  color: var(--color-gold-light);
+}
+.online-now-chip-avatar--professional { background: rgba(30, 122, 70, 0.22); color: #6fcf97; }
+.online-now-chip-avatar--mmg { background: rgba(107, 70, 193, 0.26); color: #b28ff0; }
+.online-now-chip-name { font-weight: 600; font-size: 0.86rem; color: var(--color-text); }
+.online-now-chip-type {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-faint);
+}
+
+/* Same colour language as the Network page — gold for members, green
+   for professionals, purple for MMG guests — so the account type reads
+   at a glance across every roster row without needing to read the
+   detail line. */
+.roster-avatar--professional { background: rgba(30, 122, 70, 0.2); color: #6fcf97; }
+.roster-avatar--mmg { background: rgba(107, 70, 193, 0.24); color: #b28ff0; }
+
 .dash-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
