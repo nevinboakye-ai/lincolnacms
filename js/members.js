@@ -31,6 +31,29 @@
       .replace(/"/g, '&quot;');
   }
 
+  // Shared by the members hub (professional profile card) and the
+  // Network page (professional cards + modal) — one place to edit the
+  // wording for each category.
+  var PROFESSIONAL_CATEGORY_LABELS = {
+    senior_doctor: 'Senior Doctor / Consultant',
+    alumni_doctor: 'Alumni Doctor',
+    pharmacist: 'Pharmacist',
+    other: 'Professional'
+  };
+
+  // A professional has no row in `members` — this is how every gate
+  // that already checks the `members` table (nav, homepage perks card,
+  // the members hub itself, opportunities, MoTM nominations) also
+  // recognises a signed-in professional. Returns the full row, or null.
+  function getProfessionalRow(session) {
+    return supabaseClient
+      .from('network_professionals')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .maybeSingle()
+      .then(function (result) { return result.data || null; });
+  }
+
   // Shared by the members-hub feed and the MMG portal feeds.
   function timeAgo(dateStr) {
     var date = new Date(dateStr);
@@ -182,11 +205,23 @@
               .maybeSingle()
               .then(function (guestResult) {
                 var fullName = guestResult.data && guestResult.data.full_name;
-                if (!fullName) return;
-                var firstName = fullName.trim().split(' ')[0];
-                memberNavLinks.forEach(function (el) {
-                  el.href = 'mmg-hub.html';
-                  setNavLinkText(el, 'Hi, ' + firstName, true);
+                if (fullName) {
+                  var firstName = fullName.trim().split(' ')[0];
+                  memberNavLinks.forEach(function (el) {
+                    el.href = 'mmg-hub.html';
+                    setNavLinkText(el, 'Hi, ' + firstName, true);
+                  });
+                  return;
+                }
+                // Not a member, not an MMG guest — check whether they're a
+                // signed-in professional instead (they belong on the
+                // members hub too, just with a different profile there).
+                getProfessionalRow(session).then(function (proRow) {
+                  if (!proRow || !proRow.full_name) return;
+                  var proFirstName = proRow.full_name.trim().split(' ')[0];
+                  memberNavLinks.forEach(function (el) {
+                    setNavLinkText(el, 'Hi, ' + proFirstName, true);
+                  });
                 });
               });
           });
@@ -215,19 +250,27 @@
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
       if (!session) return;
+      function unlock() {
+        perksImpactCard.href = 'member-perks.html';
+        var badge = document.getElementById('perks-impact-badge');
+        if (badge) {
+          badge.className = 'impact-badge impact-badge--green';
+          badge.innerHTML = '<span class="impact-badge-dot" aria-hidden="true"></span> You have access';
+        }
+      }
       supabaseClient
         .from('members')
         .select('id')
         .eq('id', session.user.id)
         .maybeSingle()
         .then(function (memberResult) {
-          if (!memberResult.data) return;
-          perksImpactCard.href = 'member-perks.html';
-          var badge = document.getElementById('perks-impact-badge');
-          if (badge) {
-            badge.className = 'impact-badge impact-badge--green';
-            badge.innerHTML = '<span class="impact-badge-dot" aria-hidden="true"></span> You have access';
+          if (memberResult.data) {
+            unlock();
+            return;
           }
+          getProfessionalRow(session).then(function (proRow) {
+            if (proRow) unlock();
+          });
         });
     });
   }
@@ -389,16 +432,49 @@
         .eq('id', session.user.id)
         .single()
         .then(function (result) {
+          if (result.data) {
+            if (authGate) authGate.style.display = 'none';
+            renderProfile(result.data, session);
+            showHubContent(false);
+            return;
+          }
+          loadProfessionalProfile(session);
+        });
+    }
+
+    // A signed-in user with no `members` row might be a professional
+    // instead — e.g. a doctor or pharmacist the committee added to the
+    // Network. claim_professional_profile() links their auth account to
+    // the network_professionals row the committee already created for
+    // them (matched by email) the first time they land here; it's a
+    // no-op on every visit after that. Only if neither lookup finds
+    // anything do we fall back to the original "not set up yet" error.
+    function loadProfessionalProfile(session) {
+      supabaseClient.rpc('claim_professional_profile').then(function () {
+        getProfessionalRow(session).then(function (proRow) {
           if (authGate) authGate.style.display = 'none';
-          if (result.error || !result.data) {
+          if (!proRow) {
             showMessage(hubError, "We couldn't find your membership profile yet — the committee may still be setting it up. Email acms@lincolnsu.com if this doesn't resolve soon.");
             return;
           }
-          renderProfile(result.data, session);
-          hubContent.style.display = '';
-          var linksSection = document.getElementById('member-hub-content-links');
-          if (linksSection) linksSection.style.display = '';
+          renderProfessionalProfile(proRow, session);
+          showHubContent(true);
         });
+      });
+    }
+
+    // Shared by both profile types — reveals the hub content/links grid,
+    // and toggles which variant of the Sankofa quick-link card shows:
+    // professionals aren't part of Sankofa mentorship yet, so they see a
+    // "coming soon" card instead of the real apply link.
+    function showHubContent(isProfessional) {
+      hubContent.style.display = '';
+      var linksSection = document.getElementById('member-hub-content-links');
+      if (linksSection) linksSection.style.display = '';
+      var applyCard = document.getElementById('sankofa-apply-card');
+      var comingSoonCard = document.getElementById('sankofa-coming-soon-card');
+      if (applyCard) applyCard.style.display = isProfessional ? 'none' : '';
+      if (comingSoonCard) comingSoonCard.style.display = isProfessional ? '' : 'none';
     }
 
     var MEMBER_TYPE_LABELS = {
@@ -465,6 +541,39 @@
         if (mmgCommitteeSection) mmgCommitteeSection.style.display = '';
         loadMmgFeed('mmg_updates', 'member-hub-mmg-committee-list', 'member-hub-mmg-committee-empty', 'Planning update', 'purple');
       }
+    }
+
+    // Professionals get their own card/details variant — title and
+    // organisation instead of course/year and membership number, since
+    // those fields don't mean anything for a doctor or pharmacist. The
+    // shared actions below (Network, edit profile, change password, log
+    // out) work exactly the same for both, so those markup blocks aren't
+    // duplicated.
+    function renderProfessionalProfile(pro, session) {
+      var categoryLabel = PROFESSIONAL_CATEGORY_LABELS[pro.category] || PROFESSIONAL_CATEGORY_LABELS.other;
+
+      setText('professional-full-name', pro.full_name);
+      setText('professional-title', pro.title);
+      setText('professional-organisation', pro.organisation);
+      setText('professional-email', session.user.email);
+      setText('professional-category-badge', categoryLabel);
+      setText('professional-category-2', categoryLabel);
+      setText('professional-title-2', pro.title);
+      setText('professional-organisation-2', pro.organisation);
+
+      document.querySelectorAll('[data-member-name-inline]').forEach(function (el) {
+        el.textContent = pro.full_name;
+      });
+
+      var memberCard = document.getElementById('member-card-member');
+      var proCard = document.getElementById('member-card-professional');
+      if (memberCard) memberCard.style.display = 'none';
+      if (proCard) proCard.style.display = '';
+
+      var memberDetails = document.getElementById('member-details-member');
+      var proDetails = document.getElementById('member-details-professional');
+      if (memberDetails) memberDetails.style.display = 'none';
+      if (proDetails) proDetails.style.display = '';
     }
 
     function setText(id, value) {
@@ -678,7 +787,13 @@
             .eq('id', session.user.id)
             .maybeSingle()
             .then(function (memberResult) {
-              renderOpportunitiesGated(rows, !!memberResult.data);
+              if (memberResult.data) {
+                renderOpportunitiesGated(rows, true);
+                return;
+              }
+              getProfessionalRow(session).then(function (proRow) {
+                renderOpportunitiesGated(rows, !!proRow);
+              });
             });
         });
       });
@@ -792,9 +907,15 @@
         .then(function (memberResult) {
           if (memberResult.data) {
             nominateFormWrap.style.display = 'block';
-          } else if (nominateLocked) {
-            nominateLocked.style.display = 'flex';
+            return;
           }
+          getProfessionalRow(session).then(function (proRow) {
+            if (proRow) {
+              nominateFormWrap.style.display = 'block';
+            } else if (nominateLocked) {
+              nominateLocked.style.display = 'flex';
+            }
+          });
         });
     });
 
@@ -1850,12 +1971,6 @@
       senior_sankofa_mentor: 'Senior Sankofa Mentor',
       junior_sankofa_mentor: 'Junior Sankofa Mentor'
     };
-    var NETWORK_PROFESSIONAL_CATEGORY_LABELS = {
-      senior_doctor: 'Senior Doctor / Consultant',
-      alumni_doctor: 'Alumni Doctor',
-      pharmacist: 'Pharmacist',
-      other: 'Professional'
-    };
 
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
@@ -1994,7 +2109,7 @@
         '<span class="network-card-avatar">' + avatarHtml + '</span>' +
         '<span class="network-card-name">' + escapeHtml(p.full_name) + '</span>' +
         '<span class="network-card-meta">' + escapeHtml(p.title) + '</span>' +
-        '<span class="network-card-badge">' + escapeHtml(NETWORK_PROFESSIONAL_CATEGORY_LABELS[p.category] || 'Professional') + '</span>' +
+        '<span class="network-card-badge">' + escapeHtml(PROFESSIONAL_CATEGORY_LABELS[p.category] || 'Professional') + '</span>' +
         '</button>';
     }
 

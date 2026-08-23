@@ -229,6 +229,21 @@ Because the `members` table's RLS only ever allowed a member to read their own r
 
 **LinkedIn and bio are self-service** — from the members hub, "Edit network profile" opens a small form (LinkedIn URL, a 280-character bio) that saves into a new `member_profiles` table, kept deliberately separate from `members` itself so a member editing their own profile can never touch committee-controlled fields like membership status. Both fields are optional; leaving them blank just means a plainer card with no LinkedIn button and no bio in the profile modal.
 
-**Professionals** (senior doctors/consultants, alumni doctors, pharmacists, and others supporting Sankofa) aren't LACMS members and don't sign up themselves — add them in Table Editor → `network_professionals`: **full_name**, **title** (e.g. "Consultant Cardiologist"), **organisation** (optional), **category** (`senior_doctor` / `alumni_doctor` / `pharmacist` / `other` — controls which label they carry), **bio**, **linkedin_url**, **photo_url** (optional — leave blank for the initials avatar), **is_active**, **sort_order**. They render in their own section below the member courses, and only LACMS members can see this table (same `is_lacms_member()` gate).
+**Professionals** (senior doctors/consultants, alumni doctors, pharmacists, and others supporting Sankofa) aren't LACMS members and don't fill in their own profile — add them in Table Editor → `network_professionals`: **full_name**, **title** (e.g. "Consultant Cardiologist"), **organisation** (optional), **category** (`senior_doctor` / `alumni_doctor` / `pharmacist` / `other` — controls which label they carry), **bio**, **linkedin_url**, **photo_url** (optional — leave blank for the initials avatar), **is_active**, **sort_order**. They render in their own section below the member courses, visible to LACMS members and to signed-in professionals alike. See [Section 20](#20-professional-accounts-hub-access-for-doctors-and-pharmacists) for how they actually get an account and hub access.
 
 The directory has a live search box (filters by name/course/role as you type) and every card opens a modal with the fuller bio and a styled LinkedIn button when one's set.
+
+## 20. Professional accounts — hub access for doctors and pharmacists
+
+Run [`db/migrations/015-professional-accounts.sql`](db/migrations/015-professional-accounts.sql) (needs migration 014 already applied). This is what turns a `network_professionals` row into a real account with members-hub access, automatically, the first time they log in — no manual UUID-pasting needed.
+
+**To invite a professional:**
+1. Add their row in Table Editor → `network_professionals` as before ([Section 19](#19-the-lacms-network--a-member-directory)), but now also fill in **email** — this has to match exactly the address you invite them with in step 2.
+2. Supabase Dashboard → Authentication → Users → **Invite user**, using that same email. They'll get the branded invite email (same template as members) and set their own password.
+3. That's it. The moment they finish setting their password, they land on `member-hub.html`, which automatically links their new account to the `network_professionals` row by matching the email — no further setup from you.
+
+If you have professionals already in the table from before this migration, add their email addresses now (Table Editor) so they can be claimed the next time each of them logs in.
+
+**What a professional account can access**: the Network (browsing members and other professionals), Discounts & members-first opportunities, and Member of the Month nominations — same as a full LACMS member. **What it can't**: applying for a Sankofa Circle — the hub shows a "Coming soon" card in that spot instead, since a dedicated Sankofa platform for professionals (seeing who's in their circle, etc.) is planned as a separate future build, not part of this feature.
+
+Under the hood, this works through two new functions: `claim_professional_profile()` links the account (`security definer`, since before claiming they have no RLS access to their own row yet), and `is_professional()` is the same shape as `is_lacms_member()` — used by the Network directory and MoTM nomination policies to grant professionals the same access as members without duplicating logic. Discounts and opportunities needed no database changes — both were already open to any authenticated user or the public respectively; the gating there is purely about which UI a signed-in professional sees.
