@@ -89,7 +89,12 @@
     if (!session) return;
 
     function beat() {
-      supabaseClient.from('member_presence').upsert({ id: session.user.id, last_seen_at: new Date().toISOString() });
+      supabaseClient
+        .from('member_presence')
+        .upsert({ id: session.user.id, last_seen_at: new Date().toISOString() })
+        .then(function (result) {
+          if (result.error) console.error('Presence heartbeat failed:', result.error.message);
+        });
     }
 
     beat();
@@ -2676,7 +2681,18 @@
         window.location.href = 'member-hub.html';
         return;
       }
-      loadPresidentDashboard();
+      // The site-wide heartbeat (elsewhere in this file) already beats
+      // on page load too, but that's a separate async call with no
+      // ordering guarantee against the fetch below — awaiting one
+      // explicitly here means the president's own row is always fresh
+      // by the time the dashboard actually reads it back, rather than
+      // depending on which of the two happens to land first.
+      supabaseClient
+        .from('member_presence')
+        .upsert({ id: session.user.id, last_seen_at: new Date().toISOString() })
+        .then(function () {
+          loadPresidentDashboard();
+        });
       // Keeps "online now" honest without needing a manual reload —
       // only while the tab is actually visible, so it isn't polling
       // Supabase in the background for a tab nobody's looking at.
@@ -2767,6 +2783,13 @@
       var status = presidentStatus(row);
       var activatedLabel = row.activated_at ? timeAgo(row.activated_at) : '—';
       var loginLabel = row.last_sign_in_at ? timeAgo(row.last_sign_in_at) : '—';
+      // Whether someone genuinely finished setting up can't always be
+      // told apart from "only ever opened the invite" using the data
+      // available — this is the manual override for when you actually
+      // know, from talking to them, that they did.
+      var markActiveBtn = (!row.activated_at && row.id)
+        ? '<button type="button" class="roster-mark-active" data-mark-active data-id="' + escapeHtml(row.id) + '" data-type="' + escapeHtml(type || 'member') + '">Mark active</button>'
+        : '';
       return '<div class="roster-row" data-name="' + escapeHtml((name || '').toLowerCase()) + '">' +
         '<div class="roster-main">' +
         '<span class="roster-avatar roster-avatar--' + (type || 'member') + '">' + escapeHtml(presidentInitials(name)) + '</span>' +
@@ -2776,6 +2799,7 @@
         '<span class="roster-status roster-status--' + status.cls + '">' + escapeHtml(status.label) + '</span>' +
         '<span class="roster-time" data-label="Set up">' + escapeHtml(activatedLabel) + '</span>' +
         '<span class="roster-time" data-label="Last login">' + escapeHtml(loginLabel) + '</span>' +
+        markActiveBtn +
         '</div>';
     }
 
@@ -3037,5 +3061,26 @@
       if (!label || !dashLastLoaded) return;
       label.textContent = 'Updated ' + timeAgo(dashLastLoaded);
     }, 1000);
+
+    // Delegated since every "Mark active" button is injected dynamically
+    // on every reload — a direct listener would only ever catch the
+    // first render's buttons.
+    presidentContent.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-mark-active]');
+      if (!btn) return;
+      btn.disabled = true;
+      btn.textContent = 'Marking…';
+      supabaseClient
+        .rpc('president_mark_activated', { target_id: btn.getAttribute('data-id'), target_type: btn.getAttribute('data-type') })
+        .then(function (result) {
+          if (result.error) {
+            btn.disabled = false;
+            btn.textContent = 'Mark active';
+            console.error('Mark active failed:', result.error.message);
+            return;
+          }
+          loadPresidentDashboard();
+        });
+    });
   }
 })();

@@ -353,3 +353,15 @@ No migration needed — front-end only.
 **New — live "Updated Xs ago" + manual refresh**: the existing 45-second auto-refresh now has a visible ticking label and a refresh button, so it's obvious the data is current without needing to guess.
 
 **New — colour-coded by account type**: member/professional/MMG guest avatars now use the same gold/green/purple language as the Network page, so account type reads at a glance across every roster row.
+
+## 33. Fix: false "logged in" status, and a manual override for the ones auto-detection can't tell
+
+Run [`db/migrations/027-fix-false-activation-and-manual-override.sql`](db/migrations/027-fix-false-activation-and-manual-override.sql) (needs migration 025 already applied).
+
+**The bug**: migration 025's one-off backfill marked anyone with *any* `last_sign_in_at` as fully activated — but `last_sign_in_at` gets set the instant an invite link is opened, before a password is ever chosen. That backfill accidentally credited "opened the invite" as "finished setting up", which is exactly backwards — it's why committee members who told you directly they couldn't log in were still showing as active.
+
+**The honest limit**: there's no way to tell "opened it and got stuck" apart from "opened it and finished" from `auth.users` alone — both look identical. Rather than guess again with a cleverer heuristic that could just as easily be wrong the other way, this migration **reverts** the incorrect backfill (only the rows it actually touched — anyone activated for real, through the normal password-set flow, is untouched) and adds a **manual override** instead.
+
+**"Mark active" button**: every roster row that isn't yet activated now has a small "Mark active" button — one click, no Table Editor needed. Use it for anyone you have direct confirmation from (starting with your own account, and anyone like Roberta who's told you it worked). Going forward, every *new* invite is still tracked automatically and correctly — this override is only for the accounts affected by the old backfill.
+
+**Also fixes "I'm on the dashboard right now but it doesn't say I'm online"**: the page now explicitly refreshes your own presence and waits for it to land before its first data fetch, closing a timing gap where the dashboard could momentarily read your presence before that page-load's own heartbeat had finished writing.

@@ -3791,7 +3791,7 @@ body.intro-active { overflow: hidden; }
 }
 .roster-row {
   display: grid;
-  grid-template-columns: 1fr 190px 100px 100px;
+  grid-template-columns: 1fr 190px 100px 100px 96px;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
@@ -3799,6 +3799,22 @@ body.intro-active { overflow: hidden; }
   border-bottom: 1px solid var(--color-border);
 }
 .roster-row:last-child { border-bottom: none; }
+
+.roster-mark-active {
+  justify-self: end;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px dashed var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
+}
+.roster-mark-active:hover { border-color: #6fcf97; color: #6fcf97; }
+.roster-mark-active:disabled { opacity: 0.6; cursor: default; }
 
 .roster-main { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .roster-avatar {
@@ -3873,6 +3889,7 @@ body.intro-active { overflow: hidden; }
   }
   .roster-status { justify-self: start; margin-top: 4px; }
   .roster-time::before { display: inline; color: var(--color-text-faint); }
+  .roster-mark-active { justify-self: start; margin-top: 4px; }
 }
 
 /* Members hub news/announcements feed — a colour-tagged list (not a card
