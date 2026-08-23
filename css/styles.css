@@ -1571,6 +1571,22 @@ a.card:hover, a.card:focus-visible {
   color: var(--color-gold);
 }
 
+.login-choice-card { text-align: left; }
+
+.login-choice-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 166, 43, 0.12);
+  color: var(--color-gold);
+  margin-bottom: var(--space-1);
+}
+.login-choice-icon .icon { width: 22px; height: 22px; }
+
 /* Timeline (Events) */
 .event-list { display: flex; flex-direction: column; gap: var(--space-4); }
 .event-row {

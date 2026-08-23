@@ -128,6 +128,8 @@ Run [`db/migrations/009-mmg-portal.sql`](db/migrations/009-mmg-portal.sql). This
 
 MMG guests are routed to `mmg-hub.html`, not `member-hub.html` — the site-wide "Members hub" header link now checks which table a signed-in session actually belongs to (`members` vs `mmg_guests`) and sends them to the right one, so an MMG-only account never hits a "couldn't find your profile" error.
 
+The site-wide "Member login" nav button (header, avatar, mobile drawer) no longer goes straight to `member-login.html` — it goes to [login.html](login.html) first, a chooser page with two cards: "Lincoln LACMS member" → `member-login.html`, and "MMG attendee or partner committee" → `mmg-login.html`. Both login pages also carry a small "choose a different login" link back to `login.html`, in case someone lands on the wrong one directly (e.g. a bookmark or the footer link, which still points straight at `member-login.html`).
+
 **Before this goes live**, swap the placeholder ticket link — search `mmg.html` for `#mmg-ticket-link-todo` and replace it with wherever tickets are actually sold. Also replace the three `[Placeholder]` paragraphs (Location, Speaker list, Programme & night order) once those details are confirmed.
 
 ### Two separate kinds of MMG access

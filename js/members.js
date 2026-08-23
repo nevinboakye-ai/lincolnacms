@@ -96,7 +96,7 @@
       var loggedIn = !!session;
 
       memberNavLinks.forEach(function (el) {
-        el.href = loggedIn ? 'member-hub.html' : 'member-login.html';
+        el.href = loggedIn ? 'member-hub.html' : 'login.html';
         el.classList.toggle('is-signed-in', loggedIn);
         setNavLinkText(el, loggedIn ? 'Members hub' : 'Member login', loggedIn);
       });
