@@ -3348,6 +3348,99 @@ body.intro-active { overflow: hidden; }
 }
 .discount-card:hover .card-link .icon { transform: translateX(4px); }
 
+/* Members hub "just joined the Network" ticker — pinned at the top of
+   the page, one item visible at a time via a sliding track, so recent
+   activity is always in view without ever growing the page. Auto-
+   advances, pauses on hover/focus, and responds to prev/next clicks or
+   a touch swipe. */
+.network-ticker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid #6fcf97;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.network-ticker-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 122, 70, 0.2);
+  color: #6fcf97;
+}
+.network-ticker-icon .icon { width: 18px; height: 18px; }
+
+.network-ticker-viewport {
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.network-ticker-track {
+  display: flex;
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.network-ticker-item {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding-right: var(--space-2);
+}
+.network-ticker-item-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.network-ticker-item-meta {
+  font-size: 0.82rem;
+  color: var(--color-text-faint);
+  white-space: nowrap;
+}
+
+.network-ticker-nav {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
+}
+.network-ticker-nav:hover { border-color: #6fcf97; color: #6fcf97; }
+.network-ticker-nav .icon { width: 14px; height: 14px; }
+
+.network-ticker-counter {
+  flex-shrink: 0;
+  font-size: 0.76rem;
+  color: var(--color-text-faint);
+  min-width: 34px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .network-ticker-item-title { white-space: normal; }
+}
+
 /* Members hub news/announcements feed — a colour-tagged list (not a card
    grid, since posts read top-to-bottom chronologically) with a staggered
    entrance and a highlighted, gently pulsing treatment for pinned posts. */

@@ -482,40 +482,101 @@
     // `members` insert, logged automatically by a database trigger
     // (migration 020), so this covers both a member the committee adds
     // directly and a pending_members row getting claimed on first
-    // login. Shown to members and professionals alike, in whichever
-    // order Postgres logged them.
+    // login. Pinned at the top of the hub as a compact single-item
+    // ticker (not a stacked feed) so it stays visible without taking up
+    // real estate — anyone who missed activity while they were away
+    // sees it all here, one at a time, the moment they log back in.
     function loadNetworkActivity() {
-      var activityList = document.getElementById('network-activity-list');
-      if (!activityList) return;
-      var activitySection = document.getElementById('network-activity-section');
-      var activityEmpty = document.getElementById('network-activity-empty');
+      var ticker = document.getElementById('network-ticker');
+      var track = document.getElementById('network-ticker-track');
+      if (!ticker || !track) return;
 
       supabaseClient
         .from('network_join_events')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(8)
+        .limit(12)
         .then(function (result) {
           if (result.error) return;
-          if (activitySection) activitySection.style.display = '';
           var rows = result.data || [];
-          if (!rows.length) {
-            if (activityEmpty) activityEmpty.style.display = 'block';
-            return;
-          }
-          activityList.innerHTML = rows.map(renderNetworkActivityItem).join('');
+          if (!rows.length) return;
+          track.innerHTML = rows.map(renderNetworkTickerItem).join('');
+          ticker.style.display = 'flex';
+          initNetworkTicker(ticker, rows.length);
         });
     }
 
-    function renderNetworkActivityItem(row) {
+    function renderNetworkTickerItem(row) {
       var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
-      return '<article class="feed-item feed-item--green">' +
-        '<div class="feed-item-meta">' +
-        '<span class="feed-item-tag">New member</span>' +
-        '<span class="feed-item-date">' + escapeHtml(timeAgo(row.created_at)) + '</span></div>' +
-        '<h3 class="feed-item-title">' + escapeHtml(row.full_name) + ' just joined the LACMS Network</h3>' +
-        (courseYear ? '<p class="feed-item-body">' + escapeHtml(courseYear) + '</p>' : '') +
-        '</article>';
+      var meta = [courseYear, timeAgo(row.created_at)].filter(Boolean).join(' · ');
+      return '<div class="network-ticker-item">' +
+        '<span class="network-ticker-item-title">' + escapeHtml(row.full_name) + ' just joined the Network</span>' +
+        '<span class="network-ticker-item-meta">' + escapeHtml(meta) + '</span>' +
+        '</div>';
+    }
+
+    function initNetworkTicker(ticker, count) {
+      var track = document.getElementById('network-ticker-track');
+      var prevBtn = document.getElementById('network-ticker-prev');
+      var nextBtn = document.getElementById('network-ticker-next');
+      var counter = document.getElementById('network-ticker-counter');
+      var viewport = ticker.querySelector('.network-ticker-viewport');
+      var index = 0;
+      var timer = null;
+
+      function render() {
+        track.style.transform = 'translateX(-' + (index * 100) + '%)';
+        if (counter) counter.textContent = (index + 1) + ' / ' + count;
+      }
+
+      function go(delta) {
+        index = (index + delta + count) % count;
+        render();
+      }
+
+      function stopAuto() {
+        if (timer) clearInterval(timer);
+        timer = null;
+      }
+
+      function startAuto() {
+        stopAuto();
+        if (count < 2) return;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        timer = setInterval(function () { go(1); }, 6000);
+      }
+
+      if (count < 2) {
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (counter) counter.style.display = 'none';
+      } else {
+        if (prevBtn) prevBtn.addEventListener('click', function () { go(-1); startAuto(); });
+        if (nextBtn) nextBtn.addEventListener('click', function () { go(1); startAuto(); });
+        ticker.addEventListener('mouseenter', stopAuto);
+        ticker.addEventListener('mouseleave', startAuto);
+        ticker.addEventListener('focusin', stopAuto);
+        ticker.addEventListener('focusout', startAuto);
+
+        var touchStartX = null;
+        if (viewport) {
+          viewport.addEventListener('touchstart', function (e) {
+            touchStartX = e.touches[0].clientX;
+            stopAuto();
+          }, { passive: true });
+          viewport.addEventListener('touchend', function (e) {
+            if (touchStartX === null) return;
+            var dx = e.changedTouches[0].clientX - touchStartX;
+            if (dx > 40) go(-1);
+            else if (dx < -40) go(1);
+            touchStartX = null;
+            startAuto();
+          }, { passive: true });
+        }
+      }
+
+      render();
+      startAuto();
     }
 
     function loadProfile(session) {
