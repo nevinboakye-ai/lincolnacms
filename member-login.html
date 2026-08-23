@@ -99,7 +99,19 @@
           </div>
           <button type="submit" class="btn btn-primary btn-block">Log in</button>
           <p id="login-status" class="auth-error" role="status" style="display:none;"></p>
-          <p style="margin-top: var(--space-4); margin-bottom: 0; font-size: 0.85rem; color: var(--color-text-faint);">Not a member yet? <a href="join.html" style="color: var(--color-gold-light);">Apply to join</a>, and the committee will set up your login.</p>
+          <p style="margin-top: var(--space-3); margin-bottom: 0; font-size: 0.85rem;"><button type="button" id="forgot-password-toggle" class="link-button">Forgot your password?</button></p>
+          <p style="margin-top: var(--space-3); margin-bottom: 0; font-size: 0.85rem; color: var(--color-text-faint);">Not a member yet? <a href="join.html" style="color: var(--color-gold-light);">Apply to join</a>, and the committee will set up your login.</p>
+        </form>
+
+        <form id="forgot-password-form" class="auth-form" aria-describedby="forgot-password-status">
+          <p style="margin-top:0; color: var(--color-text-muted);">Enter your email and we'll send you a link to reset your password.</p>
+          <div class="field">
+            <label for="forgot-password-email">Email</label>
+            <input type="email" id="forgot-password-email" name="forgot-password-email" autocomplete="email" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Send reset link</button>
+          <p id="forgot-password-status" class="auth-error" role="status" style="display:none;"></p>
+          <p style="margin-top: var(--space-4); margin-bottom: 0; font-size: 0.85rem;"><button type="button" id="forgot-password-back" class="link-button">&larr; Back to log in</button></p>
         </form>
 
         <form id="set-password-form" class="auth-form" aria-describedby="set-password-status">

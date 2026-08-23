@@ -389,3 +389,14 @@ No migration needed — front-end only.
 **Hub card order**: the "Platform Activity Dashboard" card is now the first card in the members hub's quick-links grid, ahead of "Meet the LACMS Network".
 
 **Members and Professionals are no longer two separate sections** — they're one combined, most-recently-active-first roster, exactly as described in [Section 30](#30-presidents-activity-dashboard)'s updated layout above. "Needs a nudge" moved down below it, so the top of the page leads with who's actually active rather than who still needs chasing up.
+
+## 36. "Forgot your password?" on every login
+
+No migration needed — front-end only. Every login page now has a working password reset, covering every account type:
+
+- **`member-login.html`** — covers LACMS members, committee, and professionals (they all share this one login form). A "Forgot your password?" link swaps in an email-only form; submitting it sends Supabase's own reset email and shows a confirmation message. The link in that email lands back on this same page with a recovery token in the URL, which the page already knew how to handle from the invite-link fix earlier — it shows the same "set a new password" form, and afterwards sends them to `member-hub.html` as normal.
+- **`mmg-login.html`** — same "Forgot your password?" link and flow for MMG/partner-university guest accounts, sending them to `mmg-hub.html` afterwards instead. This page didn't have *any* password-reset handling before — self-registered guests choose their password once at signup and had no way back in if they forgot it. It's genuinely new here, not just extended: a `mmg-set-password-form` was added, and the recovery-link detection had to be built from scratch (reusing the exact same pattern as `member-login.html`).
+
+**A real bug caught and fixed while building this**: `mmg-login.html`'s "already signed in? skip straight to the hub" check didn't know about recovery links, and a password-reset link *also* establishes a live session immediately, the same as an invite link does. Without the fix, clicking a reset link would have bounced a guest straight to `mmg-hub.html` before they ever got to actually type a new password. The check now excludes the recovery-flow case, matching how `member-login.html` already handled it correctly.
+
+To customise the reset email's wording/branding, see [Section 9](#9-branded-auth-emails) — the same `email-templates/` folder covers this one too (`reset-password.html`), it just hasn't been applied yet since this flow wasn't in use until now. Apply it the same way as `invite.html`: Authentication → Emails → Templates → the matching template → paste in.

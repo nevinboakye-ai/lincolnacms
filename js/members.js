@@ -429,6 +429,51 @@
       });
     }
 
+    // "Forgot your password?" — swaps in a small email-only form that
+    // triggers Supabase's own reset email. The link it sends back lands
+    // on this exact page with type=recovery in the URL, which the
+    // isRecoveryFlow check above already treats identically to a fresh
+    // invite — same set-password form, same flow, no separate handling
+    // needed for the reset case itself.
+    var forgotPasswordForm = document.getElementById('forgot-password-form');
+    var forgotPasswordToggle = document.getElementById('forgot-password-toggle');
+    var forgotPasswordBack = document.getElementById('forgot-password-back');
+    if (forgotPasswordForm && forgotPasswordToggle) {
+      var forgotPasswordStatus = document.getElementById('forgot-password-status');
+
+      forgotPasswordToggle.addEventListener('click', function () {
+        if (loginForm) loginForm.classList.remove('is-active');
+        forgotPasswordForm.classList.add('is-active');
+      });
+      if (forgotPasswordBack) {
+        forgotPasswordBack.addEventListener('click', function () {
+          forgotPasswordForm.classList.remove('is-active');
+          if (loginForm) loginForm.classList.add('is-active');
+        });
+      }
+
+      forgotPasswordForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hideMessage(forgotPasswordStatus);
+        var email = document.getElementById('forgot-password-email').value.trim();
+        var btn = forgotPasswordForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname })
+          .then(function (result) {
+            btn.disabled = false;
+            if (result.error) {
+              showMessage(forgotPasswordStatus, result.error.message);
+              return;
+            }
+            forgotPasswordStatus.className = 'auth-error';
+            forgotPasswordStatus.style.color = '#6fcf97';
+            forgotPasswordStatus.style.borderColor = 'rgba(111, 207, 151, 0.35)';
+            forgotPasswordStatus.style.background = 'rgba(30, 122, 70, 0.1)';
+            showMessage(forgotPasswordStatus, "Check your email for a reset link — it may take a minute to arrive.");
+          });
+      });
+    }
+
     if (setPasswordForm) {
       setPasswordForm.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -1401,12 +1446,106 @@
     var mmgTabSignin = document.getElementById('mmg-tab-signin');
     var mmgTabSignup = document.getElementById('mmg-tab-signup');
     var mmgSignupConfirmation = document.getElementById('mmg-signup-confirmation');
+    var mmgSetPasswordForm = document.getElementById('mmg-set-password-form');
+    var mmgAuthTabs = document.querySelector('.mmg-auth-tabs');
 
-    supabaseClient.auth.getSession().then(function (result) {
-      if (result.data && result.data.session) {
-        window.location.href = 'mmg-hub.html';
+    // Same detection as member-login.html — a password-reset link also
+    // establishes a live session immediately, same as an invite link
+    // does, so without this check the "already signed in" redirect
+    // below would fire first and bounce a reset visitor straight to
+    // the hub before they ever get to actually choose a new password.
+    var mmgHash = window.location.hash || '';
+    var mmgSearch = window.location.search || '';
+    var mmgIsRecoveryFlow = mmgHash.indexOf('type=recovery') !== -1
+      || mmgSearch.indexOf('type=recovery') !== -1
+      || /[?&]code=/.test(mmgSearch);
+
+    if (mmgIsRecoveryFlow && mmgSetPasswordForm) {
+      if (mmgAuthTabs) mmgAuthTabs.style.display = 'none';
+      if (mmgSigninForm) mmgSigninForm.classList.remove('is-active');
+      if (mmgSignupForm) mmgSignupForm.classList.remove('is-active');
+      mmgSetPasswordForm.classList.add('is-active');
+    } else {
+      supabaseClient.auth.getSession().then(function (result) {
+        if (result.data && result.data.session) {
+          window.location.href = 'mmg-hub.html';
+        }
+      });
+    }
+
+    if (mmgSetPasswordForm) {
+      mmgSetPasswordForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = document.getElementById('mmg-set-password-status');
+        hideMessage(statusEl);
+        var password = document.getElementById('mmg-set-password-password').value;
+        var confirmPassword = document.getElementById('mmg-set-password-confirm').value;
+
+        if (password.length < 8) {
+          showMessage(statusEl, 'Password must be at least 8 characters.');
+          return;
+        }
+        if (password !== confirmPassword) {
+          showMessage(statusEl, "Passwords don't match — try again.");
+          return;
+        }
+
+        var btn = mmgSetPasswordForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        supabaseClient.auth.updateUser({ password: password }).then(function (result) {
+          if (result.error) {
+            showMessage(statusEl, result.error.message);
+            btn.disabled = false;
+            return;
+          }
+          ensureMmgGuestProfile(result.data.session).then(function () {
+            window.location.href = 'mmg-hub.html';
+          });
+        });
+      });
+    }
+
+    // "Forgot your password?" — same pattern as member-login.html: an
+    // email-only form that triggers Supabase's reset email, which lands
+    // back on this exact page with type=recovery, handled above.
+    var mmgForgotPasswordForm = document.getElementById('mmg-forgot-password-form');
+    var mmgForgotPasswordToggle = document.getElementById('mmg-forgot-password-toggle');
+    var mmgForgotPasswordBack = document.getElementById('mmg-forgot-password-back');
+    if (mmgForgotPasswordForm && mmgForgotPasswordToggle) {
+      var mmgForgotPasswordStatus = document.getElementById('mmg-forgot-password-status');
+
+      mmgForgotPasswordToggle.addEventListener('click', function () {
+        if (mmgSigninForm) mmgSigninForm.classList.remove('is-active');
+        mmgForgotPasswordForm.classList.add('is-active');
+      });
+      if (mmgForgotPasswordBack) {
+        mmgForgotPasswordBack.addEventListener('click', function () {
+          mmgForgotPasswordForm.classList.remove('is-active');
+          if (mmgSigninForm) mmgSigninForm.classList.add('is-active');
+        });
       }
-    });
+
+      mmgForgotPasswordForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hideMessage(mmgForgotPasswordStatus);
+        var email = document.getElementById('mmg-forgot-password-email').value.trim();
+        var btn = mmgForgotPasswordForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname })
+          .then(function (result) {
+            btn.disabled = false;
+            if (result.error) {
+              showMessage(mmgForgotPasswordStatus, result.error.message);
+              return;
+            }
+            mmgForgotPasswordStatus.className = 'auth-error';
+            mmgForgotPasswordStatus.style.color = '#6fcf97';
+            mmgForgotPasswordStatus.style.borderColor = 'rgba(111, 207, 151, 0.35)';
+            mmgForgotPasswordStatus.style.background = 'rgba(30, 122, 70, 0.1)';
+            showMessage(mmgForgotPasswordStatus, "Check your email for a reset link — it may take a minute to arrive.");
+          });
+      });
+    }
 
     function switchMmgTab(tab) {
       var showSignup = tab === 'signup';
