@@ -317,3 +317,7 @@ No migration needed — this is a front-end change only. The "Get your ticket" b
 ## 28. Announcement bylines — say who a post is from
 
 Run [`db/migrations/023-announcement-posted-by.sql`](db/migrations/023-announcement-posted-by.sql). Adds an optional **posted_by** field to `announcements` (Table Editor) — e.g. "Nevin Boakye, President" or "LACMS Committee" — shown as a small byline under the post on the members hub feed. Leave it blank on any post and no byline shows, so nothing changes for existing announcements until you fill it in.
+
+## 29. MMG update bylines too
+
+Run [`db/migrations/024-mmg-update-posted-by.sql`](db/migrations/024-mmg-update-posted-by.sql). Same **posted_by** field as Section 28, added to both `mmg_updates` (the committee-only planning feed) and `mmg_attendee_updates` (the general feed all attendees see) — add it in Table Editor on either table, same as announcements. Both feeds share one render function, so this covers every place they show up (`mmg.html`, `mmg-hub.html`, and the MMG sections on `member-hub.html`) in one go.
