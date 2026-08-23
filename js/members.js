@@ -574,12 +574,15 @@
     });
   }
 
-  // ---- MoTM page: nomination form for signed-in members. Unlike the hub/
-  // perks/Sankofa pages, this doesn't redirect anyone away — the page stays
-  // fully public, it just swaps the "log in to nominate" note for the real
-  // form once a session is confirmed. ----
+  // ---- MoTM page: nomination form for signed-in LACMS members. Unlike
+  // the hub/perks/Sankofa pages, this doesn't redirect anyone away — the
+  // page stays fully public, it just swaps the "log in to nominate" note
+  // for the real form once a session is confirmed. MMG-only guests (no
+  // row in `members`) get a locked message instead of the form — this
+  // is a LACMS member exclusive, not open to MMG portal accounts. ----
   var nominateForm = document.getElementById('nominate-form');
   var nominateNotSignedIn = document.getElementById('nominate-not-signed-in');
+  var nominateLocked = document.getElementById('nominate-locked');
   var nominateFormWrap = document.getElementById('nominate-form-wrap');
   if (nominateForm && nominateNotSignedIn && nominateFormWrap) {
     var nominateSession = null;
@@ -589,7 +592,19 @@
       if (!session) return;
       nominateSession = session;
       nominateNotSignedIn.style.display = 'none';
-      nominateFormWrap.style.display = 'block';
+
+      supabaseClient
+        .from('members')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle()
+        .then(function (memberResult) {
+          if (memberResult.data) {
+            nominateFormWrap.style.display = 'block';
+          } else if (nominateLocked) {
+            nominateLocked.style.display = 'flex';
+          }
+        });
     });
 
     nominateForm.addEventListener('submit', function (e) {
@@ -619,6 +634,134 @@
           document.getElementById('nominate-confirmation').style.display = 'block';
         });
     });
+  }
+
+  // ---- MoTM page: data-driven current winner + past-honourees archive.
+  // The HTML already carries "coming soon" fallback copy, so if there's
+  // no current winner (or the table's empty) we simply don't touch the
+  // DOM at all and that fallback stands. ----
+  var motmNameEl = document.getElementById('motm-name');
+  if (motmNameEl) {
+    supabaseClient
+      .from('motm_winners')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: false })
+      .then(function (result) {
+        var rows = result.data || [];
+        var current = rows.filter(function (r) { return r.is_current; })[0];
+        var archive = rows.filter(function (r) { return !r.is_current; });
+        renderMotmHero(current);
+        renderMotmArchive(archive);
+      });
+  }
+
+  function renderMotmHero(winner) {
+    if (!winner || !winner.full_name) return;
+
+    var nameEl = document.getElementById('motm-name');
+    var roleEl = document.getElementById('motm-role');
+    var bioEl = document.getElementById('motm-bio');
+    var monthBadge = document.getElementById('motm-month-badge');
+    var photoPlaceholder = document.getElementById('motm-photo-placeholder');
+    var photoLabel = document.getElementById('motm-photo-label');
+    var photoImg = document.getElementById('motm-photo-img');
+    var quoteBlock = document.getElementById('motm-quote-block');
+    var quoteText = document.getElementById('motm-quote-text');
+    var tagsEl = document.getElementById('motm-tags');
+
+    if (nameEl) nameEl.textContent = winner.full_name;
+
+    var courseYear = [winner.course, winner.year_of_study].filter(Boolean).join(' · ');
+    if (roleEl && courseYear) {
+      roleEl.textContent = courseYear;
+      roleEl.style.display = '';
+    }
+
+    if (bioEl && winner.bio) bioEl.textContent = winner.bio;
+    if (monthBadge) monthBadge.textContent = winner.month_label || 'This month';
+
+    if (winner.photo_url && photoImg && photoPlaceholder) {
+      photoImg.src = winner.photo_url;
+      photoImg.alt = winner.full_name;
+      photoImg.style.display = '';
+      photoPlaceholder.style.display = 'none';
+    } else if (photoLabel) {
+      photoLabel.textContent = 'Photo — ' + winner.full_name;
+    }
+
+    if (winner.quote && quoteBlock && quoteText) {
+      quoteText.textContent = winner.quote;
+      quoteBlock.style.display = '';
+    }
+
+    if (winner.tags && winner.tags.length && tagsEl) {
+      tagsEl.innerHTML = winner.tags.map(function (t) {
+        return '<span class="motm-tag"><span class="motm-tag-dot motm-tag-dot--gold" aria-hidden="true"></span>' + escapeHtml(t) + '</span>';
+      }).join('');
+      tagsEl.style.display = '';
+    }
+  }
+
+  function renderMotmArchive(rows) {
+    var track = document.getElementById('motm-archive-track');
+    var emptyEl = document.getElementById('motm-archive-empty');
+    if (!track) return;
+    if (!rows.length) {
+      if (emptyEl) emptyEl.style.display = 'block';
+      return;
+    }
+    track.innerHTML = rows.map(renderMotmArchiveCard).join('');
+  }
+
+  function renderMotmArchiveCard(row) {
+    var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
+    var photoHtml = row.photo_url
+      ? '<img src="' + encodeURI(row.photo_url) + '" alt="' + escapeHtml(row.full_name || '') + '" style="width:100%; height:100%; object-fit:cover;">'
+      : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>';
+    return '<div class="card motm-archive-card">' +
+      '<div class="motm-archive-photo' + (row.photo_url ? '' : ' img-placeholder') + '">' + photoHtml +
+      '<span class="motm-month-badge motm-month-badge--sm">' + escapeHtml(row.month_label || '') + '</span></div>' +
+      '<div class="motm-archive-name">' + escapeHtml(row.full_name || 'To be announced') + '</div>' +
+      '<div class="motm-archive-course">' + escapeHtml(courseYear) + '</div>' +
+      '</div>';
+  }
+
+  // ---- Homepage: MoTM teaser card, same data source as motm.html's
+  // hero, but only the compact fields the teaser actually shows ----
+  var homeMotmNameEl = document.getElementById('home-motm-name');
+  if (homeMotmNameEl) {
+    supabaseClient
+      .from('motm_winners')
+      .select('*')
+      .eq('is_active', true)
+      .eq('is_current', true)
+      .limit(1)
+      .then(function (result) {
+        var winner = result.data && result.data[0];
+        if (!winner || !winner.full_name) return;
+
+        var eyebrowEl = document.getElementById('home-motm-eyebrow');
+        var roleEl = document.getElementById('home-motm-role');
+        var photoPlaceholder = document.getElementById('home-motm-photo-placeholder');
+        var photoImg = document.getElementById('home-motm-photo-img');
+
+        homeMotmNameEl.textContent = winner.full_name;
+        if (eyebrowEl) eyebrowEl.textContent = 'ACMS Member of the Month · ' + (winner.month_label || 'This month');
+
+        var courseYear = [winner.course, winner.year_of_study].filter(Boolean).join(' · ');
+        if (roleEl && courseYear) {
+          roleEl.textContent = courseYear;
+          roleEl.style.display = '';
+        }
+
+        if (winner.photo_url && photoImg && photoPlaceholder) {
+          photoImg.src = winner.photo_url;
+          photoImg.alt = winner.full_name;
+          photoImg.style.display = '';
+          photoPlaceholder.style.display = 'none';
+        }
+      });
   }
 
   // ---- Sankofa Circle application page ----

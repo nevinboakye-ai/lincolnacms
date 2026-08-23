@@ -402,13 +402,39 @@ button { font-family: inherit; }
   color: var(--color-text-muted);
   padding: var(--space-1) 0;
   position: relative;
-  transition: color var(--dur-base) var(--ease-standard);
+  transition: color var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
 }
 
 .nav-links a:hover,
 .nav-links a[aria-current="page"] {
   color: var(--color-text);
 }
+
+.nav-links a:hover { transform: translateY(-1px); }
+
+/* Animated hover underline — grows from the centre rather than just
+   appearing, so the nav reads as responsive rather than static. Skipped
+   on the current page, which already carries a permanent underline. */
+.nav-links a::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  background: var(--color-gold-light);
+  border-radius: var(--radius-pill);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+
+.nav-links a:hover::before,
+.nav-links a:focus-visible::before {
+  transform: scaleX(1);
+}
+
+.nav-links a[aria-current="page"]::before { display: none; }
 
 .nav-links a[aria-current="page"]::after {
   content: '';
@@ -1383,6 +1409,12 @@ a.impact-card:focus-visible {
   background: var(--color-gold);
 }
 
+.card-tag--soon {
+  color: var(--color-text-faint);
+  background: transparent;
+  border: 1px dashed var(--color-border-strong);
+}
+
 a.card {
   transition: border-color var(--dur-base) var(--ease-standard),
               transform var(--dur-fast) var(--ease-standard);
@@ -1519,6 +1551,10 @@ a.card:hover, a.card:focus-visible {
   margin: 0;
   font-size: 0.88rem;
   text-align: left;
+}
+.person-bio--pending {
+  font-style: italic;
+  color: var(--color-text-faint);
 }
 .person-card .reveal-panel-content {
   padding: var(--space-4);
@@ -2646,107 +2682,11 @@ body.intro-active { overflow: hidden; }
    Sankofa Mentorship page
    ========================================================= */
 
-.sankofa-diagram-scroll {
-  overflow-x: auto;
-  padding-block: var(--space-3) var(--space-2);
+.sankofa-diagram-placeholder {
+  min-height: 360px;
+  margin-block: var(--space-3);
+  border-radius: var(--radius-lg);
 }
-
-.sankofa-diagram {
-  position: relative;
-  width: 900px;
-  height: 600px;
-  margin-inline: auto;
-}
-
-.sankofa-diagram-lines {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.sankofa-line { fill: none; stroke-width: 2.5; }
-.sankofa-line--gold { stroke: var(--color-gold); stroke-width: 3; }
-.sankofa-line--red { stroke: var(--color-red); stroke-opacity: 0.55; }
-.sankofa-line--green { stroke: var(--color-green); stroke-opacity: 0.55; }
-
-.sankofa-diagram-node {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform: translate(-50%, -50%);
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  width: 110px;
-  text-align: center;
-}
-
-.sankofa-diagram-dot {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 2px solid var(--color-gold);
-  background: var(--color-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: var(--color-gold-light);
-  flex-shrink: 0;
-}
-
-.sankofa-diagram-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  line-height: 1.25;
-}
-
-.sankofa-diagram-node--hub {
-  width: 150px;
-}
-
-.sankofa-diagram-node--hub .sankofa-diagram-dot {
-  width: 84px;
-  height: 84px;
-  font-size: 0.74rem;
-}
-
-.sankofa-diagram-node--hub .sankofa-diagram-label {
-  color: var(--color-text);
-  font-size: 0.85rem;
-}
-
-.sankofa-diagram-node--red .sankofa-diagram-dot {
-  border-color: var(--color-red);
-  background: rgba(193, 39, 45, 0.15);
-  color: #ef8b8f;
-}
-
-.sankofa-diagram-node--green .sankofa-diagram-dot {
-  border-color: var(--color-green);
-  background: rgba(30, 122, 70, 0.15);
-  color: #6fcf97;
-}
-
-.sankofa-diagram-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  justify-content: center;
-  margin-top: var(--space-3);
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-}
-
-.sankofa-diagram-legend span { display: inline-flex; align-items: center; gap: 6px; }
-
-.sankofa-diagram-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
 .sankofa-meaning {
   display: flex;

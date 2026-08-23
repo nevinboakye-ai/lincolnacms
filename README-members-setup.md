@@ -165,3 +165,15 @@ Run [`db/migrations/010-mmg-updates-perks-media.sql`](db/migrations/010-mmg-upda
 To review submissions: Supabase Dashboard → Storage → `mmg-media`, browse by folder. There's no "select" policy for attendees, so this only works from the dashboard (which uses the service role and bypasses storage policies), not from the site.
 
 Files over 200MB are rejected client-side with a friendly message — if you need a higher limit, that's enforced both in `js/members.js` (`MMG_MEDIA_MAX_BYTES`) and in Supabase's own per-bucket file-size limit (Dashboard → Storage → `mmg-media` → bucket settings), so raise both if needed.
+
+## 14. Member of the Month — now editable from Supabase
+
+Run [`db/migrations/011-motm-winners-table.sql`](db/migrations/011-motm-winners-table.sql). Member of the Month is now fully data-driven — add/edit rows in Table Editor → `motm_winners` instead of asking me to edit the site's HTML.
+
+- **This month's winner**: add a row with **is_current** = `true`. Fields: **full_name**, **course**, **year_of_study**, **month_label** (e.g. "September 2026"), **photo_url** (optional — a public image URL; leave blank for the placeholder silhouette), **quote** (optional), **bio**, **tags** (optional, e.g. `{Community,Leadership,Impact}`). Only ever have one row marked `is_current`.
+- **Past honourees**: add rows with **is_current** = `false` — these show in the "Past Honourees" archive carousel automatically, newest first (controlled by **sort_order**).
+- **is_active**: set `false` on any row to pull it from the site without deleting it.
+
+If there's no current-winner row yet, both `motm.html` and the homepage teaser show a graceful "To be announced / coming soon" state instead of anything looking unfinished — no need to add a placeholder row just to avoid that.
+
+Nominating is a LACMS member exclusive — MMG-only guest accounts now see a locked message instead of the form, enforced at the database level (not just hidden in the UI), so it can't be bypassed via a direct API call either.
