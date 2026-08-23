@@ -955,6 +955,19 @@ a.impact-card:focus-visible {
 .impact-card--perks:hover,
 .impact-card--perks:focus-visible { border-color: #b28ff0; }
 
+.impact-card--network {
+  --impact-shimmer-color: rgba(239, 139, 196, 0.26);
+  background: linear-gradient(160deg, rgba(214, 51, 132, 0.2), var(--color-bg) 75%);
+  border-color: rgba(239, 139, 196, 0.38);
+}
+.impact-card--network::before { animation-delay: 3.5s; }
+.impact-card--network:hover,
+.impact-card--network:focus-visible { border-color: #ef8bc4; }
+
+/* Closes out the grid as a full-width band rather than sitting orphaned
+   alone in a 5th, half-empty row next to the new Network card. */
+.impact-card--stats { grid-column: 1 / -1; }
+
 @keyframes impact-shimmer {
   0%, 20% { background-position: 160% 0; }
   60%, 100% { background-position: -60% 0; }
@@ -1078,6 +1091,13 @@ a.impact-card:focus-visible {
   background: rgba(107, 70, 193, 0.18);
 }
 .impact-card--perks:hover .impact-badge--purple { background: rgba(107, 70, 193, 0.32); }
+
+.impact-badge--pink {
+  color: #ef8bc4;
+  border-color: rgba(239, 139, 196, 0.45);
+  background: rgba(214, 51, 132, 0.16);
+}
+.impact-card--network:hover .impact-badge--pink { background: rgba(214, 51, 132, 0.3); }
 
 .impact-stats-row {
   display: flex;

@@ -293,6 +293,40 @@
     });
   }
 
+  // ---- Homepage: the "Discover the LACMS Network" impact card — starts
+  // locked the same way, but unlocks for any confirmed LACMS member OR
+  // professional, since the Network itself (unlike Perks) isn't
+  // committee-only. ----
+  var networkImpactCard = document.getElementById('network-impact-card');
+  if (networkImpactCard) {
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) return;
+      function unlockNetworkCard() {
+        networkImpactCard.href = 'member-network.html';
+        var badge = document.getElementById('network-impact-badge');
+        if (badge) {
+          badge.className = 'impact-badge impact-badge--green';
+          badge.innerHTML = '<span class="impact-badge-dot" aria-hidden="true"></span> You have access';
+        }
+      }
+      supabaseClient
+        .from('members')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle()
+        .then(function (memberResult) {
+          if (memberResult.data) {
+            unlockNetworkCard();
+            return;
+          }
+          getProfessionalRow(session).then(function (proRow) {
+            if (proRow) unlockNetworkCard();
+          });
+        });
+    });
+  }
+
   function setNavLinkText(el, text, signedIn) {
     var label = el.querySelector('[data-member-nav-label]');
     var target = label || el;
