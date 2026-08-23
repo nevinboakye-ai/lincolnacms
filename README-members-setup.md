@@ -284,3 +284,9 @@ The homepage's "Discounts & Opportunities" card follows the same rule — it onl
 ## 24. Fix: professionals couldn't save a Network bio
 
 Run [`db/migrations/018-professional-network-profile-fix.sql`](db/migrations/018-professional-network-profile-fix.sql) (needs migration 015 already applied). A professional saving their LinkedIn/bio from "Edit network profile" on the members hub hit `new row violates row-level security policy for table "member_profiles"` — the insert policy from Section 19 only ever checked `is_lacms_member()`, so a professional (who isn't a LACMS member) could never create their first row there. This adds the same `is_professional()` check used everywhere else a professional needs member-equivalent access.
+
+## 25. Fix: a professional's saved bio didn't show on their own Network card
+
+Run [`db/migrations/019-professional-bio-linkedin.sql`](db/migrations/019-professional-bio-linkedin.sql) (needs migration 015 already applied). Fixing Section 24 let a professional save without an error, but the bio still didn't appear on their card — "Edit network profile" always wrote to `member_profiles`, which only the LACMS-member side of the directory reads. A professional's own card comes from their `network_professionals` row instead, which has its own separate `bio`/`linkedin_url` columns.
+
+The form now saves to the right place automatically depending on who's signed in — no Table Editor changes needed, and nothing to configure. Under the hood, a professional's save goes through a new `update_professional_profile()` function rather than a direct table update, so they can only ever touch their own bio and LinkedIn — not their committee-set title, category or active status, which live in the same table.

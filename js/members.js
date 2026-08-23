@@ -676,16 +676,25 @@
           supabaseClient.auth.getSession().then(function (result) {
             var session = result.data && result.data.session;
             if (!session) return;
-            supabaseClient
-              .from('member_profiles')
-              .select('linkedin_url, bio')
-              .eq('id', session.user.id)
-              .maybeSingle()
-              .then(function (profileResult) {
-                if (!profileResult.data) return;
-                document.getElementById('network-linkedin').value = profileResult.data.linkedin_url || '';
-                document.getElementById('network-bio').value = profileResult.data.bio || '';
-              });
+            // A professional's LinkedIn/bio lives on their own
+            // network_professionals row, not member_profiles.
+            getProfessionalRow(session).then(function (proRow) {
+              if (proRow) {
+                document.getElementById('network-linkedin').value = proRow.linkedin_url || '';
+                document.getElementById('network-bio').value = proRow.bio || '';
+                return;
+              }
+              supabaseClient
+                .from('member_profiles')
+                .select('linkedin_url, bio')
+                .eq('id', session.user.id)
+                .maybeSingle()
+                .then(function (profileResult) {
+                  if (!profileResult.data) return;
+                  document.getElementById('network-linkedin').value = profileResult.data.linkedin_url || '';
+                  document.getElementById('network-bio').value = profileResult.data.bio || '';
+                });
+            });
           });
         }
       });
@@ -703,23 +712,35 @@
 
           var btn = networkProfileForm.querySelector('button[type="submit"]');
           btn.disabled = true;
-          supabaseClient
-            .from('member_profiles')
-            .upsert({
-              id: session.user.id,
-              linkedin_url: linkedinUrl || null,
-              bio: bio || null,
-              updated_at: new Date().toISOString()
-            })
-            .then(function (upsertResult) {
+
+          // A professional's LinkedIn/bio lives on their own
+          // network_professionals row — updated through a narrow RPC
+          // rather than a direct table update, so they can only ever
+          // touch those two fields, not their committee-set title,
+          // category or is_active.
+          getProfessionalRow(session).then(function (proRow) {
+            var savePromise = proRow
+              ? supabaseClient.rpc('update_professional_profile', {
+                  p_linkedin_url: linkedinUrl || null,
+                  p_bio: bio || null
+                })
+              : supabaseClient.from('member_profiles').upsert({
+                  id: session.user.id,
+                  linkedin_url: linkedinUrl || null,
+                  bio: bio || null,
+                  updated_at: new Date().toISOString()
+                });
+
+            savePromise.then(function (saveResult) {
               btn.disabled = false;
-              if (upsertResult.error) {
-                showMessage(statusEl, upsertResult.error.message);
+              if (saveResult.error) {
+                showMessage(statusEl, saveResult.error.message);
                 return;
               }
               statusEl.style.color = 'var(--color-gold-light)';
               showMessage(statusEl, 'Saved — this is what other members see on your Network card.');
             });
+          });
         });
       });
     }
