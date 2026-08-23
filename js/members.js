@@ -134,6 +134,25 @@
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  // Shared by every network_join_events reader (the hub banner, the
+  // Network ticker, and its full-history modal) — if someone's account
+  // ever gets recreated (e.g. after getting stuck on a broken invite
+  // and being re-added), their old and new join events would otherwise
+  // both show up as if two different people joined. Keeps only the
+  // most recent event per name; assumes rows arrive newest-first, so
+  // keeping the first occurrence of each name is enough.
+  function dedupeJoinEventsByName(rows) {
+    var seen = {};
+    var result = [];
+    rows.forEach(function (row) {
+      var key = (row.full_name || '').trim().toLowerCase();
+      if (seen[key]) return;
+      seen[key] = true;
+      result.push(row);
+    });
+    return result;
+  }
+
   // Shared by every discount/perk card (LACMS discounts and MMG night
   // perks alike) — the code stays blurred behind a "Reveal code" button
   // until clicked, then a "Copy" button appears. Click handling for both
@@ -594,35 +613,33 @@
       since.setDate(since.getDate() - 14);
       var sinceIso = since.toISOString();
 
-      Promise.all([
-        supabaseClient
-          .from('network_join_events')
-          .select('full_name')
-          .gte('created_at', sinceIso)
-          .order('created_at', { ascending: false })
-          .limit(3),
-        supabaseClient
-          .from('network_join_events')
-          .select('id', { count: 'exact', head: true })
-          .gte('created_at', sinceIso)
-      ]).then(function (results) {
-        var rows = (results[0] && results[0].data) || [];
-        var total = (results[1] && results[1].count) || rows.length;
-        if (!rows.length) return;
+      supabaseClient
+        .from('network_join_events')
+        .select('full_name')
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: false })
+        .then(function (result) {
+          // Deduped first (see dedupeJoinEventsByName) so a re-added
+          // account within the window can't inflate the count or push
+          // a real second person out of the first three names shown.
+          var deduped = dedupeJoinEventsByName(result.data || []);
+          var total = deduped.length;
+          var rows = deduped.slice(0, 3);
+          if (!rows.length) return;
 
-        var names = rows.map(function (r) { return '<strong>' + escapeHtml(r.full_name) + '</strong>'; });
-        var extra = total - names.length;
-        var text;
-        if (names.length === 1) {
-          text = names[0] + ' just joined the Network.';
-        } else if (extra <= 0) {
-          text = names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' just joined the Network.';
-        } else {
-          text = names.join(', ') + ' and ' + extra + (extra === 1 ? ' other' : ' others') + ' just joined the Network.';
-        }
-        bannerText.innerHTML = text;
-        banner.style.display = 'flex';
-      });
+          var names = rows.map(function (r) { return '<strong>' + escapeHtml(r.full_name) + '</strong>'; });
+          var extra = total - names.length;
+          var text;
+          if (names.length === 1) {
+            text = names[0] + ' just joined the Network.';
+          } else if (extra <= 0) {
+            text = names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' just joined the Network.';
+          } else {
+            text = names.join(', ') + ' and ' + extra + (extra === 1 ? ' other' : ' others') + ' just joined the Network.';
+          }
+          bannerText.innerHTML = text;
+          banner.style.display = 'flex';
+        });
     }
 
     function loadProfile(session) {
@@ -2352,10 +2369,13 @@
         .from('network_join_events')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(12)
         .then(function (result) {
           if (result.error) return;
-          var rows = result.data || [];
+          // No .limit() on the query itself — deduping first, then
+          // slicing to 12, means a re-added account (see
+          // dedupeJoinEventsByName) can never crowd out a real person
+          // from the ticker.
+          var rows = dedupeJoinEventsByName(result.data || []).slice(0, 12);
           if (!rows.length) return;
           track.innerHTML = rows.map(renderNetworkTickerItem).join('');
           ticker.style.display = 'flex';
@@ -2509,7 +2529,7 @@
         .select('*')
         .order('created_at', { ascending: false })
         .then(function (result) {
-          var rows = result.data || [];
+          var rows = dedupeJoinEventsByName(result.data || []);
           if (countEl) {
             countEl.textContent = rows.length
               ? rows.length + (rows.length === 1 ? ' member, all time' : ' members, all time')

@@ -400,3 +400,11 @@ No migration needed — front-end only. Every login page now has a working passw
 **A real bug caught and fixed while building this**: `mmg-login.html`'s "already signed in? skip straight to the hub" check didn't know about recovery links, and a password-reset link *also* establishes a live session immediately, the same as an invite link does. Without the fix, clicking a reset link would have bounced a guest straight to `mmg-hub.html` before they ever got to actually type a new password. The check now excludes the recovery-flow case, matching how `member-login.html` already handled it correctly.
 
 To customise the reset email's wording/branding, see [Section 9](#9-branded-auth-emails) — the same `email-templates/` folder covers this one too (`reset-password.html`), it just hasn't been applied yet since this flow wasn't in use until now. Apply it the same way as `invite.html`: Authentication → Emails → Templates → the matching template → paste in.
+
+## 37. Join history no longer shows the same person twice
+
+No migration needed — front-end only.
+
+If someone's account ever gets recreated (most commonly: they were stuck on a broken invite, you deleted the old auth user and added them fresh) their old and new `network_join_events` rows both stayed in the database — which meant the join history, the Network ticker, and the "X and N others just joined" hub banner could all show the same person's name twice, once for each account.
+
+They're now deduped by name (case/whitespace-insensitive) everywhere `network_join_events` is read, always keeping the most recent event and discarding the older one — nothing to configure, and nothing changes for anyone who's only ever had one account.
