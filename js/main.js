@@ -571,7 +571,7 @@
         dragging = false;
         flipper.classList.remove('is-dragging');
         setActive(false);
-        resetTransform(); // never left wherever it was turned to — always springs home
+        resetTransform(); // never left wherever it was turned to - always springs home
       }
 
       // Mouse: the plain, classic mousedown-then-track-on-document
@@ -795,7 +795,7 @@
     var tickTicketCountdown = function () {
       var diff = ticketTarget.getTime() - Date.now();
       if (diff <= 0) {
-        ticketCountdownEl.innerHTML = '<span class="ticket-countdown-live">Tickets are live — check back for the link!</span>';
+        ticketCountdownEl.innerHTML = '<span class="ticket-countdown-live">Tickets are live - check back for the link!</span>';
         if (ticketTimer) clearInterval(ticketTimer);
         return;
       }

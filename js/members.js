@@ -451,36 +451,36 @@
         '<p>Are you applying as a mentee or a mentor?</p>' +
         '<div class="sankofa-apply-choice-grid">' +
         '<button type="button" class="sankofa-apply-choice-btn" data-sankofa-apply-choice="mentee">' +
-        '<strong>Mentee</strong><span>Sixth-former, medical or pharmacy student — LACMS membership required</span>' +
+        '<strong>Mentee</strong><span>Sixth-former, medical or pharmacy student - LACMS membership required</span>' +
         '</button>' +
         '<button type="button" class="sankofa-apply-choice-btn" data-sankofa-apply-choice="mentor">' +
-        '<strong>Mentor</strong><span>Doctor, pharmacist or healthcare professional — no account needed</span>' +
+        '<strong>Mentor</strong><span>Doctor, pharmacist or healthcare professional - no account needed</span>' +
         '</button>' +
         '</div></div>' +
 
         '<div data-sankofa-apply-step="mentee" style="display:none;">' +
         '<h2 style="margin-top:0;">Mentee applications</h2>' +
-        '<p>Open to LACMS members — sixth-formers exploring medicine, and Medicine or Pharmacy students. Applications close Sunday 11 October 2026.</p>' +
+        '<p>Open to LACMS members - sixth-formers exploring medicine, and Medicine or Pharmacy students. Applications close Sunday 11 October 2026.</p>' +
         '<a class="btn btn-primary btn-block" id="sankofa-apply-mentee-cta" href="join.html">Continue</a>' +
         '</div>' +
 
         '<div data-sankofa-apply-step="mentor" style="display:none;">' +
         '<h2 style="margin-top:0;">Apply to mentor</h2>' +
-        '<p>Takes under a minute — no account needed, we\'ll reach out by email.</p>' +
+        '<p>Takes under a minute - no account needed, we\'ll reach out by email.</p>' +
         '<form id="sankofa-mentor-quick-form">' +
         '<div class="field"><label for="sqf-name">Full name</label><input type="text" id="sqf-name" autocomplete="name" required></div>' +
         '<div class="field"><label for="sqf-email">Email</label><input type="email" id="sqf-email" autocomplete="email" required></div>' +
         '<div class="field"><label for="sqf-title">Job title</label><input type="text" id="sqf-title" placeholder="e.g. Consultant Cardiologist, F1 Doctor, Community Pharmacist" required></div>' +
         '<div class="field"><label for="sqf-org">Organisation <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label><input type="text" id="sqf-org" placeholder="e.g. Nottingham University Hospitals NHS Trust"></div>' +
         '<div class="field"><label for="sqf-linkedin">LinkedIn <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label><input type="url" id="sqf-linkedin" placeholder="https://linkedin.com/in/…"></div>' +
-        '<div class="field"><label for="sqf-offer">Why do you want to mentor, or what can you offer?</label><textarea id="sqf-offer" maxlength="600" placeholder="A sentence or two is plenty — specialty, what you could help with, why it matters to you." required></textarea></div>' +
+        '<div class="field"><label for="sqf-offer">Why do you want to mentor, or what can you offer?</label><textarea id="sqf-offer" maxlength="600" placeholder="A sentence or two is plenty - specialty, what you could help with, why it matters to you." required></textarea></div>' +
         '<button type="submit" class="btn btn-primary btn-block">Submit application</button>' +
         '<p id="sqf-status" class="auth-error" role="status" style="display:none;"></p>' +
         '</form></div>' +
 
         '<div data-sankofa-apply-step="success" style="display:none;">' +
         '<h2 style="margin-top:0;">Thank you</h2>' +
-        '<p>We\'ve received your mentor application — the committee will be in touch by email.</p>' +
+        '<p>We\'ve received your mentor application - the committee will be in touch by email.</p>' +
         '<button type="button" class="btn btn-outline" data-sankofa-apply-close>Close</button>' +
         '</div>' +
 
@@ -547,7 +547,7 @@
           .then(function (result) {
             btn.disabled = false;
             if (result.error) {
-              showMessage(statusEl, result.error.message || 'Something went wrong — try again, or email acms@lincolnsu.com.');
+              showMessage(statusEl, result.error.message || 'Something went wrong - try again, or email acms@lincolnsu.com.');
               return;
             }
             mentorQuickForm.reset();
@@ -769,7 +769,7 @@
             forgotPasswordStatus.style.color = '#6fcf97';
             forgotPasswordStatus.style.borderColor = 'rgba(111, 207, 151, 0.35)';
             forgotPasswordStatus.style.background = 'rgba(30, 122, 70, 0.1)';
-            showMessage(forgotPasswordStatus, "Check your email for a reset link — it may take a minute to arrive.");
+            showMessage(forgotPasswordStatus, "Check your email for a reset link - it may take a minute to arrive.");
           });
       });
     }
@@ -786,7 +786,7 @@
           return;
         }
         if (password !== confirmPassword) {
-          showMessage(setPasswordStatus, "Passwords don't match — try again.");
+          showMessage(setPasswordStatus, "Passwords don't match - try again.");
           return;
         }
 
@@ -870,7 +870,7 @@
         : '';
       var classes = 'feed-item feed-item--' + meta.accent + (row.pinned ? ' feed-item--pinned' : '');
       var fromHtml = row.posted_by
-        ? '<p class="feed-item-from">— ' + escapeHtml(row.posted_by) + '</p>'
+        ? '<p class="feed-item-from">- ' + escapeHtml(row.posted_by) + '</p>'
         : '';
       return '<article class="' + classes + '">' +
         '<div class="feed-item-meta">' + pinHtml + newBadgeHtml(row.published_at) +
@@ -965,7 +965,7 @@
         getProfessionalRow(session).then(function (proRow) {
           if (authGate) authGate.style.display = 'none';
           if (!proRow) {
-            showMessage(hubError, "We couldn't find your membership profile yet — the committee may still be setting it up. Email acms@lincolnsu.com if this doesn't resolve soon.");
+            showMessage(hubError, "We couldn't find your membership profile yet - the committee may still be setting it up. Email acms@lincolnsu.com if this doesn't resolve soon.");
             return;
           }
           renderProfessionalProfile(proRow, session);
@@ -1100,7 +1100,7 @@
 
     function setText(id, value) {
       var el = document.getElementById(id);
-      if (el) el.textContent = value || '—';
+      if (el) el.textContent = value || '-';
     }
 
     var logoutBtn = document.getElementById('logout-btn');
@@ -1187,7 +1187,7 @@
                 return;
               }
               statusEl.style.color = 'var(--color-gold-light)';
-              showMessage(statusEl, 'Saved — this is what other members see on your Network card.');
+              showMessage(statusEl, 'Saved - this is what other members see on your Network card.');
             });
           });
         });
@@ -1214,7 +1214,7 @@
           return;
         }
         if (password !== confirmPassword) {
-          showMessage(statusEl, "Passwords don't match — try again.");
+          showMessage(statusEl, "Passwords don't match - try again.");
           return;
         }
 
@@ -1449,7 +1449,7 @@
 
       function markRegistered(btn) {
         btn.classList.add('is-registered');
-        btn.textContent = "You're registered — cancel?";
+        btn.textContent = "You're registered - cancel?";
       }
     });
   }
@@ -1533,7 +1533,7 @@
             // most likely from a second tab or a double-click racing
             // past the friendly pre-check above.
             var msg = result.error.code === '23505'
-              ? "You've already used this month's nomination — it resets on the 1st."
+              ? "You've already used this month's nomination - it resets on the 1st."
               : result.error.message;
             showMessage(statusEl, msg);
             return;
@@ -1595,7 +1595,7 @@
       photoImg.style.display = '';
       photoPlaceholder.style.display = 'none';
     } else if (photoLabel) {
-      photoLabel.textContent = 'Photo — ' + winner.full_name;
+      photoLabel.textContent = 'Photo - ' + winner.full_name;
     }
 
     if (winner.quote && quoteBlock && quoteText) {
@@ -1875,7 +1875,7 @@
           return;
         }
         if (password !== confirmPassword) {
-          showMessage(statusEl, "Passwords don't match — try again.");
+          showMessage(statusEl, "Passwords don't match - try again.");
           return;
         }
 
@@ -1931,7 +1931,7 @@
             mmgForgotPasswordStatus.style.color = '#6fcf97';
             mmgForgotPasswordStatus.style.borderColor = 'rgba(111, 207, 151, 0.35)';
             mmgForgotPasswordStatus.style.background = 'rgba(30, 122, 70, 0.1)';
-            showMessage(mmgForgotPasswordStatus, "Check your email for a reset link — it may take a minute to arrive.");
+            showMessage(mmgForgotPasswordStatus, "Check your email for a reset link - it may take a minute to arrive.");
           });
       });
     }
@@ -1987,7 +1987,7 @@
           return;
         }
         if (password !== confirmPassword) {
-          showMessage(statusEl, "Passwords don't match — try again.");
+          showMessage(statusEl, "Passwords don't match - try again.");
           return;
         }
 
@@ -2088,7 +2088,7 @@
     var tierLabel = identity.tier === 'committee' ? 'Committee' : 'Attendee';
 
     var welcomeText = document.getElementById('mmg-welcome-text');
-    if (welcomeText) welcomeText.textContent = 'Welcome back, ' + firstName + ' — you’re attending MMG.';
+    if (welcomeText) welcomeText.textContent = 'Welcome back, ' + firstName + ' - you’re attending MMG.';
 
     setMmgCardText('mmg-card-name', identity.fullName);
     setMmgCardText('mmg-card-university', identity.university);
@@ -2098,7 +2098,7 @@
 
   function setMmgCardText(id, value) {
     var el = document.getElementById(id);
-    if (el) el.textContent = value || '—';
+    if (el) el.textContent = value || '-';
   }
 
   function loadMmgVoting(session) {
@@ -2247,7 +2247,7 @@
       : '';
     var classes = 'feed-item feed-item--' + accentClass + (row.pinned ? ' feed-item--pinned' : '');
     var fromHtml = row.posted_by
-      ? '<p class="feed-item-from">— ' + escapeHtml(row.posted_by) + '</p>'
+      ? '<p class="feed-item-from">- ' + escapeHtml(row.posted_by) + '</p>'
       : '';
     return '<article class="' + classes + '">' +
       '<div class="feed-item-meta">' + pinHtml + newBadgeHtml(row.published_at) +
@@ -2281,7 +2281,7 @@
       var oversized = Array.prototype.some.call(files, function (f) { return f.size > MEDIA_UPLOAD_MAX_BYTES; });
       if (oversized) {
         statusEl.style.color = '#ef8b8f';
-        showMessage(statusEl, 'One or more files are over 200MB — try a smaller file or a compressed video.');
+        showMessage(statusEl, 'One or more files are over 200MB - try a smaller file or a compressed video.');
         return;
       }
 
@@ -2305,11 +2305,11 @@
           var failed = results.filter(function (r) { return r.error; });
           if (failed.length) {
             statusEl.style.color = '#ef8b8f';
-            showMessage(statusEl, 'Some files failed to upload — try again, or email acms@lincolnsu.com.');
+            showMessage(statusEl, 'Some files failed to upload - try again, or email acms@lincolnsu.com.');
             return;
           }
           statusEl.style.color = 'var(--color-gold-light)';
-          showMessage(statusEl, 'Thank you — your media has been uploaded.');
+          showMessage(statusEl, 'Thank you - your media has been uploaded.');
           form.reset();
         });
       });
@@ -2379,7 +2379,7 @@
         .then(function (result) {
           if (mmgHubAuthGate) mmgHubAuthGate.style.display = 'none';
           if (result.error || !result.data) {
-            showMessage(mmgHubError, "We couldn't find your MMG account yet — try logging out and back in, or email acms@lincolnsu.com if this doesn't resolve soon.");
+            showMessage(mmgHubError, "We couldn't find your MMG account yet - try logging out and back in, or email acms@lincolnsu.com if this doesn't resolve soon.");
             return;
           }
           renderMmgHubProfile(result.data, session);
@@ -2427,7 +2427,7 @@
 
     function setHubText(id, value) {
       var el = document.getElementById(id);
-      if (el) el.textContent = value || '—';
+      if (el) el.textContent = value || '-';
     }
 
     var mmgHubChangePasswordToggle = document.getElementById('mmg-hub-change-password-toggle');
@@ -2450,7 +2450,7 @@
           return;
         }
         if (password !== confirmPassword) {
-          showMessage(statusEl, "Passwords don't match — try again.");
+          showMessage(statusEl, "Passwords don't match - try again.");
           return;
         }
 
@@ -2671,7 +2671,7 @@
         .then(function (result) {
           var rows = result.data || [];
           if (!rows.length) {
-            listEl.innerHTML = '<p class="news-comments-empty">No comments yet — be the first.</p>';
+            listEl.innerHTML = '<p class="news-comments-empty">No comments yet - be the first.</p>';
             return;
           }
           listEl.innerHTML = rows.map(renderNewsComment).join('');
@@ -2938,7 +2938,7 @@
         if (networkAuthGate) networkAuthGate.style.display = 'none';
 
         if (results[0].error) {
-          showMessage(networkHubError, "We couldn't load the Network right now — try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.");
+          showMessage(networkHubError, "We couldn't load the Network right now - try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.");
           return;
         }
 
@@ -3069,7 +3069,7 @@
         linkedinHtml +
         '<span class="network-card-avatar">' + escapeHtml(networkInitials(m.full_name)) + '</span>' +
         '<span class="network-card-name">' + escapeHtml(m.full_name) + '</span>' +
-        '<span class="network-card-meta">' + escapeHtml([m.course, m.year_of_study ? yearGroupLabel(m.year_of_study) : ''].filter(Boolean).join(' · ') || '—') + '</span>' +
+        '<span class="network-card-meta">' + escapeHtml([m.course, m.year_of_study ? yearGroupLabel(m.year_of_study) : ''].filter(Boolean).join(' · ') || '-') + '</span>' +
         badgeHtml +
         '</button>';
     }
@@ -3159,7 +3159,7 @@
       if (type === 'member') {
         var roleLabel = record.is_pending ? 'Pending' : (record.committee_role || NETWORK_TYPE_LABELS[record.member_type]);
         var bioHtml = record.is_pending
-          ? '<p class="network-modal-bio" style="font-style:italic; color: var(--color-text-faint);">Still finishing sign-up — their full profile will appear here once they\'ve joined LACMS.</p>'
+          ? '<p class="network-modal-bio" style="font-style:italic; color: var(--color-text-faint);">Still finishing sign-up - their full profile will appear here once they\'ve joined LACMS.</p>'
           : (record.bio
               ? '<p class="network-modal-bio">' + escapeHtml(record.bio) + '</p>'
               : '<p class="network-modal-bio" style="font-style:italic; color: var(--color-text-faint);">No bio added yet.</p>');
@@ -3167,7 +3167,7 @@
           '<span class="network-modal-avatar" style="background: var(--color-bg-alt); color: var(--color-gold-light);">' + escapeHtml(networkInitials(record.full_name)) + '</span>' +
           '<h2 class="network-modal-name" id="network-modal-name">' + escapeHtml(record.full_name) + '</h2>' +
           (roleLabel ? '<p class="network-modal-role">' + escapeHtml(roleLabel) + '</p>' : '') +
-          '<p class="network-modal-meta">' + escapeHtml([record.course, record.year_of_study ? yearGroupLabel(record.year_of_study) : ''].filter(Boolean).join(' · ') || '—') + '</p>' +
+          '<p class="network-modal-meta">' + escapeHtml([record.course, record.year_of_study ? yearGroupLabel(record.year_of_study) : ''].filter(Boolean).join(' · ') || '-') + '</p>' +
           bioHtml +
           linkedinBtn(record.linkedin_url);
       } else {
@@ -3282,7 +3282,7 @@
         // error is safe (and far more useful than a generic message) to
         // show right here — no need to dig through devtools to diagnose
         // a migration that hasn't run yet or a broken RPC.
-        emptyEl.textContent = "Couldn't load this section" + (errorMessage ? ': ' + errorMessage : '') + " — try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.";
+        emptyEl.textContent = "Couldn't load this section" + (errorMessage ? ': ' + errorMessage : '') + " - try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.";
         emptyEl.style.color = '#ef8b8f';
         emptyEl.style.display = 'block';
       }
@@ -3315,7 +3315,7 @@
         if (presidentAuthGate) presidentAuthGate.style.display = 'none';
 
         if (results[0].error || results[1].error || results[2].error || results[3].error) {
-          showMessage(presidentHubError, "Couldn't load the dashboard right now — try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.");
+          showMessage(presidentHubError, "Couldn't load the dashboard right now - try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.");
           return;
         }
 
@@ -3371,7 +3371,7 @@
           showSectionLoadError('sankofa-applications-list', 'sankofa-applications-empty', 'sankofa', results[4].error.message);
         } else {
           renderSankofaApplications(sankofaMerged);
-          setDashCount('sankofa', sankofaMerged.length + (sankofaMerged.length === 1 ? ' application' : ' applications') + (results[4].error || results[5].error ? ' (partial — see console)' : ''));
+          setDashCount('sankofa', sankofaMerged.length + (sankofaMerged.length === 1 ? ' application' : ' applications') + (results[4].error || results[5].error ? ' (partial - see console)' : ''));
         }
 
         if (results[6].error) {
@@ -3471,8 +3471,8 @@
 
     function renderRosterRow(name, detail, row, type, accent) {
       var status = presidentStatus(row);
-      var activatedLabel = row.activated_at ? timeAgo(row.activated_at) : '—';
-      var loginLabel = row.last_sign_in_at ? timeAgo(row.last_sign_in_at) : '—';
+      var activatedLabel = row.activated_at ? timeAgo(row.activated_at) : '-';
+      var loginLabel = row.last_sign_in_at ? timeAgo(row.last_sign_in_at) : '-';
       // Whether someone genuinely finished setting up can't always be
       // told apart from "only ever opened the invite" using the data
       // available — this is the manual override for when you actually
@@ -3558,7 +3558,7 @@
             '<div class="roster-info"><div class="roster-name">' + escapeHtml(it.name) + '</div><div class="roster-detail">' + escapeHtml(it.detail) + '</div></div>' +
             '</div>' +
             '<span class="roster-status roster-status--unopened">Not yet invited</span>' +
-            '<span class="roster-time" data-label="Set up">—</span><span class="roster-time" data-label="Last login">—</span>' +
+            '<span class="roster-time" data-label="Set up">-</span><span class="roster-time" data-label="Last login">-</span>' +
             '</div>';
         }
         return renderRosterRow(it.name, it.detail, it.row, it.type);
@@ -3829,7 +3829,7 @@
       var countEl = document.getElementById('sankofa-count-line');
       var mentees = list.filter(function (a) { return a.applicant_type === 'mentee'; }).length;
       var mentors = list.filter(function (a) { return a.applicant_type === 'mentor'; }).length;
-      if (countEl) countEl.textContent = list.length + ' total — ' + mentees + ' mentee' + (mentees === 1 ? '' : 's') + ', ' + mentors + ' mentor' + (mentors === 1 ? '' : 's');
+      if (countEl) countEl.textContent = list.length + ' total - ' + mentees + ' mentee' + (mentees === 1 ? '' : 's') + ', ' + mentors + ' mentor' + (mentors === 1 ? '' : 's');
       renderSankofaApplicationsFiltered(sankofaCurrentFilter);
     }
     function renderSankofaApplicationsFiltered(filter) {
@@ -4100,7 +4100,7 @@
           var failed = results.filter(function (r) { return r.error; });
           if (failed.length) {
             statusEl.style.color = '#ef8b8f';
-            showMessage(statusEl, 'Some photos failed to upload — try again.');
+            showMessage(statusEl, 'Some photos failed to upload - try again.');
           } else {
             statusEl.style.color = '#6fcf97';
             showMessage(statusEl, 'Added to the public gallery.');
@@ -4329,7 +4329,7 @@
     function deleteAccountEdit() {
       var name = (currentEditRow && currentEditRow.full_name) || 'this account';
       var recordLabel = currentEditType === 'member' ? 'membership' : currentEditType === 'professional' ? 'professional profile' : 'MMG guest record';
-      if (!window.confirm('Remove ' + name + ' from LACMS? This permanently deletes their ' + recordLabel + '. Their login itself isn\'t deleted — only Supabase\'s own Authentication → Users page can do that.')) return;
+      if (!window.confirm('Remove ' + name + ' from LACMS? This permanently deletes their ' + recordLabel + '. Their login itself isn\'t deleted - only Supabase\'s own Authentication → Users page can do that.')) return;
       var table = currentEditType === 'member' ? 'members' : currentEditType === 'professional' ? 'network_professionals' : 'mmg_guests';
       var deleteBtn = document.getElementById('account-edit-delete-btn');
       deleteBtn.disabled = true;
@@ -4423,7 +4423,7 @@
           if (signUpResult.error || !signUpResult.data || !signUpResult.data.user) {
             btn.disabled = false;
             statusEl.style.color = '#ef8b8f';
-            showMessage(statusEl, (signUpResult.error && signUpResult.error.message) || "Couldn't create the account — the email may already be in use.");
+            showMessage(statusEl, (signUpResult.error && signUpResult.error.message) || "Couldn't create the account - the email may already be in use.");
             return;
           }
           var newUserId = signUpResult.data.user.id;
@@ -4473,7 +4473,7 @@
             }).then(function () {
               btn.disabled = false;
               statusEl.style.color = '#6fcf97';
-              showMessage(statusEl, name + "'s account is live — they've been emailed to set their password.");
+              showMessage(statusEl, name + "'s account is live - they've been emailed to set their password.");
               createAccountForm.reset();
               showAccountTypeFields(currentAccountType);
               loadPresidentDashboard();
@@ -4507,7 +4507,7 @@
 
       var motmDeleteBtn = e.target.closest('[data-motm-delete]');
       if (motmDeleteBtn) {
-        if (!window.confirm("Delete this nomination? They'll be able to submit a new one straight away — this month's slot frees up as soon as this is deleted.")) return;
+        if (!window.confirm("Delete this nomination? They'll be able to submit a new one straight away - this month's slot frees up as soon as this is deleted.")) return;
         motmDeleteBtn.disabled = true;
         supabaseClient
           .rpc('president_delete_motm_nomination', { target_id: motmDeleteBtn.getAttribute('data-id') })
@@ -4665,7 +4665,7 @@
               supabaseClient.storage.from('gallery-submissions').remove([pubPath]).then(function (removeResult) {
                 if (removeResult.error) {
                   console.error('Remove original submission failed:', removeResult.error.message);
-                  window.alert("Added to the gallery, but couldn't clear the original submission from the review queue (" + removeResult.error.message + ") — it may show up here again after a refresh.");
+                  window.alert("Added to the gallery, but couldn't clear the original submission from the review queue (" + removeResult.error.message + ") - it may show up here again after a refresh.");
                 }
                 loadGallerySubmissions();
                 loadGalleryManage();

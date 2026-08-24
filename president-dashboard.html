@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dashboard — LACMS</title>
+<title>Dashboard - LACMS</title>
 <meta name="description" content="President-only view of account activity across the LACMS platform.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-14">
+<link rel="stylesheet" href="css/styles.css?v=20260824-15">
 </head>
 <body>
 
@@ -81,7 +81,7 @@
   <section class="page-hero container">
     <span class="eyebrow">President only</span>
     <h1 class="page-hero-title">Platform Activity Dashboard</h1>
-    <p class="page-hero-lede">Every account on the site — who's finished setting up, when they last logged in, and who's here right now.</p>
+    <p class="page-hero-lede">Every account on the site - who's finished setting up, when they last logged in, and who's here right now.</p>
     <div class="tricolor-bar tricolor-bar--sm" aria-hidden="true"><span></span><span></span><span></span></div>
   </section>
 
@@ -90,7 +90,7 @@
 
       <div class="form-note" data-supabase-not-configured style="display:none;">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
-        <span>The members hub isn't connected yet — Nevin still needs to add the Supabase project keys to js/supabase-client.js. See README-members-setup.md.</span>
+        <span>The members hub isn't connected yet - Nevin still needs to add the Supabase project keys to js/supabase-client.js. See README-members-setup.md.</span>
       </div>
 
       <div id="auth-gate" class="auth-gate">
@@ -107,13 +107,13 @@
             <button type="button" class="dash-nav-card" data-dash-section="activity">
               <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
               <span class="dash-nav-card-title">User Activity</span>
-              <span class="dash-nav-card-desc">Members, professionals — who's online, who needs a nudge</span>
+              <span class="dash-nav-card-desc">Members, professionals - who's online, who needs a nudge</span>
               <span class="dash-nav-card-count" id="dash-count-activity">&nbsp;</span>
             </button>
             <button type="button" class="dash-nav-card" data-dash-section="mmg">
               <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9 8l-6.5 1 4.7 4.6L6 20l6-3.2L18 20l-1.2-6.4L21.5 9 15 8Z"/></svg></span>
               <span class="dash-nav-card-title">MMG</span>
-              <span class="dash-nav-card-desc">Midlands Medics Gala — partner-university guest accounts</span>
+              <span class="dash-nav-card-desc">Midlands Medics Gala - partner-university guest accounts</span>
               <span class="dash-nav-card-count" id="dash-count-mmg">&nbsp;</span>
             </button>
             <button type="button" class="dash-nav-card" data-dash-section="sankofa">
@@ -200,7 +200,7 @@
             <div class="section-head" style="margin-top: var(--space-8);">
               <span class="eyebrow">Needs a nudge</span>
               <h2>Hasn't finished setting up</h2>
-              <p>Invited but not yet active — includes anyone who opened their invite link but never completed the password step.</p>
+              <p>Invited but not yet active - includes anyone who opened their invite link but never completed the password step.</p>
             </div>
             <div class="roster-table" id="attention-table"></div>
             <p id="attention-empty" style="display:none; color: var(--color-text-faint);">Everyone invited so far has finished setting up. Nothing here.</p>
@@ -275,7 +275,7 @@
             <div class="section-head">
               <span class="eyebrow">Public gallery</span>
               <h2>Select what's on gallery.html</h2>
-              <p>Every photo below can be selected or unselected individually — unselecting pulls it from the public gallery without deleting it. Upload adds a new photo to choose from, live immediately.</p>
+              <p>Every photo below can be selected or unselected individually - unselecting pulls it from the public gallery without deleting it. Upload adds a new photo to choose from, live immediately.</p>
             </div>
             <form id="gallery-live-upload-form" class="gallery-upload-form">
               <input type="file" id="gallery-live-upload-file" accept="image/*" multiple required>
@@ -283,7 +283,7 @@
               <p id="gallery-live-upload-status" class="auth-error" role="status" style="display:none;"></p>
             </form>
             <div class="gallery-manage-grid" id="gallery-manage-grid"></div>
-            <p id="gallery-manage-empty" style="display:none; color: var(--color-text-faint);">No photos yet — upload some above.</p>
+            <p id="gallery-manage-empty" style="display:none; color: var(--color-text-faint);">No photos yet - upload some above.</p>
 
             <div class="section-head" style="margin-top: var(--space-8);">
               <span class="eyebrow">Gallery</span>
@@ -303,7 +303,7 @@
             <div class="section-head">
               <span class="eyebrow">Create an account</span>
               <h2>Add someone directly</h2>
-              <p>Creates the login and their profile in one step. They'll get an email to set their own password — same as an invited member always has, just without the Table Editor round trip.</p>
+              <p>Creates the login and their profile in one step. They'll get an email to set their own password - same as an invited member always has, just without the Table Editor round trip.</p>
             </div>
 
             <div class="dash-filter-tabs" id="create-account-type-tabs">
@@ -415,7 +415,7 @@
             <div class="section-head">
               <span class="eyebrow">Every account</span>
               <h2>Manage accounts</h2>
-              <p>Click anyone to edit their profile or remove them — members, professionals and MMG guests all in one place.</p>
+              <p>Click anyone to edit their profile or remove them - members, professionals and MMG guests all in one place.</p>
             </div>
 
             <div class="dash-toolbar">
@@ -497,7 +497,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-14"></script>
-<script src="js/members.js?v=20260824-14"></script>
+<script src="js/main.js?v=20260824-15"></script>
+<script src="js/members.js?v=20260824-15"></script>
 </body>
 </html>
