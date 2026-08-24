@@ -4539,6 +4539,13 @@ body.intro-active { overflow: hidden; }
   font-weight: 600;
   color: var(--color-gold-light);
 }
+.gallery-submission-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
 
 /* President dashboard: landing grid of section cards, replacing one
    long scroll of every section stacked on top of each other — click a

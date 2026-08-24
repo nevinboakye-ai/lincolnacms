@@ -7,7 +7,7 @@
 <meta name="description" content="President-only view of account activity across the LACMS platform.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-11">
+<link rel="stylesheet" href="css/styles.css?v=20260824-12">
 </head>
 <body>
 
@@ -139,6 +139,12 @@
               <span class="dash-nav-card-title">Gallery</span>
               <span class="dash-nav-card-desc">Member submissions, and what's live on the public gallery</span>
               <span class="dash-nav-card-count" id="dash-count-gallery">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="create">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg></span>
+              <span class="dash-nav-card-title">Create Account</span>
+              <span class="dash-nav-card-desc">Add a member, professional or MMG guest directly</span>
+              <span class="dash-nav-card-count">&nbsp;</span>
             </button>
           </div>
         </div>
@@ -282,6 +288,118 @@
             <p id="gallery-submissions-empty" style="display:none; color: var(--color-text-faint);">No gallery submissions yet.</p>
           </div>
 
+          <div class="dash-panel" id="dash-panel-create" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+
+            <div class="section-head">
+              <span class="eyebrow">Create an account</span>
+              <h2>Add someone directly</h2>
+              <p>Creates the login and their profile in one step. They'll get an email to set their own password — same as an invited member always has, just without the Table Editor round trip.</p>
+            </div>
+
+            <div class="dash-filter-tabs" id="create-account-type-tabs">
+              <button type="button" class="dash-filter-tab is-active" data-account-type="member">LACMS member</button>
+              <button type="button" class="dash-filter-tab" data-account-type="professional">Professional</button>
+              <button type="button" class="dash-filter-tab" data-account-type="mmg">MMG guest</button>
+            </div>
+
+            <form id="create-account-form" class="form-panel" style="margin-top: var(--space-4);">
+
+              <div class="field">
+                <label for="create-account-name">Full name</label>
+                <input type="text" id="create-account-name" required>
+              </div>
+              <div class="field">
+                <label for="create-account-email">Email</label>
+                <input type="email" id="create-account-email" required>
+                <span class="hint">They'll set their own password from this address.</span>
+              </div>
+
+              <div data-account-type-fields="member">
+                <div class="field">
+                  <label for="create-member-course">Course</label>
+                  <input type="text" id="create-member-course" list="create-course-options" placeholder="e.g. Medicine">
+                  <datalist id="create-course-options">
+                    <option value="Medicine">
+                    <option value="Pharmacy">
+                    <option value="Dental Hygiene and Therapy">
+                    <option value="Diagnostic Radiography">
+                    <option value="Nursing and Midwifery">
+                    <option value="Paramedic Science">
+                  </datalist>
+                </div>
+                <div class="field">
+                  <label for="create-member-year">Year of study</label>
+                  <input type="text" id="create-member-year" placeholder="e.g. Year 2, Foundation Doctor">
+                </div>
+                <div class="field">
+                  <label for="create-member-type">Member type</label>
+                  <select id="create-member-type">
+                    <option value="member">Member</option>
+                    <option value="supporting_committee">Supporting committee</option>
+                    <option value="executive_committee">Executive committee</option>
+                    <option value="senior_sankofa_mentor">Senior Sankofa mentor</option>
+                    <option value="junior_sankofa_mentor">Junior Sankofa mentor</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="create-member-role">Committee role <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+                  <input type="text" id="create-member-role" placeholder="e.g. President, Treasurer">
+                </div>
+                <div class="field">
+                  <label class="checkbox-option"><input type="checkbox" id="create-member-sankofa">Sankofa eligible</label>
+                  <label class="checkbox-option"><input type="checkbox" id="create-member-mmg-attendee">MMG attendee</label>
+                  <label class="checkbox-option"><input type="checkbox" id="create-member-mmg-committee">MMG committee</label>
+                </div>
+              </div>
+
+              <div data-account-type-fields="professional" style="display:none;">
+                <div class="field">
+                  <label for="create-pro-title">Title</label>
+                  <input type="text" id="create-pro-title" placeholder="e.g. Consultant Cardiologist, F1 Doctor">
+                </div>
+                <div class="field">
+                  <label for="create-pro-organisation">Organisation <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+                  <input type="text" id="create-pro-organisation">
+                </div>
+                <div class="field">
+                  <label for="create-pro-category">Category</label>
+                  <select id="create-pro-category">
+                    <option value="senior_doctor">Senior Doctor / Consultant</option>
+                    <option value="alumni_doctor">Alumni / Junior Doctor</option>
+                    <option value="pharmacist">Pharmacist</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="create-pro-linkedin">LinkedIn <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+                  <input type="url" id="create-pro-linkedin" placeholder="https://linkedin.com/in/…">
+                </div>
+              </div>
+
+              <div data-account-type-fields="mmg" style="display:none;">
+                <div class="field">
+                  <label for="create-mmg-university">University</label>
+                  <input type="text" id="create-mmg-university" placeholder="e.g. University of Nottingham">
+                </div>
+                <div class="field">
+                  <label for="create-mmg-access">Access level</label>
+                  <select id="create-mmg-access">
+                    <option value="attendee">Attendee</option>
+                    <option value="committee">Committee</option>
+                    <option value="pending">Pending review</option>
+                  </select>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block">Create account &amp; send password-setup email</button>
+              <p id="create-account-status" class="auth-error" role="status" style="display:none;"></p>
+            </form>
+          </div>
+
         </div>
 
       </div>
@@ -344,7 +462,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-11"></script>
-<script src="js/members.js?v=20260824-11"></script>
+<script src="js/main.js?v=20260824-12"></script>
+<script src="js/members.js?v=20260824-12"></script>
 </body>
 </html>

@@ -3234,7 +3234,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'mmg', 'sankofa', 'motm', 'events', 'gallery'];
+    var DASH_SECTIONS = ['activity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'create'];
     var dashLanding = document.getElementById('dash-landing');
     function showDashSection(section) {
       if (DASH_SECTIONS.indexOf(section) === -1) section = null;
@@ -3954,11 +3954,18 @@
                 var thumb = isImage && f.url
                   ? '<img class="gallery-submission-thumb" src="' + escapeHtml(f.url) + '" alt="" loading="lazy">'
                   : '<div class="gallery-submission-thumb gallery-submission-thumb--file"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>';
+                // Video submissions can be reviewed and rejected the
+                // same way, but there's nowhere for them to go yet —
+                // gallery.html's slideshow is images only — so "Add to
+                // gallery" only ever shows for an image file.
                 return '<div class="gallery-submission-item">' + thumb +
                   '<div class="gallery-submission-info">' +
                   '<div class="gallery-submission-name">' + escapeHtml(uploaderName) + '</div>' +
-                  (f.url ? '<a class="gallery-submission-link" href="' + escapeHtml(f.url) + '" target="_blank" rel="noopener">Open file</a>' : '<span class="gallery-submission-link" style="color:var(--color-text-faint);">Unavailable</span>') +
-                  '</div></div>';
+                  '<div class="gallery-submission-actions">' +
+                  (f.url ? '<a class="gallery-submission-link" href="' + escapeHtml(f.url) + '" target="_blank" rel="noopener">Open</a>' : '<span class="gallery-submission-link" style="color:var(--color-text-faint);">Unavailable</span>') +
+                  (isImage ? '<button type="button" class="gallery-manage-btn gallery-manage-btn--active" data-submission-publish data-path="' + escapeHtml(f.path) + '" data-filename="' + escapeHtml(f.name) + '">Add to gallery</button>' : '') +
+                  '<button type="button" class="gallery-manage-btn gallery-manage-btn--danger" data-submission-reject data-path="' + escapeHtml(f.path) + '">Reject</button>' +
+                  '</div></div></div>';
               }).join('');
             });
           });
@@ -4055,6 +4062,132 @@
         sankofaFilterTabs.querySelectorAll('.dash-filter-tab').forEach(function (t) { t.classList.remove('is-active'); });
         tab.classList.add('is-active');
         renderSankofaApplicationsFiltered(tab.getAttribute('data-sankofa-filter'));
+      });
+    }
+
+    // ---- Create account panel — type tabs + form. Creates the login
+    // via a second, isolated Supabase client (persistSession: false),
+    // so it can never clobber the president's own logged-in session on
+    // this same page (a plain signUp() on the main client would replace
+    // the active session with the brand-new account's the moment it
+    // succeeds — this keeps the two completely separate). The profile
+    // row is then inserted using the president's own real session (the
+    // is_president()-gated insert policies from migration 032), and a
+    // password-reset email sends the new person to set their own
+    // password — no service-role admin API involved anywhere, since
+    // that key must never exist in browser code. ----
+    var createAccountForm = document.getElementById('create-account-form');
+    if (createAccountForm) {
+      var createAccountTypeTabs = document.getElementById('create-account-type-tabs');
+      var currentAccountType = 'member';
+      var createAccountClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+      });
+
+      function showAccountTypeFields(type) {
+        currentAccountType = type;
+        document.querySelectorAll('[data-account-type-fields]').forEach(function (el) {
+          el.style.display = el.getAttribute('data-account-type-fields') === type ? '' : 'none';
+        });
+      }
+
+      if (createAccountTypeTabs) {
+        createAccountTypeTabs.addEventListener('click', function (e) {
+          var tab = e.target.closest('[data-account-type]');
+          if (!tab) return;
+          createAccountTypeTabs.querySelectorAll('.dash-filter-tab').forEach(function (t) { t.classList.remove('is-active'); });
+          tab.classList.add('is-active');
+          showAccountTypeFields(tab.getAttribute('data-account-type'));
+        });
+      }
+
+      // Never shown to anyone, never communicated — the very next step
+      // sends a password-reset email so the new person sets their own.
+      // This only exists because signUp() requires some password.
+      function randomPassword() {
+        var bytes = new Uint8Array(24);
+        window.crypto.getRandomValues(bytes);
+        return Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+      }
+
+      createAccountForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = document.getElementById('create-account-status');
+        hideMessage(statusEl);
+
+        var name = document.getElementById('create-account-name').value.trim();
+        var email = document.getElementById('create-account-email').value.trim();
+        if (!name || !email) {
+          showMessage(statusEl, 'Fill in their name and email.');
+          return;
+        }
+
+        var btn = createAccountForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        statusEl.style.color = 'var(--color-text-muted)';
+        showMessage(statusEl, 'Creating account…');
+
+        createAccountClient.auth.signUp({ email: email, password: randomPassword() }).then(function (signUpResult) {
+          if (signUpResult.error || !signUpResult.data || !signUpResult.data.user) {
+            btn.disabled = false;
+            statusEl.style.color = '#ef8b8f';
+            showMessage(statusEl, (signUpResult.error && signUpResult.error.message) || "Couldn't create the account — the email may already be in use.");
+            return;
+          }
+          var newUserId = signUpResult.data.user.id;
+
+          var profileInsert;
+          if (currentAccountType === 'member') {
+            profileInsert = supabaseClient.from('members').insert({
+              id: newUserId,
+              full_name: name,
+              course: document.getElementById('create-member-course').value.trim() || null,
+              year_of_study: document.getElementById('create-member-year').value.trim() || null,
+              member_type: document.getElementById('create-member-type').value,
+              committee_role: document.getElementById('create-member-role').value.trim() || null,
+              sankofa_eligible: document.getElementById('create-member-sankofa').checked,
+              mmg_attendee: document.getElementById('create-member-mmg-attendee').checked,
+              mmg_committee: document.getElementById('create-member-mmg-committee').checked
+            });
+          } else if (currentAccountType === 'professional') {
+            profileInsert = supabaseClient.from('network_professionals').insert({
+              user_id: newUserId,
+              email: email,
+              full_name: name,
+              title: document.getElementById('create-pro-title').value.trim() || 'Professional',
+              organisation: document.getElementById('create-pro-organisation').value.trim() || null,
+              category: document.getElementById('create-pro-category').value,
+              linkedin_url: document.getElementById('create-pro-linkedin').value.trim() || null
+            });
+          } else {
+            profileInsert = supabaseClient.from('mmg_guests').insert({
+              id: newUserId,
+              full_name: name,
+              university: document.getElementById('create-mmg-university').value.trim() || 'Not set',
+              access_level: document.getElementById('create-mmg-access').value
+            });
+          }
+
+          profileInsert.then(function (profileResult) {
+            if (profileResult.error) {
+              btn.disabled = false;
+              statusEl.style.color = '#ef8b8f';
+              showMessage(statusEl, "The login was created, but saving their profile failed (" + profileResult.error.message + "). Finish it from Table Editor using this account id: " + newUserId);
+              return;
+            }
+            var loginPage = currentAccountType === 'mmg' ? 'mmg-login.html' : 'member-login.html';
+            createAccountClient.auth.resetPasswordForEmail(email, {
+              redirectTo: window.location.origin + '/' + loginPage
+            }).then(function () {
+              btn.disabled = false;
+              statusEl.style.color = '#6fcf97';
+              showMessage(statusEl, name + "'s account is live — they've been emailed to set their password.");
+              createAccountForm.reset();
+              showAccountTypeFields(currentAccountType);
+              loadPresidentDashboard();
+            });
+          });
+        });
       });
     }
 
@@ -4187,6 +4320,69 @@
           .then(function () {
             loadGalleryManage();
           });
+        return;
+      }
+
+      var submissionPublishBtn = e.target.closest('[data-submission-publish]');
+      if (submissionPublishBtn) {
+        submissionPublishBtn.disabled = true;
+        submissionPublishBtn.textContent = 'Adding…';
+        var pubPath = submissionPublishBtn.getAttribute('data-path');
+        var pubFilename = submissionPublishBtn.getAttribute('data-filename');
+        // Storage has no cross-bucket copy in the client SDK, so this
+        // downloads the bytes out of the private gallery-submissions
+        // bucket and re-uploads them into the public gallery-photos
+        // bucket — two round trips, but it works entirely from the
+        // browser with no server-side code needed.
+        supabaseClient.storage.from('gallery-submissions').download(pubPath).then(function (downloadResult) {
+          if (downloadResult.error) {
+            submissionPublishBtn.disabled = false;
+            submissionPublishBtn.textContent = 'Add to gallery';
+            console.error('Download submission failed:', downloadResult.error.message);
+            return;
+          }
+          var safeName = pubFilename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+          var newPath = Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '-' + safeName;
+          supabaseClient.storage.from('gallery-photos').upload(newPath, downloadResult.data, { contentType: downloadResult.data.type }).then(function (uploadResult) {
+            if (uploadResult.error) {
+              submissionPublishBtn.disabled = false;
+              submissionPublishBtn.textContent = 'Add to gallery';
+              console.error('Upload to public gallery failed:', uploadResult.error.message);
+              return;
+            }
+            supabaseClient.from('gallery_photos').insert({ storage_path: uploadResult.data.path }).then(function (insertResult) {
+              if (insertResult.error) {
+                submissionPublishBtn.disabled = false;
+                submissionPublishBtn.textContent = 'Add to gallery';
+                console.error('Add gallery photo row failed:', insertResult.error.message);
+                return;
+              }
+              // Removes it from the submissions bucket now that it's
+              // live — keeps the review queue showing only what still
+              // needs a decision, rather than the same file sitting
+              // there forever after being actioned.
+              supabaseClient.storage.from('gallery-submissions').remove([pubPath]).then(function () {
+                loadGallerySubmissions();
+                loadGalleryManage();
+              });
+            });
+          });
+        });
+        return;
+      }
+
+      var submissionRejectBtn = e.target.closest('[data-submission-reject]');
+      if (submissionRejectBtn) {
+        if (!window.confirm('Reject this submission? This permanently deletes the file.')) return;
+        submissionRejectBtn.disabled = true;
+        supabaseClient.storage.from('gallery-submissions').remove([submissionRejectBtn.getAttribute('data-path')]).then(function (result) {
+          if (result.error) {
+            submissionRejectBtn.disabled = false;
+            console.error('Reject submission failed:', result.error.message);
+            return;
+          }
+          loadGallerySubmissions();
+        });
         return;
       }
 
