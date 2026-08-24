@@ -3241,6 +3241,24 @@
       if (el) el.textContent = text;
     }
 
+    // A failed RPC used to just render nothing — no list, no "nothing
+    // here yet" message, no error — which looks exactly like "this
+    // feature has no data" from the outside, when the real story is
+    // "the load failed." This puts an actual, visible error in the
+    // section's own empty-state slot instead, and reddens the card
+    // count so it's obvious from the landing grid too.
+    function showSectionLoadError(listId, emptyId, countSection) {
+      var listEl = document.getElementById(listId);
+      var emptyEl = document.getElementById(emptyId);
+      if (listEl) listEl.innerHTML = '';
+      if (emptyEl) {
+        emptyEl.textContent = "Couldn't load this section — try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.";
+        emptyEl.style.color = '#ef8b8f';
+        emptyEl.style.display = 'block';
+      }
+      if (countSection) setDashCount(countSection, 'Failed to load');
+    }
+
     function loadPresidentDashboard() {
       // Re-beats the president's own presence every single time this
       // runs (initial load, the 45s auto-refresh, and manual refresh
@@ -3292,9 +3310,15 @@
         // applications (migration 029, a separate public no-account
         // table) are two different shapes fetched from two different
         // RPCs — normalised into one list here so the dashboard can show
-        // and filter them together. Rendered even if one RPC errors
-        // (e.g. a migration hasn't been run yet on this database) — a
-        // missing newer feature shouldn't take down the older one.
+        // and filter them together. Whatever succeeds still renders even
+        // if the other RPC errors (e.g. a migration hasn't been run yet
+        // on this database) — a missing newer feature shouldn't take
+        // down the older one. Either error is still surfaced, though —
+        // silently showing "no applications" when the real story is "the
+        // load failed" is exactly the kind of thing that looks like a
+        // missing submission but isn't.
+        if (results[4].error) console.error('Sankofa mentee applications failed to load:', results[4].error.message);
+        if (results[5].error) console.error('Sankofa mentor applications failed to load:', results[5].error.message);
         var mentees = results[4].error ? [] : (results[4].data || []);
         var mentors = results[5].error ? [] : (results[5].data || []).map(function (m) {
           return {
@@ -3311,15 +3335,25 @@
           };
         });
         var sankofaMerged = mentees.concat(mentors).sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
-        renderSankofaApplications(sankofaMerged);
-        setDashCount('sankofa', sankofaMerged.length + (sankofaMerged.length === 1 ? ' application' : ' applications'));
+        if (results[4].error && results[5].error) {
+          showSectionLoadError('sankofa-applications-list', 'sankofa-applications-empty', 'sankofa');
+        } else {
+          renderSankofaApplications(sankofaMerged);
+          setDashCount('sankofa', sankofaMerged.length + (sankofaMerged.length === 1 ? ' application' : ' applications') + (results[4].error || results[5].error ? ' (partial — see console)' : ''));
+        }
 
-        if (!results[6].error) {
+        if (results[6].error) {
+          console.error('MoTM nominations failed to load:', results[6].error.message);
+          showSectionLoadError('motm-nominations-list', 'motm-nominations-empty', 'motm');
+        } else {
           var motmList = results[6].data || [];
           renderMotmNominations(motmList);
           setDashCount('motm', motmList.length + (motmList.length === 1 ? ' nomination' : ' nominations'));
         }
-        if (!results[7].error) {
+        if (results[7].error) {
+          console.error('Event registrations failed to load:', results[7].error.message);
+          showSectionLoadError('event-registrations-sections', 'event-registrations-empty', 'events');
+        } else {
           var eventsList = results[7].data || [];
           renderEventRegistrations(eventsList);
           setDashCount('events', eventsList.length + (eventsList.length === 1 ? ' registration' : ' registrations'));
