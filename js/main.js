@@ -696,6 +696,56 @@
     });
   });
 
+  // Image lightbox: click (or Enter/Space) any element marked
+  // [data-lightbox] to see its image full-size over a dimmed
+  // backdrop. Built once per page, only if the page actually needs
+  // it — a single shared overlay, not one per image.
+  var lightboxTriggers = document.querySelectorAll('[data-lightbox]');
+  if (lightboxTriggers.length) {
+    var lightbox = document.createElement('div');
+    lightbox.className = 'lightbox';
+    lightbox.innerHTML =
+      '<div class="lightbox-backdrop" data-lightbox-close></div>' +
+      '<button type="button" class="lightbox-close" data-lightbox-close aria-label="Close">' +
+        '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>' +
+      '</button>' +
+      '<img class="lightbox-img" src="" alt="">';
+    document.body.appendChild(lightbox);
+    var lightboxImg = lightbox.querySelector('.lightbox-img');
+
+    function openLightbox(trigger) {
+      var src = trigger.getAttribute('data-lightbox-src') || trigger.getAttribute('src');
+      if (!src) return;
+      lightboxImg.src = src;
+      lightboxImg.alt = trigger.getAttribute('alt') || '';
+      lightbox.classList.add('is-open');
+      document.body.classList.add('lightbox-open');
+    }
+    function closeLightbox() {
+      lightbox.classList.remove('is-open');
+      document.body.classList.remove('lightbox-open');
+      lightboxImg.src = '';
+    }
+
+    lightboxTriggers.forEach(function (trigger) {
+      trigger.classList.add('is-lightbox-enabled');
+      trigger.addEventListener('click', function () { openLightbox(trigger); });
+      trigger.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openLightbox(trigger);
+        }
+      });
+    });
+
+    lightbox.querySelectorAll('[data-lightbox-close]').forEach(function (btn) {
+      btn.addEventListener('click', closeLightbox);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && lightbox.classList.contains('is-open')) closeLightbox();
+    });
+  }
+
   // Homepage launch countdown — live days/hours/minutes/seconds until the
   // official 30 September 2026 launch, ticking every second.
   var countdownEl = document.getElementById('launch-countdown');
@@ -756,6 +806,26 @@
 
     tickTicketCountdown();
     ticketTimer = setInterval(tickTicketCountdown, 1000);
+  }
+
+  // "Coming soon" banner on locked programme cards (programmes.html) —
+  // days-only, same 30 September 2026 launch date as the homepage
+  // countdown. Deliberately coarser than the ticket countdown (no
+  // hours/minutes/seconds): this sits as a prominent ribbon across the
+  // top of a card someone's just browsing, not a "buy now" moment, so
+  // it doesn't need to tick every second to do its job.
+  var programmeCountdownDayEls = document.querySelectorAll('[data-programme-countdown-days]');
+  if (programmeCountdownDayEls.length) {
+    var programmeCountdownTarget = new Date('2026-09-30T00:00:00');
+    var tickProgrammeCountdown = function () {
+      var diff = programmeCountdownTarget.getTime() - Date.now();
+      var daysLeft = Math.max(0, Math.ceil(diff / 86400000));
+      programmeCountdownDayEls.forEach(function (el) {
+        el.textContent = daysLeft;
+      });
+    };
+    tickProgrammeCountdown();
+    setInterval(tickProgrammeCountdown, 3600000); // hourly is plenty for a days-only figure
   }
 
   // Briefly highlight an event row when arriving via a same-page-type anchor
