@@ -6,7 +6,7 @@
 <title>Programmes — LACMS</title>
 <meta name="description" content="LACMS programmes: Sankofa Mentorship, study skills workshops and widening access outreach.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-2">
+<link rel="stylesheet" href="css/styles.css?v=20260824-3">
 </head>
 <body>
 
@@ -88,7 +88,7 @@
     <div class="container">
       <div class="programme-card-list">
 
-        <div class="programme-card programme-card--green" id="sankofa-mentorship" style="scroll-margin-top: calc(var(--header-h) + 16px);">
+        <div class="programme-card programme-card--green" id="sankofa-mentorship" data-card-link="sankofa.html" style="scroll-margin-top: calc(var(--header-h) + 16px);">
           <div class="hero-grid">
             <div>
               <span class="programme-card-icon" aria-hidden="true">
@@ -99,7 +99,7 @@
               <p>Our intergenerational mentorship scheme organises members into small "Sankofa Circles" grouped by shared interest — each spanning a sixth-form aspiring medic, a medical student from every year of study, an F1/F2 alumni doctor, and a senior doctor or consultant.</p>
               <p>Everyone supports the person just behind them, creating one continuous chain of mentorship from sixth form through medical school and into clinical practice. Circles meet termly, with additional check-ins between individual mentors and mentees.</p>
               <div class="hero-actions">
-                <a class="btn btn-primary" href="join.html">Apply to be a mentee or mentor</a>
+                <a class="btn btn-primary" href="join.html" data-sankofa-apply>Apply to be a mentee or mentor</a>
                 <a class="btn btn-outline" href="sankofa.html">Discover more about Sankofa</a>
               </div>
             </div>
@@ -111,7 +111,7 @@
           </div>
         </div>
 
-        <div class="programme-card programme-card--gold" id="study-skills" style="scroll-margin-top: calc(var(--header-h) + 16px);">
+        <div class="programme-card programme-card--gold programme-card--locked" id="study-skills" style="scroll-margin-top: calc(var(--header-h) + 16px);">
           <div class="hero-grid">
             <div class="hero-media img-placeholder" style="order:2;">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -122,28 +122,24 @@
               <span class="programme-card-icon" aria-hidden="true">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
               </span>
-              <span class="card-tag">Academic</span>
+              <span class="card-tag card-tag--soon">Coming soon</span>
               <h2 style="margin-top: var(--space-3);">Study Skills &amp; Exam Prep</h2>
               <p>Termly workshops covering OSCE technique, revision strategy, note-taking systems and staying well through assessment season — run by senior students who've been through it.</p>
-              <a class="card-link" href="events.html#professional-development-programme">See upcoming sessions
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-              </a>
+              <p class="programme-card-soon-note">Not open yet — check back soon.</p>
             </div>
           </div>
         </div>
 
-        <div class="programme-card programme-card--purple" id="widening-access" style="scroll-margin-top: calc(var(--header-h) + 16px);">
+        <div class="programme-card programme-card--purple programme-card--locked" id="widening-access" style="scroll-margin-top: calc(var(--header-h) + 16px);">
           <div class="hero-grid">
             <div>
               <span class="programme-card-icon" aria-hidden="true">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2 8l10 4 10-4-10-4z"/><path d="M6 10v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
               </span>
-              <span class="card-tag">Outreach</span>
+              <span class="card-tag card-tag--soon">Coming soon</span>
               <h2 style="margin-top: var(--space-3);">Widening Access to Medicine</h2>
               <p>We visit local schools and colleges to run talks and workshops for students from underrepresented backgrounds considering a career in medicine or healthcare — from personal statement guidance to mock interviews.</p>
-              <a class="card-link" href="opportunities.html">See outreach opportunities
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-              </a>
+              <p class="programme-card-soon-note">Not open yet — check back soon.</p>
             </div>
             <div class="hero-media img-placeholder">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2 8l10 4 10-4-10-4z"/><path d="M6 10v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
@@ -221,9 +217,9 @@
   </div>
 </footer>
 
-<script src="js/main.js?v=20260824-2"></script>
+<script src="js/main.js?v=20260824-3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/members.js?v=20260824-2"></script>
+<script src="js/members.js?v=20260824-3"></script>
 </body>
 </html>

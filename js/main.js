@@ -684,6 +684,18 @@
     });
   });
 
+  // Whole-card links: click anywhere on an element marked
+  // [data-card-link] to navigate to the URL it names, unless the
+  // click actually landed on one of the card's own real links (its
+  // own CTA buttons keep their individual destinations).
+  document.querySelectorAll('[data-card-link]').forEach(function (card) {
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('a')) return;
+      window.location.href = card.getAttribute('data-card-link');
+    });
+  });
+
   // Homepage launch countdown — live days/hours/minutes/seconds until the
   // official 30 September 2026 launch, ticking every second.
   var countdownEl = document.getElementById('launch-countdown');

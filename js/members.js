@@ -292,6 +292,17 @@
         el.style.display = loggedIn ? '' : 'none';
       });
 
+      // "Apply to be a mentee or mentor" (programmes.html, sankofa.html)
+      // used to always point at join.html — sending an already-signed-in
+      // member or professional straight to "buy a membership" instead of
+      // the actual Sankofa application. Signed in, either account type,
+      // now goes to the real form; member-sankofa.html's own gating
+      // (committee-only for now, everyone else sees "coming soon") still
+      // applies from there exactly as before.
+      document.querySelectorAll('[data-sankofa-apply]').forEach(function (el) {
+        if (loggedIn) el.href = 'member-sankofa.html';
+      });
+
       // Once we know they're signed in, upgrade the label to their first
       // name — a much more obvious "yes, still you, still logged in" cue
       // than a generic label that doesn't change between pages. Also
