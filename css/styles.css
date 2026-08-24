@@ -3547,6 +3547,13 @@ body.intro-active { overflow: hidden; }
   white-space: nowrap;
 }
 
+.network-ticker-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
 .network-ticker-nav {
   flex-shrink: 0;
   width: 28px;
@@ -3590,8 +3597,16 @@ body.intro-active { overflow: hidden; }
 .network-ticker-viewall:hover { text-decoration-color: currentColor; }
 
 @media (max-width: 640px) {
+  .network-ticker {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
   .network-ticker-item-title { white-space: normal; }
   .network-ticker-viewall { display: none; }
+  .network-ticker-controls {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
 }
 
 /* Full join-history modal (member-hub.html) — reuses .network-modal's

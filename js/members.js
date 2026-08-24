@@ -37,6 +37,25 @@
       .replace(/"/g, '&quot;');
   }
 
+  // Every href/src built from a database field (a discount link, a
+  // profile's LinkedIn URL, a photo) goes through this before it's ever
+  // written into HTML. Some of those fields are edited by members
+  // themselves (e.g. a professional's own LinkedIn URL), not just
+  // committee — so a plain encodeURI() isn't enough, since it happily
+  // passes through a "javascript:" URL unchanged. Only http(s)/mailto/tel
+  // make it through; anything else (or anything that fails to parse) is
+  // dropped rather than rendered.
+  function safeUrl(url) {
+    if (!url) return '';
+    var trimmed = String(url).trim();
+    if (!/^(https?:|mailto:|tel:)/i.test(trimmed)) return '';
+    try {
+      return encodeURI(trimmed);
+    } catch (e) {
+      return '';
+    }
+  }
+
   // Shared by the members hub (professional profile card) and the
   // Network page (professional cards + modal) — one place to edit the
   // wording for each category.
@@ -413,20 +432,43 @@
       || search.indexOf('type=recovery') !== -1
       || /[?&]code=/.test(search);
 
-    if (isRecoveryFlow && setPasswordForm) {
+    var recoveryFormShown = false;
+    function showSetPasswordForm() {
+      if (recoveryFormShown || !setPasswordForm) return;
+      recoveryFormShown = true;
       if (loginForm) loginForm.classList.remove('is-active');
       setPasswordForm.classList.add('is-active');
+    }
+
+    if (isRecoveryFlow && setPasswordForm) {
+      showSetPasswordForm();
     } else if (loginForm) {
       loginForm.classList.add('is-active');
-      // Already signed in (e.g. clicked an old "Member login" link or a
-      // bookmark) and not here to set a new password — no reason to show
-      // the form, just take them straight to the hub.
-      supabaseClient.auth.getSession().then(function (result) {
-        if (result.data && result.data.session) {
-          window.location.href = 'member-hub.html';
-        }
-      });
     }
+
+    // Supabase's client library auto-detects the invite/recovery
+    // token in the URL and can strip it (history.replaceState) before
+    // this script's isRecoveryFlow check above even runs — a race that
+    // let "forgot password" links silently sign someone in and skip
+    // straight to the hub without ever asking for a new password.
+    // onAuthStateChange's PASSWORD_RECOVERY event is Supabase's own
+    // race-free signal for exactly this case, so it's the final say:
+    // it can show the set-password form even if the URL check above
+    // missed it, and the "already signed in, go straight to the hub"
+    // redirect below only fires once we're sure this ISN'T that case.
+    var initialAuthHandled = false;
+    supabaseClient.auth.onAuthStateChange(function (event, session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        initialAuthHandled = true;
+        showSetPasswordForm();
+        return;
+      }
+      if (initialAuthHandled || recoveryFormShown) return;
+      initialAuthHandled = true;
+      if (session && loginForm && !isRecoveryFlow) {
+        window.location.href = 'member-hub.html';
+      }
+    });
 
     if (loginForm) {
       loginForm.addEventListener('submit', function (e) {
@@ -999,8 +1041,9 @@
     }
 
     function cardLink(url, label) {
-      if (!url) return '';
-      return '<a class="card-link" href="' + encodeURI(url) + '" target="_blank" rel="noopener">' + label +
+      var safe = safeUrl(url);
+      if (!safe) return '';
+      return '<a class="card-link" href="' + safe + '" target="_blank" rel="noopener">' + label +
         '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>';
     }
 
@@ -1084,9 +1127,10 @@
 
   function renderOpportunityRow(row) {
     var tagHtml = row.category ? '<span class="card-tag">' + escapeHtml(row.category) + '</span>' : '';
-    var isMailto = row.link && row.link.indexOf('mailto:') === 0;
-    var linkHtml = row.link
-      ? '<a class="btn btn-outline" href="' + encodeURI(row.link) + '"' + (isMailto ? '' : ' target="_blank" rel="noopener"') + '>Learn more</a>'
+    var safeLink = safeUrl(row.link);
+    var isMailto = safeLink.indexOf('mailto:') === 0;
+    var linkHtml = safeLink
+      ? '<a class="btn btn-outline" href="' + safeLink + '"' + (isMailto ? '' : ' target="_blank" rel="noopener"') + '>Learn more</a>'
       : '';
     return '<div class="opp-row is-visible">' +
       '<div>' + tagHtml + '<h2 class="card-title" style="margin-top: var(--space-2);">' + escapeHtml(row.title) + '</h2><p>' + escapeHtml(row.description) + '</p></div>' +
@@ -1284,8 +1328,9 @@
 
   function renderMotmArchiveCard(row) {
     var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
-    var photoHtml = row.photo_url
-      ? '<img src="' + encodeURI(row.photo_url) + '" alt="' + escapeHtml(row.full_name || '') + '" style="width:100%; height:100%; object-fit:cover;">'
+    var motmSafePhoto = safeUrl(row.photo_url);
+    var photoHtml = motmSafePhoto
+      ? '<img src="' + motmSafePhoto + '" alt="' + escapeHtml(row.full_name || '') + '" style="width:100%; height:100%; object-fit:cover;">'
       : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>';
     return '<div class="card motm-archive-card">' +
       '<div class="motm-archive-photo' + (row.photo_url ? '' : ' img-placeholder') + '">' + photoHtml +
@@ -1477,18 +1522,37 @@
       || mmgSearch.indexOf('type=recovery') !== -1
       || /[?&]code=/.test(mmgSearch);
 
-    if (mmgIsRecoveryFlow && mmgSetPasswordForm) {
+    var mmgRecoveryFormShown = false;
+    function showMmgSetPasswordForm() {
+      if (mmgRecoveryFormShown || !mmgSetPasswordForm) return;
+      mmgRecoveryFormShown = true;
       if (mmgAuthTabs) mmgAuthTabs.style.display = 'none';
       if (mmgSigninForm) mmgSigninForm.classList.remove('is-active');
       if (mmgSignupForm) mmgSignupForm.classList.remove('is-active');
       mmgSetPasswordForm.classList.add('is-active');
-    } else {
-      supabaseClient.auth.getSession().then(function (result) {
-        if (result.data && result.data.session) {
-          window.location.href = 'mmg-hub.html';
-        }
-      });
     }
+
+    if (mmgIsRecoveryFlow && mmgSetPasswordForm) {
+      showMmgSetPasswordForm();
+    }
+
+    // Same race as member-login.html: Supabase's client can strip the
+    // recovery token from the URL before the mmgIsRecoveryFlow check
+    // above runs, so PASSWORD_RECOVERY is the final, race-free say on
+    // whether this session came from a reset link.
+    var mmgInitialAuthHandled = false;
+    supabaseClient.auth.onAuthStateChange(function (event, session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        mmgInitialAuthHandled = true;
+        showMmgSetPasswordForm();
+        return;
+      }
+      if (mmgInitialAuthHandled || mmgRecoveryFormShown) return;
+      mmgInitialAuthHandled = true;
+      if (session && !mmgIsRecoveryFlow) {
+        window.location.href = 'mmg-hub.html';
+      }
+    });
 
     if (mmgSetPasswordForm) {
       mmgSetPasswordForm.addEventListener('submit', function (e) {
@@ -1834,8 +1898,9 @@
       ? '<p class="discount-address"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>' + escapeHtml(row.address) + '</span></p>'
       : '';
     var codeHtml = renderCodeReveal(row.code);
-    var linkHtml = row.link
-      ? '<a class="card-link" href="' + encodeURI(row.link) + '" target="_blank" rel="noopener">Visit partner<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>'
+    var perkSafeLink = safeUrl(row.link);
+    var linkHtml = perkSafeLink
+      ? '<a class="card-link" href="' + perkSafeLink + '" target="_blank" rel="noopener">Visit partner<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>'
       : '';
     return '<div class="card discount-card"><span class="discount-card-badge" aria-hidden="true">' + initial + '</span><h3 class="card-title">' +
       escapeHtml(row.partner_name) + '</h3>' + addressHtml + '<p>' +
@@ -2165,8 +2230,9 @@
       var pinHtml = row.pinned
         ? '<span class="feed-item-pin" title="Pinned"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 3.9a1 1 0 0 1-.75 1.6H13v6a1 1 0 1 1-2 0v-6H6.35a1 1 0 0 1-.75-1.6L9 9.5V3a1 1 0 0 1 1-1h2Z"/></svg></span>'
         : '';
-      var mediaHtml = row.image_url
-        ? '<div class="news-post-media"><img src="' + encodeURI(row.image_url) + '" alt="" loading="lazy"></div>'
+      var newsSafeImage = safeUrl(row.image_url);
+      var mediaHtml = newsSafeImage
+        ? '<div class="news-post-media"><img src="' + newsSafeImage + '" alt="" loading="lazy"></div>'
         : '';
       var commentsInner = newsIsMember
         ? '<div class="news-comments-list" id="news-comments-list-' + row.id + '"></div>' +
@@ -2688,7 +2754,7 @@
       // gold treatment is reserved for confirmed members.
       var roleLabel = m.is_pending ? 'Pending' : (m.committee_role || NETWORK_TYPE_LABELS[m.member_type]);
       var badgeHtml = roleLabel ? '<span class="network-card-badge">' + escapeHtml(roleLabel) + '</span>' : '';
-      var linkedinHtml = m.linkedin_url ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
+      var linkedinHtml = safeUrl(m.linkedin_url) ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
       var isCommittee = !m.is_pending && (m.member_type === 'executive_committee' || m.member_type === 'supporting_committee');
       var cardClass = 'network-card' + (isCommittee ? ' network-card--committee' : '') + (m.is_pending ? ' network-card--pending' : '');
       return '<button type="button" class="' + cardClass + '" data-network-type="member" data-network-id="' + m.id + '">' +
@@ -2712,9 +2778,10 @@
     }
 
     function renderNetworkProfessionalCard(p) {
-      var linkedinHtml = p.linkedin_url ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
-      var avatarHtml = p.photo_url
-        ? '<img src="' + encodeURI(p.photo_url) + '" alt="">'
+      var linkedinHtml = safeUrl(p.linkedin_url) ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
+      var proSafePhoto = safeUrl(p.photo_url);
+      var avatarHtml = proSafePhoto
+        ? '<img src="' + proSafePhoto + '" alt="">'
         : escapeHtml(networkInitials(p.full_name));
       return '<button type="button" class="network-card network-card--professional" data-network-type="professional" data-network-id="' + p.id + '">' +
         linkedinHtml +
@@ -2777,7 +2844,8 @@
       var modal = document.getElementById('network-modal');
       var body = document.getElementById('network-modal-body');
       var linkedinBtn = function (url) {
-        return url ? '<a class="network-modal-linkedin" href="' + encodeURI(url) + '" target="_blank" rel="noopener">' + NETWORK_LINKEDIN_ICON + 'View LinkedIn</a>' : '';
+        var safe = safeUrl(url);
+        return safe ? '<a class="network-modal-linkedin" href="' + safe + '" target="_blank" rel="noopener">' + NETWORK_LINKEDIN_ICON + 'View LinkedIn</a>' : '';
       };
 
       if (type === 'member') {
@@ -2795,8 +2863,9 @@
           bioHtml +
           linkedinBtn(record.linkedin_url);
       } else {
-        var avatarHtml = record.photo_url
-          ? '<img src="' + encodeURI(record.photo_url) + '" alt="">'
+        var modalSafePhoto = safeUrl(record.photo_url);
+        var avatarHtml = modalSafePhoto
+          ? '<img src="' + modalSafePhoto + '" alt="">'
           : escapeHtml(networkInitials(record.full_name));
         body.innerHTML =
           '<span class="network-modal-avatar" style="background: var(--color-bg-alt); color: var(--color-gold-light);">' + avatarHtml + '</span>' +

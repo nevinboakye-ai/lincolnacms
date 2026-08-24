@@ -429,3 +429,15 @@ To insert Back on any *new* page going forward, add this as the first thing insi
 ```
 
 No extra JS needed — `js/main.js` already wires up every `[data-back-button]` on the page.
+
+## 39. Homepage back button removed; the *real* mobile Network glitch found; forgot-password auto-login race fixed; link/image fields hardened against script URLs
+
+No migration needed — front-end only.
+
+**No Back button on the homepage.** There's nowhere sensible for "back" to go from the homepage itself, so it's the one page without one.
+
+**The actual mobile Network glitch, found from a real screenshot**: Section 38's Network-card fix was a reasonable defensive change, but it turned out not to be what you were actually seeing — a screenshot showed the real culprit is the "X just joined the Network" ticker at the top of the Network page, not the member cards below it. On a narrow screen its name text wraps onto several lines, but the prev/next arrow buttons and the "2 / 12" counter stayed vertically centred against the *whole* ticker row — so as the text grew taller, those controls drifted down into the middle of it, landing visually on top of the wrapped text. Fixed by giving the prev/next/counter/"View all" controls their own row underneath the text on mobile, instead of trying to keep everything on one line.
+
+**Forgot-password could skip straight past the "choose a new password" step.** Confirmed real: Supabase's client library auto-detects the reset link's token in the URL and can silently establish a live session *and clean the token out of the URL* before the page's own check for "is this a password reset?" ever gets to look at it — a race, not something that failed every time, which is why it wasn't consistent. When it lost that race, the page saw an already-signed-in session with nothing marking it as a reset, and took the visitor straight to the hub without ever asking for a new password. Fixed by also listening for Supabase's own `PASSWORD_RECOVERY` event, which fires reliably regardless of that timing — it now has the final say over the URL check, so a reset link always lands on the set-password form.
+
+**Security pass**: went through every place a database field is written into the page as a link or image (`href`/`src`) and confirmed one real gap — a member's own LinkedIn URL (self-edited from their hub, unlike most other link fields on the site which only committee can set) was inserted with no check on its scheme. Anyone could have set it to a `javascript:` URL, which would then run in *any other member's* browser the moment they clicked "View LinkedIn" on that profile. A shared `safeUrl()` helper now sits in front of every such field site-wide (LinkedIn links, discount/opportunity/perk links, MoTM and profile photos, news images) — only `http(s)`, `mailto:` and `tel:` links are ever rendered; anything else is silently dropped. Everything else checked (announcements, news posts, comments, feed items, roster names) was already going through the existing `escapeHtml()` and had no issue.
