@@ -3092,6 +3092,14 @@ body.intro-active { overflow: hidden; }
   will-change: transform;
   touch-action: pan-y;
   cursor: grab;
+  /* Without these, a mousedown that happens to land on the card's
+     logo <img> or its name text starts the browser's own native
+     image-drag or text-selection instead of (or fighting with) the
+     custom rotate-drag below — the exact "hover reacts, but pressing
+     and dragging does nothing" symptom this was built to avoid. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 .member-card-flipper.is-dragging { transition: none; cursor: grabbing; }
 .member-card-flipper.is-hint { animation: member-card-hint 2.2s cubic-bezier(0.45, 0, 0.55, 1) 1; }

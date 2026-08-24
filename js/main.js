@@ -466,6 +466,13 @@
       flipper.appendChild(back);
       card.appendChild(flipper);
 
+      // Belt-and-braces alongside the CSS user-drag/user-select
+      // reset above — Firefox in particular ignores -webkit-user-drag
+      // and only respects the element's own draggable attribute.
+      flipper.querySelectorAll('img').forEach(function (img) {
+        img.draggable = false;
+      });
+
       var flipBtn = document.createElement('button');
       flipBtn.type = 'button';
       flipBtn.className = 'member-card-flip-hint';
@@ -575,6 +582,7 @@
         if (isTouch) {
           axisLocked = null; // decided on first sufficient movement
         } else {
+          e.preventDefault(); // stop a mouse-down on the logo/text starting a native image-drag or selection instead
           axisLocked = 'card';
           beginCardDrag();
         }
