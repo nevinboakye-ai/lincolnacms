@@ -455,3 +455,21 @@ On mobile, `.network-ticker-item`'s children now stack as plain blocks (`display
 No migration needed — front-end only.
 
 The "X just joined the Network" ticker used to run everything together on one line under the name — course, year and "X ago" all joined with `·`. It's now three lines: the name, then just the time (e.g. "5 hours ago") directly underneath, then the course/year (or, for a professional, their title) below that. This also made the earlier flex/baseline layout unnecessary — `.network-ticker-item` is a simple top-to-bottom column now on every screen size, not just mobile, so there's one layout to reason about instead of a desktop one and a mobile override.
+
+## 42. Site-wide scroll motion — reveal-on-scroll, header shrink, hero parallax, back-to-top
+
+No migration needed — front-end only. This is the biggest visual change of the whole project so far: the site no longer just sits there fully rendered the moment a page loads — cards, rows and sections now fade and lift into place as they scroll into view, the same way most modern sites feel.
+
+**How it decides what animates** — `js/main.js` auto-detects the site's own existing card/row/list classes (`.card`, `.network-card`, `.feed-item`, `.opp-row`, `.impact-card`, `.roster-row`, `.programme-card`, `.mmg-timeline-item`, section headers, and more) rather than requiring every page's HTML to be hand-annotated one element at a time. A single shared `MutationObserver` also catches anything `js/members.js` renders later from Supabase — network cards, feed posts, roster rows, ticker items, search results — so content that only exists after a database fetch animates in correctly too, not just what was already in the page's HTML at load.
+
+**What it actually does, page-wide:**
+- **Reveal-on-scroll** — each element fades up into place the first time it crosses into view, with a small stagger between siblings in the same grid/list so a row of cards cascades in rather than popping all at once.
+- **Header shrink** — the site header tightens up (less padding, a stronger background, a subtle shadow) once you've scrolled a short way down, and relaxes back at the top.
+- **Hero parallax** — the homepage's hero image drifts at a slightly different speed than the page scrolls, a classic depth effect, done with a translate that's recalculated every frame rather than a CSS transition (transitions lag behind fast scrolling; this doesn't).
+- **Scroll-progress bar** — a slim gold-to-green line pinned to the very top of the viewport, tracking how far down the current page you are.
+- **Back-to-top button** — appears bottom-right once you've scrolled far enough that "back to top" is actually useful, gone again near the top.
+- **Count-up numbers** — the homepage's "Our Impact" stats (and the president dashboard's stat tiles) count up from 0 the first time they scroll into view instead of just appearing as static text.
+
+**Reduced motion is a hard opt-out, not "less motion".** Every single piece above checks `prefers-reduced-motion: reduce` and, for anyone with that set, skips straight to the finished state — content is immediately visible, the header doesn't animate its transition, parallax doesn't run. Nothing auto-plays or moves for a reduced-motion visitor.
+
+**A few components already had their own hand-built entrance animation** (the Opportunities list, the members' feed, news posts, programme cards, the MMG programme timeline, and the join/MMG hero's "why it exists" list) — these played once on page load or on render, regardless of whether the element was ever actually scrolled into view, which is a different thing from what was asked for here. They're now unified onto the same scroll-triggered system as everything else, so the whole site behaves consistently instead of two different animation approaches existing side by side. Two exceptions were deliberately left untouched: the MMG "signed in" welcome strip and the digital membership/attendee card, both of which are single, always-above-the-fold elements where a scroll-trigger would never actually get a chance to differ from "just show it" — they keep their simple page-load fade.

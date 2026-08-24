@@ -199,25 +199,212 @@
     }, true);
   });
 
-  // Scroll-reveal: elements marked [data-reveal] fade/slide in once they
-  // enter the viewport (e.g. the Opportunities list). Reduced-motion users
-  // and browsers without IntersectionObserver just see everything visible.
-  var revealEls = document.querySelectorAll('[data-reveal]');
-  if (revealEls.length) {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
-      revealEls.forEach(function (el) { el.classList.add('is-visible'); });
+  // ---- Scroll motion --------------------------------------------------
+  // Everything below is what makes the page feel alive as you scroll,
+  // instead of every section just sitting there fully rendered from the
+  // first frame: cards/rows/list items fade and lift into place as they
+  // enter the viewport, the header tightens up once you've scrolled past
+  // it, hero images drift at a different speed than the page (parallax),
+  // a slim progress bar tracks how far down the page you are, and a
+  // back-to-top button appears once there's somewhere to go back to.
+  //
+  // The reveal system auto-detects the site's own card/row/list classes
+  // rather than requiring every page's HTML to be hand-annotated — a
+  // single shared MutationObserver also picks up anything js/members.js
+  // renders later from Supabase (network cards, feed items, roster rows,
+  // ticker items…), so newly-added content animates in correctly too.
+  // Everything here backs off completely for prefers-reduced-motion,
+  // not just "less" — reduced-motion users see the finished page
+  // immediately, no fading, no parallax, no auto-playing motion.
+  var reduceMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var hasIO = 'IntersectionObserver' in window;
+
+  var REVEAL_SELECTOR = [
+    '.section-head', '.page-hero-title', '.page-hero-lede',
+    '.hero-heading', '.hero-copy', '.hero-actions', '.hero-courses',
+    '.card', '.opp-row', '.event-row', '.network-card', '.feed-item',
+    '.news-post', '.person-card', '.quick-link-card', '.roster-row',
+    '.mmg-timeline-item', '.login-choice-card',
+    '.value-item', '.programme-card', '.impact-card',
+    '.mmg-info-card', '.network-history-row', '[data-reveal]'
+  ].join(',');
+
+  var skipReveal = reduceMotionMQ.matches || !hasIO;
+  var revealObserver = skipReveal ? null : new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+
+  function tagReveal(el) {
+    if (el.dataset.revealTagged) return;
+    el.dataset.revealTagged = '1';
+    if (!el.hasAttribute('data-reveal')) el.setAttribute('data-reveal', '');
+    var parent = el.parentElement;
+    var siblingIndex = parent ? parent.querySelectorAll(':scope > [data-reveal-tagged]').length - 1 : 0;
+    el.style.setProperty('--reveal-delay', (Math.min(Math.max(siblingIndex, 0), 7) * 0.06) + 's');
+    if (skipReveal) {
+      el.classList.add('is-visible');
     } else {
-      var revealObserver = new IntersectionObserver(function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-            revealObserver.unobserve(entry.target);
-          }
-        });
-      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-      revealEls.forEach(function (el) { revealObserver.observe(el); });
+      revealObserver.observe(el);
     }
   }
+
+  // Number spans (homepage impact stats, the president dashboard's stat
+  // tiles) count up from 0 the first time they scroll into view instead
+  // of just appearing — same MutationObserver picks up the dashboard's
+  // async-rendered numbers, same reduced-motion opt-out.
+  var countUpObserver = skipReveal ? null : new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      countUpObserver.unobserve(entry.target);
+      animateCountUp(entry.target);
+    });
+  }, { threshold: 0.6 });
+
+  function animateCountUp(el) {
+    var match = el.textContent.trim().match(/^(\d+)(.*)$/);
+    if (!match || !parseInt(match[1], 10)) return;
+    var target = parseInt(match[1], 10);
+    var suffix = match[2] || '';
+    var duration = 900;
+    var start = null;
+    function step(ts) {
+      if (start === null) start = ts;
+      var progress = Math.min((ts - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.round(eased * target) + suffix;
+      if (progress < 1) window.requestAnimationFrame(step);
+    }
+    window.requestAnimationFrame(step);
+  }
+
+  function tagCountUp(el) {
+    if (el.dataset.countTagged) return;
+    el.dataset.countTagged = '1';
+    if (skipReveal) return; // leave the static number as-is
+    countUpObserver.observe(el);
+  }
+
+  var COUNT_SELECTOR = '.impact-stat-num, .dash-stat-num';
+
+  function scanForMotion(root) {
+    if (root.nodeType === 1) {
+      if (root.matches(REVEAL_SELECTOR)) tagReveal(root);
+      if (root.matches(COUNT_SELECTOR)) tagCountUp(root);
+    }
+    if (root.querySelectorAll) {
+      root.querySelectorAll(REVEAL_SELECTOR).forEach(tagReveal);
+      root.querySelectorAll(COUNT_SELECTOR).forEach(tagCountUp);
+    }
+  }
+
+  scanForMotion(document);
+
+  var motionObserver = new MutationObserver(function (mutations) {
+    mutations.forEach(function (m) {
+      m.addedNodes.forEach(function (node) {
+        if (node.nodeType === 1) scanForMotion(node);
+      });
+    });
+  });
+  motionObserver.observe(document.body, { childList: true, subtree: true });
+
+  // Header shrink-on-scroll
+  (function headerScroll() {
+    var topbarEl = document.querySelector('.site-topbar');
+    if (!topbarEl) return;
+    var ticking = false;
+    function update() {
+      ticking = false;
+      topbarEl.classList.toggle('is-scrolled', window.scrollY > 24);
+    }
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(update);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    update();
+  })();
+
+  // Hero background parallax (homepage, and any page that reuses .hero)
+  if (!reduceMotionMQ.matches) {
+    (function heroParallax() {
+      var heroEl = document.querySelector('.hero');
+      var heroBg = heroEl ? heroEl.querySelector('.hero-bg') : null;
+      if (!heroEl || !heroBg) return;
+      var ticking = false;
+      function update() {
+        ticking = false;
+        var heroHeight = heroEl.offsetHeight;
+        var y = window.scrollY;
+        if (y > heroHeight) return;
+        heroBg.style.transform = 'translate3d(0,' + Math.round(y * 0.18) + 'px,0) scale(1.08)';
+      }
+      function onScroll() {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(update);
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      update();
+    })();
+  }
+
+  // Scroll-progress bar
+  (function scrollProgress() {
+    var bar = document.createElement('div');
+    bar.className = 'scroll-progress';
+    bar.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(bar);
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var doc = document.documentElement;
+      var scrollable = doc.scrollHeight - doc.clientHeight;
+      var pct = scrollable > 0 ? (doc.scrollTop / scrollable) * 100 : 0;
+      bar.style.width = pct + '%';
+    }
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(update);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    update();
+  })();
+
+  // Back-to-top button
+  (function backToTop() {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'back-to-top';
+    btn.setAttribute('aria-label', 'Back to top');
+    btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
+    document.body.appendChild(btn);
+
+    btn.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: reduceMotionMQ.matches ? 'auto' : 'smooth' });
+    });
+
+    var ticking = false;
+    function update() {
+      ticking = false;
+      btn.classList.toggle('is-visible', window.scrollY > 500);
+    }
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(update);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    update();
+  })();
 
   // Expandable rows/cards: click anywhere on an element marked [data-expand-row]
   // to reveal more detail (events, committee bios). Clicks that land on a real

@@ -1639,13 +1639,8 @@ a.card:hover, a.card:focus-visible {
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   padding: var(--space-6);
-  opacity: 0;
-  animation: feed-item-in 0.6s var(--ease-standard) forwards;
   transition: transform var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
 }
-.programme-card-list .programme-card:nth-child(1) { animation-delay: 0.05s; }
-.programme-card-list .programme-card:nth-child(2) { animation-delay: 0.15s; }
-.programme-card-list .programme-card:nth-child(3) { animation-delay: 0.25s; }
 
 .programme-card:hover { transform: translateY(-4px); }
 
@@ -2027,16 +2022,6 @@ a.card:hover, a.card:focus-visible {
               border-color var(--dur-base) var(--ease-standard),
               border-left-width var(--dur-base) var(--ease-standard),
               box-shadow var(--dur-base) var(--ease-standard);
-  opacity: 0;
-  transform: translateY(18px);
-}
-
-.opp-row.is-visible {
-  animation: opp-row-in 600ms var(--ease-standard) forwards;
-}
-
-@keyframes opp-row-in {
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .opp-row:hover,
@@ -3963,8 +3948,6 @@ body.intro-active { overflow: hidden; }
   border-left: 3px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   padding: var(--space-4);
-  opacity: 0;
-  animation: feed-item-in 0.5s var(--ease-standard) forwards;
   transition: border-color var(--dur-base) var(--ease-standard),
               transform var(--dur-base) var(--ease-standard);
 }
@@ -3997,7 +3980,7 @@ body.intro-active { overflow: hidden; }
 
 .feed-item--pinned {
   background: linear-gradient(160deg, rgba(232, 199, 103, 0.1), var(--color-surface) 70%);
-  animation: feed-item-in 0.5s var(--ease-standard) forwards, feed-pinned-glow 3.2s ease-in-out infinite;
+  animation: feed-pinned-glow 3.2s ease-in-out infinite;
 }
 
 @keyframes feed-pinned-glow {
@@ -4068,13 +4051,7 @@ body.intro-active { overflow: hidden; }
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  opacity: 0;
-  animation: feed-item-in 0.55s var(--ease-standard) forwards;
 }
-.news-feed-list .news-post:nth-child(1) { animation-delay: 0.03s; }
-.news-feed-list .news-post:nth-child(2) { animation-delay: 0.1s; }
-.news-feed-list .news-post:nth-child(3) { animation-delay: 0.17s; }
-.news-feed-list .news-post:nth-child(n+4) { animation-delay: 0.24s; }
 
 .news-post--pinned {
   border-color: rgba(232, 199, 103, 0.4);
@@ -4665,16 +4642,6 @@ body.intro-active { overflow: hidden; }
   50% { opacity: 1; transform: translate(2%, -3%); }
 }
 
-/* Reveal the "why it exists" value props and event-details panel with a
-   gentle staggered entrance instead of a flat, static load. */
-.hero-grid .value-item {
-  opacity: 0;
-  animation: feed-item-in 0.55s var(--ease-standard) forwards;
-}
-.hero-grid .value-item:nth-child(1) { animation-delay: 0.05s; }
-.hero-grid .value-item:nth-child(2) { animation-delay: 0.15s; }
-.hero-grid .value-item:nth-child(3) { animation-delay: 0.25s; }
-
 .hero-grid .form-panel {
   position: relative;
   overflow: hidden;
@@ -4789,16 +4756,7 @@ body.intro-active { overflow: hidden; }
 .mmg-timeline-item {
   display: flex;
   gap: var(--space-4);
-  opacity: 0;
-  animation: feed-item-in 0.5s var(--ease-standard) forwards;
 }
-.mmg-timeline-item:nth-child(1) { animation-delay: 0.02s; }
-.mmg-timeline-item:nth-child(2) { animation-delay: 0.08s; }
-.mmg-timeline-item:nth-child(3) { animation-delay: 0.14s; }
-.mmg-timeline-item:nth-child(4) { animation-delay: 0.2s; }
-.mmg-timeline-item:nth-child(5) { animation-delay: 0.26s; }
-.mmg-timeline-item:nth-child(6) { animation-delay: 0.32s; }
-.mmg-timeline-item:nth-child(7) { animation-delay: 0.38s; }
 
 .mmg-timeline-marker {
   display: flex;
@@ -4907,3 +4865,131 @@ body.intro-active { overflow: hidden; }
   margin-bottom: var(--space-3);
 }
 .mmg-committee-badge .icon { width: 14px; height: 14px; }
+
+/* =========================================================
+   Scroll motion — reveal-on-scroll, header shrink, hero
+   parallax, scroll progress, back-to-top. Driven from
+   js/main.js; every effect here backs off completely under
+   prefers-reduced-motion instead of just moving less.
+   ========================================================= */
+
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+}
+[data-reveal="fade"] { transform: none; }
+[data-reveal="left"] { transform: translateX(-28px); }
+[data-reveal="right"] { transform: translateX(28px); }
+[data-reveal="scale"] { transform: scale(0.94); }
+
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    transition: opacity 0.7s cubic-bezier(0.16, 0.84, 0.44, 1),
+                transform 0.7s cubic-bezier(0.16, 0.84, 0.44, 1);
+    transition-delay: var(--reveal-delay, 0s);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1; transform: none; }
+}
+
+/* Header tightens up once you've scrolled past it, instead of sitting
+   at full height the whole way down the page. */
+.site-header {
+  transition: padding-block var(--dur-base) var(--ease-standard),
+              background var(--dur-base) var(--ease-standard),
+              box-shadow var(--dur-base) var(--ease-standard);
+}
+.brand-mark, .brand-mark-fallback {
+  transition: width var(--dur-base) var(--ease-standard),
+              height var(--dur-base) var(--ease-standard);
+}
+.site-topbar.is-scrolled .site-header {
+  padding-block: 0.6rem;
+  background: rgba(10, 10, 12, 0.94);
+  box-shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.7);
+}
+.site-topbar.is-scrolled .brand-mark,
+.site-topbar.is-scrolled .brand-mark-fallback {
+  width: 40px;
+  height: 40px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header, .brand-mark, .brand-mark-fallback { transition: none; }
+}
+
+/* Hero background parallax — JS sets the transform per scroll frame;
+   the slight oversize keeps the drift from ever exposing an edge. */
+.hero .hero-bg {
+  will-change: transform;
+  transform: scale(1.08);
+}
+
+/* Slim reading-progress bar pinned to the very top of the viewport. */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--color-gold), #6fcf97, var(--color-gold-light));
+  z-index: 200;
+  transition: width 0.12s linear;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-progress { transition: none; }
+}
+
+/* Back-to-top — fades in once you've scrolled a meaningful distance. */
+.back-to-top {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-gold-light);
+  cursor: pointer;
+  box-shadow: 0 14px 32px -16px rgba(0, 0, 0, 0.65);
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-standard),
+              transform var(--dur-base) var(--ease-standard),
+              border-color var(--dur-base) var(--ease-standard),
+              color var(--dur-base) var(--ease-standard);
+  z-index: 90;
+}
+.back-to-top.is-visible {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.back-to-top:hover, .back-to-top:focus-visible {
+  border-color: var(--color-gold-light);
+  color: var(--color-gold);
+}
+.back-to-top .icon { width: 20px; height: 20px; }
+@media (max-width: 640px) {
+  .back-to-top {
+    right: var(--space-3);
+    bottom: var(--space-3);
+    width: 42px;
+    height: 42px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .back-to-top { transition: opacity var(--dur-base) var(--ease-standard); transform: none; }
+}

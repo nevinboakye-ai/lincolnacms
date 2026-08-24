@@ -1132,7 +1132,7 @@
     var linkHtml = safeLink
       ? '<a class="btn btn-outline" href="' + safeLink + '"' + (isMailto ? '' : ' target="_blank" rel="noopener"') + '>Learn more</a>'
       : '';
-    return '<div class="opp-row is-visible">' +
+    return '<div class="opp-row">' +
       '<div>' + tagHtml + '<h2 class="card-title" style="margin-top: var(--space-2);">' + escapeHtml(row.title) + '</h2><p>' + escapeHtml(row.description) + '</p></div>' +
       '<div class="opp-row-actions">' + linkHtml + '</div>' +
       '</div>';
