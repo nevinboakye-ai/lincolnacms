@@ -3066,29 +3066,81 @@ body.intro-active { overflow: hidden; }
 
 /* Digital membership card */
 
+/* Digital membership/attendee card — a real, fully-3D flippable card.
+   .member-card is just the sizing/perspective container; the actual
+   rotation happens on .member-card-flipper (front + back faces as
+   its 3D children), built and wired up in js/main.js so all four
+   card instances across the site (member-hub's two variants,
+   mmg-hub, mmg.html) stay in sync automatically rather than needing
+   the same structure hand-duplicated into every page. */
 .member-card {
   position: relative;
-  overflow: hidden;
   max-width: 420px;
-  padding: var(--space-5);
+  perspective: 1400px;
+}
+
+.member-card-flipper {
+  position: relative;
+  width: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(0deg) rotateY(0deg);
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+  touch-action: pan-y;
+  cursor: grab;
+}
+.member-card-flipper.is-dragging { transition: none; cursor: grabbing; }
+.member-card-flipper.is-hint { animation: member-card-hint 2.2s cubic-bezier(0.45, 0, 0.55, 1) 1; }
+
+@keyframes member-card-hint {
+  0% { transform: rotateX(0deg) rotateY(0deg); }
+  20% { transform: rotateX(-4deg) rotateY(12deg); }
+  45% { transform: rotateX(2deg) rotateY(-8deg); }
+  70% { transform: rotateX(-1deg) rotateY(4deg); }
+  100% { transform: rotateX(0deg) rotateY(0deg); }
+}
+
+.member-card-face {
   border-radius: var(--radius-lg);
   border: 2px solid var(--color-gold);
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   background:
     radial-gradient(circle at 100% 0%, rgba(212, 166, 43, 0.2), transparent 60%),
     repeating-linear-gradient(135deg, rgba(212, 166, 43, 0.045) 0 2px, transparent 2px 18px),
     linear-gradient(160deg, var(--color-surface-raised), var(--color-bg-alt));
   box-shadow: 0 20px 50px -20px rgba(212, 166, 43, 0.4);
-  transform: perspective(900px) rotateX(0deg) rotateY(0deg);
-  transition: transform 0.5s cubic-bezier(0.16, 0.84, 0.44, 1), box-shadow 0.5s var(--ease-standard);
-  will-change: transform;
+  transition: box-shadow 0.5s var(--ease-standard);
 }
-
-.member-card.is-tilting {
-  transition: transform 0.05s linear, box-shadow 0.5s var(--ease-standard);
+.member-card-flipper.is-active .member-card-face {
   box-shadow: 0 28px 60px -18px rgba(212, 166, 43, 0.55);
 }
 
-.member-card::before {
+.member-card-face--front { position: relative; padding: var(--space-5); }
+
+.member-card-face--back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  text-align: center;
+  padding: var(--space-5);
+}
+.member-card-back-logo { width: 68px; height: 68px; border-radius: 50%; }
+.member-card-back-name {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  color: var(--color-gold-light);
+  letter-spacing: 0.03em;
+}
+.member-card-back-sub { font-size: 0.8rem; color: var(--color-text-muted); max-width: 260px; }
+
+.member-card-face::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -3101,10 +3153,10 @@ body.intro-active { overflow: hidden; }
 }
 
 /* Pointer-tracked glare — a real credential catching the light as it
-   tilts. Only ever active on fine-pointer/hover devices (see
-   js/main.js); touch devices keep the ambient ::before shimmer above
-   as their "shine" instead, since there's no cursor to track. */
-.member-card::after {
+   tilts or turns. Position is shared via custom properties set on
+   the flipper (see js/main.js), so whichever face is showing reads
+   them the same way. */
+.member-card-face::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -3114,11 +3166,42 @@ body.intro-active { overflow: hidden; }
   background: radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255, 255, 255, 0.22), transparent 45%);
   transition: opacity 0.4s var(--ease-standard);
 }
-.member-card.is-tilting::after { opacity: 1; }
+.member-card-flipper.is-active .member-card-face::after { opacity: 1; }
+
+/* Small persistent corner badge — both the visible "this moves" hint
+   for anyone who doesn't try hovering/dragging, and a guaranteed,
+   keyboard-reachable way to see the back (the idle wiggle and drag
+   are lovely but neither is accessible on their own). */
+.member-card-flip-hint {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  z-index: 4;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-gold-light);
+  cursor: pointer;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.6);
+  transition: transform var(--dur-fast) var(--ease-standard), border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
+}
+.member-card-flip-hint:hover, .member-card-flip-hint:focus-visible {
+  border-color: var(--color-gold-light);
+  color: var(--color-gold);
+  transform: scale(1.1);
+}
+.member-card-flip-hint:active { transform: scale(0.95); }
+.member-card-flip-hint .icon { width: 16px; height: 16px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .member-card { transform: none; transition: none; }
-  .member-card.is-tilting { box-shadow: 0 20px 50px -20px rgba(212, 166, 43, 0.4); }
+  .member-card-flipper { transition: none; }
+  .member-card-flipper.is-hint { animation: none; }
+  .member-card-face::before { animation: none; }
 }
 
 .member-card-inner { position: relative; z-index: 1; }

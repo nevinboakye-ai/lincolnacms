@@ -493,3 +493,20 @@ No migration needed — front-end only. A pass specifically over the member expe
 **"New" badges.** Anything posted in the last 48 hours — an announcement, a news post, an MMG update — now carries a small pulsing "New" badge next to its category tag. Checking back in after a few days now visibly rewards you with something that stands out, instead of every post in the feed looking identical regardless of age.
 
 **Press feedback on interactive cards and buttons**, site-wide — buttons, Network cards, Opportunities rows and the general `.card` link/button all now give a small tactile "press" (a slight scale-down) on click/tap, on top of the hover-lift they already had. Small, but it's the difference between a page that reacts to touch and one that just... changes eventually.
+
+## 45. The digital membership/attendee card is now a real, fully-3D flippable card
+
+No migration needed — front-end only. Section 44 gave the card a cursor-tracked tilt; this replaces that with the real thing — a proper two-sided 3D card you can turn all the way around, built to work identically well with a mouse or a finger.
+
+**How it's built.** `.member-card` is now just a sizing/perspective container; the actual rotation happens on an inner "flipper" with two faces — the existing front content, and a new back showing the LACMS crest and name. All of it is built at runtime in `js/main.js` rather than hand-duplicated into every page's HTML, so the two card variants on the members hub, the one on the MMG hub, and the one on the MMG portal page all stay in sync from one place. `backface-visibility: hidden` keeps whichever face isn't showing from bleeding through.
+
+**Discoverability was the actual brief here** — "how does anyone know this moves?" — solved three different ways, deliberately layered so no one visitor has to find all three:
+- **The card wiggles on its own**, once, briefly, the first time it's actually on screen in a given browser session (timed off `IntersectionObserver`, not a blind delay, since the card doesn't exist until the member's profile has loaded) — a small unmistakable "I'm not flat" demonstration before anyone has to guess.
+- **A small corner badge** sits on the card permanently — both a visible hint icon and a genuine, keyboard-reachable button. Click it, tap it, or Tab to it and press Enter: the card turns all the way to the back, holds a moment, and returns. This is also the accessible path — the wiggle and drag are lovely but neither one is reachable without a mouse or a finger.
+- **Hovering it** (any device with a real cursor) gives a light cursor-tracked tilt, same as before.
+
+**Full drag-to-rotate, mouse and touch, through one implementation.** Click-and-drag or touch-and-drag turns the card in real 3D, all the way round to the back if you keep going — built on the Pointer Events API so mouse and touch share one code path rather than two separate ones to maintain. The tricky part was making sure dragging the card on a phone doesn't hijack an ordinary attempt to scroll the page: the first several pixels of a touch gesture decide whether it's predominantly horizontal ("spin the card" — commit, and block the page from scrolling for the rest of that gesture) or predominantly vertical ("scroll the page" — hand it straight back to normal scrolling, untouched). A horizontal drag over the card behaves as expected; a vertical swipe over the card scrolls the page exactly as it would anywhere else.
+
+**It never stays where you leave it.** However far you turn it — a slight tilt, all the way to the back, anywhere in between — releasing always springs it back to front-facing with a soft overshoot ease, never left part-turned or stuck showing the back. That was the explicit brief, and it's also just correct: the card's real information only exists on the front.
+
+**Reduced motion** disables the idle wiggle and the ambient shimmer entirely, and drops the "springs back" animation to instant — the card can still be dragged (that's direct, user-driven motion, not something auto-playing), it just resets without an animated tween.

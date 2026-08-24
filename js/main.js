@@ -416,29 +416,225 @@
     update();
   })();
 
-  // Digital membership/attendee card — a real credential catching the
-  // light as it tilts, on any device with a mouse to track. Touch
-  // devices keep the card's ambient shimmer (CSS ::before, always on)
-  // as their "shine" instead, since there's no cursor to follow.
-  if (!reduceMotionMQ.matches && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-    document.querySelectorAll('.member-card').forEach(function (card) {
-      card.addEventListener('mousemove', function (e) {
+  // ---- Digital membership/attendee card: a real, fully-3D flippable
+  // card ---------------------------------------------------------------
+  // Builds the flip structure at runtime (front face = the card's
+  // existing content, back face = LACMS logo + name) so all four card
+  // instances across the site — member-hub's two variants, mmg-hub,
+  // mmg.html — stay in sync from one place instead of four copies of
+  // the same markup. Then wires up, in order of how someone actually
+  // discovers it:
+  //   1. A one-time idle wiggle once the card is actually on screen,
+  //      so the card itself demonstrates it's 3D before anyone has to
+  //      guess.
+  //   2. A small corner badge that's both a visible hint and a
+  //      guaranteed, keyboard-reachable way to see the back — the
+  //      wiggle and drag are lovely but neither is accessible alone.
+  //   3. Cursor-follow tilt on hover, for anyone with a mouse.
+  //   4. Full drag-to-rotate — mouse-drag AND touch-drag through one
+  //      Pointer Events implementation — all the way round to the
+  //      back, always springing back to front-facing on release so it
+  //      never gets left part-way turned or stuck showing the back.
+  (function () {
+    var cards = document.querySelectorAll('.member-card');
+    if (!cards.length) return;
+
+    var fineHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    var reduceMotion = reduceMotionMQ.matches;
+
+    function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+
+    cards.forEach(function (card) {
+      var inner = card.firstElementChild;
+      if (!inner) return;
+
+      var flipper = document.createElement('div');
+      flipper.className = 'member-card-flipper';
+
+      var front = document.createElement('div');
+      front.className = 'member-card-face member-card-face--front';
+      front.appendChild(inner); // moves the existing content, doesn't recreate it
+
+      var back = document.createElement('div');
+      back.className = 'member-card-face member-card-face--back';
+      back.innerHTML =
+        '<img class="member-card-back-logo" src="Media/ACMS%20Branding/logo.png" alt="">' +
+        '<span class="member-card-back-name">LACMS</span>' +
+        '<span class="member-card-back-sub">Lincoln African Caribbean Medical Society</span>';
+
+      flipper.appendChild(front);
+      flipper.appendChild(back);
+      card.appendChild(flipper);
+
+      var flipBtn = document.createElement('button');
+      flipBtn.type = 'button';
+      flipBtn.className = 'member-card-flip-hint';
+      flipBtn.setAttribute('aria-label', 'Flip the card to see the back');
+      flipBtn.title = 'Drag the card, or click here, to see the back';
+      flipBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>';
+      card.appendChild(flipBtn);
+
+      var rotX = 0, rotY = 0;
+      var dragging = false;
+      var pointerId = null;
+      var isTouch = false;
+      var axisLocked = null; // null while undecided | 'card' | 'scroll'
+      var startX = 0, startY = 0, startRotX = 0, startRotY = 0;
+
+      function applyTransform() {
+        flipper.style.transform = 'rotateX(' + rotX.toFixed(2) + 'deg) rotateY(' + rotY.toFixed(2) + 'deg)';
+      }
+      function setActive(on) { flipper.classList.toggle('is-active', on); }
+      function updateGlare(clientX, clientY) {
         var rect = card.getBoundingClientRect();
-        var x = (e.clientX - rect.left) / rect.width;
-        var y = (e.clientY - rect.top) / rect.height;
-        var rotateY = (x - 0.5) * 14;
-        var rotateX = (0.5 - y) * 10;
-        card.classList.add('is-tilting');
-        card.style.setProperty('--glare-x', (x * 100) + '%');
-        card.style.setProperty('--glare-y', (y * 100) + '%');
-        card.style.transform = 'perspective(900px) rotateX(' + rotateX.toFixed(2) + 'deg) rotateY(' + rotateY.toFixed(2) + 'deg)';
+        flipper.style.setProperty('--glare-x', (((clientX - rect.left) / rect.width) * 100) + '%');
+        flipper.style.setProperty('--glare-y', (((clientY - rect.top) / rect.height) * 100) + '%');
+      }
+      function resetTransform() {
+        rotX = 0; rotY = 0;
+        applyTransform();
+      }
+
+      // 1. Idle hint — plays once per browser session (across every
+      // card on the site, not once per page), timed from when the
+      // card is actually visible on screen rather than a blind delay,
+      // since it only exists once the member's Supabase profile has
+      // loaded and the hub content is shown.
+      if (!reduceMotion && 'IntersectionObserver' in window) {
+        var hintSeen = false;
+        try { hintSeen = sessionStorage.getItem('lacmsCardHintSeen') === '1'; } catch (e) {}
+        if (!hintSeen) {
+          var hintObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (!entry.isIntersecting) return;
+              hintObserver.unobserve(card);
+              try { sessionStorage.setItem('lacmsCardHintSeen', '1'); } catch (e2) {}
+              window.setTimeout(function () {
+                if (!dragging) flipper.classList.add('is-hint');
+              }, 500);
+            });
+          }, { threshold: 0.4 });
+          hintObserver.observe(card);
+          flipper.addEventListener('animationend', function () {
+            flipper.classList.remove('is-hint');
+          });
+        }
+      }
+
+      // 3. Hover tilt — fine-pointer devices only, and only while not
+      // actively dragging.
+      if (fineHover && !reduceMotion) {
+        card.addEventListener('mousemove', function (e) {
+          if (dragging) return;
+          flipper.classList.remove('is-hint');
+          var rect = card.getBoundingClientRect();
+          var px = (e.clientX - rect.left) / rect.width;
+          var py = (e.clientY - rect.top) / rect.height;
+          rotY = (px - 0.5) * 16;
+          rotX = (0.5 - py) * 12;
+          applyTransform();
+          updateGlare(e.clientX, e.clientY);
+          setActive(true);
+        });
+        card.addEventListener('mouseleave', function () {
+          if (dragging) return;
+          setActive(false);
+          resetTransform();
+        });
+      }
+
+      // 4. Drag to rotate — mouse and touch through one Pointer Events
+      // implementation. Touch gets an axis lock: the first several
+      // pixels of movement decide whether this is a horizontal "spin
+      // the card" gesture or a vertical "scroll the page" one, so
+      // dragging over the card doesn't hijack an ordinary scroll.
+      // Pointer capture (once committed to 'card') means the drag
+      // keeps tracking even once the rotated card's rendered area
+      // is thin side-on, or the pointer strays outside it entirely.
+      var ROTATE_Y_SENSITIVITY = 0.6;
+      var ROTATE_X_SENSITIVITY = 0.25;
+      var ROTATE_X_LIMIT = 22;
+      var AXIS_LOCK_PX = 8;
+
+      function beginCardDrag() {
+        dragging = true;
+        flipper.classList.add('is-dragging');
+        flipper.classList.remove('is-hint');
+        setActive(true);
+        try { flipper.setPointerCapture(pointerId); } catch (e) {}
+      }
+
+      flipper.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        isTouch = e.pointerType === 'touch';
+        pointerId = e.pointerId;
+        startX = e.clientX;
+        startY = e.clientY;
+        startRotX = rotX;
+        startRotY = rotY;
+        if (isTouch) {
+          axisLocked = null; // decided on first sufficient movement
+        } else {
+          axisLocked = 'card';
+          beginCardDrag();
+        }
       });
-      card.addEventListener('mouseleave', function () {
-        card.classList.remove('is-tilting');
-        card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg)';
+
+      flipper.addEventListener('pointermove', function (e) {
+        if (e.pointerId !== pointerId) return;
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
+
+        if (isTouch && axisLocked === null) {
+          if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
+          axisLocked = Math.abs(dx) > Math.abs(dy) * 1.3 ? 'card' : 'scroll';
+          if (axisLocked === 'card') {
+            beginCardDrag();
+          } else {
+            pointerId = null; // hand the rest of this gesture to native scroll
+            return;
+          }
+        }
+
+        if (axisLocked !== 'card') return;
+        e.preventDefault();
+        rotY = clamp(startRotY + dx * ROTATE_Y_SENSITIVITY, -180, 180);
+        rotX = clamp(startRotX - dy * ROTATE_X_SENSITIVITY, -ROTATE_X_LIMIT, ROTATE_X_LIMIT);
+        applyTransform();
+        updateGlare(e.clientX, e.clientY);
+      }, { passive: false });
+
+      function endDrag(e) {
+        if (pointerId !== null && e.pointerId !== pointerId) return;
+        if (dragging) {
+          dragging = false;
+          flipper.classList.remove('is-dragging');
+          setActive(false);
+          resetTransform(); // never left wherever it was turned to — always springs home
+        }
+        pointerId = null;
+        axisLocked = null;
+      }
+      flipper.addEventListener('pointerup', endDrag);
+      flipper.addEventListener('pointercancel', endDrag);
+
+      // 2. The corner badge itself — click, tap or keyboard (a
+      // <button> already gets Enter/Space for free) turns the card
+      // all the way to the back, holds a moment, then returns it.
+      flipBtn.addEventListener('click', function () {
+        if (dragging) return;
+        flipper.classList.remove('is-hint');
+        rotX = 0;
+        rotY = 180;
+        applyTransform();
+        setActive(true);
+        window.setTimeout(function () {
+          setActive(false);
+          resetTransform();
+        }, reduceMotion ? 900 : 1500);
       });
     });
-  }
+  })();
 
   // Expandable rows/cards: click anywhere on an element marked [data-expand-row]
   // to reveal more detail (events, committee bios). Clicks that land on a real
