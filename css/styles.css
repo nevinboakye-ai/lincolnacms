@@ -1399,6 +1399,54 @@ a.impact-card:focus-visible {
   transition-delay: 80ms;
 }
 
+/* "Read more" — a plain prose section's mobile-only version of the
+   same reveal-panel toggle used above for cards/rows. Unlike those,
+   [data-expand-row] here wraps only the button + panel, not the
+   whole section — clicking the heading or the always-visible first
+   paragraph above it shouldn't toggle anything, only the button
+   should. Reusable anywhere a paragraph is worth trimming on a small
+   screen without losing it — desktop always shows it expanded, no
+   button, exactly as before this existed. */
+.read-more-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: var(--space-2);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-gold-light);
+  cursor: pointer;
+}
+.read-more-btn:hover, .read-more-btn:focus-visible { color: var(--color-gold); }
+.read-more-btn .icon {
+  width: 14px;
+  height: 14px;
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+.is-expanded .read-more-btn .icon { transform: rotate(180deg); }
+
+@media (max-width: 640px) {
+  .read-more-btn { display: inline-flex; }
+}
+@media (min-width: 641px) {
+  .read-more-wrap .reveal-panel { grid-template-rows: 1fr; }
+  .read-more-wrap .reveal-panel-content { opacity: 1; }
+}
+
+/* A second/elaborating paragraph that's fine to drop on a small
+   screen when there's already somewhere else to tap for the rest —
+   e.g. the Sankofa card on programmes.html, which is itself a
+   [data-card-link] through to the full sankofa.html page. Unlike
+   .read-more-btn above, there's deliberately no toggle here: the
+   "tap to find out more" already exists as the whole card. */
+@media (max-width: 640px) {
+  .mobile-hide-text { display: none; }
+}
+
 /* =========================================================
    Mobile card carousel (Committee, MoTM archive)
    ========================================================= */
