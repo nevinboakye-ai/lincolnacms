@@ -3601,7 +3601,25 @@ body.intro-active { overflow: hidden; }
     flex-wrap: wrap;
     align-items: flex-start;
   }
-  .network-ticker-item-title { white-space: normal; }
+  /* Title and meta stop being flex siblings here and just stack as
+     plain blocks. They were flex items with align-items:baseline —
+     fine when both stayed on one line each, but once the title wraps
+     to multiple lines on a narrow screen, a wrapped flex item's
+     baseline is measured from its first line only, so the meta line
+     (still nowrap) was landing next to that first line instead of
+     below the title's full wrapped height, overlapping it. */
+  .network-ticker-item {
+    display: block;
+  }
+  .network-ticker-item-title {
+    display: block;
+    white-space: normal;
+  }
+  .network-ticker-item-meta {
+    display: block;
+    white-space: normal;
+    margin-top: 2px;
+  }
   .network-ticker-viewall { display: none; }
   .network-ticker-controls {
     flex-basis: 100%;
