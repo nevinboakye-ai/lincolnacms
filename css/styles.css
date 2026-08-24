@@ -226,7 +226,7 @@ button { font-family: inherit; }
   min-height: 44px;
 }
 
-.btn:active { transform: translateY(1px); }
+.btn:active { transform: translateY(1px) scale(0.98); }
 
 .btn-primary {
   background: var(--color-gold);
@@ -1461,6 +1461,8 @@ a.card:hover, a.card:focus-visible {
   transform: translateY(-3px);
 }
 
+a.card:active { transform: translateY(-1px) scale(0.98); }
+
 .card-link {
   margin-top: auto;
   display: inline-flex;
@@ -2031,6 +2033,8 @@ a.card:hover, a.card:focus-visible {
   border-left-width: 7px;
   box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.5);
 }
+
+.opp-row:active { transform: translateY(-1px) scale(0.99); }
 
 .opp-row--red { border-left-color: var(--color-red); }
 .opp-row--red:hover, .opp-row--red:focus-within { border-left-color: #ef8b8f; }
@@ -2954,6 +2958,52 @@ body.intro-active { overflow: hidden; }
 
 @keyframes auth-spin { to { transform: rotate(360deg); } }
 
+/* Skeleton loading state — member-hub.html specifically, shaped like
+   the real card + details grid it's about to become, so there's no
+   layout jump when the real content swaps in. .auth-gate--skeleton
+   overrides the shared centered-spinner layout above with a block
+   container the skeleton grid can lay out inside. */
+.auth-gate--skeleton {
+  display: block;
+  padding: 0;
+}
+.hub-skeleton {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: var(--space-7);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .hub-skeleton { grid-template-columns: 1fr; gap: var(--space-5); }
+}
+.skeleton-card {
+  max-width: 420px;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  min-height: 220px;
+}
+.skeleton-details { padding-top: var(--space-2); }
+.skeleton-line, .skeleton-row {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-surface) 25%, var(--color-surface-raised) 50%, var(--color-surface) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.6s ease-in-out infinite;
+}
+.skeleton-line { height: 14px; margin-bottom: var(--space-3); width: 100%; }
+.skeleton-line--eyebrow { width: 35%; height: 10px; }
+.skeleton-line--title { width: 70%; height: 22px; margin-top: var(--space-4); }
+.skeleton-line--heading { height: 18px; margin-bottom: var(--space-4); }
+.skeleton-row { height: 44px; margin-bottom: var(--space-3); }
+@keyframes skeleton-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line, .skeleton-row { animation: none; background: var(--color-surface); }
+}
+
 .auth-error {
   padding: var(--space-3);
   border-radius: var(--radius-sm);
@@ -3028,6 +3078,14 @@ body.intro-active { overflow: hidden; }
     repeating-linear-gradient(135deg, rgba(212, 166, 43, 0.045) 0 2px, transparent 2px 18px),
     linear-gradient(160deg, var(--color-surface-raised), var(--color-bg-alt));
   box-shadow: 0 20px 50px -20px rgba(212, 166, 43, 0.4);
+  transform: perspective(900px) rotateX(0deg) rotateY(0deg);
+  transition: transform 0.5s cubic-bezier(0.16, 0.84, 0.44, 1), box-shadow 0.5s var(--ease-standard);
+  will-change: transform;
+}
+
+.member-card.is-tilting {
+  transition: transform 0.05s linear, box-shadow 0.5s var(--ease-standard);
+  box-shadow: 0 28px 60px -18px rgba(212, 166, 43, 0.55);
 }
 
 .member-card::before {
@@ -3040,6 +3098,27 @@ body.intro-active { overflow: hidden; }
   background-size: 220% 100%;
   background-position: 160% 0;
   animation: impact-shimmer 8s ease-in-out infinite;
+}
+
+/* Pointer-tracked glare — a real credential catching the light as it
+   tilts. Only ever active on fine-pointer/hover devices (see
+   js/main.js); touch devices keep the ambient ::before shimmer above
+   as their "shine" instead, since there's no cursor to track. */
+.member-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255, 255, 255, 0.22), transparent 45%);
+  transition: opacity 0.4s var(--ease-standard);
+}
+.member-card.is-tilting::after { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .member-card { transform: none; transition: none; }
+  .member-card.is-tilting { box-shadow: 0 20px 50px -20px rgba(212, 166, 43, 0.4); }
 }
 
 .member-card-inner { position: relative; z-index: 1; }
@@ -4010,6 +4089,27 @@ body.intro-active { overflow: hidden; }
   border-radius: var(--radius-pill);
 }
 
+.new-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  color: #0c2b1a;
+  background: #6fcf97;
+  animation: new-badge-pulse 2.4s ease-in-out infinite;
+}
+@keyframes new-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(111, 207, 151, 0.5); }
+  50% { box-shadow: 0 0 0 5px rgba(111, 207, 151, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .new-badge { animation: none; }
+}
+
 .feed-item-date {
   margin-left: auto;
   font-size: 0.8rem;
@@ -4290,6 +4390,7 @@ body.intro-active { overflow: hidden; }
   border-left-color: var(--network-accent-light, var(--color-gold-light));
   box-shadow: 0 14px 30px -16px rgba(0, 0, 0, 0.55);
 }
+.network-card:active { transform: translateY(-1px) scale(0.98); }
 
 .network-card-avatar {
   width: 42px;
@@ -4889,8 +4990,8 @@ body.intro-active { overflow: hidden; }
 
 @media (prefers-reduced-motion: no-preference) {
   [data-reveal] {
-    transition: opacity 0.7s cubic-bezier(0.16, 0.84, 0.44, 1),
-                transform 0.7s cubic-bezier(0.16, 0.84, 0.44, 1);
+    transition: opacity 0.5s cubic-bezier(0.16, 0.84, 0.44, 1),
+                transform 0.5s cubic-bezier(0.16, 0.84, 0.44, 1);
     transition-delay: var(--reveal-delay, 0s);
   }
 }

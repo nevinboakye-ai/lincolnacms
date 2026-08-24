@@ -78,7 +78,7 @@
 
   <section class="page-hero container">
     <span class="eyebrow">Members Hub</span>
-    <h1 class="page-hero-title">Welcome back, <span data-member-name-inline>member</span></h1>
+    <h1 class="page-hero-title"><span data-greeting-word>Welcome back</span>, <span data-member-name-inline>member</span></h1>
     <p class="page-hero-lede">Your profile, digital membership card and account controls.</p>
     <div class="tricolor-bar tricolor-bar--sm" aria-hidden="true"><span></span><span></span><span></span></div>
   </section>
@@ -91,9 +91,23 @@
         <span>The members hub isn't connected yet — Nevin still needs to add the Supabase project keys to js/supabase-client.js. See README-members-setup.md.</span>
       </div>
 
-      <div id="auth-gate" class="auth-gate">
-        <span class="auth-gate-spinner" aria-hidden="true"></span>
-        <span>Checking your login…</span>
+      <div id="auth-gate" class="auth-gate auth-gate--skeleton">
+        <span class="visually-hidden">Checking your login…</span>
+        <div class="hub-skeleton" aria-hidden="true">
+          <div class="skeleton-card">
+            <div class="skeleton-line skeleton-line--eyebrow"></div>
+            <div class="skeleton-line skeleton-line--title"></div>
+            <div class="skeleton-line skeleton-line--sub"></div>
+            <div class="skeleton-line skeleton-line--sub" style="width:55%;"></div>
+          </div>
+          <div class="skeleton-details">
+            <div class="skeleton-line skeleton-line--heading" style="width:40%;"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+          </div>
+        </div>
       </div>
 
       <p id="hub-error" class="auth-error" role="status" style="display:none;"></p>

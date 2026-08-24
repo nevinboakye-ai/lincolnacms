@@ -153,6 +153,19 @@
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
+  // A small "New" badge for anything posted in the last 48 hours —
+  // shared by the members feed, news posts and MMG updates, so
+  // checking back in after a couple of days actually feels rewarded
+  // instead of every post looking identical regardless of age.
+  function newBadgeHtml(dateStr) {
+    var date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    var hoursOld = (Date.now() - date.getTime()) / 3600000;
+    return hoursOld >= 0 && hoursOld < 48
+      ? '<span class="new-badge">New</span>'
+      : '';
+  }
+
   // Shared by every network_join_events reader (the hub banner, the
   // Network ticker, and its full-history modal) — if someone's account
   // ever gets recreated (e.g. after getting stuck on a broken invite
@@ -634,7 +647,7 @@
         ? '<p class="feed-item-from">— ' + escapeHtml(row.posted_by) + '</p>'
         : '';
       return '<article class="' + classes + '">' +
-        '<div class="feed-item-meta">' + pinHtml +
+        '<div class="feed-item-meta">' + pinHtml + newBadgeHtml(row.published_at) +
         '<span class="feed-item-tag">' + escapeHtml(meta.label) + '</span>' +
         '<span class="feed-item-date">' + escapeHtml(timeAgo(row.published_at)) + '</span></div>' +
         '<h3 class="feed-item-title">' + escapeHtml(row.title) + '</h3>' +
@@ -1942,7 +1955,7 @@
       ? '<p class="feed-item-from">— ' + escapeHtml(row.posted_by) + '</p>'
       : '';
     return '<article class="' + classes + '">' +
-      '<div class="feed-item-meta">' + pinHtml +
+      '<div class="feed-item-meta">' + pinHtml + newBadgeHtml(row.published_at) +
       '<span class="feed-item-tag">' + escapeHtml(tagLabel) + '</span>' +
       '<span class="feed-item-date">' + escapeHtml(timeAgo(row.published_at)) + '</span></div>' +
       '<h3 class="feed-item-title">' + escapeHtml(row.title) + '</h3>' +
@@ -2245,7 +2258,7 @@
       return '<article class="news-post' + (row.pinned ? ' news-post--pinned' : '') + '" data-post-id="' + row.id + '">' +
         mediaHtml +
         '<div class="news-post-body">' +
-          '<div class="feed-item-meta">' + pinHtml + '<span class="feed-item-tag">News</span><span class="feed-item-date">' + escapeHtml(timeAgo(row.published_at)) + '</span></div>' +
+          '<div class="feed-item-meta">' + pinHtml + newBadgeHtml(row.published_at) + '<span class="feed-item-tag">News</span><span class="feed-item-date">' + escapeHtml(timeAgo(row.published_at)) + '</span></div>' +
           '<h2 class="news-post-title">' + escapeHtml(row.title) + '</h2>' +
           '<p class="news-post-text">' + escapeHtml(row.body) + '</p>' +
           '<div class="news-post-actions">' +

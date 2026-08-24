@@ -74,6 +74,16 @@
     el.textContent = new Date().getFullYear();
   });
 
+  // Time-of-day greeting on the members/MMG hubs — a small, human touch
+  // in place of a flat "Welcome back" every single visit.
+  document.querySelectorAll('[data-greeting-word]').forEach(function (el) {
+    var hour = new Date().getHours();
+    el.textContent = hour < 5 ? 'Good night'
+      : hour < 12 ? 'Good morning'
+      : hour < 18 ? 'Good afternoon'
+      : 'Good evening';
+  });
+
   // Homepage intro splash — plays once per browser session, skips entirely
   // for prefers-reduced-motion, and stays on screen until the visitor
   // actively dismisses it (click/tap anywhere, a swipe, or any keypress).
@@ -237,7 +247,7 @@
         revealObserver.unobserve(entry.target);
       }
     });
-  }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+  }, { threshold: 0.01, rootMargin: '0px 0px 15% 0px' });
 
   function tagReveal(el) {
     if (el.dataset.revealTagged) return;
@@ -245,7 +255,7 @@
     if (!el.hasAttribute('data-reveal')) el.setAttribute('data-reveal', '');
     var parent = el.parentElement;
     var siblingIndex = parent ? parent.querySelectorAll(':scope > [data-reveal-tagged]').length - 1 : 0;
-    el.style.setProperty('--reveal-delay', (Math.min(Math.max(siblingIndex, 0), 7) * 0.06) + 's');
+    el.style.setProperty('--reveal-delay', (Math.min(Math.max(siblingIndex, 0), 5) * 0.045) + 's');
     if (skipReveal) {
       el.classList.add('is-visible');
     } else {
@@ -263,7 +273,7 @@
       countUpObserver.unobserve(entry.target);
       animateCountUp(entry.target);
     });
-  }, { threshold: 0.6 });
+  }, { threshold: 0.2, rootMargin: '0px 0px 10% 0px' });
 
   function animateCountUp(el) {
     var match = el.textContent.trim().match(/^(\d+)(.*)$/);
@@ -405,6 +415,30 @@
     window.addEventListener('scroll', onScroll, { passive: true });
     update();
   })();
+
+  // Digital membership/attendee card — a real credential catching the
+  // light as it tilts, on any device with a mouse to track. Touch
+  // devices keep the card's ambient shimmer (CSS ::before, always on)
+  // as their "shine" instead, since there's no cursor to follow.
+  if (!reduceMotionMQ.matches && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    document.querySelectorAll('.member-card').forEach(function (card) {
+      card.addEventListener('mousemove', function (e) {
+        var rect = card.getBoundingClientRect();
+        var x = (e.clientX - rect.left) / rect.width;
+        var y = (e.clientY - rect.top) / rect.height;
+        var rotateY = (x - 0.5) * 14;
+        var rotateX = (0.5 - y) * 10;
+        card.classList.add('is-tilting');
+        card.style.setProperty('--glare-x', (x * 100) + '%');
+        card.style.setProperty('--glare-y', (y * 100) + '%');
+        card.style.transform = 'perspective(900px) rotateX(' + rotateX.toFixed(2) + 'deg) rotateY(' + rotateY.toFixed(2) + 'deg)';
+      });
+      card.addEventListener('mouseleave', function () {
+        card.classList.remove('is-tilting');
+        card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg)';
+      });
+    });
+  }
 
   // Expandable rows/cards: click anywhere on an element marked [data-expand-row]
   // to reveal more detail (events, committee bios). Clicks that land on a real
