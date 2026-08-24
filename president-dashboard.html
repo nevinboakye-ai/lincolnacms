@@ -7,7 +7,7 @@
 <meta name="description" content="President-only view of account activity across the LACMS platform.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-6">
+<link rel="stylesheet" href="css/styles.css?v=20260824-7">
 </head>
 <body>
 
@@ -151,6 +151,51 @@
         </div>
         <div id="mmg-sections"></div>
 
+        <div class="section-head" style="margin-top: var(--space-8);">
+          <span class="eyebrow">Sankofa Mentorship</span>
+          <h2>Pending mentor accounts</h2>
+          <p>Doctors and pharmacists who created their own account to apply as a mentor — approve to make them visible on the Network.</p>
+        </div>
+        <div class="roster-table" id="pending-professionals-table"></div>
+        <p id="pending-professionals-empty" style="display:none; color: var(--color-text-faint);">No pending professional accounts right now.</p>
+
+        <div class="section-head" style="margin-top: var(--space-8);">
+          <span class="eyebrow">Sankofa Circle</span>
+          <h2>Applications</h2>
+          <p id="sankofa-count-line" class="dash-section-count"></p>
+          <div class="dash-filter-tabs" id="sankofa-filter-tabs">
+            <button type="button" class="dash-filter-tab is-active" data-sankofa-filter="all">All</button>
+            <button type="button" class="dash-filter-tab" data-sankofa-filter="mentee">Mentees</button>
+            <button type="button" class="dash-filter-tab" data-sankofa-filter="mentor">Mentors</button>
+          </div>
+        </div>
+        <div class="app-card-list" id="sankofa-applications-list"></div>
+        <p id="sankofa-applications-empty" style="display:none; color: var(--color-text-faint);">No Sankofa applications yet.</p>
+
+        <div class="section-head" style="margin-top: var(--space-8);">
+          <span class="eyebrow">ACMS Member of the Month</span>
+          <h2>Nominations</h2>
+          <p id="motm-count-line" class="dash-section-count"></p>
+        </div>
+        <div class="app-card-list" id="motm-nominations-list"></div>
+        <p id="motm-nominations-empty" style="display:none; color: var(--color-text-faint);">No nominations yet.</p>
+
+        <div class="section-head" style="margin-top: var(--space-8);">
+          <span class="eyebrow">Events</span>
+          <h2>Who's registered</h2>
+          <p id="event-regs-count-line" class="dash-section-count"></p>
+        </div>
+        <div id="event-registrations-sections"></div>
+        <p id="event-registrations-empty" style="display:none; color: var(--color-text-faint);">No one's registered for anything yet.</p>
+
+        <div class="section-head" style="margin-top: var(--space-8);">
+          <span class="eyebrow">Gallery</span>
+          <h2>Member submissions</h2>
+          <p id="gallery-submissions-count-line" class="dash-section-count"></p>
+        </div>
+        <div class="gallery-submissions-grid" id="gallery-submissions-grid"></div>
+        <p id="gallery-submissions-empty" style="display:none; color: var(--color-text-faint);">No gallery submissions yet.</p>
+
       </div>
     </div>
   </section>
@@ -211,7 +256,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-6"></script>
-<script src="js/members.js?v=20260824-6"></script>
+<script src="js/main.js?v=20260824-7"></script>
+<script src="js/members.js?v=20260824-7"></script>
 </body>
 </html>

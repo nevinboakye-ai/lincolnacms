@@ -13,6 +13,50 @@
   }
   notConfiguredEls.forEach(function (el) { el.style.display = 'none'; });
 
+  // ---- Site-wide: cap "stay signed in" at about a month -----------------
+  // persistSession + autoRefreshToken (js/supabase-client.js) already keep
+  // someone signed in across page loads and browser restarts — Supabase's
+  // refresh tokens don't expire on a fixed schedule by default, which on
+  // its own means "indefinitely", not "about a month". This adds an
+  // explicit, enforced cap on top: the moment of an actual sign-in gets
+  // stamped locally, and once that stamp is more than 30 days old the
+  // session is ended automatically next time they're back on the site —
+  // the same effect as logging out themselves, just on a timer.
+  (function () {
+    var STAMP_KEY = 'lacmsSessionStartedAt';
+    var MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+    supabaseClient.auth.onAuthStateChange(function (event) {
+      if (event === 'SIGNED_IN') {
+        try {
+          if (!localStorage.getItem(STAMP_KEY)) {
+            localStorage.setItem(STAMP_KEY, String(Date.now()));
+          }
+        } catch (e) {}
+      } else if (event === 'SIGNED_OUT') {
+        try { localStorage.removeItem(STAMP_KEY); } catch (e) {}
+      }
+    });
+
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) return;
+      var stamp;
+      try { stamp = localStorage.getItem(STAMP_KEY); } catch (e) { stamp = null; }
+      if (!stamp) {
+        // First time this code has seen this session on this device
+        // (e.g. someone already signed in from before this existed) —
+        // start the clock now rather than treating it as already stale.
+        try { localStorage.setItem(STAMP_KEY, String(Date.now())); } catch (e) {}
+        return;
+      }
+      if (Date.now() - parseInt(stamp, 10) > MAX_AGE_MS) {
+        try { localStorage.removeItem(STAMP_KEY); } catch (e) {}
+        supabaseClient.auth.signOut();
+      }
+    });
+  })();
+
   // The one account allowed onto the president-only activity dashboard —
   // client-side use of this is purely a UX shortcut (hiding the card/
   // redirecting early); the actual security boundary is is_president()
@@ -743,19 +787,51 @@
     // Network. claim_professional_profile() links their auth account to
     // the network_professionals row the committee already created for
     // them (matched by email) the first time they land here; it's a
-    // no-op on every visit after that. Only if neither lookup finds
-    // anything do we fall back to the original "not set up yet" error.
+    // no-op on every visit after that. If that finds nothing either, but
+    // they signed up through mentor-signup.html with email confirmation
+    // required (so no session existed yet at signup time to create their
+    // profile row directly), the details they entered are sitting in
+    // their own auth user_metadata — create the self-registered row from
+    // that now, on this first confirmed sign-in. Only if none of that
+    // applies do we fall back to the original "not set up yet" error.
     function loadProfessionalProfile(session) {
       supabaseClient.rpc('claim_professional_profile').then(function () {
         getProfessionalRow(session).then(function (proRow) {
-          if (authGate) authGate.style.display = 'none';
-          if (!proRow) {
-            showMessage(hubError, "We couldn't find your membership profile yet — the committee may still be setting it up. Email acms@lincolnsu.com if this doesn't resolve soon.");
+          if (proRow) {
+            if (authGate) authGate.style.display = 'none';
+            renderProfessionalProfile(proRow, session);
+            showHubContent(false);
             return;
           }
-          renderProfessionalProfile(proRow, session);
-          // Professionals are never committee members.
-          showHubContent(false);
+          var meta = session.user.user_metadata || {};
+          if (meta.is_mentor_signup) {
+            supabaseClient
+              .from('network_professionals')
+              .insert({
+                user_id: session.user.id,
+                email: session.user.email,
+                full_name: meta.full_name || '',
+                title: meta.professional_title || '',
+                organisation: meta.professional_organisation || null,
+                category: meta.professional_category || 'other',
+                self_registered: true,
+                is_active: false
+              })
+              .select()
+              .single()
+              .then(function (insertResult) {
+                if (authGate) authGate.style.display = 'none';
+                if (insertResult.error || !insertResult.data) {
+                  showMessage(hubError, "We couldn't find your membership profile yet — the committee may still be setting it up. Email acms@lincolnsu.com if this doesn't resolve soon.");
+                  return;
+                }
+                renderProfessionalProfile(insertResult.data, session);
+                showHubContent(false);
+              });
+            return;
+          }
+          if (authGate) authGate.style.display = 'none';
+          showMessage(hubError, "We couldn't find your membership profile yet — the committee may still be setting it up. Email acms@lincolnsu.com if this doesn't resolve soon.");
         });
       });
     }
@@ -1191,14 +1267,31 @@
           e.stopPropagation();
           if (btn.disabled) return;
           var slug = btn.getAttribute('data-event-slug');
+
+          if (btn.classList.contains('is-registered')) {
+            if (!window.confirm('Cancel your registration for ' + btn.getAttribute('data-event-name') + '?')) return;
+            btn.disabled = true;
+            supabaseClient
+              .from('event_registrations')
+              .delete()
+              .eq('member_id', session.user.id)
+              .eq('event_slug', slug)
+              .then(function (result) {
+                btn.disabled = false;
+                if (result.error) return;
+                markUnregistered(btn);
+              });
+            return;
+          }
+
           var name = btn.getAttribute('data-event-name');
           btn.disabled = true;
           supabaseClient
             .from('event_registrations')
             .insert({ member_id: session.user.id, event_slug: slug, event_name: name })
             .then(function (result) {
+              btn.disabled = false;
               if (result.error) {
-                btn.disabled = false;
                 btn.textContent = 'Try again';
                 return;
               }
@@ -1207,10 +1300,14 @@
         });
       });
 
+      function markUnregistered(btn) {
+        btn.classList.remove('is-registered');
+        btn.textContent = 'Register';
+      }
+
       function markRegistered(btn) {
-        btn.disabled = true;
         btn.classList.add('is-registered');
-        btn.textContent = "You're registered";
+        btn.textContent = "You're registered — cancel?";
       }
     });
   }
@@ -1402,9 +1499,19 @@
   }
 
   // ---- Sankofa Circle application page ----
+  // Two completely separate audiences share this page: a member/aspiring-
+  // medic applying as a mentee (committee-gated, sankofa_eligible-gated,
+  // closes 11 October 2026 — enforced again in the DB by migration 028's
+  // trigger, this client-side check just gives a friendlier message), and
+  // a doctor/pharmacist applying as a mentor (any signed-in professional
+  // row, active or still pending approval, no committee gate, no
+  // deadline). Which branch a visitor sees is decided purely by whether
+  // they have a network_professionals row at all.
   var sankofaFormWrap = document.getElementById('sankofa-form-wrap');
+  var sankofaMentorFormWrap = document.getElementById('sankofa-mentor-form-wrap');
   var sankofaAlreadyApplied = document.getElementById('sankofa-already-applied');
   var sankofaNotEligible = document.getElementById('sankofa-not-eligible');
+  var SANKOFA_MENTEE_DEADLINE = new Date('2026-10-11T23:59:59+01:00').getTime();
   if (sankofaFormWrap || sankofaAlreadyApplied) {
     var sankofaAuthGate = document.getElementById('auth-gate');
     var sankofaSession = null;
@@ -1417,30 +1524,55 @@
       }
       sankofaSession = session;
 
-      checkIsCommittee(session).then(function (isCommittee) {
-        if (!isCommittee) {
+      getProfessionalRow(session).then(function (proRow) {
+        if (proRow) {
           if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
-          var comingSoonNote = document.getElementById('sankofa-coming-soon-note');
-          if (comingSoonNote) comingSoonNote.style.display = 'flex';
+          if (proRow.title) {
+            var titleField = document.getElementById('sankofa-mentor-title');
+            if (titleField) titleField.value = proRow.title;
+          }
+          if (proRow.organisation) {
+            var orgField = document.getElementById('sankofa-mentor-organisation');
+            if (orgField) orgField.value = proRow.organisation;
+          }
+          if (proRow.category) {
+            var catField = document.getElementById('sankofa-mentor-category');
+            if (catField) catField.value = proRow.category;
+          }
+          checkExistingApplication(session, 'mentor');
           return;
         }
-        supabaseClient
-          .from('members')
-          .select('sankofa_eligible')
-          .eq('id', session.user.id)
-          .single()
-          .then(function (result) {
+
+        checkIsCommittee(session).then(function (isCommittee) {
+          if (!isCommittee) {
             if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
-            if (result.error || !result.data || !result.data.sankofa_eligible) {
-              if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
-              return;
-            }
-            checkExistingApplication(session);
-          });
+            var comingSoonNote = document.getElementById('sankofa-coming-soon-note');
+            if (comingSoonNote) comingSoonNote.style.display = 'flex';
+            return;
+          }
+          supabaseClient
+            .from('members')
+            .select('sankofa_eligible')
+            .eq('id', session.user.id)
+            .single()
+            .then(function (result) {
+              if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
+              if (result.error || !result.data || !result.data.sankofa_eligible) {
+                if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
+                return;
+              }
+              if (Date.now() > SANKOFA_MENTEE_DEADLINE) {
+                var deadlineNote = document.getElementById('sankofa-mentee-deadline-passed');
+                if (deadlineNote) deadlineNote.style.display = 'flex';
+                return;
+              }
+              checkExistingApplication(session, 'mentee');
+            });
+        });
       });
     });
 
-    function checkExistingApplication(session) {
+    function checkExistingApplication(session, type) {
       supabaseClient
         .from('sankofa_applications')
         .select('created_at')
@@ -1451,7 +1583,9 @@
           var existing = result.data && result.data[0];
           if (existing) {
             showAlreadyApplied(existing);
-          } else if (sankofaFormWrap) {
+          } else if (type === 'mentor' && sankofaMentorFormWrap) {
+            sankofaMentorFormWrap.style.display = 'block';
+          } else if (type === 'mentee' && sankofaFormWrap) {
             sankofaFormWrap.style.display = 'block';
           }
         });
@@ -1519,6 +1653,62 @@
               return;
             }
             sankofaFormWrap.style.display = 'none';
+            showAlreadyApplied({ created_at: new Date().toISOString() });
+          });
+      });
+    }
+
+    var sankofaMentorForm = document.getElementById('sankofa-mentor-form');
+    if (sankofaMentorForm) {
+      sankofaMentorForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = document.getElementById('sankofa-mentor-status');
+        hideMessage(statusEl);
+
+        var title = document.getElementById('sankofa-mentor-title').value.trim();
+        var category = document.getElementById('sankofa-mentor-category').value;
+        var organisation = document.getElementById('sankofa-mentor-organisation').value.trim();
+        var experience = document.getElementById('sankofa-mentor-experience').value;
+        var specialty = document.getElementById('sankofa-mentor-specialty').value.trim();
+        var motivation = document.getElementById('sankofa-mentor-motivation').value.trim();
+        var offers = Array.from(sankofaMentorForm.querySelectorAll('input[name="mentor-offer"]:checked')).map(function (el) { return el.value; });
+        var capacity = document.getElementById('sankofa-mentor-capacity').value;
+        var communication = sankofaMentorForm.querySelector('input[name="sankofa-mentor-communication"]:checked');
+        var frequency = sankofaMentorForm.querySelector('input[name="sankofa-mentor-frequency"]:checked');
+        var statement = document.getElementById('sankofa-mentor-statement').value.trim();
+
+        if (!title || !category || !experience || !motivation || !capacity || !communication || !frequency) {
+          showMessage(statusEl, 'Fill in the required fields before submitting.');
+          return;
+        }
+
+        var btn = sankofaMentorForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+
+        supabaseClient
+          .from('sankofa_applications')
+          .insert({
+            member_id: sankofaSession.user.id,
+            applicant_type: 'mentor',
+            mentor_title: title,
+            mentor_category: category,
+            mentor_organisation: organisation || null,
+            years_experience: experience,
+            mentor_specialty: specialty || null,
+            mentor_motivation: motivation,
+            what_you_offer: offers.length ? offers : null,
+            mentee_capacity: capacity,
+            communication_style: communication.value,
+            meeting_frequency: frequency.value,
+            statement: statement || null
+          })
+          .then(function (result) {
+            btn.disabled = false;
+            if (result.error) {
+              showMessage(statusEl, result.error.message);
+              return;
+            }
+            sankofaMentorFormWrap.style.display = 'none';
             showAlreadyApplied({ created_at: new Date().toISOString() });
           });
       });
@@ -1732,6 +1922,104 @@
         });
       });
     }
+  }
+
+  // ---- Mentor signup page (mentor-signup.html) — a brand-new doctor or
+  // pharmacist with no LACMS account creates one here, purely to apply
+  // as a Sankofa mentor. If the committee already pre-added them to the
+  // Network (matched by email), claim_professional_profile() links this
+  // new account to that existing row instead of creating a duplicate.
+  // Otherwise a fresh self-registered, pending (is_active=false) row is
+  // created directly. ----
+  var mentorSignupForm = document.getElementById('mentor-signup-form');
+  if (mentorSignupForm) {
+    var mentorSignupConfirmation = document.getElementById('mentor-signup-confirmation');
+
+    function createSelfRegisteredProfessional(session, fields) {
+      return supabaseClient
+        .from('network_professionals')
+        .insert({
+          user_id: session.user.id,
+          email: fields.email,
+          full_name: fields.name,
+          title: fields.title,
+          organisation: fields.organisation || null,
+          category: fields.category,
+          self_registered: true,
+          is_active: false
+        });
+    }
+
+    mentorSignupForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var statusEl = document.getElementById('mentor-signup-status');
+      hideMessage(statusEl);
+
+      var fields = {
+        name: document.getElementById('mentor-signup-name').value.trim(),
+        title: document.getElementById('mentor-signup-title').value.trim(),
+        category: document.getElementById('mentor-signup-category').value,
+        organisation: document.getElementById('mentor-signup-organisation').value.trim(),
+        email: document.getElementById('mentor-signup-email').value.trim()
+      };
+      var password = document.getElementById('mentor-signup-password').value;
+      var confirmPassword = document.getElementById('mentor-signup-confirm').value;
+
+      if (password.length < 8) {
+        showMessage(statusEl, 'Password must be at least 8 characters.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        showMessage(statusEl, "Passwords don't match — try again.");
+        return;
+      }
+
+      var btn = mentorSignupForm.querySelector('button[type="submit"]');
+      btn.disabled = true;
+
+      supabaseClient.auth.signUp({
+        email: fields.email,
+        password: password,
+        options: {
+          data: {
+            full_name: fields.name,
+            professional_title: fields.title,
+            professional_organisation: fields.organisation,
+            professional_category: fields.category,
+            is_mentor_signup: true
+          }
+        }
+      }).then(function (result) {
+        if (result.error) {
+          btn.disabled = false;
+          showMessage(statusEl, result.error.message);
+          return;
+        }
+        var session = result.data && result.data.session;
+        if (!session) {
+          btn.disabled = false;
+          mentorSignupForm.style.display = 'none';
+          if (mentorSignupConfirmation) mentorSignupConfirmation.style.display = 'block';
+          return;
+        }
+        supabaseClient.rpc('claim_professional_profile').then(function () {
+          getProfessionalRow(session).then(function (proRow) {
+            if (proRow) {
+              window.location.href = 'member-sankofa.html';
+              return;
+            }
+            createSelfRegisteredProfessional(session, fields).then(function (insertResult) {
+              btn.disabled = false;
+              if (insertResult.error) {
+                showMessage(statusEl, "We couldn't create your profile — you may already have an account. Try logging in instead, or email acms@lincolnsu.com.");
+                return;
+              }
+              window.location.href = 'member-sankofa.html';
+            });
+          });
+        });
+      });
+    });
   }
 
   // ---- MMG portal page: tier resolution, exclusive content, voting,
@@ -2960,7 +3248,11 @@
           supabaseClient.rpc('president_get_members'),
           supabaseClient.rpc('president_get_pending_members'),
           supabaseClient.rpc('president_get_professionals'),
-          supabaseClient.rpc('president_get_mmg_guests')
+          supabaseClient.rpc('president_get_mmg_guests'),
+          supabaseClient.rpc('president_get_pending_professionals'),
+          supabaseClient.rpc('president_get_sankofa_applications'),
+          supabaseClient.rpc('president_get_motm_nominations'),
+          supabaseClient.rpc('president_get_event_registrations')
         ]);
       }).then(function (results) {
         if (presidentAuthGate) presidentAuthGate.style.display = 'none';
@@ -2983,6 +3275,16 @@
         renderAttentionList(members, pendingMembers, professionals, mmgGuests);
         renderPeopleSection(members, professionals, courseAccent);
         renderMmgSection(mmgGuests);
+
+        // The four newer sections (migration 028) are rendered even if
+        // their own RPC individually errors (e.g. the migration hasn't
+        // been run yet on this database) — a missing new feature
+        // shouldn't ever take down the whole dashboard above it.
+        if (!results[4].error) renderPendingProfessionals(results[4].data || []);
+        if (!results[5].error) renderSankofaApplications(results[5].data || []);
+        if (!results[6].error) renderMotmNominations(results[6].data || []);
+        if (!results[7].error) renderEventRegistrations(results[7].data || []);
+        loadGallerySubmissions();
 
         dashLastLoaded = new Date();
         var updatedLabel = document.getElementById('dash-updated-label');
@@ -3350,25 +3652,290 @@
       label.textContent = 'Updated ' + timeAgo(dashLastLoaded);
     }, 1000);
 
-    // Delegated since every "Mark active" button is injected dynamically
-    // on every reload — a direct listener would only ever catch the
-    // first render's buttons.
-    presidentContent.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-mark-active]');
-      if (!btn) return;
-      btn.disabled = true;
-      btn.textContent = 'Marking…';
-      supabaseClient
-        .rpc('president_mark_activated', { target_id: btn.getAttribute('data-id'), target_type: btn.getAttribute('data-type') })
-        .then(function (result) {
-          if (result.error) {
-            btn.disabled = false;
-            btn.textContent = 'Mark active';
-            console.error('Mark active failed:', result.error.message);
+    // ---- Pending mentor accounts (self-registered professionals) ----
+    function renderPendingProfessionals(list) {
+      var table = document.getElementById('pending-professionals-table');
+      var emptyEl = document.getElementById('pending-professionals-empty');
+      if (!table) return;
+      if (!list.length) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        table.innerHTML = '';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+      table.innerHTML = list.map(function (p) {
+        return '<div class="roster-row" data-name="' + escapeHtml((p.full_name || '').toLowerCase()) + '">' +
+          '<div class="roster-main">' +
+          '<span class="roster-avatar roster-avatar--professional">' + escapeHtml(presidentInitials(p.full_name)) + '</span>' +
+          '<div class="roster-info"><div class="roster-name">' + escapeHtml(p.full_name || 'Unnamed') + '</div>' +
+          '<div class="roster-detail">' + escapeHtml(p.title || 'Professional') + '</div>' +
+          '</div></div>' +
+          '<span class="roster-time" data-label="Category">' + escapeHtml(PROFESSIONAL_CATEGORY_LABELS[p.category] || p.category || '—') + '</span>' +
+          '<span class="roster-time" data-label="Applied">' + escapeHtml(timeAgo(p.created_at)) + '</span>' +
+          '<span class="roster-time" data-label="Email">' + escapeHtml(p.email || '—') + '</span>' +
+          '<button type="button" class="roster-approve-btn" data-approve-professional data-id="' + escapeHtml(p.id) + '">Approve</button>' +
+          '</div>';
+      }).join('');
+    }
+
+    // ---- Sankofa applications — mentees and mentors share one list,
+    // filterable by the tabs above it; each card carries every field
+    // from president_get_sankofa_applications() relevant to its type,
+    // collapsed until clicked open. ----
+    var sankofaAllApplications = [];
+    var sankofaCurrentFilter = 'all';
+    function appCardField(label, value) {
+      if (!value) return '';
+      return '<div class="app-card-field"><div class="app-card-field-label">' + escapeHtml(label) + '</div><div class="app-card-field-value">' + escapeHtml(value) + '</div></div>';
+    }
+    function renderSankofaApplications(list) {
+      sankofaAllApplications = list;
+      var countEl = document.getElementById('sankofa-count-line');
+      var mentees = list.filter(function (a) { return a.applicant_type === 'mentee'; }).length;
+      var mentors = list.filter(function (a) { return a.applicant_type === 'mentor'; }).length;
+      if (countEl) countEl.textContent = list.length + ' total — ' + mentees + ' mentee' + (mentees === 1 ? '' : 's') + ', ' + mentors + ' mentor' + (mentors === 1 ? '' : 's');
+      renderSankofaApplicationsFiltered(sankofaCurrentFilter);
+    }
+    function renderSankofaApplicationsFiltered(filter) {
+      sankofaCurrentFilter = filter;
+      var listEl = document.getElementById('sankofa-applications-list');
+      var emptyEl = document.getElementById('sankofa-applications-empty');
+      if (!listEl) return;
+      var filtered = filter === 'all' ? sankofaAllApplications : sankofaAllApplications.filter(function (a) { return a.applicant_type === filter; });
+      if (!filtered.length) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        listEl.innerHTML = '';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+      listEl.innerHTML = filtered.map(renderSankofaAppCard).join('');
+    }
+    function renderSankofaAppCard(a) {
+      var isMentor = a.applicant_type === 'mentor';
+      var meta = isMentor
+        ? [PROFESSIONAL_CATEGORY_LABELS[a.mentor_category] || a.mentor_category, a.mentor_organisation].filter(Boolean).join(' · ')
+        : [a.current_stage, a.specialty_interest].filter(Boolean).join(' · ');
+      var body = isMentor
+        ? appCardField('Title', a.mentor_title) +
+          appCardField('Category', PROFESSIONAL_CATEGORY_LABELS[a.mentor_category] || a.mentor_category) +
+          appCardField('Organisation', a.mentor_organisation) +
+          appCardField('Years of experience', a.years_experience) +
+          appCardField('Specialty', a.mentor_specialty) +
+          appCardField('Motivation', a.mentor_motivation) +
+          appCardField('What they can offer', (a.what_you_offer || []).join(', ')) +
+          appCardField('Mentee capacity', a.mentee_capacity) +
+          appCardField('Communication style', a.communication_style) +
+          appCardField('Meeting frequency', a.meeting_frequency) +
+          appCardField('Statement', a.statement)
+        : appCardField('Current stage', a.current_stage) +
+          appCardField('Heritage', a.heritage) +
+          appCardField('Career aspirations', a.career_aspirations) +
+          appCardField('Specialty interest', a.specialty_interest) +
+          appCardField('Hobbies & interests', (a.hobbies_interests || []).join(', ')) +
+          appCardField('Homebody ↔ always out (1–5)', a.social_preference != null ? String(a.social_preference) : '') +
+          appCardField('Fitness (1–5)', a.fitness_preference != null ? String(a.fitness_preference) : '') +
+          appCardField('Solo ↔ group studier (1–5)', a.study_style != null ? String(a.study_style) : '') +
+          appCardField('Academic ↔ personal support (1–5)', a.support_style != null ? String(a.support_style) : '') +
+          appCardField('Communication style', a.communication_style) +
+          appCardField('Meeting frequency', a.meeting_frequency) +
+          appCardField('Looking for', a.looking_for) +
+          appCardField('Statement', a.statement);
+      return '<div class="app-card">' +
+        '<div class="app-card-head" data-app-card-toggle>' +
+        '<div class="app-card-head-main">' +
+        '<span class="app-badge app-badge--' + (isMentor ? 'mentor' : 'mentee') + '">' + (isMentor ? 'Mentor' : 'Mentee') + '</span>' +
+        '<span class="app-card-name">' + escapeHtml(a.full_name || 'Unnamed') + '</span>' +
+        '<span class="app-card-meta">' + escapeHtml(meta) + (meta ? ' · ' : '') + escapeHtml(timeAgo(a.created_at)) + '</span>' +
+        '</div>' +
+        '<svg class="icon app-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>' +
+        '</div>' +
+        '<div class="app-card-body">' + appCardField('Email', a.email) + body + '</div>' +
+        '</div>';
+    }
+
+    // ---- MoTM nominations ----
+    function renderMotmNominations(list) {
+      var listEl = document.getElementById('motm-nominations-list');
+      var emptyEl = document.getElementById('motm-nominations-empty');
+      var countEl = document.getElementById('motm-count-line');
+      if (!listEl) return;
+      if (countEl) countEl.textContent = list.length + (list.length === 1 ? ' nomination' : ' nominations');
+      if (!list.length) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        listEl.innerHTML = '';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+      listEl.innerHTML = list.map(function (n) {
+        return '<div class="app-card">' +
+          '<div class="app-card-head" data-app-card-toggle>' +
+          '<div class="app-card-head-main">' +
+          '<span class="app-card-name">' + escapeHtml(n.nominee_name || 'Unnamed') + '</span>' +
+          '<span class="app-card-meta">Nominated by ' + escapeHtml(n.nominator_name || 'someone') + ' · ' + escapeHtml(timeAgo(n.created_at)) + '</span>' +
+          '</div>' +
+          '<svg class="icon app-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>' +
+          '</div>' +
+          '<div class="app-card-body">' + appCardField('Reason', n.reason) + appCardField('Nominator email', n.nominator_email) + '</div>' +
+          '</div>';
+      }).join('');
+    }
+
+    // ---- Event registrations, grouped by event ----
+    function renderEventRegistrations(list) {
+      var wrap = document.getElementById('event-registrations-sections');
+      var emptyEl = document.getElementById('event-registrations-empty');
+      var countEl = document.getElementById('event-regs-count-line');
+      if (!wrap) return;
+      if (countEl) countEl.textContent = list.length + (list.length === 1 ? ' registration' : ' registrations') + ' total';
+      if (!list.length) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        wrap.innerHTML = '';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+      var byEvent = {};
+      list.forEach(function (r) {
+        var key = r.event_name || r.event_slug || 'Unknown event';
+        if (!byEvent[key]) byEvent[key] = [];
+        byEvent[key].push(r);
+      });
+      var eventNames = Object.keys(byEvent).sort();
+      wrap.innerHTML = eventNames.map(function (name) {
+        var regs = byEvent[name].slice().sort(function (a, b) { return new Date(b.registered_at) - new Date(a.registered_at); });
+        var rows = regs.map(function (r) {
+          return '<div class="roster-row" data-name="' + escapeHtml((r.member_name || '').toLowerCase()) + '">' +
+            '<div class="roster-main"><span class="roster-avatar">' + escapeHtml(presidentInitials(r.member_name)) + '</span>' +
+            '<div class="roster-info"><div class="roster-name">' + escapeHtml(r.member_name || 'Unnamed') + '</div></div></div>' +
+            '<span class="roster-time" data-label="Registered">' + escapeHtml(timeAgo(r.registered_at)) + '</span>' +
+            '</div>';
+        }).join('');
+        return '<div class="dash-course-section"><h2 class="dash-course-title">' + escapeHtml(name) + ' (' + regs.length + ')</h2><div class="roster-table">' + rows + '</div></div>';
+      }).join('');
+    }
+
+    // ---- Gallery submissions browser — the storage bucket has no name
+    // attached to any file, just the uploader's auth id as the folder
+    // name (see bindMediaUploadForm), so this lists two levels (folders,
+    // then files within each) and resolves folder names to display
+    // names in one batched president_lookup_names() call rather than
+    // one lookup per file. Runs on its own, separately from the RPC
+    // Promise.all above — a slow or failed storage listing shouldn't
+    // hold up or break the rest of the dashboard. ----
+    function loadGallerySubmissions() {
+      var grid = document.getElementById('gallery-submissions-grid');
+      var emptyEl = document.getElementById('gallery-submissions-empty');
+      var countEl = document.getElementById('gallery-submissions-count-line');
+      if (!grid) return;
+
+      function showEmpty() {
+        if (countEl) countEl.textContent = '0 files';
+        if (emptyEl) emptyEl.style.display = 'block';
+        grid.innerHTML = '';
+      }
+
+      supabaseClient.storage.from('gallery-submissions').list('', { limit: 500, sortBy: { column: 'name', order: 'desc' } }).then(function (folderResult) {
+        var folders = (folderResult.data || []).map(function (f) { return f.name; }).filter(Boolean);
+        if (folderResult.error || !folders.length) {
+          showEmpty();
+          return;
+        }
+        Promise.all(folders.map(function (folder) {
+          return supabaseClient.storage.from('gallery-submissions').list(folder, { limit: 200, sortBy: { column: 'name', order: 'desc' } })
+            .then(function (fileResult) {
+              return (fileResult.data || []).map(function (f) { return { folder: folder, name: f.name, path: folder + '/' + f.name }; });
+            });
+        })).then(function (nested) {
+          var files = [].concat.apply([], nested);
+          if (!files.length) {
+            showEmpty();
             return;
           }
-          loadPresidentDashboard();
+          if (emptyEl) emptyEl.style.display = 'none';
+          if (countEl) countEl.textContent = files.length + (files.length === 1 ? ' file' : ' files') + ' from ' + folders.length + (folders.length === 1 ? ' member' : ' members');
+
+          supabaseClient.rpc('president_lookup_names', { target_ids: folders }).then(function (nameResult) {
+            var nameMap = {};
+            (nameResult.data || []).forEach(function (row) { nameMap[row.id] = row.full_name; });
+
+            Promise.all(files.map(function (f) {
+              return supabaseClient.storage.from('gallery-submissions').createSignedUrl(f.path, 3600).then(function (signedResult) {
+                f.url = signedResult.data && signedResult.data.signedUrl;
+                return f;
+              });
+            })).then(function (filesWithUrls) {
+              grid.innerHTML = filesWithUrls.map(function (f) {
+                var uploaderName = nameMap[f.folder] || 'Unknown member';
+                var isImage = /\.(jpe?g|png|gif|webp|heic)$/i.test(f.name);
+                var thumb = isImage && f.url
+                  ? '<img class="gallery-submission-thumb" src="' + escapeHtml(f.url) + '" alt="" loading="lazy">'
+                  : '<div class="gallery-submission-thumb gallery-submission-thumb--file"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" width="32" height="32"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>';
+                return '<div class="gallery-submission-item">' + thumb +
+                  '<div class="gallery-submission-info">' +
+                  '<div class="gallery-submission-name">' + escapeHtml(uploaderName) + '</div>' +
+                  (f.url ? '<a class="gallery-submission-link" href="' + escapeHtml(f.url) + '" target="_blank" rel="noopener">Open file</a>' : '<span class="gallery-submission-link" style="color:var(--color-text-faint);">Unavailable</span>') +
+                  '</div></div>';
+              }).join('');
+            });
+          });
         });
+      });
+    }
+
+    var sankofaFilterTabs = document.getElementById('sankofa-filter-tabs');
+    if (sankofaFilterTabs) {
+      sankofaFilterTabs.addEventListener('click', function (e) {
+        var tab = e.target.closest('[data-sankofa-filter]');
+        if (!tab) return;
+        sankofaFilterTabs.querySelectorAll('.dash-filter-tab').forEach(function (t) { t.classList.remove('is-active'); });
+        tab.classList.add('is-active');
+        renderSankofaApplicationsFiltered(tab.getAttribute('data-sankofa-filter'));
+      });
+    }
+
+    // Delegated since every "Mark active"/"Approve" button and expandable
+    // card is injected dynamically on every reload — a direct listener
+    // would only ever catch the first render's elements.
+    presidentContent.addEventListener('click', function (e) {
+      var markBtn = e.target.closest('[data-mark-active]');
+      if (markBtn) {
+        markBtn.disabled = true;
+        markBtn.textContent = 'Marking…';
+        supabaseClient
+          .rpc('president_mark_activated', { target_id: markBtn.getAttribute('data-id'), target_type: markBtn.getAttribute('data-type') })
+          .then(function (result) {
+            if (result.error) {
+              markBtn.disabled = false;
+              markBtn.textContent = 'Mark active';
+              console.error('Mark active failed:', result.error.message);
+              return;
+            }
+            loadPresidentDashboard();
+          });
+        return;
+      }
+
+      var approveBtn = e.target.closest('[data-approve-professional]');
+      if (approveBtn) {
+        approveBtn.disabled = true;
+        approveBtn.textContent = 'Approving…';
+        supabaseClient
+          .rpc('president_approve_professional', { target_id: approveBtn.getAttribute('data-id') })
+          .then(function (result) {
+            if (result.error) {
+              approveBtn.disabled = false;
+              approveBtn.textContent = 'Approve';
+              console.error('Approve failed:', result.error.message);
+              return;
+            }
+            loadPresidentDashboard();
+          });
+        return;
+      }
+
+      var cardToggle = e.target.closest('[data-app-card-toggle]');
+      if (cardToggle) {
+        cardToggle.closest('.app-card').classList.toggle('is-expanded');
+      }
     });
   }
 })();

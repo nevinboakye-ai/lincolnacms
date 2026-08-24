@@ -2158,6 +2158,10 @@ a.card:active { transform: translateY(-1px) scale(0.98); }
   border-color: #6fcf97;
   color: #6fcf97;
 }
+.member-register-btn.is-registered:hover:not(:disabled) {
+  border-color: #ef8b8f;
+  color: #ef8b8f;
+}
 
 .chevron-toggle-btn {
   width: 40px;
@@ -4357,6 +4361,157 @@ body.intro-active { overflow: hidden; }
   .roster-status { justify-self: start; margin-top: 4px; }
   .roster-time::before { display: inline; color: var(--color-text-faint); }
   .roster-mark-active { justify-self: start; margin-top: 4px; }
+}
+
+/* President dashboard: pending professional approvals reuse the roster
+   row layout but need a solid (not dashed) call-to-action button — the
+   professional is definitely there, "approve" is a decision, not a
+   maybe-later nudge like "mark active" is. */
+.roster-approve-btn {
+  justify-self: end;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(111, 207, 151, 0.5);
+  background: rgba(111, 207, 151, 0.14);
+  color: #6fcf97;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-base) var(--ease-standard);
+}
+.roster-approve-btn:hover { background: rgba(111, 207, 151, 0.26); }
+.roster-approve-btn:disabled { opacity: 0.6; cursor: default; }
+@media (max-width: 780px) { .roster-approve-btn { justify-self: start; margin-top: 4px; } }
+
+/* Sankofa applications filter (All / Mentees / Mentors) */
+.dash-filter-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.dash-filter-tab {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard), background var(--dur-base) var(--ease-standard);
+}
+.dash-filter-tab:hover { color: var(--color-text); }
+.dash-filter-tab.is-active {
+  color: var(--color-gold-light);
+  border-color: var(--color-gold-light);
+  background: rgba(212, 166, 43, 0.14);
+}
+
+/* Expandable application cards — Sankofa applications and MoTM
+   nominations both carry more free text than a roster row can show, so
+   they collapse to a summary line and expand in place on click rather
+   than opening a modal (keeps searchable/filterable list context
+   visible while reading one). */
+.app-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.app-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+.app-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  user-select: none;
+}
+.app-card-head-main { min-width: 0; display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.app-card-name { font-weight: 600; font-size: 0.94rem; color: var(--color-text); }
+.app-card-meta { font-size: 0.8rem; color: var(--color-text-faint); }
+.app-card-chevron {
+  flex-shrink: 0;
+  transition: transform var(--dur-base) var(--ease-standard);
+  color: var(--color-text-faint);
+}
+.app-card.is-expanded .app-card-chevron { transform: rotate(180deg); }
+.app-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+.app-badge--mentee { color: var(--color-gold-light); background: rgba(212, 166, 43, 0.16); }
+.app-badge--mentor { color: #b28ff0; background: rgba(107, 70, 193, 0.2); }
+.app-card-body {
+  display: none;
+  padding: 0 var(--space-4) var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.app-card.is-expanded .app-card-body { display: block; padding-top: var(--space-3); }
+.app-card-field { margin-bottom: var(--space-3); }
+.app-card-field:last-child { margin-bottom: 0; }
+.app-card-field-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-faint);
+  margin-bottom: 3px;
+}
+.app-card-field-value { font-size: 0.88rem; color: var(--color-text); white-space: pre-wrap; }
+
+/* President dashboard: gallery submissions browser */
+.gallery-submissions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.gallery-submission-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+}
+.gallery-submission-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: var(--color-surface-2, rgba(255,255,255,0.04));
+  display: block;
+}
+.gallery-submission-thumb--file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-faint);
+}
+.gallery-submission-info { padding: var(--space-2) var(--space-3); }
+.gallery-submission-name {
+  font-size: 0.76rem;
+  color: var(--color-text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+.gallery-submission-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-gold-light);
 }
 
 /* Members hub news/announcements feed — a colour-tagged list (not a card
