@@ -5158,8 +5158,8 @@ body.intro-active { overflow: hidden; }
 /* Back-to-top — fades in once you've scrolled a meaningful distance. */
 .back-to-top {
   position: fixed;
-  right: var(--space-4);
-  bottom: var(--space-4);
+  right: calc(var(--space-4) + env(safe-area-inset-right, 0px));
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
   width: 46px;
   height: 46px;
   border-radius: 50%;
@@ -5192,12 +5192,77 @@ body.intro-active { overflow: hidden; }
 .back-to-top .icon { width: 20px; height: 20px; }
 @media (max-width: 640px) {
   .back-to-top {
-    right: var(--space-3);
-    bottom: var(--space-3);
-    width: 42px;
-    height: 42px;
+    right: calc(var(--space-3) + env(safe-area-inset-right, 0px));
+    bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    width: 44px;
+    height: 44px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .back-to-top { transition: opacity var(--dur-base) var(--ease-standard); transform: none; }
+}
+
+/* =========================================================
+   Mobile experience hardening — most visitors are on a phone,
+   so these apply everywhere rather than being an afterthought.
+   ========================================================= */
+
+/* A stray few extra pixels anywhere on the page (a shadow, a
+   miscalculated width) shouldn't be able to make the whole page
+   scroll sideways — the single most visible "this feels broken"
+   mobile bug there is. */
+html, body { overflow-x: hidden; max-width: 100%; }
+
+/* Replace the default gray/blue tap-flash with nothing — every
+   interactive element here already has its own :hover/:active
+   treatment, so the OS default just looks like a mismatched flicker
+   on top of it. */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* iOS Safari zooms the entire page in when a focused input's
+   font-size is under 16px — a well-known, jarring papercut on
+   every form on the site (login, join, Sankofa application, network
+   profile, change password, comments, MMG voting…). Desktop keeps
+   its slightly smaller, more refined sizing; this only overrides it
+   where the zoom actually happens. */
+@media (max-width: 640px) {
+  .field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .field select,
+  .field textarea,
+  .news-comment-input,
+  .network-search input,
+  .vote-form input[type="text"] {
+    font-size: 16px;
+  }
+}
+
+/* Touch targets under ~44px are hard to hit accurately with a
+   finger (Apple's own minimum guidance) even when they look fine to
+   a mouse cursor. Rather than growing these small, deliberately
+   compact controls visually (or using padding + a matching negative
+   margin, which risks nudging surrounding layout), each gets a
+   purely invisible expanded hit area instead — an absolutely
+   positioned ::after with no visual properties, sized past the
+   button's own edges. Nothing else on the page moves. */
+.network-ticker-nav, .back-button {
+  position: relative;
+}
+.network-ticker-nav::after, .member-card-flip-hint::after, .back-button::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+}
+
+/* Small nav/action buttons shouldn't get *smaller* on the exact
+   devices where touch accuracy matters most — the carousel arrows
+   used to shrink below 44px specifically on mobile. */
+@media (max-width: 640px) {
+  .carousel-btn--edge { width: 44px; height: 44px; }
+}
+
+/* Comfortable bottom padding in the mobile nav drawer so its last
+   items and the Join/Log out buttons don't sit flush against the
+   home indicator on notched iPhones. */
+@media (max-width: 1360px) {
+  .mobile-drawer { padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px)); }
 }
