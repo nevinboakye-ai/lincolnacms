@@ -307,4 +307,21 @@
       target.classList.add('is-highlighted');
     }
   }
+
+  // Site-wide "Back" button, present at the top of every page. Prefers
+  // real browser history — but only when we actually arrived from
+  // somewhere else on this site — so someone who opened the page
+  // directly (a bookmark, a shared link, a fresh tab) doesn't get sent
+  // out of the site entirely or land on a dead click; they land on the
+  // homepage instead.
+  document.querySelectorAll('[data-back-button]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var cameFromSite = document.referrer && document.referrer.indexOf(window.location.origin) === 0;
+      if (cameFromSite && window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href = 'index.html';
+      }
+    });
+  });
 })();

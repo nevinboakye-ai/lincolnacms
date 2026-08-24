@@ -2995,6 +2995,40 @@ body.intro-active { overflow: hidden; }
 }
 .link-button:hover { color: var(--color-gold); }
 
+/* Site-wide "Back" button — first thing inside <main> on every page,
+   desktop and mobile alike (no breakpoint needed, it's already just a
+   small inline control that sits naturally at any width). */
+.back-nav {
+  padding-top: var(--space-4);
+}
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 6px 2px;
+  margin: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  transition: color var(--dur-base) var(--ease-standard);
+}
+.back-button:hover, .back-button:focus-visible {
+  color: var(--color-gold-light);
+}
+.back-button .icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+.back-button:hover .icon, .back-button:focus-visible .icon {
+  transform: translateX(-2px);
+}
+
 /* Digital membership card */
 
 .member-card {
@@ -4246,6 +4280,7 @@ body.intro-active { overflow: hidden; }
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+  min-width: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-left: 3px solid var(--network-accent, var(--color-gold));
@@ -4279,8 +4314,21 @@ body.intro-active { overflow: hidden; }
 }
 .network-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-.network-card-name { font-weight: 700; font-size: 0.95rem; color: var(--color-text); }
-.network-card-meta { font-size: 0.82rem; color: var(--color-text-faint); margin-top: -6px; }
+.network-card-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.network-card-meta {
+  font-size: 0.82rem;
+  color: var(--color-text-faint);
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 
 .network-card-badge {
   display: inline-flex;

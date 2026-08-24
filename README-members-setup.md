@@ -408,3 +408,24 @@ No migration needed — front-end only.
 If someone's account ever gets recreated (most commonly: they were stuck on a broken invite, you deleted the old auth user and added them fresh) their old and new `network_join_events` rows both stayed in the database — which meant the join history, the Network ticker, and the "X and N others just joined" hub banner could all show the same person's name twice, once for each account.
 
 They're now deduped by name (case/whitespace-insensitive) everywhere `network_join_events` is read, always keeping the most recent event and discarding the older one — nothing to configure, and nothing changes for anyone who's only ever had one account.
+
+## 38. Site-wide "Back" button, and a fix for overlapping text on mobile Network cards
+
+No migration needed — front-end only.
+
+**Back button**: every page now has a "Back" button at the top of the main content, styled the same on desktop and mobile. It prefers real browser history — but only when the visit actually came from somewhere else on the site — so it takes you to wherever you were before, one step back, the way a normal back button should. If there's nothing to go back to (someone opened the page directly — a bookmark, a shared link, a fresh tab), it sends them to the homepage instead of leaving them on a dead click or bouncing them off the site entirely.
+
+**Network cards overlapping on mobile**: a member's name and course/year line could render on top of each other on some phones. Two things were fixed: the card was missing `min-width: 0`, the same flex/grid shrink bug already fixed once on the president dashboard's roster rows earlier ([Section 34](#34-fix-active-just-now-not-counted-in-the-online-number-tighter-presence-sort-by-activity)) — without it, a grid item won't shrink below its content's natural width, so long text can spill into the row below it. The card's meta line also had a small negative top margin (`margin-top: -6px`) pulling it closer to the name above — a fragile trick that depends on exact font-rendering metrics being the same across browsers, which they aren't always on mobile. That negative margin is gone; spacing between the name and meta line now comes from the card's normal `gap` instead.
+
+To insert Back on any *new* page going forward, add this as the first thing inside `<main id="main">`:
+
+```html
+<div class="container back-nav">
+  <button type="button" class="back-button" data-back-button>
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back
+  </button>
+</div>
+```
+
+No extra JS needed — `js/main.js` already wires up every `[data-back-button]` on the page.
