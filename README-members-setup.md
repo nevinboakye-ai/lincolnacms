@@ -449,3 +449,9 @@ No migration needed — front-end only.
 Section 39's ticker fix (giving the controls their own row) was a real improvement but a second screenshot showed the overlap was still happening — it was never the controls colliding with the text at all. The title (`network-ticker-item-title`) and the meta line (`network-ticker-item-meta`) are flex siblings inside `.network-ticker-item`, aligned with `align-items: baseline`. That's fine as long as both stay on one line each — but once the title starts wrapping to two or three lines on a narrow screen, a wrapped flex item's baseline is measured from its *first* line only. The meta line (which was still `white-space: nowrap`) was being positioned relative to that first line, not below the title's full wrapped height — so it rendered on top of the title's second/third line instead of underneath it.
 
 On mobile, `.network-ticker-item`'s children now stack as plain blocks (`display: block`) instead of staying flex siblings, and the meta line wraps too — removing the baseline calculation from the picture entirely rather than trying to out-clever it. Verified against a self-contained reproduction with both a short name and a deliberately very long name + course string, at 375px width, confirming no overlap either way.
+
+## 41. Ticker: time now on its own line under the name
+
+No migration needed — front-end only.
+
+The "X just joined the Network" ticker used to run everything together on one line under the name — course, year and "X ago" all joined with `·`. It's now three lines: the name, then just the time (e.g. "5 hours ago") directly underneath, then the course/year (or, for a professional, their title) below that. This also made the earlier flex/baseline layout unnecessary — `.network-ticker-item` is a simple top-to-bottom column now on every screen size, not just mobile, so there's one layout to reason about instead of a desktop one and a mobile override.

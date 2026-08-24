@@ -3528,9 +3528,8 @@ body.intro-active { overflow: hidden; }
   flex: 0 0 100%;
   min-width: 0;
   display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 2px;
   padding-right: var(--space-2);
 }
 .network-ticker-item-title {
@@ -3541,10 +3540,13 @@ body.intro-active { overflow: hidden; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.network-ticker-item-time {
+  font-size: 0.78rem;
+  color: var(--color-text-faint);
+}
 .network-ticker-item-meta {
   font-size: 0.82rem;
   color: var(--color-text-faint);
-  white-space: nowrap;
 }
 
 .network-ticker-controls {
@@ -3601,25 +3603,7 @@ body.intro-active { overflow: hidden; }
     flex-wrap: wrap;
     align-items: flex-start;
   }
-  /* Title and meta stop being flex siblings here and just stack as
-     plain blocks. They were flex items with align-items:baseline —
-     fine when both stayed on one line each, but once the title wraps
-     to multiple lines on a narrow screen, a wrapped flex item's
-     baseline is measured from its first line only, so the meta line
-     (still nowrap) was landing next to that first line instead of
-     below the title's full wrapped height, overlapping it. */
-  .network-ticker-item {
-    display: block;
-  }
-  .network-ticker-item-title {
-    display: block;
-    white-space: normal;
-  }
-  .network-ticker-item-meta {
-    display: block;
-    white-space: normal;
-    margin-top: 2px;
-  }
+  .network-ticker-item-title { white-space: normal; }
   .network-ticker-viewall { display: none; }
   .network-ticker-controls {
     flex-basis: 100%;

@@ -2457,15 +2457,14 @@
     // slides is just reading them back, not recomputing a lookup.
     function renderNetworkTickerItem(row) {
       var isProfessional = row.event_type === 'professional';
-      var meta, colors, isCommittee;
+      var detail, colors, isCommittee;
 
       if (isProfessional) {
-        meta = [row.title, timeAgo(row.created_at)].filter(Boolean).join(' · ');
+        detail = row.title || '';
         colors = NETWORK_ACCENT_COLORS.green;
         isCommittee = false;
       } else {
-        var courseYear = [row.course, row.year_of_study].filter(Boolean).join(' · ');
-        meta = [courseYear, timeAgo(row.created_at)].filter(Boolean).join(' · ');
+        detail = [row.course, row.year_of_study].filter(Boolean).join(' · ');
         var courseKey = (row.course || '').trim() || 'Course not set';
         colors = networkCourseAccents[courseKey] || NETWORK_ACCENT_COLORS.gold;
         isCommittee = row.member_type === 'executive_committee' || row.member_type === 'supporting_committee';
@@ -2474,7 +2473,8 @@
 
       return '<div class="network-ticker-item" data-accent="' + colors.accent + '" data-accent-light="' + colors.light + '" data-accent-bg="' + colors.bg + '" data-committee="' + (isCommittee ? '1' : '0') + '">' +
         '<span class="network-ticker-item-title">' + escapeHtml(row.full_name) + ' just joined the Network</span>' +
-        '<span class="network-ticker-item-meta">' + escapeHtml(meta) + '</span>' +
+        '<span class="network-ticker-item-time">' + escapeHtml(timeAgo(row.created_at)) + '</span>' +
+        (detail ? '<span class="network-ticker-item-meta">' + escapeHtml(detail) + '</span>' : '') +
         '</div>';
     }
 
