@@ -4363,27 +4363,6 @@ body.intro-active { overflow: hidden; }
   .roster-mark-active { justify-self: start; margin-top: 4px; }
 }
 
-/* President dashboard: pending professional approvals reuse the roster
-   row layout but need a solid (not dashed) call-to-action button — the
-   professional is definitely there, "approve" is a decision, not a
-   maybe-later nudge like "mark active" is. */
-.roster-approve-btn {
-  justify-self: end;
-  font-size: 0.74rem;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(111, 207, 151, 0.5);
-  background: rgba(111, 207, 151, 0.14);
-  color: #6fcf97;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--dur-base) var(--ease-standard);
-}
-.roster-approve-btn:hover { background: rgba(111, 207, 151, 0.26); }
-.roster-approve-btn:disabled { opacity: 0.6; cursor: default; }
-@media (max-width: 780px) { .roster-approve-btn { justify-self: start; margin-top: 4px; } }
-
 /* Sankofa applications filter (All / Mentees / Mentors) */
 .dash-filter-tabs {
   display: flex;
@@ -4513,6 +4492,308 @@ body.intro-active { overflow: hidden; }
   font-weight: 600;
   color: var(--color-gold-light);
 }
+
+/* President dashboard: landing grid of section cards, replacing one
+   long scroll of every section stacked on top of each other — click a
+   card, see just that section, click back for the next one. */
+.dash-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+.dash-nav-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-4);
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
+}
+.dash-nav-card:hover, .dash-nav-card:focus-visible {
+  border-color: var(--color-gold-light);
+  transform: translateY(-2px);
+}
+.dash-nav-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(212, 166, 43, 0.14);
+  color: var(--color-gold-light);
+}
+.dash-nav-card-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--color-text);
+}
+.dash-nav-card-desc {
+  font-size: 0.84rem;
+  color: var(--color-text-faint);
+  line-height: 1.4;
+}
+.dash-nav-card-count {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-gold-light);
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+.dash-panel-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--color-text-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: var(--space-5);
+  transition: color var(--dur-base) var(--ease-standard);
+}
+.dash-panel-back:hover { color: var(--color-gold-light); }
+.dash-panel-back .icon { width: 16px; height: 16px; }
+
+/* President dashboard: live public gallery management */
+.gallery-upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.gallery-manage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.gallery-manage-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+}
+.gallery-manage-item.is-inactive { opacity: 0.5; }
+.gallery-manage-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+.gallery-manage-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2);
+  flex-wrap: wrap;
+}
+.gallery-manage-btn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px dashed var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
+}
+.gallery-manage-btn:hover { color: var(--color-text); border-color: var(--color-text-faint); }
+.gallery-manage-btn--active { border-color: rgba(111, 207, 151, 0.5); color: #6fcf97; }
+.gallery-manage-btn--danger:hover { border-color: #ef8b8f; color: #ef8b8f; }
+.gallery-manage-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Sankofa apply modal (sankofa.html, programmes.html) — mentee-or-mentor
+   choice, then either a routing CTA or a genuinely public short form.
+   Same visual language as .network-modal (member-network.html's profile
+   popup) — a dedicated class set since this one's built dynamically in
+   JS rather than living as static markup on one page. */
+.sankofa-apply-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+.sankofa-apply-modal.is-open { display: flex; }
+
+.sankofa-apply-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 5, 6, 0.82);
+  backdrop-filter: blur(3px);
+}
+
+.sankofa-apply-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 480px);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: 0 30px 70px -20px rgba(0, 0, 0, 0.7);
+  animation: network-modal-in 0.25s var(--ease-standard);
+}
+
+.sankofa-apply-modal-close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-alt);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
+}
+.sankofa-apply-modal-close:hover { color: var(--color-text); border-color: var(--color-gold); }
+.sankofa-apply-modal-close .icon { width: 16px; height: 16px; }
+
+.sankofa-apply-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+@media (max-width: 520px) {
+  .sankofa-apply-choice-grid { grid-template-columns: 1fr; }
+}
+.sankofa-apply-choice-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
+}
+.sankofa-apply-choice-btn:hover { border-color: var(--color-gold-light); transform: translateY(-2px); }
+.sankofa-apply-choice-btn strong { font-family: var(--font-display); font-size: 1.05rem; }
+.sankofa-apply-choice-btn span { font-size: 0.82rem; color: var(--color-text-faint); line-height: 1.4; }
+
+/* join.html: stylised "browser window" previews of the members hub —
+   illustrative mockups (no real screenshots), built entirely from CSS
+   so there's no image asset to source or keep in sync. */
+.join-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-5);
+  margin-top: var(--space-6);
+}
+.browser-mockup {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 20px 40px -24px rgba(0, 0, 0, 0.6);
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+.browser-mockup:hover { transform: translateY(-4px); }
+.browser-mockup-chrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--color-bg-alt);
+  border-bottom: 1px solid var(--color-border);
+}
+.browser-mockup-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+}
+.browser-mockup-url {
+  margin-left: var(--space-2);
+  font-size: 0.72rem;
+  color: var(--color-text-faint);
+  background: var(--color-surface);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.browser-mockup-body {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.mockup-row { display: flex; align-items: center; gap: var(--space-3); }
+.mockup-row-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mockup-row-text strong { font-size: 0.86rem; color: var(--color-text); }
+.mockup-row-text span { font-size: 0.76rem; color: var(--color-text-faint); }
+.mockup-avatar {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+.mockup-badge {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-on-gold);
+  background: var(--color-gold);
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.mockup-tag {
+  flex-shrink: 0;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+.mockup-tag--green { color: #6fcf97; background: rgba(30, 122, 70, 0.2); }
+.mockup-tag--gold { color: var(--color-gold-light); background: rgba(212, 166, 43, 0.18); }
+.mockup-tag--purple { color: #b28ff0; background: rgba(107, 70, 193, 0.22); }
+.join-preview-caption {
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.join-preview-caption .card-title { font-size: 1.05rem; margin-bottom: 4px; }
+.join-preview-caption p { font-size: 0.86rem; color: var(--color-text-faint); margin: 0; }
 
 /* Members hub news/announcements feed — a colour-tagged list (not a card
    grid, since posts read top-to-bottom chronologically) with a staggered

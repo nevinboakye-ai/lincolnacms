@@ -337,15 +337,13 @@
       });
 
       // "Apply to be a mentee or mentor" (programmes.html, sankofa.html)
-      // used to always point at join.html — sending an already-signed-in
-      // member or professional straight to "buy a membership" instead of
-      // the actual Sankofa application. Signed in, either account type,
-      // now goes to the real form; member-sankofa.html's own gating
-      // (committee-only for now, everyone else sees "coming soon") still
-      // applies from there exactly as before.
-      document.querySelectorAll('[data-sankofa-apply]').forEach(function (el) {
-        if (loggedIn) el.href = 'member-sankofa.html';
-      });
+      // now opens a choice modal instead of linking straight to
+      // join.html: mentee applications still need LACMS membership (the
+      // modal routes to member-sankofa.html if already signed in, or
+      // join.html to become a member first, exactly as before), but
+      // mentor applications are a genuinely public short form right
+      // inside the modal — no account needed at all.
+      initSankofaApplyModal(loggedIn);
 
       // Once we know they're signed in, upgrade the label to their first
       // name — a much more obvious "yes, still you, still logged in" cue
@@ -396,6 +394,153 @@
               });
           });
       }
+    });
+  }
+
+  // ---- Sankofa apply modal (sankofa.html, programmes.html) — asks
+  // mentee or mentor first, since the two have completely different
+  // requirements: a mentee needs LACMS membership, a mentor doesn't need
+  // an account at all, just a short public form submitted straight into
+  // sankofa_mentor_applications (migration 029). One shared modal, built
+  // once per page and reused for every [data-sankofa-apply] trigger on
+  // it (there are two: the programme card and the page's own CTA).
+  function initSankofaApplyModal(loggedIn) {
+    var triggers = document.querySelectorAll('[data-sankofa-apply]');
+    if (!triggers.length) return;
+
+    var modal = document.getElementById('sankofa-apply-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'sankofa-apply-modal';
+      modal.className = 'sankofa-apply-modal';
+      modal.innerHTML =
+        '<div class="sankofa-apply-modal-backdrop" data-sankofa-apply-close></div>' +
+        '<div class="sankofa-apply-modal-panel" role="dialog" aria-modal="true" aria-labelledby="sankofa-apply-modal-title">' +
+        '<button type="button" class="sankofa-apply-modal-close" data-sankofa-apply-close aria-label="Close">' +
+        '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>' +
+        '</button>' +
+
+        '<div data-sankofa-apply-step="choice">' +
+        '<h2 id="sankofa-apply-modal-title" style="margin-top:0;">Apply to Sankofa</h2>' +
+        '<p>Are you applying as a mentee or a mentor?</p>' +
+        '<div class="sankofa-apply-choice-grid">' +
+        '<button type="button" class="sankofa-apply-choice-btn" data-sankofa-apply-choice="mentee">' +
+        '<strong>Mentee</strong><span>Sixth-former, medical or pharmacy student — LACMS membership required</span>' +
+        '</button>' +
+        '<button type="button" class="sankofa-apply-choice-btn" data-sankofa-apply-choice="mentor">' +
+        '<strong>Mentor</strong><span>Doctor, pharmacist or healthcare professional — no account needed</span>' +
+        '</button>' +
+        '</div></div>' +
+
+        '<div data-sankofa-apply-step="mentee" style="display:none;">' +
+        '<h2 style="margin-top:0;">Mentee applications</h2>' +
+        '<p>Open to LACMS members — sixth-formers exploring medicine, and Medicine or Pharmacy students. Applications close Sunday 11 October 2026.</p>' +
+        '<a class="btn btn-primary btn-block" id="sankofa-apply-mentee-cta" href="join.html">Continue</a>' +
+        '</div>' +
+
+        '<div data-sankofa-apply-step="mentor" style="display:none;">' +
+        '<h2 style="margin-top:0;">Apply to mentor</h2>' +
+        '<p>Takes under a minute — no account needed, we\'ll reach out by email.</p>' +
+        '<form id="sankofa-mentor-quick-form">' +
+        '<div class="field"><label for="sqf-name">Full name</label><input type="text" id="sqf-name" autocomplete="name" required></div>' +
+        '<div class="field"><label for="sqf-email">Email</label><input type="email" id="sqf-email" autocomplete="email" required></div>' +
+        '<div class="field"><label for="sqf-title">Job title</label><input type="text" id="sqf-title" placeholder="e.g. Consultant Cardiologist, F1 Doctor, Community Pharmacist" required></div>' +
+        '<div class="field"><label for="sqf-org">Organisation <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label><input type="text" id="sqf-org" placeholder="e.g. Nottingham University Hospitals NHS Trust"></div>' +
+        '<div class="field"><label for="sqf-linkedin">LinkedIn <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label><input type="url" id="sqf-linkedin" placeholder="https://linkedin.com/in/…"></div>' +
+        '<div class="field"><label for="sqf-offer">Why do you want to mentor, or what can you offer?</label><textarea id="sqf-offer" maxlength="600" placeholder="A sentence or two is plenty — specialty, what you could help with, why it matters to you." required></textarea></div>' +
+        '<button type="submit" class="btn btn-primary btn-block">Submit application</button>' +
+        '<p id="sqf-status" class="auth-error" role="status" style="display:none;"></p>' +
+        '</form></div>' +
+
+        '<div data-sankofa-apply-step="success" style="display:none;">' +
+        '<h2 style="margin-top:0;">Thank you</h2>' +
+        '<p>We\'ve received your mentor application — the committee will be in touch by email.</p>' +
+        '<button type="button" class="btn btn-outline" data-sankofa-apply-close>Close</button>' +
+        '</div>' +
+
+        '</div>';
+      document.body.appendChild(modal);
+
+      function showStep(step) {
+        modal.querySelectorAll('[data-sankofa-apply-step]').forEach(function (el) {
+          el.style.display = el.getAttribute('data-sankofa-apply-step') === step ? '' : 'none';
+        });
+      }
+      function openModal() {
+        showStep('choice');
+        modal.classList.add('is-open');
+        document.body.classList.add('lightbox-open');
+      }
+      function closeModal() {
+        modal.classList.remove('is-open');
+        document.body.classList.remove('lightbox-open');
+      }
+      modal._sankofaOpen = openModal;
+
+      modal.querySelectorAll('[data-sankofa-apply-close]').forEach(function (el) {
+        el.addEventListener('click', closeModal);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('is-open')) closeModal();
+      });
+      modal.querySelectorAll('[data-sankofa-apply-choice]').forEach(function (btn) {
+        btn.addEventListener('click', function () { showStep(btn.getAttribute('data-sankofa-apply-choice')); });
+      });
+
+      var mentorQuickForm = modal.querySelector('#sankofa-mentor-quick-form');
+      mentorQuickForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = modal.querySelector('#sqf-status');
+        hideMessage(statusEl);
+
+        var name = modal.querySelector('#sqf-name').value.trim();
+        var email = modal.querySelector('#sqf-email').value.trim();
+        var title = modal.querySelector('#sqf-title').value.trim();
+        var org = modal.querySelector('#sqf-org').value.trim();
+        var linkedin = modal.querySelector('#sqf-linkedin').value.trim();
+        var offer = modal.querySelector('#sqf-offer').value.trim();
+
+        if (!name || !email || !title || !offer) {
+          showMessage(statusEl, 'Fill in the required fields before submitting.');
+          return;
+        }
+
+        var btn = mentorQuickForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+
+        supabaseClient
+          .from('sankofa_mentor_applications')
+          .insert({
+            full_name: name,
+            email: email,
+            job_title: title,
+            organisation: org || null,
+            linkedin_url: linkedin || null,
+            offer_statement: offer
+          })
+          .then(function (result) {
+            btn.disabled = false;
+            if (result.error) {
+              showMessage(statusEl, result.error.message || 'Something went wrong — try again, or email acms@lincolnsu.com.');
+              return;
+            }
+            mentorQuickForm.reset();
+            showStep('success');
+          });
+      });
+    }
+
+    // Mentee CTA routes the same way the old href-rewrite used to:
+    // straight to the real form if already signed in (either account
+    // type), otherwise to join.html to become a member first.
+    var menteeCta = modal.querySelector('#sankofa-apply-mentee-cta');
+    if (menteeCta) menteeCta.href = loggedIn ? 'member-sankofa.html' : 'join.html';
+
+    triggers.forEach(function (el) {
+      el.addEventListener('click', function (e) {
+        e.preventDefault();
+        modal._sankofaOpen();
+      });
     });
   }
 
@@ -787,51 +932,19 @@
     // Network. claim_professional_profile() links their auth account to
     // the network_professionals row the committee already created for
     // them (matched by email) the first time they land here; it's a
-    // no-op on every visit after that. If that finds nothing either, but
-    // they signed up through mentor-signup.html with email confirmation
-    // required (so no session existed yet at signup time to create their
-    // profile row directly), the details they entered are sitting in
-    // their own auth user_metadata — create the self-registered row from
-    // that now, on this first confirmed sign-in. Only if none of that
-    // applies do we fall back to the original "not set up yet" error.
+    // no-op on every visit after that. Only if that finds nothing either
+    // do we fall back to the original "not set up yet" error.
     function loadProfessionalProfile(session) {
       supabaseClient.rpc('claim_professional_profile').then(function () {
         getProfessionalRow(session).then(function (proRow) {
-          if (proRow) {
-            if (authGate) authGate.style.display = 'none';
-            renderProfessionalProfile(proRow, session);
-            showHubContent(false);
-            return;
-          }
-          var meta = session.user.user_metadata || {};
-          if (meta.is_mentor_signup) {
-            supabaseClient
-              .from('network_professionals')
-              .insert({
-                user_id: session.user.id,
-                email: session.user.email,
-                full_name: meta.full_name || '',
-                title: meta.professional_title || '',
-                organisation: meta.professional_organisation || null,
-                category: meta.professional_category || 'other',
-                self_registered: true,
-                is_active: false
-              })
-              .select()
-              .single()
-              .then(function (insertResult) {
-                if (authGate) authGate.style.display = 'none';
-                if (insertResult.error || !insertResult.data) {
-                  showMessage(hubError, "We couldn't find your membership profile yet — the committee may still be setting it up. Email acms@lincolnsu.com if this doesn't resolve soon.");
-                  return;
-                }
-                renderProfessionalProfile(insertResult.data, session);
-                showHubContent(false);
-              });
-            return;
-          }
           if (authGate) authGate.style.display = 'none';
-          showMessage(hubError, "We couldn't find your membership profile yet — the committee may still be setting it up. Email acms@lincolnsu.com if this doesn't resolve soon.");
+          if (!proRow) {
+            showMessage(hubError, "We couldn't find your membership profile yet — the committee may still be setting it up. Email acms@lincolnsu.com if this doesn't resolve soon.");
+            return;
+          }
+          renderProfessionalProfile(proRow, session);
+          // Professionals are never committee members.
+          showHubContent(false);
         });
       });
     }
@@ -1498,17 +1611,14 @@
       });
   }
 
-  // ---- Sankofa Circle application page ----
-  // Two completely separate audiences share this page: a member/aspiring-
-  // medic applying as a mentee (committee-gated, sankofa_eligible-gated,
-  // closes 11 October 2026 — enforced again in the DB by migration 028's
-  // trigger, this client-side check just gives a friendlier message), and
-  // a doctor/pharmacist applying as a mentor (any signed-in professional
-  // row, active or still pending approval, no committee gate, no
-  // deadline). Which branch a visitor sees is decided purely by whether
-  // they have a network_professionals row at all.
+  // ---- Sankofa Circle application page — mentee applications only.
+  // (Mentor applications moved off this page entirely — see sankofa.html's
+  // apply modal, which is a public, no-account short form submitting
+  // straight into sankofa_mentor_applications, reviewed on the president
+  // dashboard.) Committee-gated, sankofa_eligible-gated, and closes 11
+  // October 2026 — enforced again in the DB by migration 029's trigger,
+  // this client-side check just gives a friendlier message. ----
   var sankofaFormWrap = document.getElementById('sankofa-form-wrap');
-  var sankofaMentorFormWrap = document.getElementById('sankofa-mentor-form-wrap');
   var sankofaAlreadyApplied = document.getElementById('sankofa-already-applied');
   var sankofaNotEligible = document.getElementById('sankofa-not-eligible');
   var SANKOFA_MENTEE_DEADLINE = new Date('2026-10-11T23:59:59+01:00').getTime();
@@ -1524,55 +1634,35 @@
       }
       sankofaSession = session;
 
-      getProfessionalRow(session).then(function (proRow) {
-        if (proRow) {
+      checkIsCommittee(session).then(function (isCommittee) {
+        if (!isCommittee) {
           if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
-          if (proRow.title) {
-            var titleField = document.getElementById('sankofa-mentor-title');
-            if (titleField) titleField.value = proRow.title;
-          }
-          if (proRow.organisation) {
-            var orgField = document.getElementById('sankofa-mentor-organisation');
-            if (orgField) orgField.value = proRow.organisation;
-          }
-          if (proRow.category) {
-            var catField = document.getElementById('sankofa-mentor-category');
-            if (catField) catField.value = proRow.category;
-          }
-          checkExistingApplication(session, 'mentor');
+          var comingSoonNote = document.getElementById('sankofa-coming-soon-note');
+          if (comingSoonNote) comingSoonNote.style.display = 'flex';
           return;
         }
-
-        checkIsCommittee(session).then(function (isCommittee) {
-          if (!isCommittee) {
+        supabaseClient
+          .from('members')
+          .select('sankofa_eligible')
+          .eq('id', session.user.id)
+          .single()
+          .then(function (result) {
             if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
-            var comingSoonNote = document.getElementById('sankofa-coming-soon-note');
-            if (comingSoonNote) comingSoonNote.style.display = 'flex';
-            return;
-          }
-          supabaseClient
-            .from('members')
-            .select('sankofa_eligible')
-            .eq('id', session.user.id)
-            .single()
-            .then(function (result) {
-              if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
-              if (result.error || !result.data || !result.data.sankofa_eligible) {
-                if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
-                return;
-              }
-              if (Date.now() > SANKOFA_MENTEE_DEADLINE) {
-                var deadlineNote = document.getElementById('sankofa-mentee-deadline-passed');
-                if (deadlineNote) deadlineNote.style.display = 'flex';
-                return;
-              }
-              checkExistingApplication(session, 'mentee');
-            });
-        });
+            if (result.error || !result.data || !result.data.sankofa_eligible) {
+              if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
+              return;
+            }
+            if (Date.now() > SANKOFA_MENTEE_DEADLINE) {
+              var deadlineNote = document.getElementById('sankofa-mentee-deadline-passed');
+              if (deadlineNote) deadlineNote.style.display = 'flex';
+              return;
+            }
+            checkExistingApplication(session);
+          });
       });
     });
 
-    function checkExistingApplication(session, type) {
+    function checkExistingApplication(session) {
       supabaseClient
         .from('sankofa_applications')
         .select('created_at')
@@ -1583,9 +1673,7 @@
           var existing = result.data && result.data[0];
           if (existing) {
             showAlreadyApplied(existing);
-          } else if (type === 'mentor' && sankofaMentorFormWrap) {
-            sankofaMentorFormWrap.style.display = 'block';
-          } else if (type === 'mentee' && sankofaFormWrap) {
+          } else if (sankofaFormWrap) {
             sankofaFormWrap.style.display = 'block';
           }
         });
@@ -1653,62 +1741,6 @@
               return;
             }
             sankofaFormWrap.style.display = 'none';
-            showAlreadyApplied({ created_at: new Date().toISOString() });
-          });
-      });
-    }
-
-    var sankofaMentorForm = document.getElementById('sankofa-mentor-form');
-    if (sankofaMentorForm) {
-      sankofaMentorForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var statusEl = document.getElementById('sankofa-mentor-status');
-        hideMessage(statusEl);
-
-        var title = document.getElementById('sankofa-mentor-title').value.trim();
-        var category = document.getElementById('sankofa-mentor-category').value;
-        var organisation = document.getElementById('sankofa-mentor-organisation').value.trim();
-        var experience = document.getElementById('sankofa-mentor-experience').value;
-        var specialty = document.getElementById('sankofa-mentor-specialty').value.trim();
-        var motivation = document.getElementById('sankofa-mentor-motivation').value.trim();
-        var offers = Array.from(sankofaMentorForm.querySelectorAll('input[name="mentor-offer"]:checked')).map(function (el) { return el.value; });
-        var capacity = document.getElementById('sankofa-mentor-capacity').value;
-        var communication = sankofaMentorForm.querySelector('input[name="sankofa-mentor-communication"]:checked');
-        var frequency = sankofaMentorForm.querySelector('input[name="sankofa-mentor-frequency"]:checked');
-        var statement = document.getElementById('sankofa-mentor-statement').value.trim();
-
-        if (!title || !category || !experience || !motivation || !capacity || !communication || !frequency) {
-          showMessage(statusEl, 'Fill in the required fields before submitting.');
-          return;
-        }
-
-        var btn = sankofaMentorForm.querySelector('button[type="submit"]');
-        btn.disabled = true;
-
-        supabaseClient
-          .from('sankofa_applications')
-          .insert({
-            member_id: sankofaSession.user.id,
-            applicant_type: 'mentor',
-            mentor_title: title,
-            mentor_category: category,
-            mentor_organisation: organisation || null,
-            years_experience: experience,
-            mentor_specialty: specialty || null,
-            mentor_motivation: motivation,
-            what_you_offer: offers.length ? offers : null,
-            mentee_capacity: capacity,
-            communication_style: communication.value,
-            meeting_frequency: frequency.value,
-            statement: statement || null
-          })
-          .then(function (result) {
-            btn.disabled = false;
-            if (result.error) {
-              showMessage(statusEl, result.error.message);
-              return;
-            }
-            sankofaMentorFormWrap.style.display = 'none';
             showAlreadyApplied({ created_at: new Date().toISOString() });
           });
       });
@@ -1922,104 +1954,6 @@
         });
       });
     }
-  }
-
-  // ---- Mentor signup page (mentor-signup.html) — a brand-new doctor or
-  // pharmacist with no LACMS account creates one here, purely to apply
-  // as a Sankofa mentor. If the committee already pre-added them to the
-  // Network (matched by email), claim_professional_profile() links this
-  // new account to that existing row instead of creating a duplicate.
-  // Otherwise a fresh self-registered, pending (is_active=false) row is
-  // created directly. ----
-  var mentorSignupForm = document.getElementById('mentor-signup-form');
-  if (mentorSignupForm) {
-    var mentorSignupConfirmation = document.getElementById('mentor-signup-confirmation');
-
-    function createSelfRegisteredProfessional(session, fields) {
-      return supabaseClient
-        .from('network_professionals')
-        .insert({
-          user_id: session.user.id,
-          email: fields.email,
-          full_name: fields.name,
-          title: fields.title,
-          organisation: fields.organisation || null,
-          category: fields.category,
-          self_registered: true,
-          is_active: false
-        });
-    }
-
-    mentorSignupForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var statusEl = document.getElementById('mentor-signup-status');
-      hideMessage(statusEl);
-
-      var fields = {
-        name: document.getElementById('mentor-signup-name').value.trim(),
-        title: document.getElementById('mentor-signup-title').value.trim(),
-        category: document.getElementById('mentor-signup-category').value,
-        organisation: document.getElementById('mentor-signup-organisation').value.trim(),
-        email: document.getElementById('mentor-signup-email').value.trim()
-      };
-      var password = document.getElementById('mentor-signup-password').value;
-      var confirmPassword = document.getElementById('mentor-signup-confirm').value;
-
-      if (password.length < 8) {
-        showMessage(statusEl, 'Password must be at least 8 characters.');
-        return;
-      }
-      if (password !== confirmPassword) {
-        showMessage(statusEl, "Passwords don't match — try again.");
-        return;
-      }
-
-      var btn = mentorSignupForm.querySelector('button[type="submit"]');
-      btn.disabled = true;
-
-      supabaseClient.auth.signUp({
-        email: fields.email,
-        password: password,
-        options: {
-          data: {
-            full_name: fields.name,
-            professional_title: fields.title,
-            professional_organisation: fields.organisation,
-            professional_category: fields.category,
-            is_mentor_signup: true
-          }
-        }
-      }).then(function (result) {
-        if (result.error) {
-          btn.disabled = false;
-          showMessage(statusEl, result.error.message);
-          return;
-        }
-        var session = result.data && result.data.session;
-        if (!session) {
-          btn.disabled = false;
-          mentorSignupForm.style.display = 'none';
-          if (mentorSignupConfirmation) mentorSignupConfirmation.style.display = 'block';
-          return;
-        }
-        supabaseClient.rpc('claim_professional_profile').then(function () {
-          getProfessionalRow(session).then(function (proRow) {
-            if (proRow) {
-              window.location.href = 'member-sankofa.html';
-              return;
-            }
-            createSelfRegisteredProfessional(session, fields).then(function (insertResult) {
-              btn.disabled = false;
-              if (insertResult.error) {
-                showMessage(statusEl, "We couldn't create your profile — you may already have an account. Try logging in instead, or email acms@lincolnsu.com.");
-                return;
-              }
-              window.location.href = 'member-sankofa.html';
-            });
-          });
-        });
-      });
-    });
   }
 
   // ---- MMG portal page: tier resolution, exclusive content, voting,
@@ -3223,6 +3157,7 @@
         return;
       }
       presidentUserId = session.user.id;
+      initDashNav();
       loadPresidentDashboard();
       // Keeps "online now" honest without needing a manual reload —
       // only while the tab is actually visible, so it isn't polling
@@ -3231,6 +3166,44 @@
         if (document.visibilityState === 'visible') loadPresidentDashboard();
       }, 45000);
     });
+
+    // ---- Landing grid of section cards, replacing one long scroll —
+    // click a card to see just that section, "All sections" to go back.
+    // Data for every section still loads together up front (cheap — a
+    // handful of indexed RPC calls), only the *display* is split by
+    // section; #<section> in the URL deep-links straight to one. ----
+    var DASH_SECTIONS = ['activity', 'mmg', 'sankofa', 'motm', 'events', 'gallery'];
+    var dashLanding = document.getElementById('dash-landing');
+    function showDashSection(section) {
+      if (DASH_SECTIONS.indexOf(section) === -1) section = null;
+      if (dashLanding) dashLanding.style.display = section ? 'none' : '';
+      DASH_SECTIONS.forEach(function (s) {
+        var panel = document.getElementById('dash-panel-' + s);
+        if (panel) panel.style.display = s === section ? '' : 'none';
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function initDashNav() {
+      document.querySelectorAll('[data-dash-section]').forEach(function (card) {
+        card.addEventListener('click', function () {
+          var section = card.getAttribute('data-dash-section');
+          showDashSection(section);
+          window.history.replaceState(null, '', '#' + section);
+        });
+      });
+      document.querySelectorAll('[data-dash-back]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          showDashSection(null);
+          window.history.replaceState(null, '', window.location.pathname);
+        });
+      });
+      var initialSection = (window.location.hash || '').replace('#', '');
+      if (DASH_SECTIONS.indexOf(initialSection) !== -1) showDashSection(initialSection);
+    }
+    function setDashCount(section, text) {
+      var el = document.getElementById('dash-count-' + section);
+      if (el) el.textContent = text;
+    }
 
     function loadPresidentDashboard() {
       // Re-beats the president's own presence every single time this
@@ -3249,8 +3222,8 @@
           supabaseClient.rpc('president_get_pending_members'),
           supabaseClient.rpc('president_get_professionals'),
           supabaseClient.rpc('president_get_mmg_guests'),
-          supabaseClient.rpc('president_get_pending_professionals'),
           supabaseClient.rpc('president_get_sankofa_applications'),
+          supabaseClient.rpc('president_get_sankofa_mentor_applications'),
           supabaseClient.rpc('president_get_motm_nominations'),
           supabaseClient.rpc('president_get_event_registrations')
         ]);
@@ -3275,16 +3248,48 @@
         renderAttentionList(members, pendingMembers, professionals, mmgGuests);
         renderPeopleSection(members, professionals, courseAccent);
         renderMmgSection(mmgGuests);
+        var activityTotal = members.length + professionals.length + mmgGuests.length + pendingMembers.length;
+        setDashCount('activity', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
+        setDashCount('mmg', mmgGuests.length + (mmgGuests.length === 1 ? ' guest' : ' guests'));
 
-        // The four newer sections (migration 028) are rendered even if
-        // their own RPC individually errors (e.g. the migration hasn't
-        // been run yet on this database) — a missing new feature
-        // shouldn't ever take down the whole dashboard above it.
-        if (!results[4].error) renderPendingProfessionals(results[4].data || []);
-        if (!results[5].error) renderSankofaApplications(results[5].data || []);
-        if (!results[6].error) renderMotmNominations(results[6].data || []);
-        if (!results[7].error) renderEventRegistrations(results[7].data || []);
+        // Sankofa mentee applications (migration 028) and mentor
+        // applications (migration 029, a separate public no-account
+        // table) are two different shapes fetched from two different
+        // RPCs — normalised into one list here so the dashboard can show
+        // and filter them together. Rendered even if one RPC errors
+        // (e.g. a migration hasn't been run yet on this database) — a
+        // missing newer feature shouldn't take down the older one.
+        var mentees = results[4].error ? [] : (results[4].data || []);
+        var mentors = results[5].error ? [] : (results[5].data || []).map(function (m) {
+          return {
+            id: m.id,
+            applicant_type: 'mentor',
+            full_name: m.full_name,
+            email: m.email,
+            created_at: m.created_at,
+            job_title: m.job_title,
+            organisation: m.organisation,
+            linkedin_url: m.linkedin_url,
+            offer_statement: m.offer_statement,
+            status: m.status
+          };
+        });
+        var sankofaMerged = mentees.concat(mentors).sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+        renderSankofaApplications(sankofaMerged);
+        setDashCount('sankofa', sankofaMerged.length + (sankofaMerged.length === 1 ? ' application' : ' applications'));
+
+        if (!results[6].error) {
+          var motmList = results[6].data || [];
+          renderMotmNominations(motmList);
+          setDashCount('motm', motmList.length + (motmList.length === 1 ? ' nomination' : ' nominations'));
+        }
+        if (!results[7].error) {
+          var eventsList = results[7].data || [];
+          renderEventRegistrations(eventsList);
+          setDashCount('events', eventsList.length + (eventsList.length === 1 ? ' registration' : ' registrations'));
+        }
         loadGallerySubmissions();
+        loadGalleryManage();
 
         dashLastLoaded = new Date();
         var updatedLabel = document.getElementById('dash-updated-label');
@@ -3652,32 +3657,6 @@
       label.textContent = 'Updated ' + timeAgo(dashLastLoaded);
     }, 1000);
 
-    // ---- Pending mentor accounts (self-registered professionals) ----
-    function renderPendingProfessionals(list) {
-      var table = document.getElementById('pending-professionals-table');
-      var emptyEl = document.getElementById('pending-professionals-empty');
-      if (!table) return;
-      if (!list.length) {
-        if (emptyEl) emptyEl.style.display = 'block';
-        table.innerHTML = '';
-        return;
-      }
-      if (emptyEl) emptyEl.style.display = 'none';
-      table.innerHTML = list.map(function (p) {
-        return '<div class="roster-row" data-name="' + escapeHtml((p.full_name || '').toLowerCase()) + '">' +
-          '<div class="roster-main">' +
-          '<span class="roster-avatar roster-avatar--professional">' + escapeHtml(presidentInitials(p.full_name)) + '</span>' +
-          '<div class="roster-info"><div class="roster-name">' + escapeHtml(p.full_name || 'Unnamed') + '</div>' +
-          '<div class="roster-detail">' + escapeHtml(p.title || 'Professional') + '</div>' +
-          '</div></div>' +
-          '<span class="roster-time" data-label="Category">' + escapeHtml(PROFESSIONAL_CATEGORY_LABELS[p.category] || p.category || '—') + '</span>' +
-          '<span class="roster-time" data-label="Applied">' + escapeHtml(timeAgo(p.created_at)) + '</span>' +
-          '<span class="roster-time" data-label="Email">' + escapeHtml(p.email || '—') + '</span>' +
-          '<button type="button" class="roster-approve-btn" data-approve-professional data-id="' + escapeHtml(p.id) + '">Approve</button>' +
-          '</div>';
-      }).join('');
-    }
-
     // ---- Sankofa applications — mentees and mentors share one list,
     // filterable by the tabs above it; each card carries every field
     // from president_get_sankofa_applications() relevant to its type,
@@ -3710,23 +3689,23 @@
       if (emptyEl) emptyEl.style.display = 'none';
       listEl.innerHTML = filtered.map(renderSankofaAppCard).join('');
     }
+    var MENTOR_STATUS_LABELS = { new: 'New', reviewed: 'Reviewed', contacted: 'Contacted' };
     function renderSankofaAppCard(a) {
       var isMentor = a.applicant_type === 'mentor';
       var meta = isMentor
-        ? [PROFESSIONAL_CATEGORY_LABELS[a.mentor_category] || a.mentor_category, a.mentor_organisation].filter(Boolean).join(' · ')
+        ? [a.job_title, a.organisation].filter(Boolean).join(' · ')
         : [a.current_stage, a.specialty_interest].filter(Boolean).join(' · ');
       var body = isMentor
-        ? appCardField('Title', a.mentor_title) +
-          appCardField('Category', PROFESSIONAL_CATEGORY_LABELS[a.mentor_category] || a.mentor_category) +
-          appCardField('Organisation', a.mentor_organisation) +
-          appCardField('Years of experience', a.years_experience) +
-          appCardField('Specialty', a.mentor_specialty) +
-          appCardField('Motivation', a.mentor_motivation) +
-          appCardField('What they can offer', (a.what_you_offer || []).join(', ')) +
-          appCardField('Mentee capacity', a.mentee_capacity) +
-          appCardField('Communication style', a.communication_style) +
-          appCardField('Meeting frequency', a.meeting_frequency) +
-          appCardField('Statement', a.statement)
+        ? appCardField('Job title', a.job_title) +
+          appCardField('Organisation', a.organisation) +
+          appCardField('LinkedIn', a.linkedin_url) +
+          appCardField('Why they want to mentor / what they offer', a.offer_statement) +
+          '<div class="app-card-field"><div class="app-card-field-label">Status</div>' +
+          '<div class="dash-filter-tabs" style="margin-top:0;">' +
+          ['new', 'reviewed', 'contacted'].map(function (s) {
+            return '<button type="button" class="dash-filter-tab' + (a.status === s ? ' is-active' : '') + '" data-mentor-status data-id="' + escapeHtml(a.id) + '" data-status="' + s + '">' + MENTOR_STATUS_LABELS[s] + '</button>';
+          }).join('') +
+          '</div></div>'
         : appCardField('Current stage', a.current_stage) +
           appCardField('Heritage', a.heritage) +
           appCardField('Career aspirations', a.career_aspirations) +
@@ -3831,6 +3810,7 @@
         if (countEl) countEl.textContent = '0 files';
         if (emptyEl) emptyEl.style.display = 'block';
         grid.innerHTML = '';
+        setDashCount('gallery', '0 to review');
       }
 
       supabaseClient.storage.from('gallery-submissions').list('', { limit: 500, sortBy: { column: 'name', order: 'desc' } }).then(function (folderResult) {
@@ -3852,6 +3832,7 @@
           }
           if (emptyEl) emptyEl.style.display = 'none';
           if (countEl) countEl.textContent = files.length + (files.length === 1 ? ' file' : ' files') + ' from ' + folders.length + (folders.length === 1 ? ' member' : ' members');
+          setDashCount('gallery', files.length + (files.length === 1 ? ' submission to review' : ' submissions to review'));
 
           supabaseClient.rpc('president_lookup_names', { target_ids: folders }).then(function (nameResult) {
             var nameMap = {};
@@ -3877,6 +3858,85 @@
               }).join('');
             });
           });
+        });
+      });
+    }
+
+    // ---- Live public gallery management — what actually shows on
+    // gallery.html, driven by the gallery_photos table + the public
+    // gallery-photos bucket (migration 029) instead of a hand-edited
+    // FILES array. Upload goes live immediately (bucket is public, no
+    // signed URLs needed); "Hide"/"Show" flips is_active without
+    // deleting the file, so a photo can be pulled without losing it. ----
+    function loadGalleryManage() {
+      var grid = document.getElementById('gallery-manage-grid');
+      var emptyEl = document.getElementById('gallery-manage-empty');
+      if (!grid) return;
+      supabaseClient
+        .from('gallery_photos')
+        .select('*')
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false })
+        .then(function (result) {
+          var photos = result.data || [];
+          if (result.error || !photos.length) {
+            if (emptyEl) emptyEl.style.display = 'block';
+            grid.innerHTML = '';
+            return;
+          }
+          if (emptyEl) emptyEl.style.display = 'none';
+          grid.innerHTML = photos.map(function (p, i) {
+            var url = supabaseClient.storage.from('gallery-photos').getPublicUrl(p.storage_path).data.publicUrl;
+            var prevOrder = i > 0 ? photos[i - 1].display_order - 1 : p.display_order;
+            var nextOrder = i < photos.length - 1 ? photos[i + 1].display_order + 1 : p.display_order;
+            return '<div class="gallery-manage-item' + (p.is_active ? '' : ' is-inactive') + '">' +
+              '<img class="gallery-manage-thumb" src="' + escapeHtml(url) + '" alt="" loading="lazy">' +
+              '<div class="gallery-manage-actions">' +
+              '<button type="button" class="gallery-manage-btn' + (p.is_active ? ' gallery-manage-btn--active' : '') + '" data-gallery-toggle-active data-id="' + escapeHtml(p.id) + '" data-active="' + (p.is_active ? 'true' : 'false') + '">' + (p.is_active ? 'Live' : 'Hidden') + '</button>' +
+              (i > 0 ? '<button type="button" class="gallery-manage-btn" data-gallery-move data-id="' + escapeHtml(p.id) + '" data-new-order="' + prevOrder + '" aria-label="Move earlier">&larr;</button>' : '') +
+              (i < photos.length - 1 ? '<button type="button" class="gallery-manage-btn" data-gallery-move data-id="' + escapeHtml(p.id) + '" data-new-order="' + nextOrder + '" aria-label="Move later">&rarr;</button>' : '') +
+              '<button type="button" class="gallery-manage-btn gallery-manage-btn--danger" data-gallery-delete data-id="' + escapeHtml(p.id) + '" data-path="' + escapeHtml(p.storage_path) + '">Delete</button>' +
+              '</div></div>';
+          }).join('');
+        });
+    }
+
+    var galleryLiveUploadForm = document.getElementById('gallery-live-upload-form');
+    if (galleryLiveUploadForm) {
+      galleryLiveUploadForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var statusEl = document.getElementById('gallery-live-upload-status');
+        var fileInput = document.getElementById('gallery-live-upload-file');
+        var files = fileInput.files;
+        hideMessage(statusEl);
+        if (!files.length) return;
+
+        var btn = galleryLiveUploadForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        statusEl.style.color = 'var(--color-text-muted)';
+        showMessage(statusEl, 'Uploading ' + files.length + (files.length === 1 ? ' photo…' : ' photos…'));
+
+        var uploads = Array.prototype.map.call(files, function (file) {
+          var safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+          var path = Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '-' + safeName;
+          return supabaseClient.storage.from('gallery-photos').upload(path, file).then(function (uploadResult) {
+            if (uploadResult.error) return uploadResult;
+            return supabaseClient.from('gallery_photos').insert({ storage_path: path });
+          });
+        });
+
+        Promise.all(uploads).then(function (results) {
+          btn.disabled = false;
+          var failed = results.filter(function (r) { return r.error; });
+          if (failed.length) {
+            statusEl.style.color = '#ef8b8f';
+            showMessage(statusEl, 'Some photos failed to upload — try again.');
+          } else {
+            statusEl.style.color = '#6fcf97';
+            showMessage(statusEl, 'Added to the public gallery.');
+          }
+          galleryLiveUploadForm.reset();
+          loadGalleryManage();
         });
       });
     }
@@ -3914,20 +3974,69 @@
         return;
       }
 
-      var approveBtn = e.target.closest('[data-approve-professional]');
-      if (approveBtn) {
-        approveBtn.disabled = true;
-        approveBtn.textContent = 'Approving…';
+      var mentorStatusBtn = e.target.closest('[data-mentor-status]');
+      if (mentorStatusBtn) {
+        var tabs = mentorStatusBtn.parentElement.querySelectorAll('[data-mentor-status]');
+        tabs.forEach(function (t) { t.disabled = true; });
         supabaseClient
-          .rpc('president_approve_professional', { target_id: approveBtn.getAttribute('data-id') })
+          .rpc('president_set_mentor_application_status', { target_id: mentorStatusBtn.getAttribute('data-id'), new_status: mentorStatusBtn.getAttribute('data-status') })
           .then(function (result) {
+            tabs.forEach(function (t) { t.disabled = false; });
             if (result.error) {
-              approveBtn.disabled = false;
-              approveBtn.textContent = 'Approve';
-              console.error('Approve failed:', result.error.message);
+              console.error('Update mentor status failed:', result.error.message);
               return;
             }
-            loadPresidentDashboard();
+            tabs.forEach(function (t) { t.classList.toggle('is-active', t === mentorStatusBtn); });
+          });
+        return;
+      }
+
+      var galleryToggleBtn = e.target.closest('[data-gallery-toggle-active]');
+      if (galleryToggleBtn) {
+        galleryToggleBtn.disabled = true;
+        supabaseClient
+          .from('gallery_photos')
+          .update({ is_active: galleryToggleBtn.getAttribute('data-active') !== 'true' })
+          .eq('id', galleryToggleBtn.getAttribute('data-id'))
+          .then(function (result) {
+            if (result.error) {
+              galleryToggleBtn.disabled = false;
+              console.error('Toggle gallery photo failed:', result.error.message);
+              return;
+            }
+            loadGalleryManage();
+          });
+        return;
+      }
+
+      var galleryDeleteBtn = e.target.closest('[data-gallery-delete]');
+      if (galleryDeleteBtn) {
+        if (!window.confirm('Remove this photo from the public gallery? This deletes the file too.')) return;
+        galleryDeleteBtn.disabled = true;
+        var deletePath = galleryDeleteBtn.getAttribute('data-path');
+        var deleteId = galleryDeleteBtn.getAttribute('data-id');
+        supabaseClient.storage.from('gallery-photos').remove([deletePath]).then(function () {
+          return supabaseClient.from('gallery_photos').delete().eq('id', deleteId);
+        }).then(function (result) {
+          if (result.error) {
+            galleryDeleteBtn.disabled = false;
+            console.error('Delete gallery photo failed:', result.error.message);
+            return;
+          }
+          loadGalleryManage();
+        });
+        return;
+      }
+
+      var galleryMoveBtn = e.target.closest('[data-gallery-move]');
+      if (galleryMoveBtn) {
+        galleryMoveBtn.disabled = true;
+        supabaseClient
+          .from('gallery_photos')
+          .update({ display_order: parseInt(galleryMoveBtn.getAttribute('data-new-order'), 10) })
+          .eq('id', galleryMoveBtn.getAttribute('data-id'))
+          .then(function () {
+            loadGalleryManage();
           });
         return;
       }

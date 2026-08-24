@@ -6,7 +6,7 @@
 <title>Gallery — LACMS</title>
 <meta name="description" content="Photos from LACMS socials, mentorship sessions and events.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-7">
+<link rel="stylesheet" href="css/styles.css?v=20260824-8">
 </head>
 <body>
 
@@ -108,90 +108,6 @@
     </div>
   </section>
 
-  <script>
-    (function () {
-      var FOLDER = 'Media/ACMS Gallery/';
-      var FILES = [
-        'IMG_0027.JPG', 'IMG_0028.JPG', 'IMG_0029.JPG', 'IMG_1164 2.JPG',
-        'IMG_1165.JPG', 'IMG_1166.JPG', 'IMG_1167.JPG', 'IMG_1168.JPG',
-        'IMG_1178.JPG', 'IMG_1179.JPG', 'IMG_1180.JPG', 'IMG_1181.JPG',
-        'IMG_1185.JPG', 'IMG_1196.JPG', 'IMG_1205.JPG', 'IMG_1206.JPG',
-        'IMG_1227.JPG', 'IMG_1228.JPG', 'IMG_4053.JPG', 'IMG_4996.JPG',
-        'IMG_5017.JPG', 'IMG_5019.JPG', 'IMG_8822.JPEG', 'Medball-NSG.JPG',
-        '356B96A6-9FEE-429D-A4DF-B45A6695DCFC.PNG',
-        'hero.jpg', 'sankofa-mentorship.jpg'
-      ];
-
-      var root = document.querySelector('[data-gallery]');
-      if (!root) return;
-
-      var stageImg = root.querySelector('[data-gallery-img]');
-      var loading = root.querySelector('[data-gallery-loading]');
-      var counter = root.querySelector('[data-gallery-counter]');
-      var prevBtn = root.querySelector('[data-gallery-prev]');
-      var nextBtn = root.querySelector('[data-gallery-next]');
-      var shuffleBtn = root.querySelector('[data-gallery-shuffle]');
-      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-      function shuffle(arr) {
-        var a = arr.slice();
-        for (var i = a.length - 1; i > 0; i--) {
-          var j = Math.floor(Math.random() * (i + 1));
-          var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
-        }
-        return a;
-      }
-
-      var order = shuffle(FILES);
-      var index = 0;
-      var timer = null;
-
-      function show(i) {
-        index = (i + order.length) % order.length;
-        var file = order[index];
-        loading.classList.add('is-visible');
-        stageImg.classList.remove('is-visible');
-        var next = new Image();
-        next.onload = function () {
-          stageImg.src = next.src;
-          stageImg.alt = 'A photo from an LACMS event';
-          loading.classList.remove('is-visible');
-          stageImg.classList.add('is-visible');
-        };
-        next.onerror = function () {
-          loading.textContent = 'Photo unavailable';
-        };
-        next.src = encodeURI(FOLDER + file);
-        counter.textContent = (index + 1) + ' / ' + order.length;
-      }
-
-      function resetTimer() {
-        if (reduceMotion) return;
-        window.clearInterval(timer);
-        timer = window.setInterval(function () { show(index + 1); }, 5000);
-      }
-
-      prevBtn.addEventListener('click', function () { show(index - 1); resetTimer(); });
-      nextBtn.addEventListener('click', function () { show(index + 1); resetTimer(); });
-      shuffleBtn.addEventListener('click', function () {
-        order = shuffle(FILES);
-        show(0);
-        resetTimer();
-      });
-
-      root.addEventListener('keydown', function (e) {
-        if (e.key === 'ArrowLeft') { show(index - 1); resetTimer(); }
-        if (e.key === 'ArrowRight') { show(index + 1); resetTimer(); }
-      });
-
-      root.addEventListener('mouseenter', function () { window.clearInterval(timer); });
-      root.addEventListener('mouseleave', resetTimer);
-
-      show(0);
-      resetTimer();
-    })();
-  </script>
-
   <section class="section section--muted">
     <div class="container" style="max-width: 640px;">
       <div class="section-head">
@@ -282,9 +198,125 @@
   </div>
 </footer>
 
-<script src="js/main.js?v=20260824-7"></script>
+<script src="js/main.js?v=20260824-8"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/members.js?v=20260824-7"></script>
+<script src="js/members.js?v=20260824-8"></script>
+
+<script>
+  (function () {
+    // Fallback list — used if Supabase isn't configured yet, the
+    // gallery_photos table is empty, or the fetch fails for any reason,
+    // so this page never goes blank during that transition. The live,
+    // president-editable list (uploaded from the dashboard's Gallery
+    // card) always takes over once there's at least one active photo.
+    var FALLBACK_FOLDER = 'Media/ACMS Gallery/';
+    var FALLBACK_FILES = [
+      'IMG_0027.JPG', 'IMG_0028.JPG', 'IMG_0029.JPG', 'IMG_1164 2.JPG',
+      'IMG_1165.JPG', 'IMG_1166.JPG', 'IMG_1167.JPG', 'IMG_1168.JPG',
+      'IMG_1178.JPG', 'IMG_1179.JPG', 'IMG_1180.JPG', 'IMG_1181.JPG',
+      'IMG_1185.JPG', 'IMG_1196.JPG', 'IMG_1205.JPG', 'IMG_1206.JPG',
+      'IMG_1227.JPG', 'IMG_1228.JPG', 'IMG_4053.JPG', 'IMG_4996.JPG',
+      'IMG_5017.JPG', 'IMG_5019.JPG', 'IMG_8822.JPEG', 'Medball-NSG.JPG',
+      '356B96A6-9FEE-429D-A4DF-B45A6695DCFC.PNG',
+      'hero.jpg', 'sankofa-mentorship.jpg'
+    ];
+
+    var root = document.querySelector('[data-gallery]');
+    if (!root) return;
+
+    var stageImg = root.querySelector('[data-gallery-img]');
+    var loading = root.querySelector('[data-gallery-loading]');
+    var counter = root.querySelector('[data-gallery-counter]');
+    var prevBtn = root.querySelector('[data-gallery-prev]');
+    var nextBtn = root.querySelector('[data-gallery-next]');
+    var shuffleBtn = root.querySelector('[data-gallery-shuffle]');
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function shuffle(arr) {
+      var a = arr.slice();
+      for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+      }
+      return a;
+    }
+
+    function init(urls) {
+      var order = shuffle(urls);
+      var index = 0;
+      var timer = null;
+
+      function show(i) {
+        index = (i + order.length) % order.length;
+        loading.classList.add('is-visible');
+        stageImg.classList.remove('is-visible');
+        var next = new Image();
+        next.onload = function () {
+          stageImg.src = next.src;
+          stageImg.alt = 'A photo from an LACMS event';
+          loading.classList.remove('is-visible');
+          stageImg.classList.add('is-visible');
+        };
+        next.onerror = function () {
+          loading.textContent = 'Photo unavailable';
+        };
+        next.src = order[index];
+        counter.textContent = (index + 1) + ' / ' + order.length;
+      }
+
+      function resetTimer() {
+        if (reduceMotion) return;
+        window.clearInterval(timer);
+        timer = window.setInterval(function () { show(index + 1); }, 5000);
+      }
+
+      prevBtn.addEventListener('click', function () { show(index - 1); resetTimer(); });
+      nextBtn.addEventListener('click', function () { show(index + 1); resetTimer(); });
+      shuffleBtn.addEventListener('click', function () {
+        order = shuffle(urls);
+        show(0);
+        resetTimer();
+      });
+
+      root.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowLeft') { show(index - 1); resetTimer(); }
+        if (e.key === 'ArrowRight') { show(index + 1); resetTimer(); }
+      });
+
+      root.addEventListener('mouseenter', function () { window.clearInterval(timer); });
+      root.addEventListener('mouseleave', resetTimer);
+
+      show(0);
+      resetTimer();
+    }
+
+    function initFallback() {
+      init(FALLBACK_FILES.map(function (f) { return encodeURI(FALLBACK_FOLDER + f); }));
+    }
+
+    if (typeof supabaseClient === 'undefined' || !supabaseClient) {
+      initFallback();
+      return;
+    }
+
+    supabaseClient
+      .from('gallery_photos')
+      .select('storage_path')
+      .eq('is_active', true)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false })
+      .then(function (result) {
+        if (result.error || !result.data || !result.data.length) {
+          initFallback();
+          return;
+        }
+        var urls = result.data.map(function (row) {
+          return supabaseClient.storage.from('gallery-photos').getPublicUrl(row.storage_path).data.publicUrl;
+        });
+        init(urls);
+      });
+  })();
+</script>
 </body>
 </html>

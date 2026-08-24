@@ -7,7 +7,7 @@
 <meta name="description" content="President-only view of account activity across the LACMS platform.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-7">
+<link rel="stylesheet" href="css/styles.css?v=20260824-8">
 </head>
 <body>
 
@@ -102,99 +102,187 @@
 
       <div id="president-content" style="display:none;">
 
-        <div class="dash-toolbar">
-          <div class="network-search">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="search" id="dash-search-input" placeholder="Search everyone by name…">
-          </div>
-          <div class="dash-refresh">
-            <span id="dash-updated-label" class="dash-updated-label">Updated just now</span>
-            <button type="button" id="dash-refresh-btn" class="dash-refresh-btn" aria-label="Refresh now">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+        <div id="dash-landing">
+          <div class="dash-nav-grid">
+            <button type="button" class="dash-nav-card" data-dash-section="activity">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+              <span class="dash-nav-card-title">User Activity</span>
+              <span class="dash-nav-card-desc">Members, professionals — who's online, who needs a nudge</span>
+              <span class="dash-nav-card-count" id="dash-count-activity">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="mmg">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9 8l-6.5 1 4.7 4.6L6 20l6-3.2L18 20l-1.2-6.4L21.5 9 15 8Z"/></svg></span>
+              <span class="dash-nav-card-title">MMG</span>
+              <span class="dash-nav-card-desc">Midlands Medics Gala — partner-university guest accounts</span>
+              <span class="dash-nav-card-count" id="dash-count-mmg">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="sankofa">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-1.5-1-4-1.5-6-1.5v13c2 0 4.5.5 6 1.5 1.5-1 4-1.5 6-1.5V4.5c-2 0-4.5.5-6 1.5z"/><line x1="12" y1="6" x2="12" y2="19"/></svg></span>
+              <span class="dash-nav-card-title">Sankofa</span>
+              <span class="dash-nav-card-desc">Mentee &amp; mentor Circle applications</span>
+              <span class="dash-nav-card-count" id="dash-count-sankofa">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="motm">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.5 6 22l6-3 6 3-2.2-8.5"/></svg></span>
+              <span class="dash-nav-card-title">Nominations</span>
+              <span class="dash-nav-card-desc">ACMS Member of the Month nominations</span>
+              <span class="dash-nav-card-count" id="dash-count-motm">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="events">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg></span>
+              <span class="dash-nav-card-title">Events</span>
+              <span class="dash-nav-card-desc">Who's registered for what</span>
+              <span class="dash-nav-card-count" id="dash-count-events">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="gallery">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M21 16l-5-4-4 3-3-2-6 5"/></svg></span>
+              <span class="dash-nav-card-title">Gallery</span>
+              <span class="dash-nav-card-desc">Member submissions, and what's live on the public gallery</span>
+              <span class="dash-nav-card-count" id="dash-count-gallery">&nbsp;</span>
             </button>
           </div>
         </div>
 
-        <div class="online-now" id="online-now">
-          <div class="online-now-head">
-            <span class="online-now-dot" aria-hidden="true"></span>
-            <h2>Online right now</h2>
-            <span class="online-now-count" id="online-now-count">0</span>
+        <div id="dash-panels">
+
+          <div class="dash-panel" id="dash-panel-activity" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+
+            <div class="dash-toolbar">
+              <div class="network-search">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="search" id="dash-search-input" placeholder="Search everyone by name…">
+              </div>
+              <div class="dash-refresh">
+                <span id="dash-updated-label" class="dash-updated-label">Updated just now</span>
+                <button type="button" id="dash-refresh-btn" class="dash-refresh-btn" aria-label="Refresh now">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="online-now" id="online-now">
+              <div class="online-now-head">
+                <span class="online-now-dot" aria-hidden="true"></span>
+                <h2>Online right now</h2>
+                <span class="online-now-count" id="online-now-count">0</span>
+              </div>
+              <div class="online-now-list" id="online-now-list"></div>
+              <p id="online-now-empty" style="color: var(--color-text-faint); margin: 0;">Nobody's on the site right now.</p>
+            </div>
+
+            <p id="dash-search-empty" style="display:none; color: var(--color-text-faint);">No one matches that search.</p>
+
+            <div class="dash-stats" id="dash-stats"></div>
+
+            <div class="section-head">
+              <span class="eyebrow">LACMS Members &amp; Professionals</span>
+              <h2>Most recently active first</h2>
+              <p id="people-count-line" class="dash-section-count"></p>
+            </div>
+            <div id="people-sections"></div>
+
+            <div class="section-head" style="margin-top: var(--space-8);">
+              <span class="eyebrow">Needs a nudge</span>
+              <h2>Hasn't finished setting up</h2>
+              <p>Invited but not yet active — includes anyone who opened their invite link but never completed the password step.</p>
+            </div>
+            <div class="roster-table" id="attention-table"></div>
+            <p id="attention-empty" style="display:none; color: var(--color-text-faint);">Everyone invited so far has finished setting up. Nothing here.</p>
           </div>
-          <div class="online-now-list" id="online-now-list"></div>
-          <p id="online-now-empty" style="color: var(--color-text-faint); margin: 0;">Nobody's on the site right now.</p>
-        </div>
 
-        <p id="dash-search-empty" style="display:none; color: var(--color-text-faint);">No one matches that search.</p>
-
-        <div class="dash-stats" id="dash-stats"></div>
-
-        <div class="section-head">
-          <span class="eyebrow">LACMS Members &amp; Professionals</span>
-          <h2>Most recently active first</h2>
-          <p id="people-count-line" class="dash-section-count"></p>
-        </div>
-        <div id="people-sections"></div>
-
-        <div class="section-head" style="margin-top: var(--space-8);">
-          <span class="eyebrow">Needs a nudge</span>
-          <h2>Hasn't finished setting up</h2>
-          <p>Invited but not yet active — includes anyone who opened their invite link but never completed the password step.</p>
-        </div>
-        <div class="roster-table" id="attention-table"></div>
-        <p id="attention-empty" style="display:none; color: var(--color-text-faint);">Everyone invited so far has finished setting up. Nothing here.</p>
-
-        <div class="section-head" style="margin-top: var(--space-8);">
-          <span class="eyebrow">Midlands Medics Gala</span>
-          <h2>Partner-university guests</h2>
-          <p id="mmg-count-line" class="dash-section-count"></p>
-        </div>
-        <div id="mmg-sections"></div>
-
-        <div class="section-head" style="margin-top: var(--space-8);">
-          <span class="eyebrow">Sankofa Mentorship</span>
-          <h2>Pending mentor accounts</h2>
-          <p>Doctors and pharmacists who created their own account to apply as a mentor — approve to make them visible on the Network.</p>
-        </div>
-        <div class="roster-table" id="pending-professionals-table"></div>
-        <p id="pending-professionals-empty" style="display:none; color: var(--color-text-faint);">No pending professional accounts right now.</p>
-
-        <div class="section-head" style="margin-top: var(--space-8);">
-          <span class="eyebrow">Sankofa Circle</span>
-          <h2>Applications</h2>
-          <p id="sankofa-count-line" class="dash-section-count"></p>
-          <div class="dash-filter-tabs" id="sankofa-filter-tabs">
-            <button type="button" class="dash-filter-tab is-active" data-sankofa-filter="all">All</button>
-            <button type="button" class="dash-filter-tab" data-sankofa-filter="mentee">Mentees</button>
-            <button type="button" class="dash-filter-tab" data-sankofa-filter="mentor">Mentors</button>
+          <div class="dash-panel" id="dash-panel-mmg" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Midlands Medics Gala</span>
+              <h2>Partner-university guests</h2>
+              <p id="mmg-count-line" class="dash-section-count"></p>
+            </div>
+            <div id="mmg-sections"></div>
           </div>
-        </div>
-        <div class="app-card-list" id="sankofa-applications-list"></div>
-        <p id="sankofa-applications-empty" style="display:none; color: var(--color-text-faint);">No Sankofa applications yet.</p>
 
-        <div class="section-head" style="margin-top: var(--space-8);">
-          <span class="eyebrow">ACMS Member of the Month</span>
-          <h2>Nominations</h2>
-          <p id="motm-count-line" class="dash-section-count"></p>
-        </div>
-        <div class="app-card-list" id="motm-nominations-list"></div>
-        <p id="motm-nominations-empty" style="display:none; color: var(--color-text-faint);">No nominations yet.</p>
+          <div class="dash-panel" id="dash-panel-sankofa" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Sankofa Circle</span>
+              <h2>Applications</h2>
+              <p id="sankofa-count-line" class="dash-section-count"></p>
+              <div class="dash-filter-tabs" id="sankofa-filter-tabs">
+                <button type="button" class="dash-filter-tab is-active" data-sankofa-filter="all">All</button>
+                <button type="button" class="dash-filter-tab" data-sankofa-filter="mentee">Mentees</button>
+                <button type="button" class="dash-filter-tab" data-sankofa-filter="mentor">Mentors</button>
+              </div>
+            </div>
+            <div class="app-card-list" id="sankofa-applications-list"></div>
+            <p id="sankofa-applications-empty" style="display:none; color: var(--color-text-faint);">No Sankofa applications yet.</p>
+          </div>
 
-        <div class="section-head" style="margin-top: var(--space-8);">
-          <span class="eyebrow">Events</span>
-          <h2>Who's registered</h2>
-          <p id="event-regs-count-line" class="dash-section-count"></p>
-        </div>
-        <div id="event-registrations-sections"></div>
-        <p id="event-registrations-empty" style="display:none; color: var(--color-text-faint);">No one's registered for anything yet.</p>
+          <div class="dash-panel" id="dash-panel-motm" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">ACMS Member of the Month</span>
+              <h2>Nominations</h2>
+              <p id="motm-count-line" class="dash-section-count"></p>
+            </div>
+            <div class="app-card-list" id="motm-nominations-list"></div>
+            <p id="motm-nominations-empty" style="display:none; color: var(--color-text-faint);">No nominations yet.</p>
+          </div>
 
-        <div class="section-head" style="margin-top: var(--space-8);">
-          <span class="eyebrow">Gallery</span>
-          <h2>Member submissions</h2>
-          <p id="gallery-submissions-count-line" class="dash-section-count"></p>
+          <div class="dash-panel" id="dash-panel-events" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Events</span>
+              <h2>Who's registered</h2>
+              <p id="event-regs-count-line" class="dash-section-count"></p>
+            </div>
+            <div id="event-registrations-sections"></div>
+            <p id="event-registrations-empty" style="display:none; color: var(--color-text-faint);">No one's registered for anything yet.</p>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-gallery" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+
+            <div class="section-head">
+              <span class="eyebrow">Public gallery</span>
+              <h2>What's live on gallery.html</h2>
+              <p>Upload goes live immediately — no need to come back and ask for a code change to swap a photo again.</p>
+            </div>
+            <form id="gallery-live-upload-form" class="gallery-upload-form">
+              <input type="file" id="gallery-live-upload-file" accept="image/*" multiple required>
+              <button type="submit" class="btn btn-primary">Add to gallery</button>
+              <p id="gallery-live-upload-status" class="auth-error" role="status" style="display:none;"></p>
+            </form>
+            <div class="gallery-manage-grid" id="gallery-manage-grid"></div>
+            <p id="gallery-manage-empty" style="display:none; color: var(--color-text-faint);">No photos in the public gallery yet — upload some above.</p>
+
+            <div class="section-head" style="margin-top: var(--space-8);">
+              <span class="eyebrow">Gallery</span>
+              <h2>Member submissions</h2>
+              <p id="gallery-submissions-count-line" class="dash-section-count"></p>
+            </div>
+            <div class="gallery-submissions-grid" id="gallery-submissions-grid"></div>
+            <p id="gallery-submissions-empty" style="display:none; color: var(--color-text-faint);">No gallery submissions yet.</p>
+          </div>
+
         </div>
-        <div class="gallery-submissions-grid" id="gallery-submissions-grid"></div>
-        <p id="gallery-submissions-empty" style="display:none; color: var(--color-text-faint);">No gallery submissions yet.</p>
 
       </div>
     </div>
@@ -256,7 +344,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-7"></script>
-<script src="js/members.js?v=20260824-7"></script>
+<script src="js/main.js?v=20260824-8"></script>
+<script src="js/members.js?v=20260824-8"></script>
 </body>
 </html>
