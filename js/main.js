@@ -484,8 +484,7 @@
       var rotX = 0, rotY = 0;
       var dragging = false;
       var pointerId = null;
-      var isTouch = false;
-      var axisLocked = null; // null while undecided | 'card' | 'scroll'
+      var axisLocked = null; // null while undecided | 'card' | 'scroll' (touch only)
       var startX = 0, startY = 0, startRotX = 0, startRotY = 0;
 
       function applyTransform() {
@@ -550,42 +549,69 @@
         });
       }
 
-      // 4. Drag to rotate — mouse and touch through one Pointer Events
-      // implementation. Touch gets an axis lock: the first several
-      // pixels of movement decide whether this is a horizontal "spin
-      // the card" gesture or a vertical "scroll the page" one, so
-      // dragging over the card doesn't hijack an ordinary scroll.
-      // Pointer capture (once committed to 'card') means the drag
-      // keeps tracking even once the rotated card's rendered area
-      // is thin side-on, or the pointer strays outside it entirely.
+      // 4. Drag to rotate — mouse and touch are handled through two
+      // deliberately separate, simple implementations rather than
+      // one unified Pointer Events path, after the unified version
+      // turned out unreliable for mouse drags in real browsers even
+      // though it checked out in every simulated test here.
       var ROTATE_Y_SENSITIVITY = 0.6;
       var ROTATE_X_SENSITIVITY = 0.25;
       var ROTATE_X_LIMIT = 22;
       var AXIS_LOCK_PX = 8;
 
-      function beginCardDrag() {
+      function startDragVisuals() {
         dragging = true;
         flipper.classList.add('is-dragging');
         flipper.classList.remove('is-hint');
         setActive(true);
-        try { flipper.setPointerCapture(pointerId); } catch (e) {}
+      }
+      function endDragVisuals() {
+        dragging = false;
+        flipper.classList.remove('is-dragging');
+        setActive(false);
+        resetTransform(); // never left wherever it was turned to — always springs home
       }
 
+      // Mouse: the plain, classic mousedown-then-track-on-document
+      // pattern. Tracking on document (not the card) is what makes
+      // this robust — it keeps working even once the cursor drifts
+      // off the card mid-drag, without depending on setPointerCapture
+      // or any particular Pointer Events behaviour.
+      flipper.addEventListener('mousedown', function (e) {
+        if (e.button !== 0) return;
+        e.preventDefault(); // stop the logo/name text starting a native image-drag or selection instead
+        var mStartX = e.clientX, mStartY = e.clientY;
+        var mStartRotX = rotX, mStartRotY = rotY;
+        startDragVisuals();
+
+        function onMouseMove(e2) {
+          var dx = e2.clientX - mStartX;
+          var dy = e2.clientY - mStartY;
+          rotY = clamp(mStartRotY + dx * ROTATE_Y_SENSITIVITY, -180, 180);
+          rotX = clamp(mStartRotX - dy * ROTATE_X_SENSITIVITY, -ROTATE_X_LIMIT, ROTATE_X_LIMIT);
+          applyTransform();
+          updateGlare(e2.clientX, e2.clientY);
+        }
+        function onMouseUp() {
+          endDragVisuals();
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+
+      // Touch: Pointer Events with an axis lock — touch specifically
+      // needs to tell "spin the card" apart from "scroll the page",
+      // which mouse never has to worry about. Confirmed working as-is.
       flipper.addEventListener('pointerdown', function (e) {
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-        isTouch = e.pointerType === 'touch';
+        if (e.pointerType !== 'touch') return;
         pointerId = e.pointerId;
         startX = e.clientX;
         startY = e.clientY;
         startRotX = rotX;
         startRotY = rotY;
-        if (isTouch) {
-          axisLocked = null; // decided on first sufficient movement
-        } else {
-          e.preventDefault(); // stop a mouse-down on the logo/text starting a native image-drag or selection instead
-          axisLocked = 'card';
-          beginCardDrag();
-        }
+        axisLocked = null; // decided on first sufficient movement
       });
 
       flipper.addEventListener('pointermove', function (e) {
@@ -593,11 +619,12 @@
         var dx = e.clientX - startX;
         var dy = e.clientY - startY;
 
-        if (isTouch && axisLocked === null) {
+        if (axisLocked === null) {
           if (Math.abs(dx) < AXIS_LOCK_PX && Math.abs(dy) < AXIS_LOCK_PX) return;
           axisLocked = Math.abs(dx) > Math.abs(dy) * 1.3 ? 'card' : 'scroll';
           if (axisLocked === 'card') {
-            beginCardDrag();
+            startDragVisuals();
+            try { flipper.setPointerCapture(pointerId); } catch (e2) {}
           } else {
             pointerId = null; // hand the rest of this gesture to native scroll
             return;
@@ -612,19 +639,14 @@
         updateGlare(e.clientX, e.clientY);
       }, { passive: false });
 
-      function endDrag(e) {
+      function endTouchDrag(e) {
         if (pointerId !== null && e.pointerId !== pointerId) return;
-        if (dragging) {
-          dragging = false;
-          flipper.classList.remove('is-dragging');
-          setActive(false);
-          resetTransform(); // never left wherever it was turned to — always springs home
-        }
+        if (dragging) endDragVisuals();
         pointerId = null;
         axisLocked = null;
       }
-      flipper.addEventListener('pointerup', endDrag);
-      flipper.addEventListener('pointercancel', endDrag);
+      flipper.addEventListener('pointerup', endTouchDrag);
+      flipper.addEventListener('pointercancel', endTouchDrag);
 
       // 2. The corner badge itself — click, tap or keyboard (a
       // <button> already gets Enter/Space for free) turns the card
