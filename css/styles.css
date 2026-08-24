@@ -5466,6 +5466,11 @@ body.intro-active { overflow: hidden; }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* President dashboard's account edit modal reuses .network-modal's
+   backdrop/close/animation wholesale, just wider — a form with a dozen
+   fields needs more room than a read-only profile popup. */
+.network-modal-panel--wide { width: min(100%, 640px); }
+
 .network-modal-close {
   position: absolute;
   top: var(--space-4);

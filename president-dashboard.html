@@ -7,7 +7,7 @@
 <meta name="description" content="President-only view of account activity across the LACMS platform.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-13">
+<link rel="stylesheet" href="css/styles.css?v=20260824-14">
 </head>
 <body>
 
@@ -145,6 +145,12 @@
               <span class="dash-nav-card-title">Create Account</span>
               <span class="dash-nav-card-desc">Add a member, professional or MMG guest directly</span>
               <span class="dash-nav-card-count">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="manage">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+              <span class="dash-nav-card-title">Manage Accounts</span>
+              <span class="dash-nav-card-desc">Edit or remove any member, professional or MMG guest</span>
+              <span class="dash-nav-card-count" id="dash-count-manage">&nbsp;</span>
             </button>
           </div>
         </div>
@@ -400,6 +406,35 @@
             </form>
           </div>
 
+          <div class="dash-panel" id="dash-panel-manage" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+
+            <div class="section-head">
+              <span class="eyebrow">Every account</span>
+              <h2>Manage accounts</h2>
+              <p>Click anyone to edit their profile or remove them — members, professionals and MMG guests all in one place.</p>
+            </div>
+
+            <div class="dash-toolbar">
+              <div class="network-search">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="search" id="manage-search-input" placeholder="Search everyone by name…">
+              </div>
+              <div class="dash-filter-tabs" id="manage-type-tabs">
+                <button type="button" class="dash-filter-tab is-active" data-manage-filter="all">All</button>
+                <button type="button" class="dash-filter-tab" data-manage-filter="member">Members</button>
+                <button type="button" class="dash-filter-tab" data-manage-filter="professional">Professionals</button>
+                <button type="button" class="dash-filter-tab" data-manage-filter="mmg">MMG</button>
+              </div>
+            </div>
+
+            <div class="roster-table" id="manage-accounts-list"></div>
+            <p id="manage-accounts-empty" style="display:none; color: var(--color-text-faint);">No one matches that search.</p>
+          </div>
+
         </div>
 
       </div>
@@ -462,7 +497,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-13"></script>
-<script src="js/members.js?v=20260824-13"></script>
+<script src="js/main.js?v=20260824-14"></script>
+<script src="js/members.js?v=20260824-14"></script>
 </body>
 </html>
