@@ -140,6 +140,32 @@
       .then(function (result) { return isCommitteeMember(result.data); });
   }
 
+  // ---- Site-wide: "Active members" stat (index.html, about.html) —
+  // hidden until 30 September 2026 (launch), then reads live from
+  // site_settings.active_member_count instead of a hardcoded number —
+  // editable straight from Supabase's Table Editor, no code change or
+  // redeploy needed to update it. Public data, no session required;
+  // stays hidden (not "0" or a stale number) if the reveal date hasn't
+  // passed, the fetch fails, or the row doesn't exist yet. ----
+  var activeMemberCountEls = document.querySelectorAll('[data-active-member-count]');
+  if (activeMemberCountEls.length) {
+    var ACTIVE_MEMBER_COUNT_REVEAL = new Date('2026-09-30T00:00:00+01:00').getTime();
+    if (Date.now() >= ACTIVE_MEMBER_COUNT_REVEAL) {
+      supabaseClient
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'active_member_count')
+        .maybeSingle()
+        .then(function (result) {
+          if (result.error || !result.data) return;
+          activeMemberCountEls.forEach(function (el) { el.textContent = result.data.value; });
+          document.querySelectorAll('[data-active-member-count-item]').forEach(function (el) {
+            el.style.display = '';
+          });
+        });
+    }
+  }
+
   // ---- Site-wide presence heartbeat: powers the president's "currently
   // online" view. Not a live socket — just a timestamp upserted every
   // 30 seconds for whoever's signed in, on whichever page they happen to
@@ -3247,12 +3273,16 @@
     // "the load failed." This puts an actual, visible error in the
     // section's own empty-state slot instead, and reddens the card
     // count so it's obvious from the landing grid too.
-    function showSectionLoadError(listId, emptyId, countSection) {
+    function showSectionLoadError(listId, emptyId, countSection, errorMessage) {
       var listEl = document.getElementById(listId);
       var emptyEl = document.getElementById(emptyId);
       if (listEl) listEl.innerHTML = '';
       if (emptyEl) {
-        emptyEl.textContent = "Couldn't load this section — try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.";
+        // This page is president-only, so the raw Postgres/PostgREST
+        // error is safe (and far more useful than a generic message) to
+        // show right here — no need to dig through devtools to diagnose
+        // a migration that hasn't run yet or a broken RPC.
+        emptyEl.textContent = "Couldn't load this section" + (errorMessage ? ': ' + errorMessage : '') + " — try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.";
         emptyEl.style.color = '#ef8b8f';
         emptyEl.style.display = 'block';
       }
@@ -3336,7 +3366,7 @@
         });
         var sankofaMerged = mentees.concat(mentors).sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
         if (results[4].error && results[5].error) {
-          showSectionLoadError('sankofa-applications-list', 'sankofa-applications-empty', 'sankofa');
+          showSectionLoadError('sankofa-applications-list', 'sankofa-applications-empty', 'sankofa', results[4].error.message);
         } else {
           renderSankofaApplications(sankofaMerged);
           setDashCount('sankofa', sankofaMerged.length + (sankofaMerged.length === 1 ? ' application' : ' applications') + (results[4].error || results[5].error ? ' (partial — see console)' : ''));
@@ -3344,7 +3374,7 @@
 
         if (results[6].error) {
           console.error('MoTM nominations failed to load:', results[6].error.message);
-          showSectionLoadError('motm-nominations-list', 'motm-nominations-empty', 'motm');
+          showSectionLoadError('motm-nominations-list', 'motm-nominations-empty', 'motm', results[6].error.message);
         } else {
           var motmList = results[6].data || [];
           renderMotmNominations(motmList);
@@ -3352,7 +3382,7 @@
         }
         if (results[7].error) {
           console.error('Event registrations failed to load:', results[7].error.message);
-          showSectionLoadError('event-registrations-sections', 'event-registrations-empty', 'events');
+          showSectionLoadError('event-registrations-sections', 'event-registrations-empty', 'events', results[7].error.message);
         } else {
           var eventsList = results[7].data || [];
           renderEventRegistrations(eventsList);
@@ -3826,7 +3856,9 @@
           '</div>' +
           '<svg class="icon app-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>' +
           '</div>' +
-          '<div class="app-card-body">' + appCardField('Reason', n.reason) + appCardField('Nominator email', n.nominator_email) + '</div>' +
+          '<div class="app-card-body">' + appCardField('Reason', n.reason) + appCardField('Nominator email', n.nominator_email) +
+          '<button type="button" class="app-card-delete-btn" data-motm-delete data-id="' + escapeHtml(n.id) + '">Delete &amp; let them nominate again</button>' +
+          '</div>' +
           '</div>';
       }).join('');
     }
@@ -4041,6 +4073,23 @@
               markBtn.disabled = false;
               markBtn.textContent = 'Mark active';
               console.error('Mark active failed:', result.error.message);
+              return;
+            }
+            loadPresidentDashboard();
+          });
+        return;
+      }
+
+      var motmDeleteBtn = e.target.closest('[data-motm-delete]');
+      if (motmDeleteBtn) {
+        if (!window.confirm("Delete this nomination? They'll be able to submit a new one straight away — this month's slot frees up as soon as this is deleted.")) return;
+        motmDeleteBtn.disabled = true;
+        supabaseClient
+          .rpc('president_delete_motm_nomination', { target_id: motmDeleteBtn.getAttribute('data-id') })
+          .then(function (result) {
+            if (result.error) {
+              motmDeleteBtn.disabled = false;
+              console.error('Delete nomination failed:', result.error.message);
               return;
             }
             loadPresidentDashboard();
