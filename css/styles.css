@@ -3078,6 +3078,8 @@ body.intro-active { overflow: hidden; }
   max-width: 420px;
   -webkit-perspective: 1400px;
   perspective: 1400px;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
 }
 
 .member-card-flipper {
@@ -3118,12 +3120,26 @@ body.intro-active { overflow: hidden; }
   box-shadow: 0 28px 60px -18px rgba(212, 166, 43, 0.55);
 }
 
-.member-card-face--front { position: relative; padding: var(--space-5); }
+.member-card-face--front {
+  position: relative;
+  padding: var(--space-5);
+  /* An explicit identity transform — Safari has a well-documented bug
+     where an untransformed child of a preserve-3d element doesn't get
+     its backface-visibility evaluated against the parent's actual 3D
+     rotation, letting it stay visibly "facing the camera" even once
+     the flipper has turned past 90°. rotateY(0deg) is a no-op
+     visually but forces Safari to treat this face as a real 3D
+     participant. translateZ(0) additionally forces its own
+     compositing layer, another common trigger for the same bug. */
+  -webkit-transform: rotateY(0deg) translateZ(0);
+  transform: rotateY(0deg) translateZ(0);
+}
 
 .member-card-face--back {
   position: absolute;
   inset: 0;
-  transform: rotateY(180deg);
+  -webkit-transform: rotateY(180deg) translateZ(0);
+  transform: rotateY(180deg) translateZ(0);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3151,7 +3167,6 @@ body.intro-active { overflow: hidden; }
   content: '';
   position: absolute;
   inset: 0;
-  z-index: 0;
   pointer-events: none;
   border-radius: inherit;
   background: linear-gradient(115deg, transparent 35%, rgba(232, 199, 103, 0.16) 50%, transparent 65%);
