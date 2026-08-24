@@ -236,7 +236,9 @@
     '.news-post', '.person-card', '.quick-link-card', '.roster-row',
     '.mmg-timeline-item', '.login-choice-card',
     '.value-item', '.programme-card', '.impact-card',
-    '.mmg-info-card', '.network-history-row', '[data-reveal]'
+    '.mmg-info-card', '.network-history-row', '[data-reveal]',
+    '.dash-nav-card', '.dash-stat', '.app-card', '.online-now-chip',
+    '.gallery-manage-item', '.gallery-submission-item'
   ].join(',');
 
   var skipReveal = reduceMotionMQ.matches || !hasIO;

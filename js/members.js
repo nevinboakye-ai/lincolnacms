@@ -3505,9 +3505,9 @@
       var totalCount = real.length + pendingMembers.length;
 
       var stats = [
-        { num: totalCount, label: 'Total accounts', cls: '' },
+        { num: totalCount, label: 'Total accounts', cls: 'total' },
         { num: onlineCount, label: 'Online now', cls: 'online' },
-        { num: activatedCount, label: 'Fully set up', cls: '' },
+        { num: activatedCount, label: 'Fully set up', cls: 'setup' },
         { num: needsAttentionCount, label: 'Needs a nudge', cls: 'pending' }
       ];
       document.getElementById('dash-stats').innerHTML = stats.map(function (s) {
@@ -4360,8 +4360,15 @@
               // Removes it from the submissions bucket now that it's
               // live — keeps the review queue showing only what still
               // needs a decision, rather than the same file sitting
-              // there forever after being actioned.
-              supabaseClient.storage.from('gallery-submissions').remove([pubPath]).then(function () {
+              // there forever after being actioned. It's already live
+              // in the public gallery at this point regardless of
+              // whether this step succeeds, so a failure here is
+              // flagged but doesn't roll anything back.
+              supabaseClient.storage.from('gallery-submissions').remove([pubPath]).then(function (removeResult) {
+                if (removeResult.error) {
+                  console.error('Remove original submission failed:', removeResult.error.message);
+                  window.alert("Added to the gallery, but couldn't clear the original submission from the review queue (" + removeResult.error.message + ") — it may show up here again after a refresh.");
+                }
                 loadGallerySubmissions();
                 loadGalleryManage();
               });
@@ -4379,6 +4386,7 @@
           if (result.error) {
             submissionRejectBtn.disabled = false;
             console.error('Reject submission failed:', result.error.message);
+            window.alert("Couldn't reject this submission: " + result.error.message);
             return;
           }
           loadGallerySubmissions();
