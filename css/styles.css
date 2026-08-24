@@ -834,7 +834,38 @@ body.lightbox-open { overflow: hidden; }
 
 .wwa-carousel {
   position: relative;
+  display: block;
   background: var(--color-surface);
+  cursor: pointer;
+}
+.wwa-carousel-hint {
+  position: absolute;
+  z-index: 2;
+  left: var(--space-4);
+  bottom: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  background: rgba(5, 5, 6, 0.72);
+  backdrop-filter: blur(4px);
+  color: var(--color-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard);
+}
+.wwa-carousel-hint .icon { width: 16px; height: 16px; }
+.wwa-carousel:hover .wwa-carousel-hint,
+.wwa-carousel:focus-visible .wwa-carousel-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+.wwa-carousel:hover .wwa-carousel-img,
+.wwa-carousel:focus-visible .wwa-carousel-img {
+  filter: brightness(0.8);
 }
 
 .wwa-carousel-img {
@@ -845,6 +876,7 @@ body.lightbox-open { overflow: hidden; }
   object-fit: cover;
   opacity: 0;
   animation: wwa-fade 20s ease-in-out infinite;
+  transition: filter var(--dur-base) var(--ease-standard);
 }
 
 @keyframes wwa-fade {
@@ -4449,6 +4481,21 @@ body.intro-active { overflow: hidden; }
   margin-bottom: 3px;
 }
 .app-card-field-value { font-size: 0.88rem; color: var(--color-text); white-space: pre-wrap; }
+
+.app-card-delete-btn {
+  margin-top: var(--space-4);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px dashed var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
+}
+.app-card-delete-btn:hover { border-color: #ef8b8f; color: #ef8b8f; }
+.app-card-delete-btn:disabled { opacity: 0.6; cursor: default; }
 
 /* President dashboard: gallery submissions browser */
 .gallery-submissions-grid {

@@ -6,7 +6,7 @@
 <title>ACMS Member of the Month — LACMS</title>
 <meta name="description" content="ACMS Member of the Month: celebrating a LACMS member who's gone above and beyond this month.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-8">
+<link rel="stylesheet" href="css/styles.css?v=20260824-9">
 </head>
 <body>
 
@@ -111,7 +111,7 @@
           <div class="motm-tags" id="motm-tags" style="display:none;"></div>
 
           <div class="motm-hero-actions">
-            <a class="btn btn-primary" href="mailto:acms@lincolnsu.com?subject=MoTM%20Nomination">Nominate a member</a>
+            <a class="btn btn-primary" href="#nominate">Nominate a member</a>
             <a class="btn btn-outline" href="#process">How selection works</a>
           </div>
         </div>
@@ -178,7 +178,7 @@
             </div>
           </div>
         </div>
-        <a class="btn btn-primary" href="mailto:acms@lincolnsu.com?subject=MoTM%20Nomination">Nominate a member</a>
+        <a class="btn btn-primary" href="#nominate">Nominate a member</a>
       </div>
     </div>
   </section>
@@ -192,15 +192,21 @@
 
       <div id="nominate-not-signed-in" class="form-note">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
-        <span><a href="member-login.html" style="color: var(--color-gold-light);">Log in</a> to submit a nomination directly from your account — or use the "Nominate a member" button above to email us instead.</span>
+        <span><a href="member-login.html" style="color: var(--color-gold-light);">Log in</a> to submit a nomination directly from your account.</span>
       </div>
 
       <div id="nominate-locked" class="form-note" style="display:none;">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <span><strong>Coming soon</strong> — nominating from your account isn't open yet. Use the "Nominate a member" button above to email us instead.</span>
+        <span>MoTM nominations are open to LACMS members and Network professionals. If you think this is a mistake, email <a href="mailto:acms@lincolnsu.com" style="color: var(--color-gold-light);">acms@lincolnsu.com</a>.</span>
+      </div>
+
+      <div id="nominate-already-used" class="form-note" style="display:none;">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+        <span><strong>You've used this month's nomination.</strong> Everyone gets one MoTM nomination per calendar month — yours resets on the 1st.</span>
       </div>
 
       <div id="nominate-form-wrap" class="form-panel" style="display:none;">
+        <p class="hint" style="margin-top:0; margin-bottom: var(--space-4);">One nomination per member, per calendar month.</p>
         <form id="nominate-form">
           <div class="field">
             <label for="nominate-name">Who are you nominating?</label>
@@ -217,7 +223,7 @@
 
       <div id="nominate-confirmation" class="form-panel" style="display:none;">
         <h3 style="margin-top:0;">Nomination submitted</h3>
-        <p style="margin-bottom:0;">Thanks — the committee reviews nominations each month when picking the next Member of the Month.</p>
+        <p style="margin-bottom:0;">Thanks — the committee reviews nominations each month when picking the next Member of the Month. You'll be able to nominate again next month.</p>
       </div>
     </div>
   </section>
@@ -287,9 +293,9 @@
   </div>
 </footer>
 
-<script src="js/main.js?v=20260824-8"></script>
+<script src="js/main.js?v=20260824-9"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/members.js?v=20260824-8"></script>
+<script src="js/members.js?v=20260824-9"></script>
 </body>
 </html>

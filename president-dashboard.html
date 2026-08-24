@@ -7,7 +7,7 @@
 <meta name="description" content="President-only view of account activity across the LACMS platform.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-8">
+<link rel="stylesheet" href="css/styles.css?v=20260824-9">
 </head>
 <body>
 
@@ -262,16 +262,16 @@
 
             <div class="section-head">
               <span class="eyebrow">Public gallery</span>
-              <h2>What's live on gallery.html</h2>
-              <p>Upload goes live immediately — no need to come back and ask for a code change to swap a photo again.</p>
+              <h2>Select what's on gallery.html</h2>
+              <p>Every photo below can be selected or unselected individually — unselecting pulls it from the public gallery without deleting it. Upload adds a new photo to choose from, live immediately.</p>
             </div>
             <form id="gallery-live-upload-form" class="gallery-upload-form">
               <input type="file" id="gallery-live-upload-file" accept="image/*" multiple required>
-              <button type="submit" class="btn btn-primary">Add to gallery</button>
+              <button type="submit" class="btn btn-primary">Upload photos</button>
               <p id="gallery-live-upload-status" class="auth-error" role="status" style="display:none;"></p>
             </form>
             <div class="gallery-manage-grid" id="gallery-manage-grid"></div>
-            <p id="gallery-manage-empty" style="display:none; color: var(--color-text-faint);">No photos in the public gallery yet — upload some above.</p>
+            <p id="gallery-manage-empty" style="display:none; color: var(--color-text-faint);">No photos yet — upload some above.</p>
 
             <div class="section-head" style="margin-top: var(--space-8);">
               <span class="eyebrow">Gallery</span>
@@ -344,7 +344,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-8"></script>
-<script src="js/members.js?v=20260824-8"></script>
+<script src="js/main.js?v=20260824-9"></script>
+<script src="js/members.js?v=20260824-9"></script>
 </body>
 </html>

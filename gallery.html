@@ -6,7 +6,7 @@
 <title>Gallery — LACMS</title>
 <meta name="description" content="Photos from LACMS socials, mentorship sessions and events.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-8">
+<link rel="stylesheet" href="css/styles.css?v=20260824-9">
 </head>
 <body>
 
@@ -198,30 +198,20 @@
   </div>
 </footer>
 
-<script src="js/main.js?v=20260824-8"></script>
+<script src="js/main.js?v=20260824-9"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/members.js?v=20260824-8"></script>
+<script src="js/members.js?v=20260824-9"></script>
 
 <script>
   (function () {
-    // Fallback list — used if Supabase isn't configured yet, the
-    // gallery_photos table is empty, or the fetch fails for any reason,
-    // so this page never goes blank during that transition. The live,
-    // president-editable list (uploaded from the dashboard's Gallery
-    // card) always takes over once there's at least one active photo.
-    var FALLBACK_FOLDER = 'Media/ACMS Gallery/';
-    var FALLBACK_FILES = [
-      'IMG_0027.JPG', 'IMG_0028.JPG', 'IMG_0029.JPG', 'IMG_1164 2.JPG',
-      'IMG_1165.JPG', 'IMG_1166.JPG', 'IMG_1167.JPG', 'IMG_1168.JPG',
-      'IMG_1178.JPG', 'IMG_1179.JPG', 'IMG_1180.JPG', 'IMG_1181.JPG',
-      'IMG_1185.JPG', 'IMG_1196.JPG', 'IMG_1205.JPG', 'IMG_1206.JPG',
-      'IMG_1227.JPG', 'IMG_1228.JPG', 'IMG_4053.JPG', 'IMG_4996.JPG',
-      'IMG_5017.JPG', 'IMG_5019.JPG', 'IMG_8822.JPEG', 'Medball-NSG.JPG',
-      '356B96A6-9FEE-429D-A4DF-B45A6695DCFC.PNG',
-      'hero.jpg', 'sankofa-mentorship.jpg'
-    ];
-
+    // Fully data-driven — no hardcoded photo list. Every photo shown
+    // here is a row in gallery_photos that the president has switched
+    // on from the dashboard's Gallery card (upload, or one of the
+    // originally-seeded Media/ACMS Gallery/ photos from migration 030),
+    // resolved to a real URL depending on where it actually lives:
+    // is_static_asset rows are a plain site-relative path, everything
+    // else is an upload living in the public gallery-photos bucket.
     var root = document.querySelector('[data-gallery]');
     if (!root) return;
 
@@ -242,7 +232,24 @@
       return a;
     }
 
+    function showEmptyState() {
+      loading.classList.remove('is-visible');
+      stageImg.classList.remove('is-visible');
+      counter.textContent = '';
+      root.querySelectorAll('[data-gallery-prev], [data-gallery-next], [data-gallery-shuffle]').forEach(function (btn) {
+        btn.style.display = 'none';
+      });
+      var empty = document.createElement('p');
+      empty.style.cssText = 'color: var(--color-text-faint); text-align:center; margin: var(--space-4) 0 0;';
+      empty.textContent = "No photos in the gallery yet — check back soon.";
+      root.appendChild(empty);
+    }
+
     function init(urls) {
+      if (!urls.length) {
+        showEmptyState();
+        return;
+      }
       var order = shuffle(urls);
       var index = 0;
       var timer = null;
@@ -291,28 +298,26 @@
       resetTimer();
     }
 
-    function initFallback() {
-      init(FALLBACK_FILES.map(function (f) { return encodeURI(FALLBACK_FOLDER + f); }));
-    }
-
     if (typeof supabaseClient === 'undefined' || !supabaseClient) {
-      initFallback();
+      showEmptyState();
       return;
     }
 
     supabaseClient
       .from('gallery_photos')
-      .select('storage_path')
+      .select('storage_path, is_static_asset')
       .eq('is_active', true)
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false })
       .then(function (result) {
-        if (result.error || !result.data || !result.data.length) {
-          initFallback();
+        if (result.error || !result.data) {
+          showEmptyState();
           return;
         }
         var urls = result.data.map(function (row) {
-          return supabaseClient.storage.from('gallery-photos').getPublicUrl(row.storage_path).data.publicUrl;
+          return row.is_static_asset
+            ? encodeURI(row.storage_path)
+            : supabaseClient.storage.from('gallery-photos').getPublicUrl(row.storage_path).data.publicUrl;
         });
         init(urls);
       });

@@ -953,14 +953,17 @@
     // and toggles the locked/live variant of each not-yet-launched card
     // (Perks, Sankofa, MoTM nominations): only committee members see the
     // real thing right now, everyone else sees a locked "coming soon"
-    // card in its place.
+    // card in its place. MoTM nomination is the one exception — it's
+    // open to every member and professional (not committee-only, see
+    // motm.html's own nomination form), so its card always shows
+    // unlocked here rather than following the isCommittee gate.
     function showHubContent(isCommittee) {
       hubContent.style.display = '';
       var linksSection = document.getElementById('member-hub-content-links');
       if (linksSection) linksSection.style.display = '';
       togglePair('perks-card', 'perks-locked-card', isCommittee);
       togglePair('sankofa-apply-card', 'sankofa-coming-soon-card', isCommittee);
-      togglePair('motm-nominate-card', 'motm-locked-card', isCommittee);
+      togglePair('motm-nominate-card', 'motm-locked-card', true);
     }
 
     function togglePair(liveId, lockedId, isCommittee) {
@@ -1425,18 +1428,24 @@
     });
   }
 
-  // ---- MoTM page: nomination form for signed-in LACMS members. Unlike
-  // the hub/perks/Sankofa pages, this doesn't redirect anyone away — the
-  // page stays fully public, it just swaps the "log in to nominate" note
-  // for the real form once a session is confirmed. MMG-only guests (no
-  // row in `members`) get a locked message instead of the form — this
-  // is a LACMS member exclusive, not open to MMG portal accounts. ----
+  // ---- MoTM page: nomination form for any signed-in LACMS member or
+  // Network professional (matches the DB insert policy from migration
+  // 015 — this used to be wrongly restricted to committee-only client-
+  // side, contradicting the page's own "no committee role required"
+  // copy just above it). MMG-only guests (neither a member nor a
+  // professional) get a locked message instead of the form. One
+  // nomination per person per calendar month — checked here for a
+  // friendly message, enforced for real by the unique constraint added
+  // in migration 030 (nominator_id, nomination_month), which a fresh
+  // month automatically lifts since the month it's keyed on changes. ----
   var nominateForm = document.getElementById('nominate-form');
   var nominateNotSignedIn = document.getElementById('nominate-not-signed-in');
   var nominateLocked = document.getElementById('nominate-locked');
+  var nominateAlreadyUsed = document.getElementById('nominate-already-used');
   var nominateFormWrap = document.getElementById('nominate-form-wrap');
   if (nominateForm && nominateNotSignedIn && nominateFormWrap) {
     var nominateSession = null;
+    var currentNominationMonth = new Date().toISOString().slice(0, 7);
 
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
@@ -1444,13 +1453,34 @@
       nominateSession = session;
       nominateNotSignedIn.style.display = 'none';
 
-      checkIsCommittee(session).then(function (isCommittee) {
-        if (isCommittee) {
-          nominateFormWrap.style.display = 'block';
-        } else if (nominateLocked) {
-          nominateLocked.style.display = 'flex';
-        }
-      });
+      supabaseClient
+        .from('members')
+        .select('id')
+        .eq('id', session.user.id)
+        .maybeSingle()
+        .then(function (memberResult) {
+          if (memberResult.data) return true;
+          return getProfessionalRow(session).then(function (proRow) { return !!proRow; });
+        })
+        .then(function (isEligible) {
+          if (!isEligible) {
+            if (nominateLocked) nominateLocked.style.display = 'flex';
+            return;
+          }
+          supabaseClient
+            .from('motm_nominations')
+            .select('id')
+            .eq('nominator_id', session.user.id)
+            .eq('nomination_month', currentNominationMonth)
+            .maybeSingle()
+            .then(function (existingResult) {
+              if (existingResult.data) {
+                if (nominateAlreadyUsed) nominateAlreadyUsed.style.display = 'flex';
+                return;
+              }
+              nominateFormWrap.style.display = 'block';
+            });
+        });
     });
 
     nominateForm.addEventListener('submit', function (e) {
@@ -1473,7 +1503,13 @@
         .then(function (result) {
           btn.disabled = false;
           if (result.error) {
-            showMessage(statusEl, result.error.message);
+            // 23505 = unique_violation — the monthly-limit constraint,
+            // most likely from a second tab or a double-click racing
+            // past the friendly pre-check above.
+            var msg = result.error.code === '23505'
+              ? "You've already used this month's nomination — it resets on the 1st."
+              : result.error.message;
+            showMessage(statusEl, msg);
             return;
           }
           nominateFormWrap.style.display = 'none';
@@ -3728,7 +3764,9 @@
         '</div>' +
         '<svg class="icon app-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>' +
         '</div>' +
-        '<div class="app-card-body">' + appCardField('Email', a.email) + body + '</div>' +
+        '<div class="app-card-body">' + appCardField('Email', a.email) + body +
+        '<button type="button" class="app-card-delete-btn" data-sankofa-delete data-id="' + escapeHtml(a.id) + '" data-type="' + (isMentor ? 'mentor' : 'mentee') + '">Delete application</button>' +
+        '</div>' +
         '</div>';
     }
 
@@ -3886,16 +3924,18 @@
           }
           if (emptyEl) emptyEl.style.display = 'none';
           grid.innerHTML = photos.map(function (p, i) {
-            var url = supabaseClient.storage.from('gallery-photos').getPublicUrl(p.storage_path).data.publicUrl;
+            var url = p.is_static_asset
+              ? encodeURI(p.storage_path)
+              : supabaseClient.storage.from('gallery-photos').getPublicUrl(p.storage_path).data.publicUrl;
             var prevOrder = i > 0 ? photos[i - 1].display_order - 1 : p.display_order;
             var nextOrder = i < photos.length - 1 ? photos[i + 1].display_order + 1 : p.display_order;
             return '<div class="gallery-manage-item' + (p.is_active ? '' : ' is-inactive') + '">' +
               '<img class="gallery-manage-thumb" src="' + escapeHtml(url) + '" alt="" loading="lazy">' +
               '<div class="gallery-manage-actions">' +
-              '<button type="button" class="gallery-manage-btn' + (p.is_active ? ' gallery-manage-btn--active' : '') + '" data-gallery-toggle-active data-id="' + escapeHtml(p.id) + '" data-active="' + (p.is_active ? 'true' : 'false') + '">' + (p.is_active ? 'Live' : 'Hidden') + '</button>' +
+              '<button type="button" class="gallery-manage-btn' + (p.is_active ? ' gallery-manage-btn--active' : '') + '" data-gallery-toggle-active data-id="' + escapeHtml(p.id) + '" data-active="' + (p.is_active ? 'true' : 'false') + '">' + (p.is_active ? 'Selected' : 'Not selected') + '</button>' +
               (i > 0 ? '<button type="button" class="gallery-manage-btn" data-gallery-move data-id="' + escapeHtml(p.id) + '" data-new-order="' + prevOrder + '" aria-label="Move earlier">&larr;</button>' : '') +
               (i < photos.length - 1 ? '<button type="button" class="gallery-manage-btn" data-gallery-move data-id="' + escapeHtml(p.id) + '" data-new-order="' + nextOrder + '" aria-label="Move later">&rarr;</button>' : '') +
-              '<button type="button" class="gallery-manage-btn gallery-manage-btn--danger" data-gallery-delete data-id="' + escapeHtml(p.id) + '" data-path="' + escapeHtml(p.storage_path) + '">Delete</button>' +
+              '<button type="button" class="gallery-manage-btn gallery-manage-btn--danger" data-gallery-delete data-id="' + escapeHtml(p.id) + '" data-path="' + escapeHtml(p.storage_path) + '" data-static="' + (p.is_static_asset ? 'true' : 'false') + '">Delete</button>' +
               '</div></div>';
           }).join('');
         });
@@ -3974,6 +4014,26 @@
         return;
       }
 
+      var sankofaDeleteBtn = e.target.closest('[data-sankofa-delete]');
+      if (sankofaDeleteBtn) {
+        if (!window.confirm("Delete this application? This can't be undone.")) return;
+        sankofaDeleteBtn.disabled = true;
+        var deleteRpc = sankofaDeleteBtn.getAttribute('data-type') === 'mentor'
+          ? 'president_delete_sankofa_mentor_application'
+          : 'president_delete_sankofa_application';
+        supabaseClient
+          .rpc(deleteRpc, { target_id: sankofaDeleteBtn.getAttribute('data-id') })
+          .then(function (result) {
+            if (result.error) {
+              sankofaDeleteBtn.disabled = false;
+              console.error('Delete application failed:', result.error.message);
+              return;
+            }
+            loadPresidentDashboard();
+          });
+        return;
+      }
+
       var mentorStatusBtn = e.target.closest('[data-mentor-status]');
       if (mentorStatusBtn) {
         var tabs = mentorStatusBtn.parentElement.querySelectorAll('[data-mentor-status]');
@@ -4011,11 +4071,17 @@
 
       var galleryDeleteBtn = e.target.closest('[data-gallery-delete]');
       if (galleryDeleteBtn) {
-        if (!window.confirm('Remove this photo from the public gallery? This deletes the file too.')) return;
+        var isStaticAsset = galleryDeleteBtn.getAttribute('data-static') === 'true';
+        if (!window.confirm(isStaticAsset ? 'Remove this photo from the gallery selection?' : 'Remove this photo from the public gallery? This deletes the uploaded file too.')) return;
         galleryDeleteBtn.disabled = true;
         var deletePath = galleryDeleteBtn.getAttribute('data-path');
         var deleteId = galleryDeleteBtn.getAttribute('data-id');
-        supabaseClient.storage.from('gallery-photos').remove([deletePath]).then(function () {
+        // A static asset's "file" is a real, committed site file under
+        // Media/ — nothing to remove from Storage, and nothing this
+        // page should ever try to delete from disk. Only an uploaded
+        // photo actually lives in the gallery-photos bucket.
+        var removeFromStorage = isStaticAsset ? Promise.resolve() : supabaseClient.storage.from('gallery-photos').remove([deletePath]);
+        removeFromStorage.then(function () {
           return supabaseClient.from('gallery_photos').delete().eq('id', deleteId);
         }).then(function (result) {
           if (result.error) {
