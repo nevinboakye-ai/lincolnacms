@@ -122,5 +122,17 @@ create trigger motm_nominations_set_month
 update public.motm_nominations set nomination_month = to_char(created_at, 'YYYY-MM') where nomination_month is null;
 alter table public.motm_nominations alter column nomination_month set not null;
 
+-- Pre-existing nominations (e.g. from testing, before this limit
+-- existed) can already have more than one per person per month, which
+-- would make the unique constraint below fail to create. Keep the
+-- earliest nomination in each (nominator_id, nomination_month) pair —
+-- the one that would have "used up" that month's slot — and drop the
+-- later duplicates.
+delete from public.motm_nominations a
+using public.motm_nominations b
+where a.nominator_id = b.nominator_id
+  and a.nomination_month = b.nomination_month
+  and (a.created_at, a.id) > (b.created_at, b.id);
+
 alter table public.motm_nominations drop constraint if exists motm_one_nomination_per_month;
 alter table public.motm_nominations add constraint motm_one_nomination_per_month unique (nominator_id, nomination_month);
