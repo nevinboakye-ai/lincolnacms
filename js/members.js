@@ -826,11 +826,25 @@
       loadFeed();
       loadRecentJoins();
 
-      // The president-only dashboard card — hidden from literally
-      // everyone else, not just styled as locked. See PRESIDENT_UID.
+      // The dashboard quick-link card — hidden from everyone except the
+      // president and Executive Committee members, not just styled as
+      // locked. Matches the same two-role check the dashboard page
+      // itself enforces for real (via is_president()/is_dashboard_admin()
+      // in the RPCs behind it) — this is only ever the UX shortcut.
+      var presidentCard = document.getElementById('president-dashboard-card');
       if (session.user.id === PRESIDENT_UID) {
-        var presidentCard = document.getElementById('president-dashboard-card');
         if (presidentCard) presidentCard.style.display = '';
+      } else if (presidentCard) {
+        supabaseClient
+          .from('members')
+          .select('member_type')
+          .eq('id', session.user.id)
+          .maybeSingle()
+          .then(function (memberResult) {
+            if (memberResult.data && memberResult.data.member_type === 'executive_committee') {
+              presidentCard.style.display = '';
+            }
+          });
       }
     });
 
@@ -3205,28 +3219,39 @@
     }
   }
 
-  // ---- President's activity dashboard — client-side check here is only
-  // ever a UX shortcut (redirect away, don't bother rendering). The real
-  // security boundary is is_president() inside every president_get_*
-  // RPC, which raises for anyone else regardless of what this page does. ----
+  // ---- Platform activity dashboard — client-side checks here are only
+  // ever a UX shortcut (redirect away / hide a card, don't bother
+  // rendering). The real security boundary is is_dashboard_admin() (or,
+  // for the three president-only cards, is_president() specifically)
+  // inside every RPC and RLS policy behind this page, which raises/
+  // denies for anyone else regardless of what this page does.
+  //
+  // Two roles can land here: the president (full access, all eight
+  // cards) and an Executive Committee member (member_type =
+  // 'executive_committee' on their own members row) — restricted to
+  // MMG, Sankofa, Nominations, Events and Gallery. User Activity,
+  // Create Account and Manage Accounts stay president-only, since
+  // those touch full account rosters and the ability to create/edit/
+  // delete anyone's login — a materially bigger trust boundary than
+  // reviewing applications or curating the gallery. ----
   var presidentContent = document.getElementById('president-content');
   if (presidentContent) {
     var presidentAuthGate = document.getElementById('auth-gate');
     var presidentHubError = document.getElementById('hub-error');
     var ONLINE_WINDOW_MS = 5 * 60 * 1000;
     var presidentUserId = null;
+    var dashboardRole = null;
+    var PRESIDENT_ONLY_SECTIONS = ['activity', 'create', 'manage'];
 
-    supabaseClient.auth.getSession().then(function (result) {
-      var session = result.data && result.data.session;
-      if (!session) {
-        window.location.href = 'member-login.html';
-        return;
-      }
-      if (session.user.id !== PRESIDENT_UID) {
-        window.location.href = 'member-hub.html';
-        return;
-      }
+    function enterDashboard(session, role) {
       presidentUserId = session.user.id;
+      dashboardRole = role;
+      if (role !== 'president') {
+        PRESIDENT_ONLY_SECTIONS.forEach(function (section) {
+          var card = document.querySelector('[data-dash-section="' + section + '"]');
+          if (card) card.style.display = 'none';
+        });
+      }
       initDashNav();
       loadPresidentDashboard();
       // Keeps "online now" honest without needing a manual reload —
@@ -3235,6 +3260,30 @@
       setInterval(function () {
         if (document.visibilityState === 'visible') loadPresidentDashboard();
       }, 45000);
+    }
+
+    supabaseClient.auth.getSession().then(function (result) {
+      var session = result.data && result.data.session;
+      if (!session) {
+        window.location.href = 'member-login.html';
+        return;
+      }
+      if (session.user.id === PRESIDENT_UID) {
+        enterDashboard(session, 'president');
+        return;
+      }
+      supabaseClient
+        .from('members')
+        .select('member_type')
+        .eq('id', session.user.id)
+        .maybeSingle()
+        .then(function (memberResult) {
+          if (memberResult.data && memberResult.data.member_type === 'executive_committee') {
+            enterDashboard(session, 'exec_committee');
+            return;
+          }
+          window.location.href = 'member-hub.html';
+        });
     });
 
     // ---- Landing grid of section cards, replacing one long scroll —
@@ -3246,6 +3295,14 @@
     var dashLanding = document.getElementById('dash-landing');
     function showDashSection(section) {
       if (DASH_SECTIONS.indexOf(section) === -1) section = null;
+      // Defensive, not the real gate — a stale bookmark or shared link
+      // pointing at a president-only section (e.g. #manage) for an
+      // Executive Committee member falls back to the landing grid
+      // instead of opening an empty, error-filled panel; the RPCs
+      // behind it would refuse the data either way.
+      if (section && dashboardRole !== 'president' && PRESIDENT_ONLY_SECTIONS.indexOf(section) !== -1) {
+        section = null;
+      }
       if (dashLanding) dashLanding.style.display = section ? 'none' : '';
       DASH_SECTIONS.forEach(function (s) {
         var panel = document.getElementById('dash-panel-' + s);
@@ -3286,10 +3343,11 @@
       var emptyEl = document.getElementById(emptyId);
       if (listEl) listEl.innerHTML = '';
       if (emptyEl) {
-        // This page is president-only, so the raw Postgres/PostgREST
-        // error is safe (and far more useful than a generic message) to
-        // show right here — no need to dig through devtools to diagnose
-        // a migration that hasn't run yet or a broken RPC.
+        // This page is president/Executive Committee only, so the raw
+        // Postgres/PostgREST error is safe (and far more useful than a
+        // generic message) to show right here — no need to dig through
+        // devtools to diagnose a migration that hasn't run yet or a
+        // broken RPC.
         emptyEl.textContent = "Couldn't load this section" + (errorMessage ? ': ' + errorMessage : '') + " - try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.";
         emptyEl.style.color = '#ef8b8f';
         emptyEl.style.display = 'block';
@@ -3308,11 +3366,19 @@
         ? supabaseClient.from('member_presence').upsert({ id: presidentUserId, last_seen_at: new Date().toISOString() })
         : Promise.resolve();
 
+      // The three president-only RPCs behind User Activity/Manage
+      // Accounts are simply never called for an Executive Committee
+      // session — they'd raise "Not authorized" anyway (migration 037
+      // kept them is_president()-only), so there's no reason to fire a
+      // request that can only fail. Placeholder empty results keep the
+      // results array the same shape either way, so every index below
+      // still lines up regardless of role.
+      var isPresident = dashboardRole === 'president';
       beatOwnPresence.then(function () {
         return Promise.all([
-          supabaseClient.rpc('president_get_members'),
-          supabaseClient.rpc('president_get_pending_members'),
-          supabaseClient.rpc('president_get_professionals'),
+          isPresident ? supabaseClient.rpc('president_get_members') : Promise.resolve({ data: [], error: null }),
+          isPresident ? supabaseClient.rpc('president_get_pending_members') : Promise.resolve({ data: [], error: null }),
+          isPresident ? supabaseClient.rpc('president_get_professionals') : Promise.resolve({ data: [], error: null }),
           supabaseClient.rpc('president_get_mmg_guests'),
           supabaseClient.rpc('president_get_sankofa_applications'),
           supabaseClient.rpc('president_get_sankofa_mentor_applications'),
@@ -3322,29 +3388,33 @@
       }).then(function (results) {
         if (presidentAuthGate) presidentAuthGate.style.display = 'none';
 
-        if (results[0].error || results[1].error || results[2].error || results[3].error) {
+        if ((isPresident && (results[0].error || results[1].error || results[2].error)) || results[3].error) {
           showMessage(presidentHubError, "Couldn't load the dashboard right now - try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.");
           return;
         }
 
         presidentContent.style.display = '';
 
-        var members = results[0].data || [];
-        var pendingMembers = results[1].data || [];
-        var professionals = results[2].data || [];
         var mmgGuests = results[3].data || [];
-        var courseAccent = buildCourseAccentMap(members);
 
-        renderOnlineNow(members, professionals, mmgGuests, courseAccent);
-        renderStats(members, pendingMembers, professionals, mmgGuests);
-        renderAttentionList(members, pendingMembers, professionals, mmgGuests);
-        renderPeopleSection(members, professionals, courseAccent);
+        if (isPresident) {
+          var members = results[0].data || [];
+          var pendingMembers = results[1].data || [];
+          var professionals = results[2].data || [];
+          var courseAccent = buildCourseAccentMap(members);
+
+          renderOnlineNow(members, professionals, mmgGuests, courseAccent);
+          renderStats(members, pendingMembers, professionals, mmgGuests);
+          renderAttentionList(members, pendingMembers, professionals, mmgGuests);
+          renderPeopleSection(members, professionals, courseAccent);
+          var activityTotal = members.length + professionals.length + mmgGuests.length + pendingMembers.length;
+          setDashCount('activity', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
+          renderManageAccountsList(members, professionals, mmgGuests);
+          setDashCount('manage', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
+        }
+
         renderMmgSection(mmgGuests);
-        var activityTotal = members.length + professionals.length + mmgGuests.length + pendingMembers.length;
-        setDashCount('activity', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
         setDashCount('mmg', mmgGuests.length + (mmgGuests.length === 1 ? ' guest' : ' guests'));
-        renderManageAccountsList(members, professionals, mmgGuests);
-        setDashCount('manage', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
 
         // Sankofa mentee applications (migration 028) and mentor
         // applications (migration 029, a separate public no-account
