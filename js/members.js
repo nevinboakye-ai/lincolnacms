@@ -1380,9 +1380,17 @@
       '</div>';
   }
 
-  // ---- Events page: member registration (alongside the existing RSVP
-  // mailto link, which stays available to everyone including logged-out
-  // visitors) ----
+  // ---- Events page: member registration. Each event card carries two
+  // buttons: a plain "RSVP" link to join.html (data-hide-when-signed-in,
+  // so it only ever shows to a signed-out visitor — prompting them to
+  // join first) and this real, backend-connected one, hidden by default
+  // and only revealed here once a session is confirmed. Previously the
+  // RSVP link had no such gate and stayed visible to everyone including
+  // signed-in members, sending them to "buy a membership" even though
+  // they already had one — this is what actually fixes that. Works for
+  // any signed-in account, member or professional alike, since neither
+  // this check nor the event_registrations RLS policies distinguish
+  // between the two. ----
   var registerButtons = document.querySelectorAll('.member-register-btn');
   if (registerButtons.length) {
     supabaseClient.auth.getSession().then(function (result) {
