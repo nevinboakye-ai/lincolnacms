@@ -4372,10 +4372,14 @@
     // the active session with the brand-new account's the moment it
     // succeeds — this keeps the two completely separate). The profile
     // row is then inserted using the president's own real session (the
-    // is_president()-gated insert policies from migration 032), and a
-    // password-reset email sends the new person to set their own
-    // password — no service-role admin API involved anywhere, since
-    // that key must never exist in browser code. ----
+    // is_president()-gated insert policies from migration 032). Exactly
+    // one email then sends the new person to set their own password —
+    // either the project's own signup-confirmation email (if "Confirm
+    // email" is on) or a follow-up password-reset email (if it's off,
+    // since signUp() sends nothing on its own in that case) — never
+    // both, and never a link that leads nowhere. No service-role admin
+    // API involved anywhere, since that key must never exist in browser
+    // code. ----
     var createAccountForm = document.getElementById('create-account-form');
     if (createAccountForm) {
       var createAccountTypeTabs = document.getElementById('create-account-type-tabs');
@@ -4427,7 +4431,22 @@
         statusEl.style.color = 'var(--color-text-muted)';
         showMessage(statusEl, 'Creating account…');
 
-        createAccountClient.auth.signUp({ email: email, password: randomPassword() }).then(function (signUpResult) {
+        // Passed into signUp() itself, not just the later resetPasswordForEmail
+        // call - if this Supabase project has "Confirm email" turned on,
+        // signUp() sends its own confirmation email immediately, using
+        // whatever redirect this call gives it. Leaving it unset meant that
+        // email fell back to the project's generic Site URL instead of a
+        // page that actually knows how to show a "set your password" form -
+        // so clicking it just confirmed the address and stranded them on
+        // member-login.html with no way to ever choose a password.
+        var loginPage = currentAccountType === 'mmg' ? 'mmg-login.html' : 'member-login.html';
+        var loginPageUrl = window.location.origin + '/' + loginPage;
+
+        createAccountClient.auth.signUp({
+          email: email,
+          password: randomPassword(),
+          options: { emailRedirectTo: loginPageUrl }
+        }).then(function (signUpResult) {
           if (signUpResult.error || !signUpResult.data || !signUpResult.data.user) {
             btn.disabled = false;
             statusEl.style.color = '#ef8b8f';
@@ -4435,6 +4454,17 @@
             return;
           }
           var newUserId = signUpResult.data.user.id;
+          // If "Confirm email" is on, signUp() above just sent its own
+          // confirmation email (now correctly routed to loginPageUrl,
+          // which shows the set-password form for any link carrying a
+          // ?code= param - confirmation links included, not just
+          // recovery ones) and data.session comes back null. Sending a
+          // second, separate password-reset email on top of that would
+          // leave them with two emails and no clear reason to pick one
+          // over the other - so this only fires when signUp() truly sent
+          // nothing on its own (confirmation off), where a reset email is
+          // the only way they'd ever get a working link at all.
+          var needsPasswordEmail = !signUpResult.data.session;
 
           var profileInsert;
           if (currentAccountType === 'member') {
@@ -4475,17 +4505,24 @@
               showMessage(statusEl, "The login was created, but saving their profile failed (" + profileResult.error.message + "). Finish it from Table Editor using this account id: " + newUserId);
               return;
             }
-            var loginPage = currentAccountType === 'mmg' ? 'mmg-login.html' : 'member-login.html';
-            createAccountClient.auth.resetPasswordForEmail(email, {
-              redirectTo: window.location.origin + '/' + loginPage
-            }).then(function () {
+
+            function finish() {
               btn.disabled = false;
               statusEl.style.color = '#6fcf97';
               showMessage(statusEl, name + "'s account is live - they've been emailed to set their password.");
               createAccountForm.reset();
               showAccountTypeFields(currentAccountType);
               loadPresidentDashboard();
-            });
+            }
+
+            if (needsPasswordEmail) {
+              createAccountClient.auth.resetPasswordForEmail(email, { redirectTo: loginPageUrl }).then(finish);
+            } else {
+              // signUp() already sent its own confirmation email above,
+              // correctly redirecting to loginPageUrl - sending a second
+              // one here would just be a confusing duplicate.
+              finish();
+            }
           });
         });
       });
