@@ -63,6 +63,26 @@
   // on the database side, which every president_get_* RPC checks itself.
   var PRESIDENT_UID = '22044cd2-6804-4142-96c4-5c475ce9347a';
 
+  // Any password-setting link this site emails to someone who isn't
+  // provably the same person, same browser, right now (an account the
+  // president creates on their behalf, or just someone who checks their
+  // email on their phone after requesting a reset on their laptop)
+  // needs to be self-contained, not tied to this browser's own storage.
+  // The site's main client defaults to the PKCE flow, where the emailed
+  // ?code= only ever redeems successfully in the exact browser that
+  // requested it, since the matching verifier lives only in that
+  // browser's storage — fine for "click forgot password, then click the
+  // link in the same tab a minute later," broken for anything else.
+  // Every signUp()/resetPasswordForEmail() call built from this instead
+  // forces the older #access_token=...&type=... link format, which is
+  // fully self-contained and needs no stored verifier — it works from
+  // any device, which is exactly what these calls actually need.
+  function createImplicitFlowClient() {
+    return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, flowType: 'implicit' }
+    });
+  }
+
   function showMessage(el, message) {
     if (!el) return;
     el.textContent = message;
@@ -647,15 +667,25 @@
   }
 
   // ---- Login page: sign-in form + first-time "set your password" form ----
-  // Members arrive at the set-password form via the invite/reset email link
-  // Supabase sends. Older/implicit-flow projects redirect here with
-  // #access_token=...&type=invite (or type=recovery) in the URL hash;
-  // newer projects (PKCE flow — this one included, per its publishable-key
-  // format) redirect with ?code=... in the query string instead, often with
-  // no `type` param at all. Checking only the hash meant every invite link
-  // silently fell through to the plain login form instead — this site has
-  // no other flow (no OAuth, no magic links) that ever produces a `code`
-  // param, so treating its mere presence as "set a password" is safe here.
+  // Members arrive at the set-password form via the invite/reset/signup
+  // email link Supabase sends. This site's own createImplicitFlowClient()
+  // calls (see the top of this file) deliberately force the older,
+  // self-contained link format — #access_token=...&type=invite (or
+  // recovery, or signup) in the URL hash — over this project's own PKCE
+  // default, since a PKCE link only ever redeems in the exact browser
+  // that requested it, and every one of these links is opened by someone
+  // other than (or some device other than) whoever requested it. type=
+  // signup is the one Supabase's own signUp() confirmation link carries —
+  // easy to miss since it's neither "invite" nor "recovery," but it's
+  // exactly the case the dashboard's Create Account panel produces
+  // whenever the project has "Confirm email" switched on, and it needs
+  // the same "let them set a password" treatment as the other two, not
+  // silently falling through to a plain "you're signed in" redirect that
+  // leaves them stuck on a password they were never shown. The ?code=
+  // check stays as a catch-all for anything that still arrives via the
+  // project's PKCE default (this site has no other flow — no OAuth, no
+  // magic links — that ever produces a `code` param, so treating its
+  // mere presence as "set a password" is safe here).
   var loginForm = document.getElementById('login-form');
   var setPasswordForm = document.getElementById('set-password-form');
 
@@ -667,8 +697,10 @@
     var search = window.location.search || '';
     var isRecoveryFlow = hash.indexOf('type=invite') !== -1
       || hash.indexOf('type=recovery') !== -1
+      || hash.indexOf('type=signup') !== -1
       || search.indexOf('type=invite') !== -1
       || search.indexOf('type=recovery') !== -1
+      || search.indexOf('type=signup') !== -1
       || /[?&]code=/.test(search);
 
     var recoveryFormShown = false;
@@ -758,7 +790,12 @@
         var email = document.getElementById('forgot-password-email').value.trim();
         var btn = forgotPasswordForm.querySelector('button[type="submit"]');
         btn.disabled = true;
-        supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname })
+        // createImplicitFlowClient(), not supabaseClient directly — this
+        // link is very often opened on a different device than the one
+        // that requested it (check email on a phone after asking for a
+        // reset on a laptop), which the site's default PKCE flow can't
+        // support at all.
+        createImplicitFlowClient().auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname })
           .then(function (result) {
             btn.disabled = false;
             if (result.error) {
@@ -1846,10 +1883,19 @@
     // does, so without this check the "already signed in" redirect
     // below would fire first and bounce a reset visitor straight to
     // the hub before they ever get to actually choose a new password.
+    // type=signup is the one an MMG guest account created via the
+    // dashboard's Create Account panel arrives with (Supabase's own
+    // signUp() confirmation link, forced into this self-contained
+    // #access_token=... format by createImplicitFlowClient() rather
+    // than this project's PKCE default, since the account owner is
+    // never the same browser that created it) — needs the same
+    // "let them set a password" treatment as an actual recovery link.
     var mmgHash = window.location.hash || '';
     var mmgSearch = window.location.search || '';
     var mmgIsRecoveryFlow = mmgHash.indexOf('type=recovery') !== -1
+      || mmgHash.indexOf('type=signup') !== -1
       || mmgSearch.indexOf('type=recovery') !== -1
+      || mmgSearch.indexOf('type=signup') !== -1
       || /[?&]code=/.test(mmgSearch);
 
     var mmgRecoveryFormShown = false;
@@ -1942,7 +1988,11 @@
         var email = document.getElementById('mmg-forgot-password-email').value.trim();
         var btn = mmgForgotPasswordForm.querySelector('button[type="submit"]');
         btn.disabled = true;
-        supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname })
+        // createImplicitFlowClient(), not supabaseClient directly - see
+        // its own comment for why: the site's default PKCE flow can't
+        // support a link opened on a different device than the one that
+        // requested it.
+        createImplicitFlowClient().auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname })
           .then(function (result) {
             btn.disabled = false;
             if (result.error) {
@@ -4449,14 +4499,18 @@
     // since signUp() sends nothing on its own in that case) — never
     // both, and never a link that leads nowhere. No service-role admin
     // API involved anywhere, since that key must never exist in browser
-    // code. ----
+    // code.
+    //
+    // Uses createImplicitFlowClient() (see above) rather than a plain
+    // client — the president's browser is requesting this link, but a
+    // completely different person on a completely different device is
+    // the one who has to redeem it, which the site's default PKCE flow
+    // can never support (no browser on earth has both halves it needs). ----
     var createAccountForm = document.getElementById('create-account-form');
     if (createAccountForm) {
       var createAccountTypeTabs = document.getElementById('create-account-type-tabs');
       var currentAccountType = 'member';
-      var createAccountClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-      });
+      var createAccountClient = createImplicitFlowClient();
 
       function showAccountTypeFields(type) {
         currentAccountType = type;
@@ -4525,16 +4579,20 @@
           }
           var newUserId = signUpResult.data.user.id;
           // If "Confirm email" is on, signUp() above just sent its own
-          // confirmation email (now correctly routed to loginPageUrl,
-          // which shows the set-password form for any link carrying a
-          // ?code= param - confirmation links included, not just
-          // recovery ones) and data.session comes back null. Sending a
-          // second, separate password-reset email on top of that would
-          // leave them with two emails and no clear reason to pick one
-          // over the other - so this only fires when signUp() truly sent
-          // nothing on its own (confirmation off), where a reset email is
-          // the only way they'd ever get a working link at all.
-          var needsPasswordEmail = !signUpResult.data.session;
+          // confirmation email already (now correctly routed to
+          // loginPageUrl, in a self-contained format any device can
+          // redeem) and data.session comes back null — sending a second,
+          // separate password-reset email on top of that would leave
+          // them with two emails and no clear reason to pick one over
+          // the other. So a session existing is exactly the condition
+          // for needing one: it means "Confirm email" is off and
+          // signUp() above sent nothing of its own, making the reset
+          // email below the only way they'd ever get a working link at
+          // all. (This was previously inverted — !session instead of
+          // !!session — which is exactly why two emails went out and
+          // one of them never worked: the reset email fired in the one
+          // case it shouldn't have, and skipped the one case it should.)
+          var needsPasswordEmail = !!signUpResult.data.session;
 
           var profileInsert;
           if (currentAccountType === 'member') {
