@@ -4256,6 +4256,32 @@
       });
     }
 
+    // Typing "Year Three" here and "Year 3" for someone else means the
+    // same thing to a person, but not to a plain string comparison —
+    // the Network page's own grouping already folds both into one
+    // "Year 3" bucket for display (see member-network.html's
+    // yearGroupLabel(), a separate copy of this exact same logic — that
+    // page's script scope has no access to this one), but the two
+    // *stored* values still don't match, which is confusing the moment
+    // anyone looks at the raw data. This normalises at the point of
+    // entry instead, so what's actually stored is already the one
+    // canonical form: digit, not word ("Year 3", never "Year Three") —
+    // chosen because that's already what every display on the site
+    // normalises *to*, so this just makes the data agree with itself.
+    // Genuinely non-numeric entries ("Foundation Doctor", "Alumni") are
+    // left exactly as typed.
+    var YEAR_WORD_TO_NUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7 };
+    function normalizeYearOfStudy(raw) {
+      raw = (raw || '').trim();
+      if (!raw) return '';
+      var lower = raw.toLowerCase();
+      var digitMatch = /(\d+)/.exec(lower);
+      if (digitMatch) return 'Year ' + parseInt(digitMatch[1], 10);
+      var wordMatch = /\b(one|two|three|four|five|six|seven)\b/.exec(lower);
+      if (wordMatch) return 'Year ' + YEAR_WORD_TO_NUM[wordMatch[1]];
+      return raw;
+    }
+
     // ---- Account edit modal — one shared modal (built once, on first
     // use) covering all three account types, since only one is ever
     // being edited at a time. Deleting here only ever removes the
@@ -4289,7 +4315,7 @@
 
         '<div data-edit-fields="member" style="display:none;">' +
         '<div class="field"><label for="edit-member-course">Course</label><input type="text" id="edit-member-course" list="create-course-options"></div>' +
-        '<div class="field"><label for="edit-member-year">Year of study</label><input type="text" id="edit-member-year"></div>' +
+        '<div class="field"><label for="edit-member-year">Year of study</label><input type="text" id="edit-member-year" placeholder="e.g. Year 2, Foundation Doctor"></div>' +
         '<div class="field"><label for="edit-member-status">Membership status</label><select id="edit-member-status"><option value="active">Active</option><option value="expired">Expired</option><option value="pending">Pending</option></select></div>' +
         '<div class="field"><label for="edit-member-type">Member type</label><select id="edit-member-type">' +
         '<option value="member">Member</option><option value="supporting_committee">Supporting committee</option><option value="executive_committee">Executive committee</option><option value="senior_sankofa_mentor">Senior Sankofa mentor</option><option value="junior_sankofa_mentor">Junior Sankofa mentor</option>' +
@@ -4409,7 +4435,7 @@
         updates = {
           full_name: name,
           course: document.getElementById('edit-member-course').value.trim() || null,
-          year_of_study: document.getElementById('edit-member-year').value.trim() || null,
+          year_of_study: normalizeYearOfStudy(document.getElementById('edit-member-year').value) || null,
           membership_status: document.getElementById('edit-member-status').value,
           member_type: document.getElementById('edit-member-type').value,
           committee_role: document.getElementById('edit-member-role').value.trim() || null,
@@ -4600,7 +4626,7 @@
               id: newUserId,
               full_name: name,
               course: document.getElementById('create-member-course').value.trim() || null,
-              year_of_study: document.getElementById('create-member-year').value.trim() || null,
+              year_of_study: normalizeYearOfStudy(document.getElementById('create-member-year').value) || null,
               member_type: document.getElementById('create-member-type').value,
               committee_role: document.getElementById('create-member-role').value.trim() || null,
               sankofa_eligible: document.getElementById('create-member-sankofa').checked,
