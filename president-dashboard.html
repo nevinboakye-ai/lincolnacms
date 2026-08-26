@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard - LACMS</title>
+<meta name="description" content="For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="Media/ACMS%20Branding/logo.png">
+<link rel="stylesheet" href="css/styles.css?v=20260824-24">
+</head>
+<body>
+
+<div class="site-topbar">
+<div class="placeholder-banner">From Nevin: The website is still under construction; my apologies for any errors.</div>
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="index.html">
+      <img class="brand-mark" src="Media/ACMS%20Branding/logo.png" alt="LACMS crest" width="48" height="48">
+      <span class="brand-mark-fallback" aria-hidden="true">LACMS</span>
+      <span class="brand-name">LACMS</span>
+      <span class="brand-divider" aria-hidden="true"></span>
+      <span class="brand-text">
+        <span class="brand-sub">Lincoln<br>African Caribbean<br>Medical Society</span>
+        <span class="brand-place">University of Lincoln</span>
+      </span>
+    </a>
+    <nav class="nav-primary" aria-label="Primary">
+      <ul class="nav-links">
+        <li><a href="about.html">About us</a></li>
+        <li><a href="events.html">Events</a></li>
+        <li><a href="programmes.html">Programmes</a></li>
+        <li><a href="opportunities.html">Opportunities</a></li>
+        <li><a href="motm.html">MoTM</a></li>
+        <li><a href="news.html">News</a></li>
+        <li><a href="gallery.html">Gallery</a></li>
+      </ul>
+      <div class="nav-cta">
+        <a class="btn btn-outline nav-cta-desktop" href="member-hub.html" data-member-nav-link>Members hub</a>
+        <a class="btn btn-primary btn-glow nav-cta-desktop" href="join.html" data-hide-when-signed-in>Join the society</a>
+        <button type="button" class="btn btn-outline nav-cta-desktop" data-signout-btn data-show-when-signed-in style="display:none;">Log out</button>
+      </div>
+      <a href="login.html" class="member-nav-avatar" data-member-nav-link aria-label="Members hub"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span data-member-nav-label class="visually-hidden"></span><span class="member-nav-avatar-dot" aria-hidden="true"></span></a>
+        <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-drawer">
+        <svg class="icon icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <svg class="icon icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+      </button>
+    </nav>
+  </div>
+</header>
+</div>
+
+<div class="mobile-drawer" id="mobile-drawer">
+  <nav aria-label="Mobile">
+    <ul class="nav-links">
+      <li><a href="about.html"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r="0.6" fill="currentColor" stroke="none"/></svg>About us</a></li>
+      <li><a href="events.html"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>Events</a></li>
+      <li><a href="programmes.html"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-1.5-1-4-1.5-6-1.5v13c2 0 4.5.5 6 1.5 1.5-1 4-1.5 6-1.5V4.5c-2 0-4.5.5-6 1.5z"/><line x1="12" y1="6" x2="12" y2="19"/></svg>Programmes</a></li>
+      <li><a href="opportunities.html"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Opportunities</a></li>
+      <li><a href="motm.html"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9 8l-6.5 1 4.7 4.6L6 20l6-3.2L18 20l-1.2-6.4L21.5 9 15 8Z"/></svg>MoTM</a></li>
+      <li><a href="news.html"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>News</a></li>
+      <li><a href="gallery.html"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M21 16l-5-4-4 3-3-2-6 5"/></svg>Gallery</a></li>
+      <li><a href="member-hub.html" data-member-nav-link><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span data-member-nav-label>Member login</span></a></li>
+    </ul>
+    <a class="btn btn-primary btn-glow btn-block" href="join.html" data-hide-when-signed-in>Join the society</a>
+    <button type="button" class="btn btn-outline btn-block" data-signout-btn data-show-when-signed-in style="display:none; margin-top: var(--space-3);">Log out</button>
+  </nav>
+</div>
+
+<main id="main">
+
+  <div class="container back-nav">
+    <button type="button" class="back-button" data-back-button>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+  </div>
+
+  <section class="page-hero container">
+    <span class="eyebrow">Executive Committee Only</span>
+    <h1 class="page-hero-title">Platform Activity Dashboard</h1>
+    <p class="page-hero-lede">For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.</p>
+    <div class="tricolor-bar tricolor-bar--sm" aria-hidden="true"><span></span><span></span><span></span></div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+
+      <div class="form-note" data-supabase-not-configured style="display:none;">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        <span>The members hub isn't connected yet - Nevin still needs to add the Supabase project keys to js/supabase-client.js. See README-members-setup.md.</span>
+      </div>
+
+      <div id="auth-gate" class="auth-gate">
+        <span class="auth-gate-spinner" aria-hidden="true"></span>
+        <span>Checking your login…</span>
+      </div>
+
+      <p id="hub-error" class="auth-error" role="status" style="display:none;"></p>
+
+      <div id="president-content" style="display:none;">
+
+        <div id="dash-landing">
+          <div class="dash-nav-grid">
+            <button type="button" class="dash-nav-card" data-dash-section="activity">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+              <span class="dash-nav-card-title">User Activity</span>
+              <span class="dash-nav-card-desc">Members, professionals - who's online, who needs a nudge</span>
+              <span class="dash-nav-card-count" id="dash-count-activity">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="mmg">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9 8l-6.5 1 4.7 4.6L6 20l6-3.2L18 20l-1.2-6.4L21.5 9 15 8Z"/></svg></span>
+              <span class="dash-nav-card-title">MMG</span>
+              <span class="dash-nav-card-desc">Midlands Medics Gala - partner-university guest accounts</span>
+              <span class="dash-nav-card-count" id="dash-count-mmg">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="sankofa">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-1.5-1-4-1.5-6-1.5v13c2 0 4.5.5 6 1.5 1.5-1 4-1.5 6-1.5V4.5c-2 0-4.5.5-6 1.5z"/><line x1="12" y1="6" x2="12" y2="19"/></svg></span>
+              <span class="dash-nav-card-title">Sankofa</span>
+              <span class="dash-nav-card-desc">Mentee &amp; mentor Circle applications</span>
+              <span class="dash-nav-card-count" id="dash-count-sankofa">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="motm">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.5 6 22l6-3 6 3-2.2-8.5"/></svg></span>
+              <span class="dash-nav-card-title">Nominations</span>
+              <span class="dash-nav-card-desc">ACMS Member of the Month nominations</span>
+              <span class="dash-nav-card-count" id="dash-count-motm">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="events">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg></span>
+              <span class="dash-nav-card-title">Events</span>
+              <span class="dash-nav-card-desc">Who's registered for what</span>
+              <span class="dash-nav-card-count" id="dash-count-events">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="gallery">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M21 16l-5-4-4 3-3-2-6 5"/></svg></span>
+              <span class="dash-nav-card-title">Gallery</span>
+              <span class="dash-nav-card-desc">Member submissions, and what's live on the public gallery</span>
+              <span class="dash-nav-card-count" id="dash-count-gallery">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="create">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg></span>
+              <span class="dash-nav-card-title">Create Account</span>
+              <span class="dash-nav-card-desc">Add a member, professional or MMG guest directly</span>
+              <span class="dash-nav-card-count">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="manage">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+              <span class="dash-nav-card-title">Manage Accounts</span>
+              <span class="dash-nav-card-desc">Edit or remove any member, professional or MMG guest</span>
+              <span class="dash-nav-card-count" id="dash-count-manage">&nbsp;</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="dash-panels">
+
+          <div class="dash-panel" id="dash-panel-activity" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+
+            <div class="dash-toolbar">
+              <div class="network-search">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="search" id="dash-search-input" placeholder="Search everyone by name…">
+              </div>
+              <div class="dash-refresh">
+                <span id="dash-updated-label" class="dash-updated-label">Updated just now</span>
+                <button type="button" id="dash-refresh-btn" class="dash-refresh-btn" aria-label="Refresh now">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="online-now" id="online-now">
+              <div class="online-now-head">
+                <span class="online-now-dot" aria-hidden="true"></span>
+                <h2>Online right now</h2>
+                <span class="online-now-count" id="online-now-count">0</span>
+              </div>
+              <div class="online-now-list" id="online-now-list"></div>
+              <p id="online-now-empty" style="color: var(--color-text-faint); margin: 0;">Nobody's on the site right now.</p>
+            </div>
+
+            <p id="dash-search-empty" style="display:none; color: var(--color-text-faint);">No one matches that search.</p>
+
+            <div class="dash-stats" id="dash-stats"></div>
+
+            <div class="section-head">
+              <span class="eyebrow">LACMS Members &amp; Professionals</span>
+              <h2>Most recently active first</h2>
+              <p id="people-count-line" class="dash-section-count"></p>
+            </div>
+            <div id="people-sections"></div>
+
+            <div class="section-head" style="margin-top: var(--space-8);">
+              <span class="eyebrow">Needs a nudge</span>
+              <h2>Hasn't finished setting up</h2>
+              <p>Invited but not yet active - includes anyone who opened their invite link but never completed the password step.</p>
+            </div>
+            <div class="roster-table" id="attention-table"></div>
+            <p id="attention-empty" style="display:none; color: var(--color-text-faint);">Everyone invited so far has finished setting up. Nothing here.</p>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-mmg" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Midlands Medics Gala</span>
+              <h2>Partner-university guests</h2>
+              <p id="mmg-count-line" class="dash-section-count"></p>
+            </div>
+            <div id="mmg-sections"></div>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-sankofa" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Sankofa Circle</span>
+              <h2>Applications</h2>
+              <p id="sankofa-count-line" class="dash-section-count"></p>
+              <div class="dash-filter-tabs" id="sankofa-filter-tabs">
+                <button type="button" class="dash-filter-tab is-active" data-sankofa-filter="all">All</button>
+                <button type="button" class="dash-filter-tab" data-sankofa-filter="mentee">Mentees</button>
+                <button type="button" class="dash-filter-tab" data-sankofa-filter="mentor">Mentors</button>
+              </div>
+            </div>
+            <div class="app-card-list" id="sankofa-applications-list"></div>
+            <p id="sankofa-applications-empty" style="display:none; color: var(--color-text-faint);">No Sankofa applications yet.</p>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-motm" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">ACMS Member of the Month</span>
+              <h2>Nominations</h2>
+              <p id="motm-count-line" class="dash-section-count"></p>
+            </div>
+            <div class="app-card-list" id="motm-nominations-list"></div>
+            <p id="motm-nominations-empty" style="display:none; color: var(--color-text-faint);">No nominations yet.</p>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-events" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Events</span>
+              <h2>Who's registered</h2>
+              <p id="event-regs-count-line" class="dash-section-count"></p>
+            </div>
+            <div id="event-registrations-sections"></div>
+            <p id="event-registrations-empty" style="display:none; color: var(--color-text-faint);">No one's registered for anything yet.</p>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-gallery" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+
+            <div class="section-head">
+              <span class="eyebrow">Public gallery</span>
+              <h2>Select what's on gallery.html</h2>
+              <p>Every photo below can be selected or unselected individually - unselecting pulls it from the public gallery without deleting it. Upload adds a new photo to choose from, live immediately.</p>
+            </div>
+            <form id="gallery-live-upload-form" class="gallery-upload-form">
+              <input type="file" id="gallery-live-upload-file" accept="image/*" multiple required>
+              <button type="submit" class="btn btn-primary">Upload photos</button>
+              <p id="gallery-live-upload-status" class="auth-error" role="status" style="display:none;"></p>
+            </form>
+            <div class="gallery-manage-grid" id="gallery-manage-grid"></div>
+            <p id="gallery-manage-empty" style="display:none; color: var(--color-text-faint);">No photos yet - upload some above.</p>
+
+            <div class="section-head" style="margin-top: var(--space-8);">
+              <span class="eyebrow">Gallery</span>
+              <h2>Member submissions</h2>
+              <p id="gallery-submissions-count-line" class="dash-section-count"></p>
+            </div>
+            <div class="gallery-submissions-grid" id="gallery-submissions-grid"></div>
+            <p id="gallery-submissions-empty" style="display:none; color: var(--color-text-faint);">No gallery submissions yet.</p>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-create" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+
+            <div class="section-head">
+              <span class="eyebrow">Create an account</span>
+              <h2>Add someone directly</h2>
+              <p>Creates the login and their profile in one step. They'll get an email to set their own password - same as an invited member always has, just without the Table Editor round trip.</p>
+            </div>
+
+            <div class="dash-filter-tabs" id="create-account-type-tabs">
+              <button type="button" class="dash-filter-tab is-active" data-account-type="member">LACMS member</button>
+              <button type="button" class="dash-filter-tab" data-account-type="professional">Professional</button>
+              <button type="button" class="dash-filter-tab" data-account-type="mmg">MMG guest</button>
+            </div>
+
+            <form id="create-account-form" class="form-panel" style="margin-top: var(--space-4);">
+
+              <div class="field">
+                <label for="create-account-name">Full name</label>
+                <input type="text" id="create-account-name" required>
+              </div>
+              <div class="field">
+                <label for="create-account-email">Email</label>
+                <input type="email" id="create-account-email" required>
+                <span class="hint">They'll set their own password from this address.</span>
+              </div>
+
+              <div data-account-type-fields="member">
+                <div class="field">
+                  <label for="create-member-course">Course</label>
+                  <input type="text" id="create-member-course" list="create-course-options" placeholder="e.g. Medicine">
+                  <datalist id="create-course-options">
+                    <option value="Medicine">
+                    <option value="Pharmacy">
+                    <option value="Dental Hygiene and Therapy">
+                    <option value="Diagnostic Radiography">
+                    <option value="Nursing and Midwifery">
+                    <option value="Paramedic Science">
+                  </datalist>
+                </div>
+                <div class="field">
+                  <label for="create-member-year">Year of study</label>
+                  <input type="text" id="create-member-year" placeholder="e.g. Year 2, Foundation Doctor">
+                </div>
+                <div class="field">
+                  <label for="create-member-type">Member type</label>
+                  <select id="create-member-type">
+                    <option value="member">Member</option>
+                    <option value="supporting_committee">Supporting committee</option>
+                    <option value="executive_committee">Executive committee</option>
+                    <option value="senior_sankofa_mentor">Senior Sankofa mentor</option>
+                    <option value="junior_sankofa_mentor">Junior Sankofa mentor</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="create-member-role">Committee role <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+                  <input type="text" id="create-member-role" placeholder="e.g. President, Treasurer">
+                </div>
+                <div class="field">
+                  <label class="checkbox-option"><input type="checkbox" id="create-member-sankofa">Sankofa eligible</label>
+                  <label class="checkbox-option"><input type="checkbox" id="create-member-mmg-attendee">MMG attendee</label>
+                  <label class="checkbox-option"><input type="checkbox" id="create-member-mmg-committee">MMG committee</label>
+                </div>
+              </div>
+
+              <div data-account-type-fields="professional" style="display:none;">
+                <div class="field">
+                  <label for="create-pro-title">Title</label>
+                  <input type="text" id="create-pro-title" placeholder="e.g. Consultant Cardiologist, F1 Doctor">
+                </div>
+                <div class="field">
+                  <label for="create-pro-organisation">Organisation <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+                  <input type="text" id="create-pro-organisation">
+                </div>
+                <div class="field">
+                  <label for="create-pro-category">Category</label>
+                  <select id="create-pro-category">
+                    <option value="senior_doctor">Senior Doctor / Consultant</option>
+                    <option value="alumni_doctor">Alumni / Junior Doctor</option>
+                    <option value="pharmacist">Pharmacist</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="create-pro-linkedin">LinkedIn <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+                  <input type="url" id="create-pro-linkedin" placeholder="https://linkedin.com/in/…">
+                </div>
+              </div>
+
+              <div data-account-type-fields="mmg" style="display:none;">
+                <div class="field">
+                  <label for="create-mmg-university">University</label>
+                  <input type="text" id="create-mmg-university" placeholder="e.g. University of Nottingham">
+                </div>
+                <div class="field">
+                  <label for="create-mmg-access">Access level</label>
+                  <select id="create-mmg-access">
+                    <option value="attendee">Attendee</option>
+                    <option value="committee">Committee</option>
+                    <option value="pending">Pending review</option>
+                  </select>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block">Create account &amp; send password-setup email</button>
+              <p id="create-account-status" class="auth-error" role="status" style="display:none;"></p>
+            </form>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-manage" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+
+            <div class="section-head">
+              <span class="eyebrow">Every account</span>
+              <h2>Manage accounts</h2>
+              <p>Click anyone to edit their profile or remove them - members, professionals and MMG guests all in one place.</p>
+            </div>
+
+            <div class="dash-toolbar">
+              <div class="network-search">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="search" id="manage-search-input" placeholder="Search everyone by name…">
+              </div>
+              <div class="dash-filter-tabs" id="manage-type-tabs">
+                <button type="button" class="dash-filter-tab is-active" data-manage-filter="all">All</button>
+                <button type="button" class="dash-filter-tab" data-manage-filter="member">Members</button>
+                <button type="button" class="dash-filter-tab" data-manage-filter="professional">Professionals</button>
+                <button type="button" class="dash-filter-tab" data-manage-filter="mmg">MMG</button>
+              </div>
+            </div>
+
+            <div class="roster-table" id="manage-accounts-list"></div>
+            <p id="manage-accounts-empty" style="display:none; color: var(--color-text-faint);">No one matches that search.</p>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <div class="footer-brand">
+          <img class="brand-mark" src="Media/ACMS%20Branding/logo.png" alt="LACMS crest" width="44" height="44">
+          <span class="brand-mark-fallback" aria-hidden="true">LACMS</span>
+        </div>
+        <p>A student-led community for African and Caribbean heritage students in medicine and healthcare at the University of Lincoln.</p>
+        <div class="footer-socials">
+          <a class="social-btn" href="#" aria-label="LACMS on Instagram">IG</a>
+          <a class="social-btn" href="https://www.linkedin.com/company/lacms/?viewAsMember=true" target="_blank" rel="noopener" aria-label="LACMS on LinkedIn">in</a>
+          <a class="social-btn" href="#" aria-label="LACMS on TikTok">TT</a>
+          <a class="social-btn" href="mailto:acms@lincolnsu.com" aria-label="Email LACMS">@</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h3>Explore</h3>
+        <ul>
+          <li><a href="about.html">About us</a></li>
+          <li><a href="events.html">Events</a></li>
+          <li><a href="programmes.html">Programmes</a></li>
+          <li><a href="opportunities.html">Opportunities</a></li>
+          <li><a href="motm.html">ACMS MoTM</a></li>
+          <li><a href="news.html">News</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3>Society</h3>
+        <ul>
+          <li><a href="gallery.html">Gallery</a></li>
+          <li><a href="join.html">Join LACMS</a></li>
+          <li><a href="about.html#committee">Committee</a></li>
+          <li><a href="member-login.html">Member login</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3>Contact</h3>
+        <ul>
+          <li><a href="mailto:acms@lincolnsu.com">acms@lincolnsu.com</a></li>
+          <li>University of Lincoln<br>Brayford Pool, Lincoln</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <span data-year></span> Lincoln African Caribbean Medical Society</span>
+      <span>Open to every course and background</span>
+      <span>Website built by Nevin Boakye</span>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/main.js?v=20260824-24"></script>
+<script src="js/members.js?v=20260824-24"></script>
+</body>
+</html>
