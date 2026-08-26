@@ -3541,13 +3541,25 @@
     // activated_at here is what keeps them showing as "invite opened,
     // not finished" instead of wrongly appearing online.
     // The single source of truth for "how recently was this person
-    // active" — a fresh sign-in counts even a beat or two before their
-    // first heartbeat has had a chance to land, so this never
-    // contradicts itself the way checking last_seen_at alone did
-    // (which could show "Active · Just now" from a fresh login while
-    // simultaneously not counting toward "online" at all).
+    // active" — genuinely the more recent of the two, not just
+    // whichever field happens to be non-null. This used to always
+    // prefer last_seen_at (the client-side 30-second heartbeat) over
+    // last_sign_in_at (Supabase's own server-side timestamp, set the
+    // instant a sign-in succeeds, no JS execution required afterward) —
+    // which silently showed a stale sign-in from days ago instead of a
+    // real one from an hour ago whenever the heartbeat itself hadn't
+    // landed since then (a closed tab, a phone locked before the first
+    // 30-second beat fires, a flaky connection — the heartbeat can
+    // always be missed in a way the server's own auth timestamp never
+    // is, exactly the "signed in a few hours ago but shows as a day"
+    // report this was built to fix). Comparing both and taking whichever
+    // is actually newer means neither signal can ever mask a more
+    // recent one from the other.
     function presidentLastActivity(row) {
-      return row.last_seen_at || row.last_sign_in_at || null;
+      var seenAt = row.last_seen_at ? new Date(row.last_seen_at).getTime() : 0;
+      var signedInAt = row.last_sign_in_at ? new Date(row.last_sign_in_at).getTime() : 0;
+      if (!seenAt && !signedInAt) return null;
+      return seenAt >= signedInAt ? row.last_seen_at : row.last_sign_in_at;
     }
 
     function presidentIsOnline(row) {
