@@ -1699,6 +1699,19 @@ a.card:active { transform: translateY(-1px) scale(0.98); }
 .person-name { font-family: var(--font-display); font-size: 1.1rem; color: var(--color-text); }
 .person-role { font-size: 0.8rem; color: var(--color-gold-light); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
 .person-course { font-size: 0.78rem; color: rgba(245, 241, 230, 0.72); margin-top: 2px; }
+.person-card-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: rgba(245, 241, 230, 0.55);
+  margin-top: 8px;
+  transition: color var(--dur-base) var(--ease-standard);
+}
+.person-card-hint .icon { width: 12px; height: 12px; flex-shrink: 0; }
+.person-card:hover .person-card-hint,
+.person-card:focus-visible .person-card-hint { color: var(--color-gold-light); }
+.person-card.is-expanded .person-card-hint .icon { transform: rotate(180deg); }
 
 .person-card-toggle-btn {
   position: absolute;
