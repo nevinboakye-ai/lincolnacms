@@ -2675,12 +2675,12 @@ a.card:active { transform: translateY(-1px) scale(0.98); }
 }
 
 .placeholder-banner {
-  background: var(--color-surface-raised);
+  background: var(--color-bg);
   color: var(--color-text);
   border-bottom: 1px solid var(--color-border);
   text-align: center;
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 400;
   padding: 8px var(--space-3);
 }
 
