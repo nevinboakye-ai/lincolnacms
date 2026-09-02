@@ -1366,6 +1366,14 @@
   // in LACMS member sees the full list. Same member_opportunities table
   // as the members hub's "Members-first opportunities" section — one
   // source of truth, just shown differently depending on who's looking.
+  //
+  // "Learn more" here is a deliberate gate, not a real external link
+  // (that's what member-perks.html's own "Members-first opportunities"
+  // section, and renderOpportunityCard below, are for): signed out, it
+  // sends someone to log in first; signed in, the detailed view this
+  // button will eventually open isn't built yet, so it says so plainly
+  // instead of linking to nothing (or to whatever happens to be in the
+  // row's own link field, which was never meant to be public-facing).
   var OPPORTUNITIES_PREVIEW_COUNT = 2;
   var oppListEl = document.getElementById('opportunities-list');
   if (oppListEl) {
@@ -1400,6 +1408,29 @@
             });
         });
       });
+
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-opportunity-learn-more]');
+      if (!btn || btn.disabled) return;
+      supabaseClient.auth.getSession().then(function (result) {
+        var session = result.data && result.data.session;
+        if (!session) {
+          // login.html, not member-login.html directly - matches this
+          // same page's own "Sign in to see more" gate CTA just below,
+          // which already sends a signed-out visitor to the account-type
+          // chooser rather than assuming they're specifically a member.
+          window.location.href = 'login.html';
+          return;
+        }
+        var original = btn.textContent;
+        btn.textContent = 'Coming soon';
+        btn.disabled = true;
+        window.setTimeout(function () {
+          btn.textContent = original;
+          btn.disabled = false;
+        }, 2500);
+      });
+    });
   }
 
   function renderOpportunitiesGated(rows, isMember) {
@@ -1420,14 +1451,9 @@
 
   function renderOpportunityRow(row) {
     var tagHtml = row.category ? '<span class="card-tag">' + escapeHtml(row.category) + '</span>' : '';
-    var safeLink = safeUrl(row.link);
-    var isMailto = safeLink.indexOf('mailto:') === 0;
-    var linkHtml = safeLink
-      ? '<a class="btn btn-outline" href="' + safeLink + '"' + (isMailto ? '' : ' target="_blank" rel="noopener"') + '>Learn more</a>'
-      : '';
     return '<div class="opp-row">' +
       '<div>' + tagHtml + '<h2 class="card-title" style="margin-top: var(--space-2);">' + escapeHtml(row.title) + '</h2><p>' + escapeHtml(row.description) + '</p></div>' +
-      '<div class="opp-row-actions">' + linkHtml + '</div>' +
+      '<div class="opp-row-actions"><button type="button" class="btn btn-outline" data-opportunity-learn-more>Learn more</button></div>' +
       '</div>';
   }
 
