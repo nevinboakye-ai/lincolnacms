@@ -17,6 +17,48 @@
     }
   }
 
+  // Theme toggle — light/dark. The initial [data-theme] attribute on <html>
+  // is set by an inline script in <head>, before first paint, so there's no
+  // flash of the wrong theme; this just wires up the click handler and keeps
+  // the site following the OS setting live for anyone who hasn't made an
+  // explicit choice of their own yet.
+  var THEME_KEY = 'lacms-theme';
+  var themeToggleBtns = document.querySelectorAll('[data-theme-toggle]');
+  var systemThemeQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+
+  var applyThemeLabel = function () {
+    var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    themeToggleBtns.forEach(function (btn) {
+      btn.setAttribute('aria-label', isLight ? 'Switch to dark mode' : 'Switch to light mode');
+      btn.setAttribute('aria-pressed', String(isLight));
+    });
+  };
+  applyThemeLabel();
+
+  themeToggleBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* private browsing, etc. */ }
+      applyThemeLabel();
+    });
+  });
+
+  if (systemThemeQuery) {
+    var handleSystemThemeChange = function (e) {
+      var saved = null;
+      try { saved = localStorage.getItem(THEME_KEY); } catch (err) { /* ignore */ }
+      if (saved === 'light' || saved === 'dark') return;
+      document.documentElement.setAttribute('data-theme', e.matches ? 'light' : 'dark');
+      applyThemeLabel();
+    };
+    if (systemThemeQuery.addEventListener) {
+      systemThemeQuery.addEventListener('change', handleSystemThemeChange);
+    } else if (systemThemeQuery.addListener) {
+      systemThemeQuery.addListener(handleSystemThemeChange);
+    }
+  }
+
   // Mobile nav toggle
   var toggle = document.querySelector('.nav-toggle');
   var drawer = document.querySelector('.mobile-drawer');

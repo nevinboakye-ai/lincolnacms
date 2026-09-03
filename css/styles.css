@@ -6,7 +6,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap');
 
 :root {
-  /* Colour tokens — drawn from the LACMS crest (black / gold / red / green / white) */
+  /* Colour tokens — drawn from the LACMS crest (black / gold / red / green / white).
+     These are the dark-mode values (the site's default look); the light-mode
+     equivalents are redefined below, once for an explicit user choice
+     ([data-theme="light"]) and once for a first-visit system preference
+     (prefers-color-scheme) — see "Theming" further down. */
   --color-bg: #0a0a0c;
   --color-bg-alt: #121215;
   --color-surface: #17171b;
@@ -26,6 +30,32 @@
   --color-green: #1e7a46;
 
   --color-focus: #e8c767;
+
+  /* Semantic accent foregrounds used for small coloured labels/icons/badges
+     (member status, quick-link icons, dashboard chips, etc). Bright pastels
+     read well on the dark surfaces below them; the light theme swaps each
+     for its deeper, already-in-palette counterpart so the same text keeps
+     AA contrast once the surface behind it turns pale instead of dark. */
+  --accent-green: #6fcf97;
+  --accent-purple: #b28ff0;
+  --accent-red: #ef8b8f;
+  --accent-pink: #ef8bc4;
+  --accent-blue: #7ab2f0;
+
+  /* Header chrome (translucent over whatever scrolls beneath it) */
+  --header-bg: rgba(10, 10, 12, 0.85);
+  --header-bg-scrolled: rgba(10, 10, 12, 0.94);
+
+  /* Fixed "on-scrim" text — for copy that sits directly on a photograph's
+     dark gradient scrim (hero banners, committee photo cards, the
+     photo-backed Sankofa programme card). Those scrims are baked-in dark
+     overlays on an image, not page chrome, so this text must stay legible
+     against them regardless of which site theme is active — it never
+     participates in the light/dark swap the way --color-text etc. do. */
+  --on-scrim-text: #f5f1e6;
+  --on-scrim-text-muted: rgba(245, 241, 230, 0.75);
+  --on-scrim-border: rgba(245, 241, 230, 0.35);
+  --on-scrim-gold: #e8c767;
 
   /* Type */
   --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
@@ -59,6 +89,74 @@
   :root { --header-h: 72px; }
 }
 
+/* =========================================================
+   Theming — light mode
+
+   Dark is the default look (tokens above). A visit with no saved
+   preference follows the device's own light/dark setting via the
+   media query block below; picking a mode with the header toggle
+   stamps [data-theme] on <html> (see js/main.js), which always wins
+   over the system setting — that's the second, identical block.
+   Kept as two blocks (rather than nested) because a bare media query
+   can't be combined with an attribute selector in one rule.
+   ========================================================= */
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --color-bg: #faf7f0;
+    --color-bg-alt: #f2ede0;
+    --color-surface: #ffffff;
+    --color-surface-raised: #f7f3e9;
+    --color-border: rgba(23, 20, 10, 0.12);
+    --color-border-strong: rgba(23, 20, 10, 0.22);
+
+    --color-text: #1a1712;
+    --color-text-muted: #55503f;
+    --color-text-faint: #837c68;
+
+    --color-gold: #a97e14;
+    --color-gold-light: #8a6512;
+
+    --color-focus: #8a6512;
+
+    --accent-green: #1e7a46;
+    --accent-purple: #6b46c1;
+    --accent-red: #c1272d;
+    --accent-pink: #a3185f;
+    --accent-blue: #1d4fa3;
+
+    --header-bg: rgba(255, 255, 255, 0.82);
+    --header-bg-scrolled: rgba(255, 255, 255, 0.94);
+  }
+}
+
+:root[data-theme="light"] {
+  --color-bg: #faf7f0;
+  --color-bg-alt: #f2ede0;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f7f3e9;
+  --color-border: rgba(23, 20, 10, 0.12);
+  --color-border-strong: rgba(23, 20, 10, 0.22);
+
+  --color-text: #1a1712;
+  --color-text-muted: #55503f;
+  --color-text-faint: #837c68;
+
+  --color-gold: #a97e14;
+  --color-gold-light: #8a6512;
+
+  --color-focus: #8a6512;
+
+  --accent-green: #1e7a46;
+  --accent-purple: #6b46c1;
+  --accent-red: #c1272d;
+  --accent-pink: #a3185f;
+  --accent-blue: #1d4fa3;
+
+  --header-bg: rgba(255, 255, 255, 0.82);
+  --header-bg-scrolled: rgba(255, 255, 255, 0.94);
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 html {
@@ -84,6 +182,8 @@ body {
   font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  transition: background var(--dur-base) var(--ease-standard),
+              color var(--dur-base) var(--ease-standard);
 }
 
 img { max-width: 100%; display: block; }
@@ -294,9 +394,10 @@ button { font-family: inherit; }
   display: flex;
   align-items: center;
   padding-block: 1rem;
-  background: rgba(10, 10, 12, 0.85);
+  background: var(--header-bg);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-border);
+  transition: background var(--dur-base) var(--ease-standard);
 }
 
 .header-inner {
@@ -1052,7 +1153,7 @@ a.impact-card:focus-visible {
 }
 .impact-card--perks::before { animation-delay: 2.1s; }
 .impact-card--perks:hover,
-.impact-card--perks:focus-visible { border-color: #b28ff0; }
+.impact-card--perks:focus-visible { border-color: var(--accent-purple); }
 
 .impact-card--network {
   --impact-shimmer-color: rgba(239, 139, 196, 0.26);
@@ -1061,7 +1162,7 @@ a.impact-card:focus-visible {
 }
 .impact-card--network::before { animation-delay: 3.5s; }
 .impact-card--network:hover,
-.impact-card--network:focus-visible { border-color: #ef8bc4; }
+.impact-card--network:focus-visible { border-color: var(--accent-pink); }
 
 /* Closes out the grid as a full-width band rather than sitting orphaned
    alone in a 5th, half-empty row next to the new Network card. */
@@ -1171,7 +1272,7 @@ a.impact-card:focus-visible {
 }
 
 .impact-badge--green {
-  color: #6fcf97;
+  color: var(--accent-green);
   border-color: rgba(111, 207, 151, 0.4);
   background: rgba(30, 122, 70, 0.15);
 }
@@ -1185,14 +1286,14 @@ a.impact-card:focus-visible {
 .impact-card--event:hover .impact-badge--gold { background: rgba(212, 166, 43, 0.3); }
 
 .impact-badge--purple {
-  color: #b28ff0;
+  color: var(--accent-purple);
   border-color: rgba(178, 143, 240, 0.45);
   background: rgba(107, 70, 193, 0.18);
 }
 .impact-card--perks:hover .impact-badge--purple { background: rgba(107, 70, 193, 0.32); }
 
 .impact-badge--pink {
-  color: #ef8bc4;
+  color: var(--accent-pink);
   border-color: rgba(239, 139, 196, 0.45);
   background: rgba(214, 51, 132, 0.16);
 }
@@ -1844,16 +1945,16 @@ a.card:active { transform: translateY(-1px) scale(0.98); }
   background: linear-gradient(160deg, rgba(30, 122, 70, 0.16), var(--color-surface) 70%);
   border-color: rgba(111, 207, 151, 0.32);
 }
-.programme-card--green:hover { border-color: #6fcf97; }
-.programme-card--green .programme-card-icon { background: rgba(30, 122, 70, 0.22); color: #6fcf97; }
+.programme-card--green:hover { border-color: var(--accent-green); }
+.programme-card--green .programme-card-icon { background: rgba(30, 122, 70, 0.22); color: var(--accent-green); }
 
 .programme-card--purple {
   --card-shimmer-color: rgba(178, 143, 240, 0.26);
   background: linear-gradient(160deg, rgba(107, 70, 193, 0.18), var(--color-surface) 70%);
   border-color: rgba(178, 143, 240, 0.34);
 }
-.programme-card--purple:hover { border-color: #b28ff0; }
-.programme-card--purple .programme-card-icon { background: rgba(107, 70, 193, 0.22); color: #b28ff0; }
+.programme-card--purple:hover { border-color: var(--accent-purple); }
+.programme-card--purple .programme-card-icon { background: rgba(107, 70, 193, 0.22); color: var(--accent-purple); }
 
 /* Flagship "photo hero" card (Sankofa Mentorship) — same technique
    as the homepage hero, scaled down to card size: a full-bleed
@@ -2201,12 +2302,12 @@ a.card:active { transform: translateY(-1px) scale(0.98); }
 }
 
 .member-register-btn.is-registered {
-  border-color: #6fcf97;
-  color: #6fcf97;
+  border-color: var(--accent-green);
+  color: var(--accent-green);
 }
 .member-register-btn.is-registered:hover:not(:disabled) {
-  border-color: #ef8b8f;
-  color: #ef8b8f;
+  border-color: var(--accent-red);
+  color: var(--accent-red);
 }
 
 .chevron-toggle-btn {
@@ -2310,9 +2411,9 @@ a.card:active { transform: translateY(-1px) scale(0.98); }
 .opp-row:active { transform: translateY(-1px) scale(0.99); }
 
 .opp-row--red { border-left-color: var(--color-red); }
-.opp-row--red:hover, .opp-row--red:focus-within { border-left-color: #ef8b8f; }
+.opp-row--red:hover, .opp-row--red:focus-within { border-left-color: var(--accent-red); }
 .opp-row--green { border-left-color: var(--color-green); }
-.opp-row--green:hover, .opp-row--green:focus-within { border-left-color: #6fcf97; }
+.opp-row--green:hover, .opp-row--green:focus-within { border-left-color: var(--accent-green); }
 
 .opp-row.is-expanded {
   border-color: var(--color-gold);
@@ -3292,7 +3393,7 @@ body.intro-active { overflow: hidden; }
   border-radius: var(--radius-sm);
   background: rgba(193, 39, 45, 0.1);
   border: 1px solid rgba(193, 39, 45, 0.35);
-  color: #ef8b8f;
+  color: var(--accent-red);
   font-size: 0.85rem;
   margin-bottom: var(--space-4);
 }
@@ -3587,8 +3688,8 @@ body.intro-active { overflow: hidden; }
 
 .member-status-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 
-.member-status-badge--active { color: #6fcf97; background: rgba(30, 122, 70, 0.18); border: 1px solid rgba(111, 207, 151, 0.4); }
-.member-status-badge--expired { color: #ef8b8f; background: rgba(193, 39, 45, 0.15); border: 1px solid rgba(239, 139, 143, 0.4); }
+.member-status-badge--active { color: var(--accent-green); background: rgba(30, 122, 70, 0.18); border: 1px solid rgba(111, 207, 151, 0.4); }
+.member-status-badge--expired { color: var(--accent-red); background: rgba(193, 39, 45, 0.15); border: 1px solid rgba(239, 139, 143, 0.4); }
 .member-status-badge--pending { color: var(--color-gold-light); background: rgba(212, 166, 43, 0.15); border: 1px solid rgba(232, 199, 103, 0.4); }
 
 /* Member hub layout */
@@ -3679,36 +3780,36 @@ body.intro-active { overflow: hidden; }
   background: linear-gradient(160deg, rgba(30, 122, 70, 0.2), var(--color-surface) 75%);
   border-color: rgba(111, 207, 151, 0.35);
 }
-.quick-link-card--green:hover, .quick-link-card--green:focus-visible { border-color: #6fcf97; }
+.quick-link-card--green:hover, .quick-link-card--green:focus-visible { border-color: var(--accent-green); }
 .quick-link-card--green .card-tag { color: #0c2b1a; background: #6fcf97; }
-.quick-link-card--green .quick-link-icon { background: rgba(30, 122, 70, 0.25); color: #6fcf97; }
+.quick-link-card--green .quick-link-icon { background: rgba(30, 122, 70, 0.25); color: var(--accent-green); }
 
 .quick-link-card--red {
   --card-shimmer-color: rgba(239, 139, 143, 0.26);
   background: linear-gradient(160deg, rgba(193, 39, 45, 0.2), var(--color-surface) 75%);
   border-color: rgba(239, 139, 143, 0.35);
 }
-.quick-link-card--red:hover, .quick-link-card--red:focus-visible { border-color: #ef8b8f; }
+.quick-link-card--red:hover, .quick-link-card--red:focus-visible { border-color: var(--accent-red); }
 .quick-link-card--red .card-tag { color: #3d0f11; background: #ef8b8f; }
-.quick-link-card--red .quick-link-icon { background: rgba(193, 39, 45, 0.22); color: #ef8b8f; }
+.quick-link-card--red .quick-link-icon { background: rgba(193, 39, 45, 0.22); color: var(--accent-red); }
 
 .quick-link-card--purple {
   --card-shimmer-color: rgba(178, 143, 240, 0.28);
   background: linear-gradient(160deg, rgba(107, 70, 193, 0.24), var(--color-surface) 75%);
   border-color: rgba(178, 143, 240, 0.4);
 }
-.quick-link-card--purple:hover, .quick-link-card--purple:focus-visible { border-color: #b28ff0; }
+.quick-link-card--purple:hover, .quick-link-card--purple:focus-visible { border-color: var(--accent-purple); }
 .quick-link-card--purple .card-tag { color: #241849; background: #b28ff0; }
-.quick-link-card--purple .quick-link-icon { background: rgba(107, 70, 193, 0.28); color: #b28ff0; }
+.quick-link-card--purple .quick-link-icon { background: rgba(107, 70, 193, 0.28); color: var(--accent-purple); }
 
 .quick-link-card--pink {
   --card-shimmer-color: rgba(239, 139, 196, 0.28);
   background: linear-gradient(160deg, rgba(214, 51, 132, 0.2), var(--color-surface) 75%);
   border-color: rgba(239, 139, 196, 0.38);
 }
-.quick-link-card--pink:hover, .quick-link-card--pink:focus-visible { border-color: #ef8bc4; }
+.quick-link-card--pink:hover, .quick-link-card--pink:focus-visible { border-color: var(--accent-pink); }
 .quick-link-card--pink .card-tag { color: #4a0f2c; background: #ef8bc4; }
-.quick-link-card--pink .quick-link-icon { background: rgba(214, 51, 132, 0.24); color: #ef8bc4; }
+.quick-link-card--pink .quick-link-icon { background: rgba(214, 51, 132, 0.24); color: var(--accent-pink); }
 
 /* Reserved for the president-only dashboard card — deliberately a new
    colour none of the others use, so it reads as distinct from the rest
@@ -3718,9 +3819,9 @@ body.intro-active { overflow: hidden; }
   background: linear-gradient(160deg, rgba(37, 99, 193, 0.22), var(--color-surface) 75%);
   border-color: rgba(122, 178, 240, 0.4);
 }
-.quick-link-card--blue:hover, .quick-link-card--blue:focus-visible { border-color: #7ab2f0; }
+.quick-link-card--blue:hover, .quick-link-card--blue:focus-visible { border-color: var(--accent-blue); }
 .quick-link-card--blue .card-tag { color: #0c2340; background: #7ab2f0; }
-.quick-link-card--blue .quick-link-icon { background: rgba(37, 99, 193, 0.26); color: #7ab2f0; }
+.quick-link-card--blue .quick-link-icon { background: rgba(37, 99, 193, 0.26); color: var(--accent-blue); }
 
 /* Not-yet-launched hub cards (Perks, Sankofa, MoTM nominations) shown to
    anyone who isn't committee — visually locked rather than coloured:
@@ -3784,24 +3885,24 @@ body.intro-active { overflow: hidden; }
   background: linear-gradient(160deg, rgba(30, 122, 70, 0.18), var(--color-surface) 75%);
   border-color: rgba(111, 207, 151, 0.32);
 }
-.discount-card:nth-of-type(4n+2):hover { border-color: #6fcf97; }
-.discount-card:nth-of-type(4n+2) .discount-card-badge { background: rgba(30, 122, 70, 0.22); color: #6fcf97; }
+.discount-card:nth-of-type(4n+2):hover { border-color: var(--accent-green); }
+.discount-card:nth-of-type(4n+2) .discount-card-badge { background: rgba(30, 122, 70, 0.22); color: var(--accent-green); }
 
 .discount-card:nth-of-type(4n+3) {
   --card-shimmer-color: rgba(239, 139, 143, 0.24);
   background: linear-gradient(160deg, rgba(193, 39, 45, 0.18), var(--color-surface) 75%);
   border-color: rgba(239, 139, 143, 0.32);
 }
-.discount-card:nth-of-type(4n+3):hover { border-color: #ef8b8f; }
-.discount-card:nth-of-type(4n+3) .discount-card-badge { background: rgba(193, 39, 45, 0.2); color: #ef8b8f; }
+.discount-card:nth-of-type(4n+3):hover { border-color: var(--accent-red); }
+.discount-card:nth-of-type(4n+3) .discount-card-badge { background: rgba(193, 39, 45, 0.2); color: var(--accent-red); }
 
 .discount-card:nth-of-type(4n+4) {
   --card-shimmer-color: rgba(178, 143, 240, 0.26);
   background: linear-gradient(160deg, rgba(107, 70, 193, 0.22), var(--color-surface) 75%);
   border-color: rgba(178, 143, 240, 0.36);
 }
-.discount-card:nth-of-type(4n+4):hover { border-color: #b28ff0; }
-.discount-card:nth-of-type(4n+4) .discount-card-badge { background: rgba(107, 70, 193, 0.24); color: #b28ff0; }
+.discount-card:nth-of-type(4n+4):hover { border-color: var(--accent-purple); }
+.discount-card:nth-of-type(4n+4) .discount-card-badge { background: rgba(107, 70, 193, 0.24); color: var(--accent-purple); }
 
 /* Pink is reserved for specific partners (e.g. Lounge 11) rather than the
    automatic colour cycle — placed after the nth-of-type rules so it wins
@@ -3811,8 +3912,8 @@ body.intro-active { overflow: hidden; }
   background: linear-gradient(160deg, rgba(214, 51, 132, 0.2), var(--color-surface) 75%);
   border-color: rgba(239, 139, 196, 0.38);
 }
-.discount-card.discount-card--pink:hover { border-color: #ef8bc4; }
-.discount-card.discount-card--pink .discount-card-badge { background: rgba(214, 51, 132, 0.24); color: #ef8bc4; }
+.discount-card.discount-card--pink:hover { border-color: var(--accent-pink); }
+.discount-card.discount-card--pink .discount-card-badge { background: rgba(214, 51, 132, 0.24); color: var(--accent-pink); }
 
 .discount-card-badge {
   width: 44px;
@@ -3948,7 +4049,7 @@ body.intro-active { overflow: hidden; }
   gap: var(--space-3);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-left: 3px solid var(--ticker-item-accent, #6fcf97);
+  border-left: 3px solid var(--ticker-item-accent, var(--accent-green));
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
   margin-bottom: var(--space-6);
@@ -3970,7 +4071,7 @@ body.intro-active { overflow: hidden; }
   align-items: center;
   justify-content: center;
   background: var(--ticker-item-accent-bg, rgba(30, 122, 70, 0.2));
-  color: var(--ticker-item-accent-light, #6fcf97);
+  color: var(--ticker-item-accent-light, var(--accent-green));
   transition: background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
 }
 .network-ticker-icon .icon { width: 18px; height: 18px; }
@@ -4032,7 +4133,7 @@ body.intro-active { overflow: hidden; }
   cursor: pointer;
   transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
 }
-.network-ticker-nav:hover { border-color: #6fcf97; color: #6fcf97; }
+.network-ticker-nav:hover { border-color: var(--accent-green); color: var(--accent-green); }
 .network-ticker-nav .icon { width: 14px; height: 14px; }
 
 .network-ticker-counter {
@@ -4152,7 +4253,7 @@ body.intro-active { overflow: hidden; }
   cursor: pointer;
   transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
 }
-.dash-refresh-btn:hover { border-color: #6fcf97; color: #6fcf97; }
+.dash-refresh-btn:hover { border-color: var(--accent-green); color: var(--accent-green); }
 .dash-refresh-btn .icon { width: 16px; height: 16px; }
 .dash-refresh-btn.is-spinning .icon { animation: dash-spin 0.6s linear; }
 @keyframes dash-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -4182,7 +4283,7 @@ body.intro-active { overflow: hidden; }
 .online-now-head h2 {
   margin: 0;
   font-size: 1.15rem;
-  color: #6fcf97;
+  color: var(--accent-green);
 }
 .online-now-dot {
   width: 10px;
@@ -4202,7 +4303,7 @@ body.intro-active { overflow: hidden; }
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1rem;
-  color: #6fcf97;
+  color: var(--accent-green);
   background: rgba(30, 122, 70, 0.25);
   padding: 2px 12px;
   border-radius: var(--radius-pill);
@@ -4235,8 +4336,8 @@ body.intro-active { overflow: hidden; }
   background: rgba(212, 166, 43, 0.18);
   color: var(--color-gold-light);
 }
-.online-now-chip-avatar--professional { background: rgba(30, 122, 70, 0.22); color: #6fcf97; }
-.online-now-chip-avatar--mmg { background: rgba(107, 70, 193, 0.26); color: #b28ff0; }
+.online-now-chip-avatar--professional { background: rgba(30, 122, 70, 0.22); color: var(--accent-green); }
+.online-now-chip-avatar--mmg { background: rgba(107, 70, 193, 0.26); color: var(--accent-purple); }
 .online-now-chip-name { font-weight: 600; font-size: 0.86rem; color: var(--color-text); }
 .online-now-chip-type {
   font-size: 0.68rem;
@@ -4249,8 +4350,8 @@ body.intro-active { overflow: hidden; }
    for professionals, purple for MMG guests — so the account type reads
    at a glance across every roster row without needing to read the
    detail line. */
-.roster-avatar--professional { background: rgba(30, 122, 70, 0.2); color: #6fcf97; }
-.roster-avatar--mmg { background: rgba(107, 70, 193, 0.24); color: #b28ff0; }
+.roster-avatar--professional { background: rgba(30, 122, 70, 0.2); color: var(--accent-green); }
+.roster-avatar--mmg { background: rgba(107, 70, 193, 0.24); color: var(--accent-purple); }
 
 .dash-stats {
   display: grid;
@@ -4285,11 +4386,11 @@ body.intro-active { overflow: hidden; }
 .dash-stat--total { border-color: rgba(232, 199, 103, 0.35); background: linear-gradient(160deg, rgba(212, 166, 43, 0.1), var(--color-surface) 75%); }
 .dash-stat--total .dash-stat-num { color: var(--color-gold-light); }
 .dash-stat--online { border-color: rgba(111, 207, 151, 0.35); background: linear-gradient(160deg, rgba(30, 122, 70, 0.12), var(--color-surface) 75%); }
-.dash-stat--online .dash-stat-num { color: #6fcf97; }
+.dash-stat--online .dash-stat-num { color: var(--accent-green); }
 .dash-stat--setup { border-color: rgba(178, 143, 240, 0.35); background: linear-gradient(160deg, rgba(107, 70, 193, 0.12), var(--color-surface) 75%); }
-.dash-stat--setup .dash-stat-num { color: #b28ff0; }
+.dash-stat--setup .dash-stat-num { color: var(--accent-purple); }
 .dash-stat--pending { border-color: rgba(239, 139, 143, 0.35); background: linear-gradient(160deg, rgba(193, 39, 45, 0.1), var(--color-surface) 75%); }
-.dash-stat--pending .dash-stat-num { color: #ef8b8f; }
+.dash-stat--pending .dash-stat-num { color: var(--accent-red); }
 
 .dash-section-count {
   color: var(--color-text-faint);
@@ -4338,7 +4439,7 @@ body.intro-active { overflow: hidden; }
   white-space: nowrap;
   transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
 }
-.roster-mark-active:hover { border-color: #6fcf97; color: #6fcf97; }
+.roster-mark-active:hover { border-color: var(--accent-green); color: var(--accent-green); }
 .roster-mark-active:disabled { opacity: 0.6; cursor: default; }
 
 .roster-main { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
@@ -4394,7 +4495,7 @@ body.intro-active { overflow: hidden; }
   flex-shrink: 0;
 }
 .roster-status--online { color: #0c2b1a; background: #6fcf97; }
-.roster-status--active { color: #6fcf97; background: rgba(30, 122, 70, 0.16); border: 1px solid rgba(111, 207, 151, 0.4); }
+.roster-status--active { color: var(--accent-green); background: rgba(30, 122, 70, 0.16); border: 1px solid rgba(111, 207, 151, 0.4); }
 .roster-status--stuck { color: #4a2f0a; background: var(--color-gold-light); }
 .roster-status--unopened { color: var(--color-text-faint); background: transparent; border: 1px dashed var(--color-border-strong); }
 
@@ -4489,7 +4590,7 @@ body.intro-active { overflow: hidden; }
   border-radius: var(--radius-pill);
 }
 .app-badge--mentee { color: var(--color-gold-light); background: rgba(212, 166, 43, 0.16); }
-.app-badge--mentor { color: #b28ff0; background: rgba(107, 70, 193, 0.2); }
+.app-badge--mentor { color: var(--accent-purple); background: rgba(107, 70, 193, 0.2); }
 .app-card-body {
   display: none;
   padding: 0 var(--space-4) var(--space-4);
@@ -4520,7 +4621,7 @@ body.intro-active { overflow: hidden; }
   cursor: pointer;
   transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
 }
-.app-card-delete-btn:hover { border-color: #ef8b8f; color: #ef8b8f; }
+.app-card-delete-btn:hover { border-color: var(--accent-red); color: var(--accent-red); }
 .app-card-delete-btn:disabled { opacity: 0.6; cursor: default; }
 
 /* President dashboard: gallery submissions browser */
@@ -4626,19 +4727,19 @@ body.intro-active { overflow: hidden; }
 }
 .dash-nav-grid .dash-nav-card:nth-child(4n+1)::before { animation-delay: 0s; }
 .dash-nav-grid .dash-nav-card:nth-child(4n+2) {
-  --nav-accent: #6fcf97;
+  --nav-accent: var(--accent-green);
   --nav-shimmer-color: rgba(111, 207, 151, 0.2);
   background: linear-gradient(160deg, rgba(30, 122, 70, 0.15), var(--color-surface) 72%);
 }
 .dash-nav-grid .dash-nav-card:nth-child(4n+2)::before { animation-delay: 1.8s; }
 .dash-nav-grid .dash-nav-card:nth-child(4n+3) {
-  --nav-accent: #ef8b8f;
+  --nav-accent: var(--accent-red);
   --nav-shimmer-color: rgba(239, 139, 143, 0.18);
   background: linear-gradient(160deg, rgba(193, 39, 45, 0.13), var(--color-surface) 72%);
 }
 .dash-nav-grid .dash-nav-card:nth-child(4n+3)::before { animation-delay: 3.6s; }
 .dash-nav-grid .dash-nav-card:nth-child(4n+4) {
-  --nav-accent: #b28ff0;
+  --nav-accent: var(--accent-purple);
   --nav-shimmer-color: rgba(178, 143, 240, 0.2);
   background: linear-gradient(160deg, rgba(107, 70, 193, 0.15), var(--color-surface) 72%);
 }
@@ -4762,8 +4863,8 @@ body.intro-active { overflow: hidden; }
   transition: border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard);
 }
 .gallery-manage-btn:hover { color: var(--color-text); border-color: var(--color-text-faint); }
-.gallery-manage-btn--active { border-color: rgba(111, 207, 151, 0.5); color: #6fcf97; }
-.gallery-manage-btn--danger:hover { border-color: #ef8b8f; color: #ef8b8f; }
+.gallery-manage-btn--active { border-color: rgba(111, 207, 151, 0.5); color: var(--accent-green); }
+.gallery-manage-btn--danger:hover { border-color: var(--accent-red); color: var(--accent-red); }
 .gallery-manage-btn:disabled { opacity: 0.6; cursor: default; }
 
 /* Sankofa apply modal (sankofa.html, programmes.html) — mentee-or-mentor
@@ -4935,9 +5036,9 @@ body.intro-active { overflow: hidden; }
   border-radius: var(--radius-pill);
   white-space: nowrap;
 }
-.mockup-tag--green { color: #6fcf97; background: rgba(30, 122, 70, 0.2); }
+.mockup-tag--green { color: var(--accent-green); background: rgba(30, 122, 70, 0.2); }
 .mockup-tag--gold { color: var(--color-gold-light); background: rgba(212, 166, 43, 0.18); }
-.mockup-tag--purple { color: #b28ff0; background: rgba(107, 70, 193, 0.22); }
+.mockup-tag--purple { color: var(--accent-purple); background: rgba(107, 70, 193, 0.22); }
 .join-preview-caption {
   padding: var(--space-4);
   border-top: 1px solid var(--color-border);
@@ -4981,13 +5082,13 @@ body.intro-active { overflow: hidden; }
 .feed-item--gold { border-left-color: var(--color-gold); }
 .feed-item--gold .feed-item-tag { color: var(--color-on-gold); background: var(--color-gold); }
 
-.feed-item--green { border-left-color: #6fcf97; }
+.feed-item--green { border-left-color: var(--accent-green); }
 .feed-item--green .feed-item-tag { color: #0c2b1a; background: #6fcf97; }
 
-.feed-item--red { border-left-color: #ef8b8f; }
+.feed-item--red { border-left-color: var(--accent-red); }
 .feed-item--red .feed-item-tag { color: #3d0f11; background: #ef8b8f; }
 
-.feed-item--purple { border-left-color: #b28ff0; }
+.feed-item--purple { border-left-color: var(--accent-purple); }
 .feed-item--purple .feed-item-tag { color: #241849; background: #b28ff0; }
 
 .feed-item--pinned {
@@ -5138,7 +5239,7 @@ body.intro-active { overflow: hidden; }
 
 .news-like-btn .icon { width: 19px; height: 19px; transition: transform var(--dur-fast) var(--ease-standard); }
 
-.news-like-btn.is-liked { color: #ef8b8f; }
+.news-like-btn.is-liked { color: var(--accent-red); }
 .news-like-btn.is-liked .icon { fill: currentColor; }
 .news-like-btn.is-liked-anim .icon { animation: news-like-pop 0.4s var(--ease-standard); }
 
@@ -5228,8 +5329,8 @@ body.intro-active { overflow: hidden; }
   font-size: 0.92rem;
   color: var(--color-text-muted);
 }
-.network-recent-joins strong { color: #6fcf97; font-weight: 600; }
-.network-recent-joins-icon { flex-shrink: 0; width: 20px; height: 20px; color: #6fcf97; }
+.network-recent-joins strong { color: var(--accent-green); font-weight: 600; }
+.network-recent-joins-icon { flex-shrink: 0; width: 20px; height: 20px; color: var(--accent-green); }
 
 .network-search-row {
   display: flex;
@@ -5393,8 +5494,8 @@ body.intro-active { overflow: hidden; }
    green accent — set once on the wrapping container — so doctors and
    pharmacists read as a distinct group from student cards at a glance. */
 #network-professionals-wrap {
-  --network-accent: #6fcf97;
-  --network-accent-light: #6fcf97;
+  --network-accent: var(--accent-green);
+  --network-accent-light: var(--accent-green);
   --network-accent-bg: rgba(30, 122, 70, 0.2);
 }
 
@@ -5641,7 +5742,7 @@ body.intro-active { overflow: hidden; }
   font-size: 0.82rem;
   color: var(--color-gold-light);
 }
-.vote-form-status--error { color: #ef8b8f; }
+.vote-form-status--error { color: var(--accent-red); }
 
 .vote-card {
   transition: transform var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard);
@@ -5896,7 +5997,7 @@ body.intro-active { overflow: hidden; }
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #b28ff0;
+  color: var(--accent-purple);
   background: rgba(107, 70, 193, 0.22);
   border: 1px solid rgba(178, 143, 240, 0.4);
   padding: 5px 12px;
@@ -5951,7 +6052,7 @@ body.intro-active { overflow: hidden; }
 }
 .site-topbar.is-scrolled .site-header {
   padding-block: 0.6rem;
-  background: rgba(10, 10, 12, 0.94);
+  background: var(--header-bg-scrolled);
   box-shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.7);
 }
 .site-topbar.is-scrolled .brand-mark,
@@ -6097,3 +6198,95 @@ html, body { overflow-x: hidden; max-width: 100%; }
 @media (max-width: 1360px) {
   .mobile-drawer { padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* =========================================================
+   Theming — text pinned against fixed-dark photo scrims
+
+   The hero banner, committee photo cards and the photo-backed
+   Sankofa programme card all lay text over a baked-in dark gradient
+   (see .hero-scrim / .person-photo-scrim / .programme-card-scrim,
+   all literal rgba(10,10,12,…) — never theme tokens, so the scrim
+   itself is already correct in both modes). But several of those
+   elements were written against --color-text / --color-gold-light,
+   which now go dark in light mode — fine on the page's own surface,
+   wrong here since the scrim behind this text stays dark regardless
+   of theme. Pin them to the fixed --on-scrim-* tokens instead so
+   they stay legible no matter which mode is active.
+   ========================================================= */
+
+.hero-content .eyebrow,
+.hero-heading-accent,
+.hero-courses-label { color: var(--on-scrim-gold); }
+
+.hero-heading { color: var(--on-scrim-text); }
+.hero-courses { color: var(--on-scrim-text-muted); }
+
+.hero-content .btn-outline {
+  color: var(--on-scrim-text);
+  border-color: var(--on-scrim-border);
+}
+.hero-content .btn-outline:hover {
+  border-color: var(--on-scrim-gold);
+  color: var(--on-scrim-gold);
+}
+
+.wwa-carousel-hint { color: var(--on-scrim-text); }
+
+.person-name { color: var(--on-scrim-text); }
+.person-role { color: var(--on-scrim-gold); }
+.person-card:hover .person-card-hint,
+.person-card:focus-visible .person-card-hint { color: var(--on-scrim-gold); }
+
+.person-card-toggle-btn { color: var(--on-scrim-text); }
+.person-card-toggle-btn:hover,
+.person-card-toggle-btn:focus-visible { border-color: var(--on-scrim-gold); color: var(--on-scrim-gold); }
+.person-card.is-expanded .person-card-toggle-btn { border-color: var(--on-scrim-gold); color: var(--on-scrim-gold); }
+
+.programme-card--photo .programme-card-content h1,
+.programme-card--photo .programme-card-content h2,
+.programme-card--photo .programme-card-content h3,
+.programme-card--photo .programme-card-content h4 { color: var(--on-scrim-text); }
+.programme-card--photo .programme-card-content p { color: var(--on-scrim-text-muted); }
+.programme-card--photo .card-tag { color: var(--on-scrim-gold); }
+.programme-card--photo .btn-outline {
+  color: var(--on-scrim-text);
+  border-color: var(--on-scrim-border);
+}
+.programme-card--photo .btn-outline:hover {
+  border-color: var(--on-scrim-gold);
+  color: var(--on-scrim-gold);
+}
+.programme-card--photo.programme-card--green .programme-card-icon { color: #6fcf97; }
+
+/* =========================================================
+   Theme toggle — sun/moon switch, always visible in the header
+   (both desktop nav and the collapsed mobile bar; see js/main.js
+   for the click handler and system-preference syncing).
+   ========================================================= */
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-standard),
+              color var(--dur-base) var(--ease-standard),
+              transform var(--dur-base) var(--ease-standard);
+}
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  border-color: var(--color-gold);
+  color: var(--color-gold-light);
+  transform: translateY(-1px);
+}
+.theme-toggle .icon { width: 19px; height: 19px; }
+.theme-toggle .icon-moon { display: none; }
+[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+[data-theme="light"] .theme-toggle .icon-moon { display: block; }
