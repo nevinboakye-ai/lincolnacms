@@ -548,8 +548,16 @@ button { font-family: inherit; }
 }
 
 @media (max-width: 640px) {
-  .brand-sub { font-size: 0.58rem; }
-  .brand-place { display: none; }
+  /* The "Lincoln / African Caribbean / Medical Society" text doesn't
+     shrink or wrap to fit whatever space flexbox leaves it once the
+     header also has to fit the avatar, theme toggle and hamburger —
+     it's fixed-width text with hard line breaks, so a squeezed
+     container just lets it spill out over whatever sits to its right
+     instead of resizing. Hiding the whole block below the width where
+     that stops fitting (rather than fighting it with more breakpoints)
+     is the same trade-off already made for .brand-place just below —
+     the crest + "LACMS" wordmark carry the brand on narrow phones. */
+  .brand-text, .brand-divider { display: none; }
 }
 
 .nav-primary {
