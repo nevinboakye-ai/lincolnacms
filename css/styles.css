@@ -83,12 +83,12 @@
      actually shows up against a bright page. Fixed values (not redefined
      per theme) since they're only ever referenced from within light-mode
      scoped rules. */
-  --deep-gold: linear-gradient(160deg, #a9720a 0%, #6b4405 100%);
-  --deep-green: linear-gradient(160deg, #1e7a46 0%, #0d3d22 100%);
-  --deep-purple: linear-gradient(160deg, #6b46c1 0%, #40285f 100%);
-  --deep-red: linear-gradient(160deg, #c1272d 0%, #7a1015 100%);
-  --deep-pink: linear-gradient(160deg, #a3185f 0%, #650e3c 100%);
-  --deep-blue: linear-gradient(160deg, #2563c1 0%, #163a75 100%);
+  --deep-gold: linear-gradient(160deg, rgba(169, 114, 10, 0.86) 0%, rgba(107, 68, 5, 0.86) 100%);
+  --deep-green: linear-gradient(160deg, rgba(30, 122, 70, 0.86) 0%, rgba(13, 61, 34, 0.86) 100%);
+  --deep-purple: linear-gradient(160deg, rgba(107, 70, 193, 0.86) 0%, rgba(64, 40, 95, 0.86) 100%);
+  --deep-red: linear-gradient(160deg, rgba(193, 39, 45, 0.86) 0%, rgba(122, 16, 21, 0.86) 100%);
+  --deep-pink: linear-gradient(160deg, rgba(163, 24, 95, 0.86) 0%, rgba(101, 14, 60, 0.86) 100%);
+  --deep-blue: linear-gradient(160deg, rgba(37, 99, 193, 0.86) 0%, rgba(30, 58, 117, 0.86) 100%);
 
   --deep-gold-solid: #8a5d0a;
   --deep-green-solid: #175c34;
