@@ -178,6 +178,6 @@ for each row execute function public.news_update_comment_count();
 -- Placeholder posts so the feed isn't empty on first load — edit or
 -- delete these from Table Editor whenever you're ready to replace them.
 insert into public.news_posts (title, body, pinned, published_at) values
-('Welcome to LACMS News', 'This is where we''ll share updates, announcements and stories throughout the year. Committee members can edit this feed directly from Table Editor — see README-members-setup.md for the full guide. Members can like and comment on any post once signed in.', true, now()),
-('New committee elected for 2026/27', 'Congratulations to our new committee — we''re excited for the year ahead. Full introductions are on the About page.', false, now() - interval '2 days'),
-('LACMS officially launches 30 September', 'Mark your calendars — our official launch event kicks off the year. Head to the Events page for the full calendar.', false, now() - interval '4 days');
+('Welcome to LACMS News', 'This is where we''ll share updates, announcements and stories throughout the year. Committee members can edit this feed directly from Table Editor - see README-members-setup.md for the full guide. Members can like and comment on any post once signed in.', true, now()),
+('New committee elected for 2026/27', 'Congratulations to our new committee - we''re excited for the year ahead. Full introductions are on the About page.', false, now() - interval '2 days'),
+('LACMS officially launches 30 September', 'Mark your calendars - our official launch event kicks off the year. Head to the Events page for the full calendar.', false, now() - interval '4 days');
