@@ -3563,13 +3563,17 @@ body.intro-active { overflow: hidden; }
 
 .member-card-face {
   border-radius: var(--radius-lg);
-  border: 2px solid var(--color-gold);
+  border: 2px solid var(--on-deep-border-hover);
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+  /* A real gold membership card, not just "the card component with a
+     gold accent" — same deep-gold surface and light text in both
+     themes (see --deep-gold / --on-deep* above), since a member's
+     card shouldn't change what it looks like when they switch themes. */
   background:
     radial-gradient(circle at 100% 0%, rgba(var(--gold-rgb), calc(0.2 * var(--tint-boost))), transparent 60%),
     repeating-linear-gradient(135deg, rgba(var(--gold-rgb), calc(0.045 * var(--tint-boost))) 0 2px, transparent 2px 18px),
-    linear-gradient(160deg, var(--color-surface-raised), var(--color-bg-alt));
+    var(--deep-gold);
   box-shadow: 0 20px 50px -20px rgba(var(--gold-rgb), calc(0.4 * var(--tint-boost)));
   transition: box-shadow 0.5s var(--ease-standard);
 }
@@ -3609,10 +3613,10 @@ body.intro-active { overflow: hidden; }
 .member-card-back-name {
   font-family: var(--font-display);
   font-size: 1.7rem;
-  color: var(--color-gold-light);
+  color: var(--on-deep);
   letter-spacing: 0.03em;
 }
-.member-card-back-sub { font-size: 0.8rem; color: var(--color-text-muted); max-width: 260px; }
+.member-card-back-sub { font-size: 0.8rem; color: var(--on-deep-muted); max-width: 260px; }
 
 /* No overflow:hidden on .member-card-face above — combined with
    backface-visibility:hidden on a 3D-rotated element, it's a known
@@ -3697,22 +3701,22 @@ body.intro-active { overflow: hidden; }
 
 .member-card-brand { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
 .member-card-brand img { width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; }
-.member-card-brand-text { font-family: var(--font-body); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; }
+.member-card-brand-text { font-family: var(--font-body); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; color: var(--on-deep); }
 
 .member-card-eyebrow {
   font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-gold);
+  color: var(--on-deep-accent);
   text-align: right;
   white-space: normal;
   max-width: 140px;
 }
 
-.member-card-name { font-size: clamp(1.4rem, 3vw, 1.8rem); margin: var(--space-3) 0 2px; }
-.member-card-position { color: var(--color-gold-light); font-weight: 600; font-size: 0.92rem; margin: 0 0 2px; }
-.member-card-role { color: var(--color-text-muted); font-size: 0.9rem; margin-bottom: var(--space-4); }
+.member-card-name { font-size: clamp(1.4rem, 3vw, 1.8rem); margin: var(--space-3) 0 2px; color: var(--on-deep); }
+.member-card-position { color: var(--on-deep); font-weight: 600; font-size: 0.92rem; margin: 0 0 2px; }
+.member-card-role { color: var(--on-deep-muted); font-size: 0.9rem; margin-bottom: var(--space-4); }
 
 .member-card-bottom {
   display: flex;
@@ -3720,21 +3724,21 @@ body.intro-active { overflow: hidden; }
   justify-content: space-between;
   gap: var(--space-3);
   padding-top: var(--space-3);
-  border-top: 1px dashed var(--color-border-strong);
+  border-top: 1px dashed var(--on-deep-border);
 }
 
 .member-card-number-label {
   font-size: 0.62rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-text-faint);
+  color: var(--on-deep-muted);
   margin-bottom: 2px;
 }
 
 .member-card-number {
   font-family: 'SFMono-Regular', Menlo, monospace;
   font-size: 1.1rem;
-  color: var(--color-gold-light);
+  color: var(--on-deep);
   letter-spacing: 0.03em;
 }
 
@@ -6719,19 +6723,6 @@ html, body { overflow-x: hidden; max-width: 100%; }
 :root:not([data-theme="dark"]) .event-row--flagship .chevron-toggle-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 :root:not([data-theme="dark"]) .event-row--flagship.is-expanded .chevron-toggle-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border-hover) !important; }
 
-/* ----- The LACMS/MMG member credential card (member hub + MMG portal) ----- */
-:root:not([data-theme="dark"]) .member-card-face { background: var(--deep-gold) !important; border-color: var(--on-deep-border-hover) !important; }
-:root:not([data-theme="dark"]) .member-card-brand-text { color: var(--on-deep) !important; }
-:root:not([data-theme="dark"]) .member-card-eyebrow { color: var(--on-deep-accent) !important; }
-:root:not([data-theme="dark"]) .member-card-name { color: var(--on-deep) !important; }
-:root:not([data-theme="dark"]) .member-card-position { color: var(--on-deep) !important; }
-:root:not([data-theme="dark"]) .member-card-role { color: var(--on-deep-muted) !important; }
-:root:not([data-theme="dark"]) .member-card-bottom { border-top-color: var(--on-deep-border) !important; }
-:root:not([data-theme="dark"]) .member-card-number-label { color: var(--on-deep-muted) !important; }
-:root:not([data-theme="dark"]) .member-card-number { color: var(--on-deep) !important; }
-:root:not([data-theme="dark"]) .member-card-back-name { color: var(--on-deep) !important; }
-:root:not([data-theme="dark"]) .member-card-back-sub { color: var(--on-deep-muted) !important; }
-
 /* ----- Announcements / news feed (member hub) ----- */
 :root:not([data-theme="dark"]) .feed-item--gold { background: linear-gradient(100deg, rgba(169, 114, 10, 0.18) 0%, var(--color-surface) 50%) !important; border-left-width: 4px !important; }
 :root:not([data-theme="dark"]) .feed-item--green { background: linear-gradient(100deg, rgba(30, 122, 70, 0.18) 0%, var(--color-surface) 50%) !important; border-left-width: 4px !important; }
@@ -6771,19 +6762,6 @@ html, body { overflow-x: hidden; max-width: 100%; }
 [data-theme="light"] .event-row--flagship .btn-outline:hover { border-color: var(--on-deep-border-hover) !important; color: var(--on-deep) !important; }
 [data-theme="light"] .event-row--flagship .chevron-toggle-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 [data-theme="light"] .event-row--flagship.is-expanded .chevron-toggle-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border-hover) !important; }
-
-/* ----- The LACMS/MMG member credential card (member hub + MMG portal) ----- */
-[data-theme="light"] .member-card-face { background: var(--deep-gold) !important; border-color: var(--on-deep-border-hover) !important; }
-[data-theme="light"] .member-card-brand-text { color: var(--on-deep) !important; }
-[data-theme="light"] .member-card-eyebrow { color: var(--on-deep-accent) !important; }
-[data-theme="light"] .member-card-name { color: var(--on-deep) !important; }
-[data-theme="light"] .member-card-position { color: var(--on-deep) !important; }
-[data-theme="light"] .member-card-role { color: var(--on-deep-muted) !important; }
-[data-theme="light"] .member-card-bottom { border-top-color: var(--on-deep-border) !important; }
-[data-theme="light"] .member-card-number-label { color: var(--on-deep-muted) !important; }
-[data-theme="light"] .member-card-number { color: var(--on-deep) !important; }
-[data-theme="light"] .member-card-back-name { color: var(--on-deep) !important; }
-[data-theme="light"] .member-card-back-sub { color: var(--on-deep-muted) !important; }
 
 /* ----- Announcements / news feed (member hub) ----- */
 [data-theme="light"] .feed-item--gold { background: linear-gradient(100deg, rgba(169, 114, 10, 0.18) 0%, var(--color-surface) 50%) !important; border-left-width: 4px !important; }
