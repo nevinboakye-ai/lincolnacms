@@ -73,6 +73,38 @@
   --blue-light-rgb: 122, 178, 240;
   --tint-boost: 1;
 
+  /* Deep jewel-tone card treatment — light mode only (see the override
+     section near the end of this file). A pale wash of colour over an
+     already-bright surface reads as barely-there no matter how much
+     --tint-boost dials it up, so the coloured cards/badges/icon-circles
+     switch approach entirely in light mode: a rich, mostly-opaque colour
+     surface with light text on top, the same way a dark-mode card uses a
+     near-black surface with a colour glow — just with the polarity that
+     actually shows up against a bright page. Fixed values (not redefined
+     per theme) since they're only ever referenced from within light-mode
+     scoped rules. */
+  --deep-gold: linear-gradient(160deg, #a9720a 0%, #6b4405 100%);
+  --deep-green: linear-gradient(160deg, #1e7a46 0%, #0d3d22 100%);
+  --deep-purple: linear-gradient(160deg, #6b46c1 0%, #40285f 100%);
+  --deep-red: linear-gradient(160deg, #c1272d 0%, #7a1015 100%);
+  --deep-pink: linear-gradient(160deg, #a3185f 0%, #650e3c 100%);
+  --deep-blue: linear-gradient(160deg, #2563c1 0%, #163a75 100%);
+
+  --deep-gold-solid: #8a5d0a;
+  --deep-green-solid: #175c34;
+  --deep-purple-solid: #55389a;
+  --deep-red-solid: #9c1f24;
+  --deep-pink-solid: #85174f;
+  --deep-blue-solid: #1e4f96;
+
+  --on-deep: #fdf8ec;
+  --on-deep-muted: rgba(253, 248, 236, 0.82);
+  --on-deep-accent: #f0d488;
+  --on-deep-border: rgba(255, 255, 255, 0.18);
+  --on-deep-border-hover: rgba(255, 255, 255, 0.4);
+  --on-deep-chip-bg: rgba(255, 255, 255, 0.16);
+  --on-deep-chip-border: rgba(255, 255, 255, 0.4);
+
   /* Header chrome (translucent over whatever scrolls beneath it) */
   --header-bg: rgba(10, 10, 12, 0.85);
   --header-bg-scrolled: rgba(10, 10, 12, 0.94);
@@ -6323,3 +6355,320 @@ html, body { overflow-x: hidden; max-width: 100%; }
 .theme-toggle .icon-moon { display: none; }
 [data-theme="light"] .theme-toggle .icon-sun { display: none; }
 [data-theme="light"] .theme-toggle .icon-moon { display: block; }
+
+/* =========================================================
+   Theming — light mode: deep jewel-tone cards & badges
+
+   A pale colour wash over an already-bright page reads as barely-there no
+   matter how strong --tint-boost makes it, so every coloured card, badge,
+   tag and icon-circle below switches approach in light mode: a rich,
+   mostly-opaque colour surface (see --deep-* above) with light text on
+   top, instead of a tint of that colour laid over a near-white surface.
+   Kept as !important overrides — this is a whole-page skin layer sitting
+   on top of dozens of component rules of varying specificity, and
+   matching each one by hand would be fragile and easy to silently break
+   on the next edit — rather than folded into the base rules, so dark
+   mode's existing, already-tuned look is completely untouched. Two
+   identical rule sets for the same two contexts as the token overrides
+   earlier: the no-choice-yet system-preference case, then an explicit
+   choice (each selector already carries its own theme-scoping prefix, so
+   these are plain top-level rules, not nested inside another block).
+   ========================================================= */
+
+@media (prefers-color-scheme: light) {
+/* ----- Homepage impact cards ----- */
+:root:not([data-theme="dark"]) .impact-card--opportunity { background: var(--deep-green) !important; }
+:root:not([data-theme="dark"]) .impact-card--event { background: var(--deep-gold) !important; }
+:root:not([data-theme="dark"]) .impact-card--stats { background: var(--deep-red) !important; }
+:root:not([data-theme="dark"]) .impact-card--perks { background: var(--deep-purple) !important; }
+:root:not([data-theme="dark"]) .impact-card--network { background: var(--deep-pink) !important; }
+:root:not([data-theme="dark"]) .impact-card--opportunity,
+:root:not([data-theme="dark"]) .impact-card--event,
+:root:not([data-theme="dark"]) .impact-card--stats,
+:root:not([data-theme="dark"]) .impact-card--perks,
+:root:not([data-theme="dark"]) .impact-card--network { border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .impact-card--opportunity:hover, :root:not([data-theme="dark"]) .impact-card--opportunity:focus-visible,
+:root:not([data-theme="dark"]) .impact-card--event:hover, :root:not([data-theme="dark"]) .impact-card--event:focus-visible,
+:root:not([data-theme="dark"]) .impact-card--stats:hover,
+:root:not([data-theme="dark"]) .impact-card--perks:hover, :root:not([data-theme="dark"]) .impact-card--perks:focus-visible,
+:root:not([data-theme="dark"]) .impact-card--network:hover, :root:not([data-theme="dark"]) .impact-card--network:focus-visible { border-color: var(--on-deep-border-hover) !important; }
+:root:not([data-theme="dark"]) .impact-card .impact-eyebrow { color: var(--on-deep-accent) !important; }
+:root:not([data-theme="dark"]) .impact-card .impact-title { color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .impact-card .impact-rule { border-top-color: var(--on-deep-accent) !important; }
+:root:not([data-theme="dark"]) .impact-card .impact-desc { color: var(--on-deep-muted) !important; }
+:root:not([data-theme="dark"]) .impact-card .impact-illustration { color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .impact-card .impact-badge { background: var(--on-deep-chip-bg) !important; border-color: var(--on-deep-chip-border) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .impact-stat-num { color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .impact-stat .icon { color: var(--on-deep-accent) !important; }
+:root:not([data-theme="dark"]) .impact-stat-label { color: var(--on-deep-muted) !important; }
+:root:not([data-theme="dark"]) .impact-stat + .impact-stat { border-left-color: var(--on-deep-border) !important; }
+
+/* ----- Programme cards (non-photo colour variants) ----- */
+:root:not([data-theme="dark"]) .programme-card--gold { background: var(--deep-gold) !important; }
+:root:not([data-theme="dark"]) .programme-card--purple { background: var(--deep-purple) !important; }
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo),
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) { border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo):hover,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo):hover { border-color: var(--on-deep-border-hover) !important; }
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) .programme-card-content h1,
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) .programme-card-content h2,
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) .programme-card-content h3,
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) .programme-card-content h4,
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) > .hero-grid h1,
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) > .hero-grid h2,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) .programme-card-content h1,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) .programme-card-content h2,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) .programme-card-content h3,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) .programme-card-content h4,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) > .hero-grid h1,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) > .hero-grid h2 { color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) > .hero-grid p,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) > .hero-grid p { color: var(--on-deep-muted) !important; }
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) .programme-card-soon-note,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) .programme-card-soon-note { color: var(--on-deep-muted) !important; }
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) .programme-card-icon,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) .programme-card-icon { background: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) .programme-card-icon { color: var(--deep-gold-solid) !important; }
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) .programme-card-icon { color: var(--deep-purple-solid) !important; }
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) .card-tag--soon,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) .card-tag--soon { color: var(--on-deep-muted) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) .img-placeholder,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) .img-placeholder { border-color: var(--on-deep-border) !important; color: var(--on-deep-muted) !important; }
+:root:not([data-theme="dark"]) .programme-card--gold:not(.programme-card--photo) .programme-card-countdown,
+:root:not([data-theme="dark"]) .programme-card--purple:not(.programme-card--photo) .programme-card-countdown { color: var(--on-deep) !important; }
+
+/* ----- Quick-link cards (member hub dashboard shortcuts) ----- */
+:root:not([data-theme="dark"]) .quick-link-card--gold { background: var(--deep-gold) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--green { background: var(--deep-green) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--red { background: var(--deep-red) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--purple { background: var(--deep-purple) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--pink { background: var(--deep-pink) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--blue { background: var(--deep-blue) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--gold,
+:root:not([data-theme="dark"]) .quick-link-card--green,
+:root:not([data-theme="dark"]) .quick-link-card--red,
+:root:not([data-theme="dark"]) .quick-link-card--purple,
+:root:not([data-theme="dark"]) .quick-link-card--pink,
+:root:not([data-theme="dark"]) .quick-link-card--blue { border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--gold:hover, :root:not([data-theme="dark"]) .quick-link-card--gold:focus-visible,
+:root:not([data-theme="dark"]) .quick-link-card--green:hover, :root:not([data-theme="dark"]) .quick-link-card--green:focus-visible,
+:root:not([data-theme="dark"]) .quick-link-card--red:hover, :root:not([data-theme="dark"]) .quick-link-card--red:focus-visible,
+:root:not([data-theme="dark"]) .quick-link-card--purple:hover, :root:not([data-theme="dark"]) .quick-link-card--purple:focus-visible,
+:root:not([data-theme="dark"]) .quick-link-card--pink:hover, :root:not([data-theme="dark"]) .quick-link-card--pink:focus-visible,
+:root:not([data-theme="dark"]) .quick-link-card--blue:hover, :root:not([data-theme="dark"]) .quick-link-card--blue:focus-visible { border-color: var(--on-deep-border-hover) !important; }
+:root:not([data-theme="dark"]) .quick-link-card .card-title { color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .quick-link-card p { color: var(--on-deep-muted) !important; }
+:root:not([data-theme="dark"]) .quick-link-card .card-link { color: var(--on-deep-accent) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--gold .quick-link-icon,
+:root:not([data-theme="dark"]) .quick-link-card--green .quick-link-icon,
+:root:not([data-theme="dark"]) .quick-link-card--red .quick-link-icon,
+:root:not([data-theme="dark"]) .quick-link-card--purple .quick-link-icon,
+:root:not([data-theme="dark"]) .quick-link-card--pink .quick-link-icon,
+:root:not([data-theme="dark"]) .quick-link-card--blue .quick-link-icon { background: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--gold .quick-link-icon { color: var(--deep-gold-solid) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--green .quick-link-icon { color: var(--deep-green-solid) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--red .quick-link-icon { color: var(--deep-red-solid) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--purple .quick-link-icon { color: var(--deep-purple-solid) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--pink .quick-link-icon { color: var(--deep-pink-solid) !important; }
+:root:not([data-theme="dark"]) .quick-link-card--blue .quick-link-icon { color: var(--deep-blue-solid) !important; }
+
+/* ----- Discount cards (member perks) ----- */
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+1) { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+2) { background: var(--deep-green) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+3) { background: var(--deep-red) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+4) { background: var(--deep-purple) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .discount-card.discount-card--pink { background: var(--deep-pink) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+1):hover,
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+2):hover,
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+3):hover,
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+4):hover,
+:root:not([data-theme="dark"]) .discount-card.discount-card--pink:hover { border-color: var(--on-deep-border-hover) !important; }
+:root:not([data-theme="dark"]) .discount-card .card-title { color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .discount-card p { color: var(--on-deep-muted) !important; }
+:root:not([data-theme="dark"]) .discount-card-badge { background: var(--on-deep-chip-bg) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .discount-code-reveal-btn { background: var(--on-deep-chip-bg) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .discount-code-reveal-btn:hover { background: var(--on-deep-chip-border) !important; }
+:root:not([data-theme="dark"]) .discount-card .discount-code-copy-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .discount-card .discount-code-copy-btn:hover { color: var(--on-deep) !important; border-color: var(--on-deep-border-hover) !important; }
+
+/* ----- Dashboard stat tiles (president/committee dashboard) ----- */
+:root:not([data-theme="dark"]) .dash-stat--total { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .dash-stat--online { background: var(--deep-green) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .dash-stat--setup { background: var(--deep-purple) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .dash-stat--pending { background: var(--deep-red) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .dash-stat--total .dash-stat-num,
+:root:not([data-theme="dark"]) .dash-stat--online .dash-stat-num,
+:root:not([data-theme="dark"]) .dash-stat--setup .dash-stat-num,
+:root:not([data-theme="dark"]) .dash-stat--pending .dash-stat-num { color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .dash-stat--total .dash-stat-label,
+:root:not([data-theme="dark"]) .dash-stat--online .dash-stat-label,
+:root:not([data-theme="dark"]) .dash-stat--setup .dash-stat-label,
+:root:not([data-theme="dark"]) .dash-stat--pending .dash-stat-label { color: var(--on-deep-muted) !important; }
+
+/* ----- Small solid badges/tags/avatars sitting on plain page surfaces ----- */
+:root:not([data-theme="dark"]) .member-status-badge--active { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; border-color: transparent !important; }
+:root:not([data-theme="dark"]) .member-status-badge--expired { background: var(--deep-red-solid) !important; color: var(--on-deep) !important; border-color: transparent !important; }
+:root:not([data-theme="dark"]) .member-status-badge--pending { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; border-color: transparent !important; }
+:root:not([data-theme="dark"]) .mockup-tag--green { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .mockup-tag--gold { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .mockup-tag--purple { background: var(--deep-purple-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .app-badge--mentee { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .app-badge--mentor { background: var(--deep-purple-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .roster-status--active { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .online-now-chip-avatar { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .online-now-chip-avatar--professional { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .online-now-chip-avatar--mmg { background: var(--deep-purple-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .roster-avatar { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .roster-avatar--professional { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .roster-avatar--mmg { background: var(--deep-purple-solid) !important; color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .vote-card-icon { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; }
+
+}
+
+/* ----- Homepage impact cards ----- */
+[data-theme="light"] .impact-card--opportunity { background: var(--deep-green) !important; }
+[data-theme="light"] .impact-card--event { background: var(--deep-gold) !important; }
+[data-theme="light"] .impact-card--stats { background: var(--deep-red) !important; }
+[data-theme="light"] .impact-card--perks { background: var(--deep-purple) !important; }
+[data-theme="light"] .impact-card--network { background: var(--deep-pink) !important; }
+[data-theme="light"] .impact-card--opportunity,
+[data-theme="light"] .impact-card--event,
+[data-theme="light"] .impact-card--stats,
+[data-theme="light"] .impact-card--perks,
+[data-theme="light"] .impact-card--network { border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .impact-card--opportunity:hover, [data-theme="light"] .impact-card--opportunity:focus-visible,
+[data-theme="light"] .impact-card--event:hover, [data-theme="light"] .impact-card--event:focus-visible,
+[data-theme="light"] .impact-card--stats:hover,
+[data-theme="light"] .impact-card--perks:hover, [data-theme="light"] .impact-card--perks:focus-visible,
+[data-theme="light"] .impact-card--network:hover, [data-theme="light"] .impact-card--network:focus-visible { border-color: var(--on-deep-border-hover) !important; }
+[data-theme="light"] .impact-card .impact-eyebrow { color: var(--on-deep-accent) !important; }
+[data-theme="light"] .impact-card .impact-title { color: var(--on-deep) !important; }
+[data-theme="light"] .impact-card .impact-rule { border-top-color: var(--on-deep-accent) !important; }
+[data-theme="light"] .impact-card .impact-desc { color: var(--on-deep-muted) !important; }
+[data-theme="light"] .impact-card .impact-illustration { color: var(--on-deep) !important; }
+[data-theme="light"] .impact-card .impact-badge { background: var(--on-deep-chip-bg) !important; border-color: var(--on-deep-chip-border) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .impact-stat-num { color: var(--on-deep) !important; }
+[data-theme="light"] .impact-stat .icon { color: var(--on-deep-accent) !important; }
+[data-theme="light"] .impact-stat-label { color: var(--on-deep-muted) !important; }
+[data-theme="light"] .impact-stat + .impact-stat { border-left-color: var(--on-deep-border) !important; }
+
+/* ----- Programme cards (non-photo colour variants) ----- */
+[data-theme="light"] .programme-card--gold { background: var(--deep-gold) !important; }
+[data-theme="light"] .programme-card--purple { background: var(--deep-purple) !important; }
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo),
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) { border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo):hover,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo):hover { border-color: var(--on-deep-border-hover) !important; }
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) .programme-card-content h1,
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) .programme-card-content h2,
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) .programme-card-content h3,
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) .programme-card-content h4,
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) > .hero-grid h1,
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) > .hero-grid h2,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) .programme-card-content h1,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) .programme-card-content h2,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) .programme-card-content h3,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) .programme-card-content h4,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) > .hero-grid h1,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) > .hero-grid h2 { color: var(--on-deep) !important; }
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) > .hero-grid p,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) > .hero-grid p { color: var(--on-deep-muted) !important; }
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) .programme-card-soon-note,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) .programme-card-soon-note { color: var(--on-deep-muted) !important; }
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) .programme-card-icon,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) .programme-card-icon { background: var(--on-deep) !important; }
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) .programme-card-icon { color: var(--deep-gold-solid) !important; }
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) .programme-card-icon { color: var(--deep-purple-solid) !important; }
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) .card-tag--soon,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) .card-tag--soon { color: var(--on-deep-muted) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) .img-placeholder,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) .img-placeholder { border-color: var(--on-deep-border) !important; color: var(--on-deep-muted) !important; }
+[data-theme="light"] .programme-card--gold:not(.programme-card--photo) .programme-card-countdown,
+[data-theme="light"] .programme-card--purple:not(.programme-card--photo) .programme-card-countdown { color: var(--on-deep) !important; }
+
+/* ----- Quick-link cards (member hub dashboard shortcuts) ----- */
+[data-theme="light"] .quick-link-card--gold { background: var(--deep-gold) !important; }
+[data-theme="light"] .quick-link-card--green { background: var(--deep-green) !important; }
+[data-theme="light"] .quick-link-card--red { background: var(--deep-red) !important; }
+[data-theme="light"] .quick-link-card--purple { background: var(--deep-purple) !important; }
+[data-theme="light"] .quick-link-card--pink { background: var(--deep-pink) !important; }
+[data-theme="light"] .quick-link-card--blue { background: var(--deep-blue) !important; }
+[data-theme="light"] .quick-link-card--gold,
+[data-theme="light"] .quick-link-card--green,
+[data-theme="light"] .quick-link-card--red,
+[data-theme="light"] .quick-link-card--purple,
+[data-theme="light"] .quick-link-card--pink,
+[data-theme="light"] .quick-link-card--blue { border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .quick-link-card--gold:hover, [data-theme="light"] .quick-link-card--gold:focus-visible,
+[data-theme="light"] .quick-link-card--green:hover, [data-theme="light"] .quick-link-card--green:focus-visible,
+[data-theme="light"] .quick-link-card--red:hover, [data-theme="light"] .quick-link-card--red:focus-visible,
+[data-theme="light"] .quick-link-card--purple:hover, [data-theme="light"] .quick-link-card--purple:focus-visible,
+[data-theme="light"] .quick-link-card--pink:hover, [data-theme="light"] .quick-link-card--pink:focus-visible,
+[data-theme="light"] .quick-link-card--blue:hover, [data-theme="light"] .quick-link-card--blue:focus-visible { border-color: var(--on-deep-border-hover) !important; }
+[data-theme="light"] .quick-link-card .card-title { color: var(--on-deep) !important; }
+[data-theme="light"] .quick-link-card p { color: var(--on-deep-muted) !important; }
+[data-theme="light"] .quick-link-card .card-link { color: var(--on-deep-accent) !important; }
+[data-theme="light"] .quick-link-card--gold .quick-link-icon,
+[data-theme="light"] .quick-link-card--green .quick-link-icon,
+[data-theme="light"] .quick-link-card--red .quick-link-icon,
+[data-theme="light"] .quick-link-card--purple .quick-link-icon,
+[data-theme="light"] .quick-link-card--pink .quick-link-icon,
+[data-theme="light"] .quick-link-card--blue .quick-link-icon { background: var(--on-deep) !important; }
+[data-theme="light"] .quick-link-card--gold .quick-link-icon { color: var(--deep-gold-solid) !important; }
+[data-theme="light"] .quick-link-card--green .quick-link-icon { color: var(--deep-green-solid) !important; }
+[data-theme="light"] .quick-link-card--red .quick-link-icon { color: var(--deep-red-solid) !important; }
+[data-theme="light"] .quick-link-card--purple .quick-link-icon { color: var(--deep-purple-solid) !important; }
+[data-theme="light"] .quick-link-card--pink .quick-link-icon { color: var(--deep-pink-solid) !important; }
+[data-theme="light"] .quick-link-card--blue .quick-link-icon { color: var(--deep-blue-solid) !important; }
+
+/* ----- Discount cards (member perks) ----- */
+[data-theme="light"] .discount-card:nth-of-type(4n+1) { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+2) { background: var(--deep-green) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+3) { background: var(--deep-red) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+4) { background: var(--deep-purple) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .discount-card.discount-card--pink { background: var(--deep-pink) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+1):hover,
+[data-theme="light"] .discount-card:nth-of-type(4n+2):hover,
+[data-theme="light"] .discount-card:nth-of-type(4n+3):hover,
+[data-theme="light"] .discount-card:nth-of-type(4n+4):hover,
+[data-theme="light"] .discount-card.discount-card--pink:hover { border-color: var(--on-deep-border-hover) !important; }
+[data-theme="light"] .discount-card .card-title { color: var(--on-deep) !important; }
+[data-theme="light"] .discount-card p { color: var(--on-deep-muted) !important; }
+[data-theme="light"] .discount-card-badge { background: var(--on-deep-chip-bg) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .discount-code-reveal-btn { background: var(--on-deep-chip-bg) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .discount-code-reveal-btn:hover { background: var(--on-deep-chip-border) !important; }
+[data-theme="light"] .discount-card .discount-code-copy-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .discount-card .discount-code-copy-btn:hover { color: var(--on-deep) !important; border-color: var(--on-deep-border-hover) !important; }
+
+/* ----- Dashboard stat tiles (president/committee dashboard) ----- */
+[data-theme="light"] .dash-stat--total { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .dash-stat--online { background: var(--deep-green) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .dash-stat--setup { background: var(--deep-purple) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .dash-stat--pending { background: var(--deep-red) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .dash-stat--total .dash-stat-num,
+[data-theme="light"] .dash-stat--online .dash-stat-num,
+[data-theme="light"] .dash-stat--setup .dash-stat-num,
+[data-theme="light"] .dash-stat--pending .dash-stat-num { color: var(--on-deep) !important; }
+[data-theme="light"] .dash-stat--total .dash-stat-label,
+[data-theme="light"] .dash-stat--online .dash-stat-label,
+[data-theme="light"] .dash-stat--setup .dash-stat-label,
+[data-theme="light"] .dash-stat--pending .dash-stat-label { color: var(--on-deep-muted) !important; }
+
+/* ----- Small solid badges/tags/avatars sitting on plain page surfaces ----- */
+[data-theme="light"] .member-status-badge--active { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; border-color: transparent !important; }
+[data-theme="light"] .member-status-badge--expired { background: var(--deep-red-solid) !important; color: var(--on-deep) !important; border-color: transparent !important; }
+[data-theme="light"] .member-status-badge--pending { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; border-color: transparent !important; }
+[data-theme="light"] .mockup-tag--green { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .mockup-tag--gold { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .mockup-tag--purple { background: var(--deep-purple-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .app-badge--mentee { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .app-badge--mentor { background: var(--deep-purple-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .roster-status--active { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .online-now-chip-avatar { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .online-now-chip-avatar--professional { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .online-now-chip-avatar--mmg { background: var(--deep-purple-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .roster-avatar { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .roster-avatar--professional { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .roster-avatar--mmg { background: var(--deep-purple-solid) !important; color: var(--on-deep) !important; }
+[data-theme="light"] .vote-card-icon { background: var(--deep-gold-solid) !important; color: var(--on-deep) !important; }
+
