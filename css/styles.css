@@ -479,6 +479,7 @@ button { font-family: inherit; }
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .brand-mark {
@@ -537,6 +538,7 @@ button { font-family: inherit; }
   letter-spacing: 0.06em;
   color: var(--color-text-muted);
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .brand-place {
@@ -544,6 +546,7 @@ button { font-family: inherit; }
   letter-spacing: 0.12em;
   color: var(--color-gold);
   text-transform: uppercase;
+  white-space: nowrap;
   margin-top: 2px;
 }
 
@@ -568,8 +571,10 @@ button { font-family: inherit; }
 
 .nav-links {
   display: flex;
-  gap: var(--space-4);
+  gap: 18px;
 }
+
+.nav-links a { white-space: nowrap; }
 
 .nav-links a {
   font-size: 0.92rem;
@@ -624,6 +629,13 @@ button { font-family: inherit; }
 
 .nav-cta { display: flex; align-items: center; gap: var(--space-2); }
 .nav-cta > a { isolation: isolate; }
+
+/* Trimmed side padding on the two desktop nav buttons only (not .btn
+   generally, which is also used at full size for hero/CTA buttons) -
+   between the brand text, seven nav links, both buttons and the theme
+   toggle, the signed-out header was right at the edge of .header-inner's
+   1340px cap and wrapping "About us" and the brand text mid-word. */
+.nav-cta-desktop { padding-left: 1.3rem; padding-right: 1.3rem; }
 
 .nav-toggle {
   display: none;

@@ -471,7 +471,7 @@
         '<p>Are you applying as a mentee or a mentor?</p>' +
         '<div class="sankofa-apply-choice-grid">' +
         '<button type="button" class="sankofa-apply-choice-btn" data-sankofa-apply-choice="mentee">' +
-        '<strong>Mentee</strong><span>Sixth-former, medical or pharmacy student - LACMS membership required</span>' +
+        '<strong>Mentee</strong><span>Medical or pharmacy student - LACMS membership required</span>' +
         '</button>' +
         '<button type="button" class="sankofa-apply-choice-btn" data-sankofa-apply-choice="mentor">' +
         '<strong>Mentor</strong><span>Doctor, pharmacist or healthcare professional - no account needed</span>' +
@@ -480,7 +480,7 @@
 
         '<div data-sankofa-apply-step="mentee" style="display:none;">' +
         '<h2 style="margin-top:0;">Mentee applications</h2>' +
-        '<p>Open to LACMS members - sixth-formers exploring medicine, and Medicine or Pharmacy students. Applications close Sunday 11 October 2026.</p>' +
+        '<p>Open to LACMS members - Medicine or Pharmacy students. Applications close Sunday 11 October 2026.</p>' +
         '<a class="btn btn-primary btn-block" id="sankofa-apply-mentee-cta" href="join.html">Continue</a>' +
         '</div>' +
 
