@@ -867,3 +867,17 @@ Run [`db/migrations/039-fix-em-dashes-in-seed-text.sql`](db/migrations/039-fix-e
 **Every "More about..." dropdown on events.html had a literal `[Placeholder]`** at the start of its expanded text, plus the copy itself read flat rather than something you'd actually want to click into. All 7 non-flagship events (Welcome and Launch, both Games Nights, the Sankofa Circle session, Professional Development, the Diabetes Day tournament, and the Winter Fundraiser) now have real, livelier copy with the same facts, no placeholder text left anywhere on the page.
 
 **Em dashes turned up in seeded database text** that §73's site-wide sweep couldn't have caught, since that pass only covered files — this is content that lives in the database, seeded once by migrations 012 (opportunities) and 013 (news) and never touched again. Fixed the two migration files themselves (so a fresh install seeds clean text going forward) and added migration 039 above to update the same rows if you already ran 012/013 on your live database — it matches by title, so it's harmless to run even if you've since edited or deleted any of those rows yourself in Table Editor.
+
+## 76. New: Website Activity - a president-only real-traffic dashboard
+
+Run [`db/migrations/040-website-activity-tracking.sql`](db/migrations/040-website-activity-tracking.sql).
+
+A brand new card on the president dashboard, separate from the existing "User Activity" card. User Activity is about signed-in *accounts* (member_presence heartbeats, last sign-in times). This new one is about the *site* - anonymous page-view traffic across all 20 pages, whether the visitor is signed in or not, or has an account at all.
+
+**What it shows**: a live "X people on the site right now" pill (anyone who loaded a page in the last 5 minutes); five headline stat tiles (Today, Past 7 days, Past 30 days, Past year, All time - each with a views number and a visitors sub-count); a bar chart with a range switcher (Today by hour, 7/30 days by day, 90 days by week, 1 year/All time by month - one RPC, `president_activity_series`, handles every range by picking whichever bucket size actually reads well at that span, and zero-fills gaps so a quiet hour or day still draws as a real empty bar); and a top-8 pages leaderboard for whichever range is selected.
+
+**How it's tracked**: `js/main.js` fires one insert into a new `page_views` table on every single page load, site-wide - completely anonymous, no login required. `visitor_id` is a random id generated once and kept in the visitor's own `localStorage`, purely so the dashboard can count *unique visitors* rather than just raw hits - it is never an account id, IP address, or anything else identifying, and it respects Do Not Track. There is no SELECT policy on `page_views` for anyone - the only way to read it back is through the three new `president_*` RPCs below, all `is_president()`-gated exactly like User Activity, Create Account and Manage Accounts already are (Executive Committee does not get this card).
+
+**Three new RPCs**: `president_activity_summary()` (the stat tiles + live count in one call), `president_activity_series(range_key)` (the chart), `president_activity_top_pages(range_key, limit_n)` (the leaderboard).
+
+One thing worth knowing: because tracking only started the moment this migration + the updated `js/main.js` go live, the dashboard will look genuinely empty (zeros everywhere, "no activity recorded yet") until traffic actually happens after that point - there's no way to backfill history for page views that were never recorded.

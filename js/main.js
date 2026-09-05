@@ -17,6 +17,37 @@
     }
   }
 
+  // Anonymous page-view beacon for the president-only Website Activity
+  // dashboard (db/migrations/040, president-dashboard.html). Fires once
+  // per page load on every page, fire-and-forget - never blocks
+  // rendering, and a failed insert (offline, ad blocker, RLS not yet
+  // migrated) is silently ignored, since a missed page view is a
+  // rounding error, not something worth a user-visible failure for.
+  // visitor_id is a random id kept in localStorage, never an account id
+  // or anything else identifying - this counts traffic, not people, the
+  // same way the rest of the site already treats anonymous browsing.
+  // Respects Do Not Track, since counting a visit is a nice-to-have for
+  // the committee, not something worth overriding an explicit opt-out for.
+  if (window.supabaseClient && navigator.doNotTrack !== '1' && window.doNotTrack !== '1') {
+    try {
+      var VISITOR_ID_KEY = 'lacms-visitor-id';
+      var visitorId = localStorage.getItem(VISITOR_ID_KEY);
+      if (!visitorId) {
+        visitorId = (window.crypto && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : 'v-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+        localStorage.setItem(VISITOR_ID_KEY, visitorId);
+      }
+      var pageViewPath = window.location.pathname.split('/').pop() || 'index.html';
+      var pageViewDevice = window.innerWidth < 768 ? 'mobile' : 'desktop';
+      supabaseClient.from('page_views').insert({
+        path: pageViewPath,
+        visitor_id: visitorId,
+        device: pageViewDevice
+      }).then(function () {});
+    } catch (e) { /* tracking is best-effort only */ }
+  }
+
   // Theme toggle — light/dark. The initial [data-theme] attribute on <html>
   // is set by an inline script in <head>, before first paint, so there's no
   // flash of the wrong theme; this just wires up the click handler and keeps

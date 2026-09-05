@@ -3317,7 +3317,7 @@
     var ONLINE_WINDOW_MS = 5 * 60 * 1000;
     var presidentUserId = null;
     var dashboardRole = null;
-    var PRESIDENT_ONLY_SECTIONS = ['activity', 'create', 'manage'];
+    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'create', 'manage'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
@@ -3334,7 +3334,13 @@
       // only while the tab is actually visible, so it isn't polling
       // Supabase in the background for a tab nobody's looking at.
       setInterval(function () {
-        if (document.visibilityState === 'visible') loadPresidentDashboard();
+        if (document.visibilityState !== 'visible') return;
+        loadPresidentDashboard();
+        // Website Activity has its own independent load (a different
+        // shape of data, fetched by range rather than all at once) - if
+        // it's the section currently open, keep its "live now" count and
+        // today's numbers fresh too, same 45s cadence as everything else.
+        if (currentOpenSection === 'webactivity') loadWebActivity();
       }, 45000);
     }
 
@@ -3367,8 +3373,9 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'create', 'manage'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'create', 'manage'];
     var dashLanding = document.getElementById('dash-landing');
+    var currentOpenSection = null;
     function showDashSection(section) {
       if (DASH_SECTIONS.indexOf(section) === -1) section = null;
       // Defensive, not the real gate — a stale bookmark or shared link
@@ -3379,6 +3386,7 @@
       if (section && dashboardRole !== 'president' && PRESIDENT_ONLY_SECTIONS.indexOf(section) !== -1) {
         section = null;
       }
+      currentOpenSection = section;
       if (dashLanding) dashLanding.style.display = section ? 'none' : '';
       DASH_SECTIONS.forEach(function (s) {
         var panel = document.getElementById('dash-panel-' + s);
@@ -3392,6 +3400,7 @@
           var section = card.getAttribute('data-dash-section');
           showDashSection(section);
           window.history.replaceState(null, '', '#' + section);
+          if (section === 'webactivity') loadWebActivity();
         });
       });
       document.querySelectorAll('[data-dash-back]').forEach(function (btn) {
@@ -3400,8 +3409,16 @@
           window.history.replaceState(null, '', window.location.pathname);
         });
       });
+      document.querySelectorAll('#activity-range-tabs [data-activity-range]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          loadWebActivityRange(btn.getAttribute('data-activity-range'));
+        });
+      });
       var initialSection = (window.location.hash || '').replace('#', '');
-      if (DASH_SECTIONS.indexOf(initialSection) !== -1) showDashSection(initialSection);
+      if (DASH_SECTIONS.indexOf(initialSection) !== -1) {
+        showDashSection(initialSection);
+        if (initialSection === 'webactivity') loadWebActivity();
+      }
     }
     function setDashCount(section, text) {
       var el = document.getElementById('dash-count-' + section);
@@ -3691,6 +3708,197 @@
       document.getElementById('dash-stats').innerHTML = stats.map(function (s) {
         return '<div class="dash-stat dash-stat--' + s.cls + '"><div class="dash-stat-num">' + s.num + '</div><div class="dash-stat-label">' + escapeHtml(s.label) + '</div></div>';
       }).join('');
+    }
+
+    // ---------------------------------------------------------------
+    // Website Activity (president-only) — real page-view traffic across
+    // the whole public site, from db/migrations/040's page_views table.
+    // Loaded independently of the main Promise.all above (it's a
+    // different data shape, fetched by range rather than all at once):
+    // once when the panel first opens or a #webactivity link is
+    // followed, again on every range-tab click, and folded into the
+    // existing 45s auto-refresh while this panel is the one on screen.
+    // ---------------------------------------------------------------
+    var PAGE_FRIENDLY_NAMES = {
+      'index.html': 'Homepage',
+      'about.html': 'About us',
+      'events.html': 'Events',
+      'programmes.html': 'Programmes',
+      'opportunities.html': 'Opportunities',
+      'motm.html': 'Member of the Month',
+      'news.html': 'News',
+      'gallery.html': 'Gallery',
+      'join.html': 'Join LACMS',
+      'login.html': 'Login (choose account type)',
+      'member-login.html': 'Member login',
+      'member-hub.html': 'Member hub',
+      'member-network.html': 'Network',
+      'member-perks.html': 'Perks & discounts',
+      'member-sankofa.html': 'Sankofa application',
+      'sankofa.html': 'Sankofa Mentorship',
+      'mmg.html': 'MMG (public page)',
+      'mmg-login.html': 'MMG login',
+      'mmg-hub.html': 'MMG hub',
+      'president-dashboard.html': 'President dashboard'
+    };
+    function friendlyPageName(path) { return PAGE_FRIENDLY_NAMES[path] || path; }
+    function formatCount(n) { return (n || 0).toLocaleString('en-GB'); }
+    function pluralise(n, noun) { return n + ' ' + noun + (n === 1 ? '' : 's'); }
+
+    function formatBucketLabel(d, rangeKey) {
+      if (rangeKey === 'today') {
+        var h = d.getHours();
+        if (h === 0) return '12am';
+        if (h === 12) return '12pm';
+        return h < 12 ? (h + 'am') : ((h - 12) + 'pm');
+      }
+      if (rangeKey === '7d') return d.toLocaleDateString('en-GB', { weekday: 'short' });
+      if (rangeKey === '1y' || rangeKey === 'all') {
+        return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+      }
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    }
+    function formatBucketTooltipDate(d, rangeKey) {
+      if (rangeKey === 'today') {
+        return 'Today, ' + formatBucketLabel(d, 'today') + '–' + formatBucketLabel(new Date(d.getTime() + 3600000), 'today');
+      }
+      if (rangeKey === '1y' || rangeKey === 'all') {
+        return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+      }
+      if (rangeKey === '90d') {
+        return 'Week of ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+      }
+      return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    }
+    // Showing a label under every single bar gets unreadable past ~12
+    // bars (today's 24 hours, 30 days) — this thins them out to roughly
+    // 8-10 evenly-spaced labels while always keeping the first and last,
+    // so the chart's start/end are never ambiguous.
+    function shouldShowBucketLabel(index, total) {
+      if (total <= 12) return true;
+      if (index === 0 || index === total - 1) return true;
+      var step = Math.ceil(total / 9);
+      return index % step === 0;
+    }
+
+    function renderActivitySummary(s) {
+      var stats = [
+        { num: s.today_views, label: 'Today', sub: pluralise(s.today_visitors || 0, 'visitor'), cls: 'today' },
+        { num: s.week_views, label: 'Past 7 days', sub: pluralise(s.week_visitors || 0, 'visitor'), cls: 'week' },
+        { num: s.month_views, label: 'Past 30 days', sub: pluralise(s.month_visitors || 0, 'visitor'), cls: 'month' },
+        { num: s.year_views, label: 'Past year', sub: pluralise(s.year_visitors || 0, 'visitor'), cls: 'year' },
+        { num: s.alltime_views, label: 'All time', sub: pluralise(s.alltime_visitors || 0, 'visitor'), cls: 'alltime' }
+      ];
+      var statsEl = document.getElementById('activity-summary-stats');
+      if (!statsEl) return;
+      statsEl.innerHTML = stats.map(function (st) {
+        return '<div class="dash-stat dash-stat--' + st.cls + '">' +
+          '<div class="dash-stat-num">' + formatCount(st.num) + '</div>' +
+          '<div class="dash-stat-label">' + escapeHtml(st.label) + '</div>' +
+          '<div class="dash-stat-sub">' + escapeHtml(st.sub) + '</div>' +
+          '</div>';
+      }).join('');
+    }
+
+    function renderActivityLive(liveCount) {
+      var countEl = document.getElementById('activity-live-count');
+      var wrapEl = document.getElementById('activity-live');
+      if (countEl) countEl.textContent = formatCount(liveCount);
+      if (wrapEl) {
+        wrapEl.classList.toggle('is-empty', !liveCount);
+        wrapEl.querySelector('.activity-live-label').textContent = liveCount === 1 ? 'person on the site right now' : 'people on the site right now';
+      }
+    }
+
+    function renderActivityChart(rows, rangeKey) {
+      var chartEl = document.getElementById('activity-chart');
+      var emptyEl = document.getElementById('activity-chart-empty');
+      if (!chartEl) return;
+      var totalViews = rows.reduce(function (sum, r) { return sum + Number(r.views); }, 0);
+      if (!rows.length || !totalViews) {
+        chartEl.innerHTML = '';
+        if (emptyEl) { emptyEl.style.color = ''; emptyEl.style.display = 'block'; emptyEl.textContent = 'No activity recorded yet for this range.'; }
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+      var maxViews = Math.max.apply(null, rows.map(function (r) { return Number(r.views); }).concat([1]));
+      var bars = '';
+      var labels = '';
+      rows.forEach(function (r, i) {
+        var d = new Date(r.bucket_start);
+        var pct = Math.round((Number(r.views) / maxViews) * 100);
+        var tooltip = formatBucketTooltipDate(d, rangeKey) + ' · ' + pluralise(Number(r.views), 'view') + ' · ' + pluralise(Number(r.visitors), 'visitor');
+        bars += '<div class="activity-bar" data-tooltip="' + escapeHtml(tooltip) + '">' +
+          '<div class="activity-bar-fill" style="height:' + Math.max(pct, 2) + '%;"></div>' +
+          '</div>';
+        labels += '<span>' + (shouldShowBucketLabel(i, rows.length) ? escapeHtml(formatBucketLabel(d, rangeKey)) : '') + '</span>';
+      });
+      chartEl.innerHTML = '<div class="activity-chart-bars">' + bars + '</div><div class="activity-chart-labels">' + labels + '</div>';
+    }
+
+    function renderTopPages(rows) {
+      var listEl = document.getElementById('activity-top-pages');
+      var emptyEl = document.getElementById('activity-top-pages-empty');
+      if (!listEl) return;
+      if (!rows.length) {
+        listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+      var maxViews = Math.max.apply(null, rows.map(function (r) { return Number(r.views); }).concat([1]));
+      listEl.innerHTML = rows.map(function (r) {
+        var pct = Math.round((Number(r.views) / maxViews) * 100);
+        return '<div class="activity-page-row">' +
+          '<span class="activity-page-name">' + escapeHtml(friendlyPageName(r.path)) + '</span>' +
+          '<div class="activity-page-bar-track"><div class="activity-page-bar-fill" style="width:' + pct + '%;"></div></div>' +
+          '<span class="activity-page-count">' + formatCount(r.views) + '</span>' +
+          '</div>';
+      }).join('');
+    }
+
+    var activityCurrentRange = 'today';
+    var activityLoadToken = 0;
+
+    function loadWebActivitySummaryAndLive() {
+      supabaseClient.rpc('president_activity_summary').then(function (result) {
+        if (result.error) { console.error('Website activity summary failed to load:', result.error.message); return; }
+        var row = (result.data && result.data[0]) || {};
+        renderActivitySummary(row);
+        renderActivityLive(row.live_now || 0);
+        setDashCount('webactivity', pluralise(row.today_views || 0, 'view') + ' today');
+      });
+    }
+
+    function loadWebActivityRange(rangeKey) {
+      activityCurrentRange = rangeKey;
+      document.querySelectorAll('#activity-range-tabs [data-activity-range]').forEach(function (btn) {
+        btn.classList.toggle('is-active', btn.getAttribute('data-activity-range') === rangeKey);
+      });
+      var thisLoad = ++activityLoadToken;
+      Promise.all([
+        supabaseClient.rpc('president_activity_series', { range_key: rangeKey }),
+        supabaseClient.rpc('president_activity_top_pages', { range_key: rangeKey, limit_n: 8 })
+      ]).then(function (results) {
+        if (thisLoad !== activityLoadToken) return; // a newer range was picked before this one came back
+        var seriesResult = results[0];
+        var topPagesResult = results[1];
+        if (seriesResult.error || topPagesResult.error) {
+          var err = seriesResult.error || topPagesResult.error;
+          console.error('Website activity range failed to load:', err.message);
+          showSectionLoadError('activity-top-pages', 'activity-chart-empty', 'webactivity', err.message);
+          var chartEl = document.getElementById('activity-chart');
+          if (chartEl) chartEl.innerHTML = '';
+          return;
+        }
+        renderActivityChart(seriesResult.data || [], rangeKey);
+        renderTopPages(topPagesResult.data || []);
+      });
+    }
+
+    function loadWebActivity() {
+      loadWebActivitySummaryAndLive();
+      loadWebActivityRange(activityCurrentRange);
     }
 
     function renderAttentionList(members, pendingMembers, professionals, mmgGuests) {

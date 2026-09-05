@@ -4481,6 +4481,154 @@ body.intro-active { overflow: hidden; }
 .dash-stat--pending { border-color: rgba(var(--red-light-rgb), calc(0.35 * var(--tint-boost))); background: linear-gradient(160deg, rgba(var(--red-rgb), calc(0.1 * var(--tint-boost))), var(--color-surface) 75%); }
 .dash-stat--pending .dash-stat-num { color: var(--accent-red); }
 
+.dash-stat-sub { margin-top: 2px; font-size: 0.74rem; color: var(--color-text-faint); }
+
+/* Website Activity's five headline tiles reuse .dash-stat but with
+   their own colour set (today/week/month/year/all-time), so the two
+   activity-flavoured panels each get a fully distinct, non-repeating
+   palette rather than sharing total/online/setup/pending's colours. */
+.dash-stat--today { border-color: rgba(var(--gold-light-rgb), calc(0.35 * var(--tint-boost))); background: linear-gradient(160deg, rgba(var(--gold-rgb), calc(0.1 * var(--tint-boost))), var(--color-surface) 75%); }
+.dash-stat--today .dash-stat-num { color: var(--color-gold-light); }
+.dash-stat--week { border-color: rgba(var(--green-light-rgb), calc(0.35 * var(--tint-boost))); background: linear-gradient(160deg, rgba(var(--green-rgb), calc(0.12 * var(--tint-boost))), var(--color-surface) 75%); }
+.dash-stat--week .dash-stat-num { color: var(--accent-green); }
+.dash-stat--month { border-color: rgba(var(--purple-light-rgb), calc(0.35 * var(--tint-boost))); background: linear-gradient(160deg, rgba(var(--purple-rgb), calc(0.12 * var(--tint-boost))), var(--color-surface) 75%); }
+.dash-stat--month .dash-stat-num { color: var(--accent-purple); }
+.dash-stat--year { border-color: rgba(var(--blue-light-rgb), calc(0.35 * var(--tint-boost))); background: linear-gradient(160deg, rgba(var(--blue-rgb), calc(0.12 * var(--tint-boost))), var(--color-surface) 75%); }
+.dash-stat--year .dash-stat-num { color: #7ab2f0; }
+.dash-stat--alltime { border-color: rgba(var(--pink-light-rgb), calc(0.35 * var(--tint-boost))); background: linear-gradient(160deg, rgba(var(--pink-rgb), calc(0.1 * var(--tint-boost))), var(--color-surface) 75%); }
+.dash-stat--alltime .dash-stat-num { color: #ef8bc4; }
+
+/* "On the site right now" — a live, anonymous visitor count in the same
+   pulsing-dot language as .online-now-dot (member presence), just for
+   the whole public site rather than just signed-in accounts. */
+.activity-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--space-5);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(var(--green-light-rgb), calc(0.35 * var(--tint-boost)));
+  background: rgba(var(--green-rgb), calc(0.1 * var(--tint-boost)));
+  font-size: 0.88rem;
+  color: var(--color-text);
+}
+.activity-live-dot { width: 9px; height: 9px; border-radius: 50%; background: #6fcf97; flex-shrink: 0; animation: online-now-pulse 1.8s ease-in-out infinite; }
+.activity-live.is-empty { border-color: var(--color-border-strong); background: var(--color-surface); }
+.activity-live.is-empty .activity-live-dot { background: var(--color-text-faint); animation: none; }
+#activity-live-count { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; }
+.activity-live-label { color: var(--color-text-muted); }
+
+/* The chart itself — plain flexbox bars rather than a canvas/SVG
+   library, so it inherits the site's own theme tokens for free (colour,
+   light/dark) instead of needing a second, separately-themed rendering
+   path. Each .activity-bar is an equal-width flex column; .activity-bar
+   -fill's height is set inline per-bucket as a percentage of the tallest
+   bucket in the current range, with a 2% floor so a genuine zero still
+   reads as a visible (if tiny) bar rather than vanishing outright. */
+.activity-chart-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  margin-bottom: var(--space-7);
+}
+.activity-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.activity-chart-head h3 { margin: 0; font-size: 1.05rem; }
+.activity-chart { min-height: 200px; }
+.activity-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 180px;
+}
+.activity-bar {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  min-width: 3px;
+}
+.activity-bar-fill {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, var(--color-gold-light), var(--color-gold));
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+.activity-bar:hover .activity-bar-fill { opacity: 0.8; }
+.activity-bar[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 9px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text);
+  padding: 6px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  z-index: 5;
+  pointer-events: none;
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.5);
+}
+.activity-bar[data-tooltip]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 4px;
+  border: 5px solid transparent;
+  border-top-color: var(--color-border-strong);
+  z-index: 5;
+  pointer-events: none;
+}
+.activity-chart-labels {
+  display: flex;
+  gap: 3px;
+  margin-top: var(--space-2);
+}
+.activity-chart-labels span {
+  flex: 1;
+  min-width: 3px;
+  text-align: center;
+  font-size: 0.66rem;
+  color: var(--color-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Top pages — a compact leaderboard, each row's own mini bar scaled to
+   that range's single busiest page. */
+.activity-top-pages { display: flex; flex-direction: column; gap: var(--space-2); }
+.activity-page-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 200px) 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.activity-page-name { font-size: 0.88rem; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activity-page-bar-track { height: 8px; border-radius: var(--radius-pill); background: var(--color-bg-alt); overflow: hidden; }
+.activity-page-bar-fill { height: 100%; border-radius: var(--radius-pill); background: linear-gradient(90deg, var(--color-gold), var(--color-gold-light)); }
+.activity-page-count { font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; min-width: 3ch; text-align: right; }
+
+@media (max-width: 640px) {
+  .activity-page-row { grid-template-columns: 1fr auto; }
+  .activity-page-bar-track { display: none; }
+}
+
 .dash-section-count {
   color: var(--color-text-faint);
   font-size: 0.9rem;
@@ -6529,6 +6677,30 @@ html, body { overflow-x: hidden; max-width: 100%; }
 :root:not([data-theme="dark"]) .dash-stat--setup .dash-stat-label,
 :root:not([data-theme="dark"]) .dash-stat--pending .dash-stat-label { color: var(--on-deep-muted) !important; }
 
+/* ----- Website Activity panel (stat tiles, live pill, chart, top pages) ----- */
+:root:not([data-theme="dark"]) .dash-stat--today { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .dash-stat--week { background: var(--deep-green) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .dash-stat--month { background: var(--deep-purple) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .dash-stat--year { background: var(--deep-blue) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .dash-stat--alltime { background: var(--deep-pink) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .dash-stat--today .dash-stat-num,
+:root:not([data-theme="dark"]) .dash-stat--week .dash-stat-num,
+:root:not([data-theme="dark"]) .dash-stat--month .dash-stat-num,
+:root:not([data-theme="dark"]) .dash-stat--year .dash-stat-num,
+:root:not([data-theme="dark"]) .dash-stat--alltime .dash-stat-num { color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .dash-stat--today .dash-stat-label,
+:root:not([data-theme="dark"]) .dash-stat--week .dash-stat-label,
+:root:not([data-theme="dark"]) .dash-stat--month .dash-stat-label,
+:root:not([data-theme="dark"]) .dash-stat--year .dash-stat-label,
+:root:not([data-theme="dark"]) .dash-stat--alltime .dash-stat-label,
+:root:not([data-theme="dark"]) .dash-stat--today .dash-stat-sub,
+:root:not([data-theme="dark"]) .dash-stat--week .dash-stat-sub,
+:root:not([data-theme="dark"]) .dash-stat--month .dash-stat-sub,
+:root:not([data-theme="dark"]) .dash-stat--year .dash-stat-sub,
+:root:not([data-theme="dark"]) .dash-stat--alltime .dash-stat-sub { color: var(--on-deep-muted) !important; }
+:root:not([data-theme="dark"]) .activity-bar-fill { background: linear-gradient(180deg, var(--color-gold), var(--deep-gold-solid)) !important; }
+:root:not([data-theme="dark"]) .activity-bar[data-tooltip]:hover::after { box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.25) !important; }
+
 /* ----- Small solid badges/tags/avatars sitting on plain page surfaces ----- */
 :root:not([data-theme="dark"]) .member-status-badge--active { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; border-color: transparent !important; }
 :root:not([data-theme="dark"]) .member-status-badge--expired { background: var(--deep-red-solid) !important; color: var(--on-deep) !important; border-color: transparent !important; }
@@ -6677,6 +6849,30 @@ html, body { overflow-x: hidden; max-width: 100%; }
 [data-theme="light"] .dash-stat--online .dash-stat-label,
 [data-theme="light"] .dash-stat--setup .dash-stat-label,
 [data-theme="light"] .dash-stat--pending .dash-stat-label { color: var(--on-deep-muted) !important; }
+
+/* ----- Website Activity panel (stat tiles, live pill, chart, top pages) ----- */
+[data-theme="light"] .dash-stat--today { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .dash-stat--week { background: var(--deep-green) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .dash-stat--month { background: var(--deep-purple) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .dash-stat--year { background: var(--deep-blue) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .dash-stat--alltime { background: var(--deep-pink) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .dash-stat--today .dash-stat-num,
+[data-theme="light"] .dash-stat--week .dash-stat-num,
+[data-theme="light"] .dash-stat--month .dash-stat-num,
+[data-theme="light"] .dash-stat--year .dash-stat-num,
+[data-theme="light"] .dash-stat--alltime .dash-stat-num { color: var(--on-deep) !important; }
+[data-theme="light"] .dash-stat--today .dash-stat-label,
+[data-theme="light"] .dash-stat--week .dash-stat-label,
+[data-theme="light"] .dash-stat--month .dash-stat-label,
+[data-theme="light"] .dash-stat--year .dash-stat-label,
+[data-theme="light"] .dash-stat--alltime .dash-stat-label,
+[data-theme="light"] .dash-stat--today .dash-stat-sub,
+[data-theme="light"] .dash-stat--week .dash-stat-sub,
+[data-theme="light"] .dash-stat--month .dash-stat-sub,
+[data-theme="light"] .dash-stat--year .dash-stat-sub,
+[data-theme="light"] .dash-stat--alltime .dash-stat-sub { color: var(--on-deep-muted) !important; }
+[data-theme="light"] .activity-bar-fill { background: linear-gradient(180deg, var(--color-gold), var(--deep-gold-solid)) !important; }
+[data-theme="light"] .activity-bar[data-tooltip]:hover::after { box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.25) !important; }
 
 /* ----- Small solid badges/tags/avatars sitting on plain page surfaces ----- */
 [data-theme="light"] .member-status-badge--active { background: var(--deep-green-solid) !important; color: var(--on-deep) !important; border-color: transparent !important; }

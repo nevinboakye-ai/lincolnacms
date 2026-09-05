@@ -8,7 +8,7 @@
 <meta name="description" content="For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-39">
+<link rel="stylesheet" href="css/styles.css?v=20260824-40">
 </head>
 <body>
 
@@ -115,6 +115,12 @@
               <span class="dash-nav-card-desc">Members, professionals - who's online, who needs a nudge</span>
               <span class="dash-nav-card-count" id="dash-count-activity">&nbsp;</span>
             </button>
+            <button type="button" class="dash-nav-card" data-dash-section="webactivity">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></span>
+              <span class="dash-nav-card-title">Website Activity</span>
+              <span class="dash-nav-card-desc">Real traffic across the whole site - today, this week, this year</span>
+              <span class="dash-nav-card-count" id="dash-count-webactivity">&nbsp;</span>
+            </button>
             <button type="button" class="dash-nav-card" data-dash-section="mmg">
               <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9 8l-6.5 1 4.7 4.6L6 20l6-3.2L18 20l-1.2-6.4L21.5 9 15 8Z"/></svg></span>
               <span class="dash-nav-card-title">MMG</span>
@@ -209,6 +215,50 @@
             </div>
             <div class="roster-table" id="attention-table"></div>
             <p id="attention-empty" style="display:none; color: var(--color-text-faint);">Everyone invited so far has finished setting up. Nothing here.</p>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-webactivity" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+
+            <div class="section-head">
+              <span class="eyebrow">Website Activity</span>
+              <h2>How the site's actually being used</h2>
+              <p>Every page load across the whole public site, counted anonymously - nothing here is tied to who anyone is.</p>
+            </div>
+
+            <div class="activity-live" id="activity-live">
+              <span class="activity-live-dot" aria-hidden="true"></span>
+              <span id="activity-live-count">0</span>
+              <span class="activity-live-label">people on the site right now</span>
+            </div>
+
+            <div class="dash-stats" id="activity-summary-stats"></div>
+
+            <div class="activity-chart-card">
+              <div class="activity-chart-head">
+                <h3>Page views</h3>
+                <div class="dash-filter-tabs" id="activity-range-tabs">
+                  <button type="button" class="dash-filter-tab is-active" data-activity-range="today">Today</button>
+                  <button type="button" class="dash-filter-tab" data-activity-range="7d">7 days</button>
+                  <button type="button" class="dash-filter-tab" data-activity-range="30d">30 days</button>
+                  <button type="button" class="dash-filter-tab" data-activity-range="90d">90 days</button>
+                  <button type="button" class="dash-filter-tab" data-activity-range="1y">1 year</button>
+                  <button type="button" class="dash-filter-tab" data-activity-range="all">All time</button>
+                </div>
+              </div>
+              <div class="activity-chart" id="activity-chart"></div>
+              <p id="activity-chart-empty" style="display:none; color: var(--color-text-faint);">No activity recorded yet for this range.</p>
+            </div>
+
+            <div class="section-head" style="margin-top: var(--space-8);">
+              <span class="eyebrow">Top pages</span>
+              <h2>Most visited, this range</h2>
+            </div>
+            <div class="activity-top-pages" id="activity-top-pages"></div>
+            <p id="activity-top-pages-empty" style="display:none; color: var(--color-text-faint);">No page views recorded yet.</p>
           </div>
 
           <div class="dash-panel" id="dash-panel-mmg" style="display:none;">
@@ -502,7 +552,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-39"></script>
-<script src="js/members.js?v=20260824-39"></script>
+<script src="js/main.js?v=20260824-40"></script>
+<script src="js/members.js?v=20260824-40"></script>
 </body>
 </html>
