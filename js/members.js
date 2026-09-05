@@ -3782,12 +3782,25 @@
     }
 
     function renderActivitySummary(s) {
+      // baseline_views/baseline_visitors (migration 041) is an optional,
+      // manually-set estimate of visits before tracking existed at all -
+      // site_settings.activity_baseline_views/visitors, left at 0 unless
+      // the president has set one via Table Editor. It's already folded
+      // into alltime_views/alltime_visitors by the RPC; this just adds a
+      // one-line note so the All-time tile is honest about where the
+      // extra count comes from, rather than presenting an estimate as if
+      // it were exactly-tracked data.
+      var baselineViews = Number(s.baseline_views) || 0;
+      var alltimeSub = pluralise(s.alltime_visitors || 0, 'visitor');
+      if (baselineViews > 0) {
+        alltimeSub += ' · incl. ~' + formatCount(baselineViews) + ' est. before tracking';
+      }
       var stats = [
         { num: s.today_views, label: 'Today', sub: pluralise(s.today_visitors || 0, 'visitor'), cls: 'today' },
         { num: s.week_views, label: 'Past 7 days', sub: pluralise(s.week_visitors || 0, 'visitor'), cls: 'week' },
         { num: s.month_views, label: 'Past 30 days', sub: pluralise(s.month_visitors || 0, 'visitor'), cls: 'month' },
         { num: s.year_views, label: 'Past year', sub: pluralise(s.year_visitors || 0, 'visitor'), cls: 'year' },
-        { num: s.alltime_views, label: 'All time', sub: pluralise(s.alltime_visitors || 0, 'visitor'), cls: 'alltime' }
+        { num: s.alltime_views, label: 'All time', sub: alltimeSub, cls: 'alltime' }
       ];
       var statsEl = document.getElementById('activity-summary-stats');
       if (!statsEl) return;
@@ -3818,6 +3831,7 @@
       if (!rows.length || !totalViews) {
         chartEl.innerHTML = '';
         if (emptyEl) { emptyEl.style.color = ''; emptyEl.style.display = 'block'; emptyEl.textContent = 'No activity recorded yet for this range.'; }
+        renderActivityBaselineNote(rangeKey);
         return;
       }
       if (emptyEl) emptyEl.style.display = 'none';
@@ -3834,6 +3848,23 @@
         labels += '<span>' + (shouldShowBucketLabel(i, rows.length) ? escapeHtml(formatBucketLabel(d, rangeKey)) : '') + '</span>';
       });
       chartEl.innerHTML = '<div class="activity-chart-bars">' + bars + '</div><div class="activity-chart-labels">' + labels + '</div>';
+      renderActivityBaselineNote(rangeKey);
+    }
+
+    // The All-time stat tile can include a manual pre-tracking estimate
+    // (migration 041) that this chart never draws, since there's no way
+    // to know which day(s) it belongs on - only relevant on the 'all'
+    // range, where someone could otherwise notice the chart's bars add
+    // up to less than the All-time tile and wonder if something's broken.
+    function renderActivityBaselineNote(rangeKey) {
+      var noteEl = document.getElementById('activity-chart-baseline-note');
+      if (!noteEl) return;
+      if (rangeKey === 'all' && activityBaselineViews > 0) {
+        noteEl.textContent = 'The All-time tile above also includes an estimated ' + formatCount(activityBaselineViews) + ' visit' + (activityBaselineViews === 1 ? '' : 's') + ' from before tracking started - this chart only ever shows what was actually tracked.';
+        noteEl.style.display = 'block';
+      } else {
+        noteEl.style.display = 'none';
+      }
     }
 
     function renderTopPages(rows) {
@@ -3859,13 +3890,16 @@
 
     var activityCurrentRange = 'today';
     var activityLoadToken = 0;
+    var activityBaselineViews = 0;
 
     function loadWebActivitySummaryAndLive() {
       supabaseClient.rpc('president_activity_summary').then(function (result) {
         if (result.error) { console.error('Website activity summary failed to load:', result.error.message); return; }
         var row = (result.data && result.data[0]) || {};
+        activityBaselineViews = Number(row.baseline_views) || 0;
         renderActivitySummary(row);
         renderActivityLive(row.live_now || 0);
+        renderActivityBaselineNote(activityCurrentRange);
         setDashCount('webactivity', pluralise(row.today_views || 0, 'view') + ' today');
       });
     }

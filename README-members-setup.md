@@ -881,3 +881,15 @@ A brand new card on the president dashboard, separate from the existing "User Ac
 **Three new RPCs**: `president_activity_summary()` (the stat tiles + live count in one call), `president_activity_series(range_key)` (the chart), `president_activity_top_pages(range_key, limit_n)` (the leaderboard).
 
 One thing worth knowing: because tracking only started the moment this migration + the updated `js/main.js` go live, the dashboard will look genuinely empty (zeros everywhere, "no activity recorded yet") until traffic actually happens after that point - there's no way to backfill history for page views that were never recorded.
+
+## 77. Website Activity: an optional manual baseline for visits before tracking started
+
+Run [`db/migrations/041-activity-pre-tracking-baseline.sql`](db/migrations/041-activity-pre-tracking-baseline.sql) (needs 040 above already applied).
+
+§76's tracking only counts what actually happens *after* it went live - there was never any way to know exactly how many people visited before that point, or on which days, since nothing was being recorded. This adds an optional, manually-set estimate instead of pretending that gap doesn't exist.
+
+**To set one**: Table Editor → `site_settings` → edit the `value` for `activity_baseline_views` and `activity_baseline_visitors` (both start at `'0'`). No redeploy needed - the dashboard reads it live next time the panel opens.
+
+**Where it shows up**: folded into the All-time stat tile only, with a small "incl. ~X est. before tracking" note so it's never mistaken for exactly-tracked data. It deliberately never touches the chart - there's no way to know which day(s) those historical visits actually happened on, so putting a lump estimate on a specific bar would be more misleading than just not showing it there at all. Switching the chart to "All time" shows a one-line footnote explaining the same thing, since that's the one range where someone might otherwise notice the bars add up to less than the stat tile above them and wonder if something's broken.
+
+Leave both values at `0` (the default) if you don't have or want an estimate - the tile just shows exactly what's been tracked, same as every other tile.
