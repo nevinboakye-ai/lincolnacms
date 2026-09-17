@@ -936,13 +936,18 @@
     // A compact "N people just joined" banner, fed by network_join_events
     // (migration 020) — only surfaced here if someone's actually joined
     // recently, so it never sits around claiming to be "recent" forever.
+    // 30 days rather than a tighter window — this is a small, pre-launch
+    // society where new accounts get added in occasional bursts (a
+    // committee session, not a steady daily trickle), so a short window
+    // was going quiet between bursts and making the banner look broken
+    // even though nothing was actually wrong.
     function loadRecentJoins() {
       var banner = document.getElementById('network-recent-joins');
       var bannerText = document.getElementById('network-recent-joins-text');
       if (!banner || !bannerText) return;
 
       var since = new Date();
-      since.setDate(since.getDate() - 14);
+      since.setDate(since.getDate() - 30);
       var sinceIso = since.toISOString();
 
       supabaseClient
@@ -951,6 +956,16 @@
         .gte('created_at', sinceIso)
         .order('created_at', { ascending: false })
         .then(function (result) {
+          // A failed query used to just render nothing here — no banner,
+          // no error, indistinguishable from "no one's joined recently"
+          // from the outside. Logging it means a real problem (RLS,
+          // a renamed column, whatever) is at least visible in the
+          // console instead of silently looking like the feature
+          // vanished.
+          if (result.error) {
+            console.error('Recent joins banner failed to load:', result.error.message);
+            return;
+          }
           // Deduped first (see dedupeJoinEventsByName) so a re-added
           // account within the window can't inflate the count or push
           // a real second person out of the first three names shown.
