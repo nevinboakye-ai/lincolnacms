@@ -1829,7 +1829,13 @@
   // button will eventually open isn't built yet, so it says so plainly
   // instead of linking to nothing (or to whatever happens to be in the
   // row's own link field, which was never meant to be public-facing).
-  var OPPORTUNITIES_PREVIEW_COUNT = 2;
+  // The public opportunities page is fully locked for now — real titles
+  // still render behind the blur (so there's something genuine there,
+  // not placeholder text), but nobody gets a plain, un-gated view of
+  // any of it yet, signed in or not. Was previously gated per-visitor
+  // (signed-out saw 2 free rows + the rest locked; any signed-in member
+  // or professional saw the full list) — simplified back down to one
+  // state for everyone until this is actually ready to launch.
   var oppListEl = document.getElementById('opportunities-list');
   if (oppListEl) {
     supabaseClient
@@ -1840,67 +1846,16 @@
       .then(function (result) {
         var rows = result.data || [];
         if (!rows.length) return;
-
-        supabaseClient.auth.getSession().then(function (sessionResult) {
-          var session = sessionResult.data && sessionResult.data.session;
-          if (!session) {
-            renderOpportunitiesGated(rows, false);
-            return;
-          }
-          supabaseClient
-            .from('members')
-            .select('id')
-            .eq('id', session.user.id)
-            .maybeSingle()
-            .then(function (memberResult) {
-              if (memberResult.data) {
-                renderOpportunitiesGated(rows, true);
-                return;
-              }
-              getProfessionalRow(session).then(function (proRow) {
-                renderOpportunitiesGated(rows, !!proRow);
-              });
-            });
-        });
+        renderOpportunitiesGated(rows);
       });
-
-    document.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-opportunity-learn-more]');
-      if (!btn || btn.disabled) return;
-      supabaseClient.auth.getSession().then(function (result) {
-        var session = result.data && result.data.session;
-        if (!session) {
-          // login.html, not member-login.html directly - matches this
-          // same page's own "Sign in to see more" gate CTA just below,
-          // which already sends a signed-out visitor to the account-type
-          // chooser rather than assuming they're specifically a member.
-          window.location.href = 'login.html';
-          return;
-        }
-        var original = btn.textContent;
-        btn.textContent = 'Coming soon';
-        btn.disabled = true;
-        window.setTimeout(function () {
-          btn.textContent = original;
-          btn.disabled = false;
-        }, 2500);
-      });
-    });
   }
 
-  function renderOpportunitiesGated(rows, isMember) {
-    var visibleRows = isMember ? rows : rows.slice(0, OPPORTUNITIES_PREVIEW_COUNT);
-    var lockedRows = isMember ? [] : rows.slice(OPPORTUNITIES_PREVIEW_COUNT);
-
-    oppListEl.innerHTML = visibleRows.map(renderOpportunityRow).join('');
-
-    if (lockedRows.length) {
-      var lockWrap = document.getElementById('opportunities-locked-wrap');
-      var lockedRowsEl = document.getElementById('opportunities-locked-rows');
-      if (lockWrap && lockedRowsEl) {
-        lockedRowsEl.innerHTML = lockedRows.map(renderOpportunityRow).join('');
-        lockWrap.style.display = '';
-      }
+  function renderOpportunitiesGated(rows) {
+    var lockWrap = document.getElementById('opportunities-locked-wrap');
+    var lockedRowsEl = document.getElementById('opportunities-locked-rows');
+    if (lockWrap && lockedRowsEl) {
+      lockedRowsEl.innerHTML = rows.map(renderOpportunityRow).join('');
+      lockWrap.style.display = '';
     }
   }
 
@@ -3275,6 +3230,17 @@
       var session = result.data && result.data.session;
       if (!session) {
         window.location.href = 'member-login.html';
+        return;
+      }
+      // The Network is president-only for now — everyone else sees a
+      // "coming soon" note in place of the real page, the same UX
+      // shortcut used for Perks/Sankofa/MoTM before they launched (the
+      // real access control, if this ever needs to be enforced server-
+      // side too, would live in RLS on the members/network tables).
+      if (session.user.id !== PRESIDENT_UID) {
+        if (networkAuthGate) networkAuthGate.style.display = 'none';
+        var networkLocked = document.getElementById('network-locked');
+        if (networkLocked) networkLocked.style.display = 'flex';
         return;
       }
       loadNetwork();

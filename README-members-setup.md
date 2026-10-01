@@ -937,3 +937,17 @@ No migration - CSS and JS only.
 No migration - CSS and JS only.
 
 **Each card now starts as just a badge, the partner name, and a chevron** - the full card (photo, description, code, usage tracker, link) only shows once you tap it, tapping again collapses it back. Full-height cards were eating a lot of space in the grid, especially on mobile, before anyone had even looked at most of them; collapsed, four or five fit on a single phone screen instead of one. Built on the same expand/collapse pattern already used for committee bios and event rows elsewhere on the site (`.reveal-panel`, `[data-expand-row]`/`[data-expand-btn]`, `.is-expanded`) for a consistent feel, just wired up separately in `js/members.js` rather than reusing `js/main.js`'s generic version of it - these cards don't exist yet when that runs, since they're rendered later from the discounts fetch. A card with a photo only loads/shows it once expanded, both because there's no point rendering it before it's visible and because the photo's fade effect (81) is tuned for an expanded card's full height.
+
+## 83. Several small fixes: Sankofa form, Network lock, member count, Opportunities lock
+
+Run [`db/migrations/045-fix-sankofa-heritage-column.sql`](db/migrations/045-fix-sankofa-heritage-column.sql) and [`db/migrations/046-update-active-member-count.sql`](db/migrations/046-update-active-member-count.sql).
+
+**Sankofa application form** - "Faith & spirituality" in the hobbies/interests list is now just "Faith".
+
+**Fixes "Could not find 'heritage' column of 'sankofa_applications' in schema cache"** when submitting a Sankofa application. The column itself was already meant to exist (migration 006) - 045 re-adds it safely (`if not exists`, so it's a no-op if it's already there) in case that migration was never run, or PostgREST's schema cache just hadn't noticed it. After running it, also do Settings → API → "Reload schema" in Supabase to be sure.
+
+**The Network page is now president-only.** Everyone else signing in sees a "Coming soon" note instead of the real page - same UX shortcut used for Perks/Sankofa/MoTM before they launched.
+
+**The "Active members" stat** (index.html and about.html) is now 63. Same `site_settings.active_member_count` row from migration 042's era (031, really) - 046 just updates its value. It's also editable any time straight from Table Editor without needing a migration.
+
+**The public Opportunities page is fully locked again**, for everyone, signed in or not - real titles still render behind the blur (so there's something genuine there, not placeholder text), but nobody gets a plain, un-gated view of any of it until it's actually ready. This had drifted to a partial gate (signed-out visitors got 2 free rows, any signed-in member or professional saw the full list) as the feature was being built out; reverted back to one fully-locked state for everyone, with copy that doesn't imply signing in would unlock anything right now.
