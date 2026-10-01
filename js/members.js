@@ -1602,10 +1602,25 @@
           '</div>'
         : '';
 
-      return '<div class="' + cardClass + '"' + styleAttr + ' data-discount-id="' + escapeHtml(row.id) + '">' + uploadHtml + topHtml + '<h3 class="card-title">' +
-        escapeHtml(row.partner_name) + '</h3>' + addressHtml +
+      // Collapsed by default (just this button's own content - badge,
+      // name, chevron) until tapped — reuses the site's reveal-panel
+      // toggle pattern (css/styles.css's "Expandable reveal panels"),
+      // wired up by the delegated click listener below rather than
+      // js/main.js's generic version of it, since this card doesn't
+      // exist yet when that one runs.
+      var toggleHtml = '<button type="button" class="discount-card-toggle" data-expand-btn aria-expanded="false" aria-label="Show details for ' + escapeHtml(row.partner_name) + '">' +
+        topHtml +
+        '<div class="discount-card-title-row"><h3 class="card-title">' + escapeHtml(row.partner_name) + '</h3>' +
+        '<svg class="discount-card-chevron icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></div>' +
+        '</button>';
+      var detailsHtml = '<div class="reveal-panel"><div class="reveal-panel-inner"><div class="reveal-panel-content">' +
+        addressHtml +
         '<div class="discount-description">' + renderRichText(row.description) + '</div>' +
-        codeHtml + usageHtml + cardLink(row.link, 'Visit partner') + '</div>';
+        codeHtml + usageHtml + cardLink(row.link, 'Visit partner') +
+        '</div></div></div>';
+
+      return '<div class="' + cardClass + '" data-expand-row' + styleAttr + ' data-discount-id="' + escapeHtml(row.id) + '">' +
+        uploadHtml + toggleHtml + detailsHtml + '</div>';
     }
 
     function renderOpportunityCard(row) {
@@ -1777,6 +1792,27 @@
     }
     document.addEventListener('pointerup', endRepositionDrag);
     document.addEventListener('pointercancel', endRepositionDrag);
+
+    // Collapsed-by-default discount cards — same [data-expand-row]/
+    // [data-expand-btn]/is-expanded pattern as committee bios and event
+    // rows (see css/styles.css's "Expandable reveal panels"), just
+    // wired up locally: js/main.js's own generic version of this only
+    // runs once at page load, long before these cards exist (they're
+    // rendered after the discounts fetch resolves), so it would never
+    // find them. Ignores clicks on a real link, and on anything other
+    // than the toggle button itself while the card is mid-reposition-
+    // drag, so the upload/reposition/code/usage/link controls all keep
+    // working normally instead of also toggling the card.
+    document.addEventListener('click', function (e) {
+      var row = e.target.closest('[data-expand-row]');
+      if (!row || !perksContent || !perksContent.contains(row)) return;
+      if (row.classList.contains('is-repositioning')) return;
+      var expandBtn = e.target.closest('[data-expand-btn]');
+      if (!expandBtn && e.target.closest('a, button, input, label')) return;
+      var open = row.classList.toggle('is-expanded');
+      var btn = expandBtn || row.querySelector('[data-expand-btn]');
+      if (btn) btn.setAttribute('aria-expanded', String(open));
+    });
   }
 
   // ---- Opportunities page: public preview, gated. Signed-out visitors
