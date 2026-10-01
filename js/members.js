@@ -179,6 +179,79 @@
     }
   }
 
+  // Shared by request-account.html's dropdowns and the Account Requests
+  // dashboard section (migration 047) — one source of truth for "what
+  // are LACMS's actual courses/years", rather than free text that could
+  // drift (a typo'd course name would never match anything elsewhere on
+  // the site that groups or filters by course).
+  var LACMS_COURSES = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing and Midwifery', 'Paramedic Science'];
+  var LACMS_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6'];
+
+  // ---- Request-account page (request-account.html): public, no login
+  // needed — replaces the committee creating every member's login by
+  // hand with a request the president reviews and approves from the
+  // dashboard (migration 047's account_requests table). ----
+  var requestAccountForm = document.getElementById('request-account-form');
+  if (requestAccountForm) {
+    var requestCourseSelect = document.getElementById('request-course');
+    var requestYearSelect = document.getElementById('request-year');
+    LACMS_COURSES.forEach(function (c) {
+      var opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      requestCourseSelect.appendChild(opt);
+    });
+    LACMS_YEARS.forEach(function (y) {
+      var opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      requestYearSelect.appendChild(opt);
+    });
+
+    requestAccountForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var statusEl = document.getElementById('request-account-status');
+      hideMessage(statusEl);
+
+      var name = document.getElementById('request-name').value.trim();
+      var email = document.getElementById('request-email').value.trim();
+      var course = requestCourseSelect.value;
+      var year = requestYearSelect.value;
+      var note = document.getElementById('request-note').value.trim();
+
+      if (!name || !email || !course || !year) {
+        showMessage(statusEl, 'Fill in your name, email, course and year.');
+        return;
+      }
+
+      var btn = requestAccountForm.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      statusEl.style.color = 'var(--color-text-muted)';
+      showMessage(statusEl, 'Sending…');
+
+      supabaseClient
+        .from('account_requests')
+        .insert({ full_name: name, email: email, course: course, year_of_study: year, note: note || null })
+        .then(function (result) {
+          if (result.error) {
+            btn.disabled = false;
+            statusEl.style.color = '#ef8b8f';
+            // Postgres' unique-violation code, from the one-pending-
+            // request-per-email index — worth catching and rephrasing,
+            // since the raw constraint-violation message means nothing
+            // to someone filling in a form. Every other error shows as-is.
+            showMessage(statusEl, result.error.code === '23505'
+              ? "You've already got a request pending review - the committee will get to it soon."
+              : (result.error.message || "Couldn't send your request - try again, or email acms@lincolnsu.com."));
+            return;
+          }
+          document.getElementById('request-account-sent-email').textContent = email;
+          document.getElementById('request-account-form-wrap').style.display = 'none';
+          document.getElementById('request-account-success').style.display = '';
+        });
+    });
+  }
+
   // A professional has no row in `members` — this is how every gate
   // that already checks the `members` table (nav, homepage perks card,
   // the members hub itself, opportunities, MoTM nominations) also
@@ -1221,6 +1294,7 @@
     }
 
     function renderProfile(member, session) {
+      checkTermsGate(member);
       renderMemberCardFields(member);
       var courseYear = [member.course, member.year_of_study].filter(Boolean).join(' · ');
       var typeLabel = MEMBER_TYPE_LABELS[member.member_type] || MEMBER_TYPE_LABELS.member;
@@ -1260,6 +1334,67 @@
         if (mmgCommitteeSection) mmgCommitteeSection.style.display = '';
         loadMmgFeed('mmg_updates', 'member-hub-mmg-committee-list', 'member-hub-mmg-committee-empty', 'Planning update', 'purple');
       }
+    }
+
+    // ---- One-time terms-of-use gate (migration 047) — blocks the hub
+    // behind a modal, no close button and no backdrop-dismiss, until a
+    // member explicitly agrees. Checked here rather than once at
+    // sign-in, since terms_accepted_at applies to every member row, not
+    // just ones created via the new account-request flow - an existing
+    // member logging in for the first time after this shipped needs to
+    // see it too, exactly as if their account were brand new. Built
+    // once, reused on every subsequent load (same pattern as the
+    // account-edit modal on the dashboard). ----
+    function buildTermsGateModal() {
+      if (document.getElementById('terms-gate-modal')) return;
+      var modal = document.createElement('div');
+      modal.id = 'terms-gate-modal';
+      modal.className = 'network-modal';
+      modal.style.display = 'none';
+      modal.innerHTML =
+        '<div class="network-modal-backdrop"></div>' +
+        '<div class="network-modal-panel">' +
+        '<h2 style="margin-top:0;">Welcome to LACMS</h2>' +
+        '<p style="color: var(--color-text-muted); line-height: 1.6;">Before you carry on, here\'s how we use your information - we think it\'s only fair you know, and agree to it, before you use the hub.</p>' +
+        '<p style="color: var(--color-text-muted); line-height: 1.6;">LACMS uses the details in your profile - your name, course, year of study, and how you use this platform - to actually run the society for you: matching Sankofa mentors and mentees, sharing discounts, opportunities and events relevant to you, keeping your digital membership card and place in the Network working, and letting the committee reach you when it matters. We don\'t sell it, and we don\'t share it with anyone outside LACMS and the University of Lincoln Students\' Union. It\'s used to support your membership - nothing else.</p>' +
+        '<label class="checkbox-option" style="margin: var(--space-4) 0;"><input type="checkbox" id="terms-gate-checkbox"> I understand and agree to how my information is used, as described above.</label>' +
+        '<button type="button" class="btn btn-primary btn-block" id="terms-gate-accept-btn" disabled>I agree &amp; continue</button>' +
+        '<p id="terms-gate-status" class="auth-error" role="status" style="display:none; margin-top: var(--space-3);"></p>' +
+        '<p style="margin-top: var(--space-4); margin-bottom: 0; text-align: center;"><button type="button" class="link-button" id="terms-gate-decline-btn" style="color: var(--color-text-faint); font-size: 0.85rem;">I don\'t agree - sign me out</button></p>' +
+        '</div>';
+      document.body.appendChild(modal);
+
+      var checkbox = document.getElementById('terms-gate-checkbox');
+      var acceptBtn = document.getElementById('terms-gate-accept-btn');
+      checkbox.addEventListener('change', function () { acceptBtn.disabled = !checkbox.checked; });
+
+      acceptBtn.addEventListener('click', function () {
+        var statusEl = document.getElementById('terms-gate-status');
+        hideMessage(statusEl);
+        acceptBtn.disabled = true;
+        acceptBtn.textContent = 'Saving…';
+        supabaseClient.rpc('accept_terms').then(function (result) {
+          if (result.error) {
+            acceptBtn.disabled = false;
+            acceptBtn.textContent = 'I agree & continue';
+            showMessage(statusEl, "Couldn't save that - try again, or email acms@lincolnsu.com if it keeps happening.");
+            return;
+          }
+          modal.style.display = 'none';
+        });
+      });
+
+      document.getElementById('terms-gate-decline-btn').addEventListener('click', function () {
+        supabaseClient.auth.signOut().then(function () {
+          window.location.href = 'member-login.html';
+        });
+      });
+    }
+
+    function checkTermsGate(member) {
+      if (member.terms_accepted_at) return;
+      buildTermsGateModal();
+      document.getElementById('terms-gate-modal').style.display = 'flex';
     }
 
     // Professionals get their own card/details variant — title and
@@ -3738,7 +3873,7 @@
     var ONLINE_WINDOW_MS = 5 * 60 * 1000;
     var presidentUserId = null;
     var dashboardRole = null;
-    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'create', 'manage'];
+    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'create', 'manage'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
@@ -3794,7 +3929,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'create', 'manage'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'requests', 'create', 'manage'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {
@@ -3897,7 +4032,8 @@
           supabaseClient.rpc('president_get_sankofa_applications'),
           supabaseClient.rpc('president_get_sankofa_mentor_applications'),
           supabaseClient.rpc('president_get_motm_nominations'),
-          supabaseClient.rpc('president_get_event_registrations')
+          supabaseClient.rpc('president_get_event_registrations'),
+          isPresident ? supabaseClient.rpc('president_get_account_requests') : Promise.resolve({ data: [], error: null })
         ]);
       }).then(function (results) {
         if (presidentAuthGate) presidentAuthGate.style.display = 'none';
@@ -3981,6 +4117,17 @@
           var eventsList = results[7].data || [];
           renderEventRegistrations(eventsList);
           setDashCount('events', eventsList.length + (eventsList.length === 1 ? ' registration' : ' registrations'));
+        }
+        if (isPresident) {
+          if (results[8].error) {
+            console.error('Account requests failed to load:', results[8].error.message);
+            showSectionLoadError('account-requests-list', 'account-requests-empty', 'requests', results[8].error.message);
+          } else {
+            var accountRequestsList = results[8].data || [];
+            renderAccountRequests(accountRequestsList);
+            var pendingCount = accountRequestsList.filter(function (r) { return r.status === 'pending'; }).length;
+            setDashCount('requests', pendingCount + ' pending');
+          }
         }
         loadGallerySubmissions();
         loadGalleryManage();
@@ -4792,6 +4939,143 @@
       }).join('');
     }
 
+    // ---- Account requests (migration 047) — replaces the committee
+    // creating every login by hand: a public, no-account form
+    // (request-account.html) feeds this list, filterable by status,
+    // defaulting to Pending since that's the actionable queue. Approving
+    // one runs the same signUp()-then-insert mechanism as the Create
+    // Account form below, just sourced from the request's own data
+    // instead of typed in fresh (see approveAccountRequest). ----
+    var accountRequestsAll = [];
+    var accountRequestsFilter = 'pending';
+    function renderAccountRequests(list) {
+      accountRequestsAll = list;
+      renderAccountRequestsFiltered(accountRequestsFilter);
+    }
+    function renderAccountRequestsFiltered(filter) {
+      accountRequestsFilter = filter;
+      var listEl = document.getElementById('account-requests-list');
+      var emptyEl = document.getElementById('account-requests-empty');
+      var countEl = document.getElementById('account-requests-count-line');
+      if (!listEl) return;
+      var pendingTotal = accountRequestsAll.filter(function (r) { return r.status === 'pending'; }).length;
+      if (countEl) countEl.textContent = accountRequestsAll.length + ' total - ' + pendingTotal + ' pending';
+      var filtered = filter === 'all' ? accountRequestsAll : accountRequestsAll.filter(function (r) { return r.status === filter; });
+      if (!filtered.length) {
+        if (emptyEl) {
+          emptyEl.style.display = 'block';
+          emptyEl.textContent = filter === 'pending' ? "No pending requests right now - you're all caught up." : 'Nothing here.';
+        }
+        listEl.innerHTML = '';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+      listEl.innerHTML = filtered.map(renderAccountRequestCard).join('');
+    }
+    var ACCOUNT_REQUEST_STATUS_KEY = { pending: 'pending', approved: 'active', rejected: 'expired' };
+    function renderAccountRequestCard(r) {
+      var statusLabel = r.status.charAt(0).toUpperCase() + r.status.slice(1);
+      var meta = [r.course, r.year_of_study].filter(Boolean).join(' · ') + ' · ' + timeAgo(r.created_at);
+      var paidBadge = r.membership_paid
+        ? '<span class="member-status-badge member-status-badge--active"><span class="member-status-badge-dot" aria-hidden="true"></span>Membership paid</span>'
+        : '<span class="member-status-badge member-status-badge--pending"><span class="member-status-badge-dot" aria-hidden="true"></span>Payment not confirmed</span>';
+
+      var actionsHtml = '';
+      if (r.status === 'pending') {
+        var remindSubject = encodeURIComponent('Finish joining LACMS - membership required first');
+        var remindBody = encodeURIComponent(
+          'Hi ' + r.full_name + ',\n\n' +
+          "Thanks for requesting your LACMS account! Before we can set up your login, we need your membership payment to have gone through the Students' Union.\n\n" +
+          "If you haven't already, you can join/pay here: https://lincolnsu.com/activities/view/acs-medical\n\n" +
+          "Once that's done, just reply here and we'll get your account approved.\n\n" +
+          'Thanks,\nLACMS Committee'
+        );
+        actionsHtml =
+          '<div class="app-card-field">' +
+          '<label class="checkbox-option"><input type="checkbox" data-request-paid-toggle data-id="' + escapeHtml(r.id) + '"' + (r.membership_paid ? ' checked' : '') + '> Membership payment confirmed</label>' +
+          '</div>' +
+          '<div style="display:flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3);">' +
+          '<a class="btn btn-outline" href="mailto:' + encodeURIComponent(r.email) + '?subject=' + remindSubject + '&body=' + remindBody + '">Remind to pay</a>' +
+          '<button type="button" class="btn btn-primary" data-request-approve data-id="' + escapeHtml(r.id) + '">Approve &amp; create login</button>' +
+          '<button type="button" class="btn btn-outline" data-request-reject data-id="' + escapeHtml(r.id) + '" style="color: #ef8b8f; border-color: #ef8b8f;">Reject</button>' +
+          '</div>';
+      }
+
+      return '<div class="app-card">' +
+        '<div class="app-card-head" data-app-card-toggle>' +
+        '<div class="app-card-head-main">' +
+        '<span class="member-status-badge member-status-badge--' + ACCOUNT_REQUEST_STATUS_KEY[r.status] + '"><span class="member-status-badge-dot" aria-hidden="true"></span>' + statusLabel + '</span>' +
+        '<span class="app-card-name">' + escapeHtml(r.full_name || 'Unnamed') + '</span>' +
+        '<span class="app-card-meta">' + escapeHtml(meta) + '</span>' +
+        '</div>' +
+        '<svg class="icon app-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>' +
+        '</div>' +
+        '<div class="app-card-body">' +
+        appCardField('Email', r.email) +
+        appCardField('Course', r.course) +
+        appCardField('Year of study', r.year_of_study) +
+        appCardField('Anything else', r.note) +
+        '<div class="app-card-field">' + paidBadge + '</div>' +
+        actionsHtml +
+        (r.status !== 'pending' ? '<button type="button" class="app-card-delete-btn" data-request-delete data-id="' + escapeHtml(r.id) + '">Remove this request</button>' : '') +
+        '</div>' +
+        '</div>';
+    }
+
+    // Mirrors the Create Account form's own signUp()-then-insert flow
+    // (below) almost exactly - same isolated, non-session-persisting
+    // client so the president's own session is never touched, same
+    // "confirm email on vs off" branching for which single email
+    // actually goes out. The one addition is the final RPC call, which
+    // just records that this specific request became this specific
+    // member - never anything Postgres could have done on its own,
+    // since only the browser can call Supabase Auth's signup API.
+    function approveAccountRequest(r, onDone) {
+      var randomPassword = function () {
+        var bytes = new Uint8Array(24);
+        window.crypto.getRandomValues(bytes);
+        return Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+      };
+      var approveClient = createImplicitFlowClient();
+      var loginPageUrl = window.location.origin + '/member-login.html';
+
+      approveClient.auth.signUp({
+        email: r.email,
+        password: randomPassword(),
+        options: { emailRedirectTo: loginPageUrl }
+      }).then(function (signUpResult) {
+        if (signUpResult.error || !signUpResult.data || !signUpResult.data.user) {
+          onDone((signUpResult.error && signUpResult.error.message) || "Couldn't create the account - the email may already be in use.");
+          return;
+        }
+        var newUserId = signUpResult.data.user.id;
+        var needsPasswordEmail = !!signUpResult.data.session;
+
+        supabaseClient.from('members').insert({
+          id: newUserId,
+          full_name: r.full_name,
+          course: r.course,
+          year_of_study: r.year_of_study,
+          member_type: 'member',
+          membership_status: 'active'
+        }).then(function (insertResult) {
+          if (insertResult.error) {
+            onDone("The login was created, but saving their profile failed (" + insertResult.error.message + "). Finish it from Table Editor using this account id: " + newUserId);
+            return;
+          }
+
+          supabaseClient.rpc('president_mark_account_request_approved', { target_id: r.id, new_member_id: newUserId }).then(function () {
+            function finish() { onDone(null); }
+            if (needsPasswordEmail) {
+              approveClient.auth.resetPasswordForEmail(r.email, { redirectTo: loginPageUrl }).then(finish);
+            } else {
+              finish();
+            }
+          });
+        });
+      });
+    }
+
     // ---- Gallery submissions browser — the storage bucket has no name
     // attached to any file, just the uploader's auth id as the folder
     // name (see bindMediaUploadForm), so this lists two levels (folders,
@@ -5475,6 +5759,67 @@
         return;
       }
 
+      var requestsFilterTab = e.target.closest('[data-requests-filter]');
+      if (requestsFilterTab) {
+        requestsFilterTab.parentElement.querySelectorAll('[data-requests-filter]').forEach(function (t) { t.classList.remove('is-active'); });
+        requestsFilterTab.classList.add('is-active');
+        renderAccountRequestsFiltered(requestsFilterTab.getAttribute('data-requests-filter'));
+        return;
+      }
+
+      var requestApproveBtn = e.target.closest('[data-request-approve]');
+      if (requestApproveBtn) {
+        var approveId = requestApproveBtn.getAttribute('data-id');
+        var approveRequest = accountRequestsAll.filter(function (r) { return r.id === approveId; })[0];
+        if (!approveRequest) return;
+        if (!approveRequest.membership_paid && !window.confirm("This person hasn't been marked as having confirmed their membership payment yet. Approve and create their login anyway?")) {
+          return;
+        }
+        requestApproveBtn.disabled = true;
+        requestApproveBtn.textContent = 'Creating account…';
+        approveAccountRequest(approveRequest, function (errorMessage) {
+          if (errorMessage) {
+            requestApproveBtn.disabled = false;
+            requestApproveBtn.textContent = 'Approve & create login';
+            window.alert("Couldn't approve this request: " + errorMessage);
+            return;
+          }
+          loadPresidentDashboard();
+        });
+        return;
+      }
+
+      var requestRejectBtn = e.target.closest('[data-request-reject]');
+      if (requestRejectBtn) {
+        if (!window.confirm("Reject this request? They'll need to submit a new one if they want to try again.")) return;
+        requestRejectBtn.disabled = true;
+        supabaseClient.rpc('president_reject_account_request', { target_id: requestRejectBtn.getAttribute('data-id') }).then(function (result) {
+          if (result.error) {
+            requestRejectBtn.disabled = false;
+            console.error('Reject account request failed:', result.error.message);
+            window.alert("Couldn't reject this request: " + result.error.message);
+            return;
+          }
+          loadPresidentDashboard();
+        });
+        return;
+      }
+
+      var requestDeleteBtn = e.target.closest('[data-request-delete]');
+      if (requestDeleteBtn) {
+        if (!window.confirm("Remove this request? This can't be undone.")) return;
+        requestDeleteBtn.disabled = true;
+        supabaseClient.rpc('president_delete_account_request', { target_id: requestDeleteBtn.getAttribute('data-id') }).then(function (result) {
+          if (result.error) {
+            requestDeleteBtn.disabled = false;
+            console.error('Delete account request failed:', result.error.message);
+            return;
+          }
+          loadPresidentDashboard();
+        });
+        return;
+      }
+
       var galleryToggleBtn = e.target.closest('[data-gallery-toggle-active]');
       if (galleryToggleBtn) {
         galleryToggleBtn.disabled = true;
@@ -5606,6 +5951,33 @@
       if (cardToggle) {
         cardToggle.closest('.app-card').classList.toggle('is-expanded');
       }
+    });
+
+    // Separate from the click delegation above since a checkbox's state
+    // is only reliably known on 'change', not 'click' (which fires
+    // before the box's checked state has actually settled in some
+    // browsers/input methods).
+    presidentContent.addEventListener('change', function (e) {
+      var paidToggle = e.target.closest('[data-request-paid-toggle]');
+      if (!paidToggle) return;
+      var checked = paidToggle.checked;
+      paidToggle.disabled = true;
+      supabaseClient.rpc('president_set_account_request_paid', { target_id: paidToggle.getAttribute('data-id'), is_paid: checked }).then(function (result) {
+        paidToggle.disabled = false;
+        if (result.error) {
+          paidToggle.checked = !checked;
+          console.error('Update membership-paid flag failed:', result.error.message);
+          window.alert("Couldn't update that: " + result.error.message);
+          return;
+        }
+        var request = accountRequestsAll.filter(function (r) { return r.id === paidToggle.getAttribute('data-id'); })[0];
+        if (request) request.membership_paid = checked;
+        var badge = paidToggle.closest('.app-card-body').querySelector('.member-status-badge');
+        if (badge) {
+          badge.className = 'member-status-badge member-status-badge--' + (checked ? 'active' : 'pending');
+          badge.innerHTML = '<span class="member-status-badge-dot" aria-hidden="true"></span>' + (checked ? 'Membership paid' : 'Payment not confirmed');
+        }
+      });
     });
   }
 })();
