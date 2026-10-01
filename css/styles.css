@@ -4225,6 +4225,62 @@ body.intro-active { overflow: hidden; }
 .discount-usage-btn:hover { color: var(--color-gold-light); border-color: var(--color-gold-light); background: rgba(var(--gold-rgb), calc(0.1 * var(--tint-boost))); }
 .discount-usage-btn:disabled { opacity: 0.6; cursor: default; }
 
+/* President-only photo upload, floating in the card's top-right corner.
+   Fixed dark/white rather than theme tokens - this sits on top of six
+   different card colours (plus the --has-image photo zone) in both
+   themes, so one deliberately theme-independent treatment is simpler
+   and more robust than a light-mode override for every combination. */
+.discount-image-upload-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+}
+.discount-image-upload-btn:hover { background: rgba(0, 0, 0, 0.75); transform: scale(1.06); }
+.discount-image-upload-btn .icon { width: 15px; height: 15px; }
+.discount-image-upload-btn input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.discount-image-upload-status {
+  display: none;
+  position: absolute;
+  top: 46px;
+  right: 10px;
+  z-index: 3;
+  max-width: 150px;
+  text-align: right;
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+}
+.discount-image-upload-status.is-visible { display: block; }
+.discount-image-upload-status.is-error { background: rgba(193, 39, 45, 0.88); }
+.discount-image-upload-status.is-success { background: rgba(30, 122, 70, 0.88); }
+
 /* A little confetti pop centred on the code chip the moment it's
    revealed - plain DOM spans + a CSS keyframe rather than a library,
    same approach as the rest of the site's animation work. Spawned and

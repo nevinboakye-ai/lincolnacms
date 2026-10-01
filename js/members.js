@@ -1414,6 +1414,7 @@
   if (perksContent) {
     var perksAuthGate = document.getElementById('auth-gate');
     var perksLocked = document.getElementById('perks-locked');
+    var isPresidentViewer = false;
 
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
@@ -1421,6 +1422,7 @@
         window.location.href = 'member-login.html';
         return;
       }
+      isPresidentViewer = session.user.id === PRESIDENT_UID;
       checkIsCommittee(session).then(function (isCommittee) {
         if (!isCommittee) {
           if (perksAuthGate) perksAuthGate.style.display = 'none';
@@ -1455,7 +1457,7 @@
 
         var discounts = results[0].data || [];
         renderPerkList(discounts, document.getElementById('discounts-list'), document.getElementById('discounts-empty'), function (row) {
-          return renderDiscountCard(row, usageByDiscountId[row.id]);
+          return renderDiscountCard(row, usageByDiscountId[row.id], isPresidentViewer);
         });
         var countLine = document.getElementById('discounts-count-line');
         if (countLine) countLine.textContent = discounts.length ? (discounts.length === 1 ? '1 partner live right now' : discounts.length + ' partners live right now') : '';
@@ -1501,7 +1503,7 @@
         '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>';
     }
 
-    function renderDiscountCard(row, usage) {
+    function renderDiscountCard(row, usage, isPresidentViewer) {
       usage = usage || { reveal_count: 0, used_count: 0 };
       var initial = escapeHtml((row.partner_name || '?').trim().charAt(0).toUpperCase());
       var isLounge11 = /lounge\s*11/i.test(row.partner_name || '');
@@ -1515,6 +1517,22 @@
       var topHtml = '<div class="discount-card-top"><span class="discount-card-badge" aria-hidden="true">' + initial + '</span>' +
         (isNew ? '<span class="new-badge">New</span>' : '') + '</div>';
 
+      // President-only — a small corner control to upload a photo for
+      // this specific card directly, as an alternative to pasting an
+      // image URL into Table Editor (migration 042). Fixed dark/white
+      // styling rather than theme tokens, deliberately: this sits on
+      // top of six different card colours in both themes, and needs to
+      // stay legible against all of them rather than needing a separate
+      // override for every combination (same reasoning as the on-photo
+      // controls elsewhere on the site, e.g. the committee card toggle).
+      var uploadHtml = isPresidentViewer
+        ? '<label class="discount-image-upload-btn" title="Upload a photo for this card (president only)">' +
+          '<input type="file" accept="image/*" data-discount-image-input data-discount-id="' + escapeHtml(row.id) + '">' +
+          '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/></svg>' +
+          '</label>' +
+          '<span class="discount-image-upload-status" data-discount-image-status></span>'
+        : '';
+
       var addressHtml = row.address
         ? '<p class="discount-address"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>' + escapeHtml(row.address) + '</span></p>'
         : '';
@@ -1526,7 +1544,7 @@
           '</div>'
         : '';
 
-      return '<div class="' + cardClass + '"' + styleAttr + ' data-discount-id="' + escapeHtml(row.id) + '">' + topHtml + '<h3 class="card-title">' +
+      return '<div class="' + cardClass + '"' + styleAttr + ' data-discount-id="' + escapeHtml(row.id) + '">' + uploadHtml + topHtml + '<h3 class="card-title">' +
         escapeHtml(row.partner_name) + '</h3>' + addressHtml +
         '<div class="discount-description">' + renderRichText(row.description) + '</div>' +
         codeHtml + usageHtml + cardLink(row.link, 'Visit partner') + '</div>';
@@ -1537,6 +1555,65 @@
       return '<div class="card">' + tagHtml + '<h3 class="card-title"' + (row.category ? ' style="margin-top: var(--space-2);"' : '') + '>' + escapeHtml(row.title) + '</h3>' +
         '<div class="discount-description">' + renderRichText(row.description) + '</div>' + cardLink(row.link, 'Learn more') + '</div>';
     }
+
+    // President-only discount photo upload — straight to Storage, then
+    // one tightly-scoped RPC (president_set_discount_image, migration
+    // 043) writes just the image_url column, never anything else on the
+    // row. Delegated 'change' listener since every card (and its file
+    // input) is only ever inserted after this script has already run.
+    var MAX_DISCOUNT_IMAGE_BYTES = 8 * 1024 * 1024;
+    document.addEventListener('change', function (e) {
+      var input = e.target.closest('[data-discount-image-input]');
+      if (!input || !perksContent || !perksContent.contains(input)) return;
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var discountId = input.getAttribute('data-discount-id');
+      var statusEl = input.closest('.discount-card').querySelector('[data-discount-image-status]');
+
+      function setStatus(text, cls) {
+        if (!statusEl) return;
+        statusEl.textContent = text;
+        statusEl.className = 'discount-image-upload-status is-visible' + (cls ? ' ' + cls : '');
+      }
+
+      if (!/^image\//.test(file.type)) {
+        setStatus('Please choose an image file.', 'is-error');
+        input.value = '';
+        return;
+      }
+      if (file.size > MAX_DISCOUNT_IMAGE_BYTES) {
+        setStatus('Image is too large (max 8MB).', 'is-error');
+        input.value = '';
+        return;
+      }
+
+      setStatus('Uploading…');
+      supabaseClient.storage
+        .from('discount-images')
+        .upload(discountId, file, { upsert: true, contentType: file.type, cacheControl: '3600' })
+        .then(function (uploadResult) {
+          if (uploadResult.error) {
+            setStatus("Couldn't upload: " + uploadResult.error.message, 'is-error');
+            return null;
+          }
+          var publicUrlResult = supabaseClient.storage.from('discount-images').getPublicUrl(discountId);
+          var publicUrl = publicUrlResult.data && publicUrlResult.data.publicUrl;
+          // Cache-busted so the new photo shows immediately even if the
+          // old one at this same path was already cached by the browser.
+          var bustedUrl = publicUrl ? publicUrl + '?v=' + Date.now() : null;
+          return supabaseClient.rpc('president_set_discount_image', { p_discount_id: discountId, p_image_url: bustedUrl });
+        })
+        .then(function (rpcResult) {
+          if (!rpcResult) return; // the upload itself already failed and reported its own error above
+          if (rpcResult.error) {
+            setStatus("Couldn't save: " + rpcResult.error.message, 'is-error');
+            return;
+          }
+          setStatus('Photo updated', 'is-success');
+          input.value = '';
+          setTimeout(loadPerks, 700); // re-render so the card picks up its new photo properly
+        });
+    });
   }
 
   // ---- Opportunities page: public preview, gated. Signed-out visitors
