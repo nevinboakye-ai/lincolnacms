@@ -4144,27 +4144,49 @@ body.intro-active { overflow: hidden; }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Optional partner photo (migration 042's discounts.image_url) - a
-   banner strip across the top of the card that fades into the card's
-   normal background well before reaching the title, so text contrast
-   never depends on what's in the photo. --card-bg-image is set inline
-   per-card (the URL is dynamic data, can't live in a static class), so
-   this just wires that custom property into an actual background. */
+/* Optional partner photo (migration 042's discounts.image_url, repositioned
+   via migration 044's --card-bg-pos). Shows across the WHOLE card, not just
+   a top strip - tinted by the same --deep-* colour the card would already
+   be using (gold/green/red/purple, or pink for Lounge 11 etc.), which is
+   itself a fixed ~86%-opacity gradient, so the photo stays softly visible
+   underneath rather than fading to a flat, opaque cutoff. Because that tint
+   is always dark/deep regardless of site theme, has-image cards also always
+   get the on-deep text treatment (see the light-mode overrides below) in
+   both themes, rather than needing the lighter, theme-flipped colours every
+   other part of a has-image card used to fall back to. --card-bg-image and
+   --card-bg-pos are both set inline per-card (dynamic data, can't live in a
+   static class) - this just wires those custom properties into a real
+   background, layered under the matching --deep-* colour for this card's
+   position/variant. Specified per nth-of-type/pink variant (rather than
+   one rule referencing a variable) so plain CSS custom properties can be
+   avoided for the gradient value itself - --deep-gold etc. are already
+   full gradient() values, not colours, so they can't be swapped via a
+   single custom property the way --card-bg-pos can. */
+.discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: var(--deep-gold), var(--card-bg-image); }
+.discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: var(--deep-green), var(--card-bg-image); }
+.discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: var(--deep-red), var(--card-bg-image); }
+.discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: var(--deep-purple), var(--card-bg-image); }
+.discount-card.discount-card--has-image.discount-card--pink { background-image: var(--deep-pink), var(--card-bg-image); }
 .discount-card.discount-card--has-image {
-  padding-top: 142px;
-  /* The gradient layer is sized to the card's own full box (100% 100%)
-     so its colour stops are literal pixels of this specific card, not
-     of a fixed 168px strip — important because background-size: cover
-     on the photo layer (below) sizes it to fill the *whole* card, not
-     just the top portion, so without this the photo would show through
-     anywhere the gradient hadn't already turned fully opaque. Going
-     solid by 165px (just past the padding above) means the photo only
-     ever shows in that top strip, however tall the card ends up being. */
-  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0) 0px, var(--color-surface) 165px), var(--card-bg-image);
   background-size: 100% 100%, cover;
-  background-position: top left, top center;
+  background-position: center, var(--card-bg-pos, center);
   background-repeat: no-repeat, no-repeat;
 }
+
+/* Drag-to-reposition (migration 044) - active while the president has a
+   has-image card's reposition button toggled on. The whole card becomes
+   the drag surface (js/members.js skips drag-start on buttons/links so
+   normal controls still work); is-dragging only flips the cursor during
+   an actual pointer-down-move, is-repositioning covers the whole session
+   so there's a visible affordance (dashed outline) even between drags. */
+.discount-card.is-repositioning {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  outline: 2px dashed var(--on-deep-accent);
+  outline-offset: -2px;
+}
+.discount-card.is-repositioning.is-dragging { cursor: grabbing; }
 
 .discount-card-top {
   display: flex;
@@ -4260,6 +4282,34 @@ body.intro-active { overflow: hidden; }
   white-space: nowrap;
   border: 0;
 }
+
+/* Reposition toggle (migration 044) - only rendered once a card already
+   has a photo. Sits left of the upload button, same fixed dark/white
+   treatment and same reasoning. Button itself doubles as "Done": its
+   icon/title swap (in js/members.js) rather than needing a second,
+   separate control for saving. */
+.discount-image-reposition-btn {
+  position: absolute;
+  top: 10px;
+  right: 48px;
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: background var(--dur-base) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+}
+.discount-image-reposition-btn:hover { background: rgba(0, 0, 0, 0.75); transform: scale(1.06); }
+.discount-image-reposition-btn.is-active { background: rgba(30, 122, 70, 0.88); }
+.discount-image-reposition-btn.is-active:hover { background: rgba(30, 122, 70, 1); }
+.discount-image-reposition-btn .icon { width: 15px; height: 15px; }
 
 .discount-image-upload-status {
   display: none;
@@ -6876,32 +6926,23 @@ html, body { overflow-x: hidden; max-width: 100%; }
 :root:not([data-theme="dark"]) .discount-code-reveal-btn:hover { background: var(--on-deep-chip-border) !important; }
 :root:not([data-theme="dark"]) .discount-card .discount-code-copy-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 :root:not([data-theme="dark"]) .discount-card .discount-code-copy-btn:hover { color: var(--on-deep) !important; border-color: var(--on-deep-border-hover) !important; }
-:root:not([data-theme="dark"]) .discount-card.discount-card--has-image { background-image: linear-gradient(180deg, rgba(0, 0, 0, 0) 0px, var(--color-surface) 165px), var(--card-bg-image) !important; background-size: 100% 100%, cover !important; background-position: top left, top center !important; background-repeat: no-repeat, no-repeat !important; }
+/* --has-image cards are now deep-coloured (tinted photo) top to bottom,
+   same as every other discount card in light mode - no more "undo" block
+   needed here. background: var(--deep-gold) etc. above resets
+   background-image via the shorthand, so it has to be re-asserted per
+   colour variant (see the base, theme-independent version of these five
+   rules for why - same value, just needing !important here to win over
+   that reset). */
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: var(--deep-gold), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: var(--deep-green), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: var(--deep-red), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: var(--deep-purple), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card.discount-card--has-image.discount-card--pink { background-image: var(--deep-pink), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card.discount-card--has-image { background-size: 100% 100%, cover !important; background-position: center, var(--card-bg-pos, center) !important; background-repeat: no-repeat, no-repeat !important; }
 :root:not([data-theme="dark"]) .discount-usage-label { color: var(--on-deep-muted) !important; }
 :root:not([data-theme="dark"]) .discount-usage-label.is-used { color: var(--on-deep) !important; }
 :root:not([data-theme="dark"]) .discount-usage-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 :root:not([data-theme="dark"]) .discount-usage-btn:hover { border-color: var(--on-deep-border-hover) !important; background: var(--on-deep-chip-bg) !important; }
-
-/* A --has-image card's own background is only ever deep-coloured in the
-   photo strip itself (confined there by the gradient above) - the rest
-   of the card, where every bit of actual text sits (padding-top pushes
-   it all below the photo), is just this card's plain, already-correctly
-   -theme-flipping --color-surface. The on-deep rules above are right for
-   every *other* discount card (genuinely deep-coloured top to bottom in
-   light mode) but wrong here, so this undoes them specifically for
-   --has-image, restoring the normal light-mode text/border colours. */
-:root:not([data-theme="dark"]) .discount-card--has-image { border-color: var(--color-border-strong) !important; }
-:root:not([data-theme="dark"]) .discount-card--has-image:hover { border-color: var(--color-gold-light) !important; }
-:root:not([data-theme="dark"]) .discount-card--has-image .card-title { color: var(--color-text) !important; }
-:root:not([data-theme="dark"]) .discount-card--has-image p,
-:root:not([data-theme="dark"]) .discount-card--has-image .rich-text-list { color: var(--color-text-muted) !important; }
-:root:not([data-theme="dark"]) .discount-card--has-image .discount-card-badge { background: rgba(var(--gold-rgb), calc(0.2 * var(--tint-boost))) !important; color: var(--color-gold-light) !important; }
-:root:not([data-theme="dark"]) .discount-card--has-image .discount-code-reveal-btn { background: rgba(var(--gold-rgb), calc(0.18 * var(--tint-boost))) !important; color: var(--color-gold-light) !important; }
-:root:not([data-theme="dark"]) .discount-card--has-image .discount-code-copy-btn { color: var(--color-gold-light) !important; border-color: var(--color-border-strong) !important; }
-:root:not([data-theme="dark"]) .discount-card--has-image .discount-usage-label { color: var(--color-text-faint) !important; }
-:root:not([data-theme="dark"]) .discount-card--has-image .discount-usage-label.is-used { color: var(--accent-green) !important; }
-:root:not([data-theme="dark"]) .discount-card--has-image .discount-usage-btn { color: var(--color-text-faint) !important; border-color: var(--color-border-strong) !important; }
-:root:not([data-theme="dark"]) .discount-card--has-image .discount-usage-btn:hover { border-color: var(--color-gold-light) !important; background: rgba(var(--gold-rgb), calc(0.1 * var(--tint-boost))) !important; }
 
 /* ----- Dashboard stat tiles (president/committee dashboard) ----- */
 :root:not([data-theme="dark"]) .dash-stat--total { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }
@@ -7076,26 +7117,16 @@ html, body { overflow-x: hidden; max-width: 100%; }
 [data-theme="light"] .discount-code-reveal-btn:hover { background: var(--on-deep-chip-border) !important; }
 [data-theme="light"] .discount-card .discount-code-copy-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 [data-theme="light"] .discount-card .discount-code-copy-btn:hover { color: var(--on-deep) !important; border-color: var(--on-deep-border-hover) !important; }
-[data-theme="light"] .discount-card.discount-card--has-image { background-image: linear-gradient(180deg, rgba(0, 0, 0, 0) 0px, var(--color-surface) 165px), var(--card-bg-image) !important; background-size: 100% 100%, cover !important; background-position: top left, top center !important; background-repeat: no-repeat, no-repeat !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: var(--deep-gold), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: var(--deep-green), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: var(--deep-red), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: var(--deep-purple), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card.discount-card--has-image.discount-card--pink { background-image: var(--deep-pink), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card.discount-card--has-image { background-size: 100% 100%, cover !important; background-position: center, var(--card-bg-pos, center) !important; background-repeat: no-repeat, no-repeat !important; }
 [data-theme="light"] .discount-usage-label { color: var(--on-deep-muted) !important; }
 [data-theme="light"] .discount-usage-label.is-used { color: var(--on-deep) !important; }
 [data-theme="light"] .discount-usage-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 [data-theme="light"] .discount-usage-btn:hover { border-color: var(--on-deep-border-hover) !important; background: var(--on-deep-chip-bg) !important; }
-
-/* Same "undo" as the system-preference block above — see that block's
-   comment for why a --has-image card needs its own, non-deep colours. */
-[data-theme="light"] .discount-card--has-image { border-color: var(--color-border-strong) !important; }
-[data-theme="light"] .discount-card--has-image:hover { border-color: var(--color-gold-light) !important; }
-[data-theme="light"] .discount-card--has-image .card-title { color: var(--color-text) !important; }
-[data-theme="light"] .discount-card--has-image p,
-[data-theme="light"] .discount-card--has-image .rich-text-list { color: var(--color-text-muted) !important; }
-[data-theme="light"] .discount-card--has-image .discount-card-badge { background: rgba(var(--gold-rgb), calc(0.2 * var(--tint-boost))) !important; color: var(--color-gold-light) !important; }
-[data-theme="light"] .discount-card--has-image .discount-code-reveal-btn { background: rgba(var(--gold-rgb), calc(0.18 * var(--tint-boost))) !important; color: var(--color-gold-light) !important; }
-[data-theme="light"] .discount-card--has-image .discount-code-copy-btn { color: var(--color-gold-light) !important; border-color: var(--color-border-strong) !important; }
-[data-theme="light"] .discount-card--has-image .discount-usage-label { color: var(--color-text-faint) !important; }
-[data-theme="light"] .discount-card--has-image .discount-usage-label.is-used { color: var(--accent-green) !important; }
-[data-theme="light"] .discount-card--has-image .discount-usage-btn { color: var(--color-text-faint) !important; border-color: var(--color-border-strong) !important; }
-[data-theme="light"] .discount-card--has-image .discount-usage-btn:hover { border-color: var(--color-gold-light) !important; background: rgba(var(--gold-rgb), calc(0.1 * var(--tint-boost))) !important; }
 
 /* ----- Dashboard stat tiles (president/committee dashboard) ----- */
 [data-theme="light"] .dash-stat--total { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }

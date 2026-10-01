@@ -1416,6 +1416,17 @@
     var perksLocked = document.getElementById('perks-locked');
     var isPresidentViewer = false;
 
+    // Reposition button icon (feather "move") / its "Done" state (a
+    // checkmark) - swapped via innerHTML rather than keeping two hidden
+    // SVGs around, since only one is ever shown at a time.
+    var REPOSITION_ICON_SVG = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>';
+    var REPOSITION_DONE_ICON_SVG = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    // At most one card is ever being repositioned at a time; both reset
+    // to null whenever loadPerks() re-renders the list from scratch, so
+    // stale references never point at detached DOM nodes.
+    var repositioningCard = null;
+    var repositionDrag = null;
+
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
       if (!session) {
@@ -1434,6 +1445,8 @@
     });
 
     function loadPerks() {
+      repositioningCard = null;
+      repositionDrag = null;
       var monthLabel = document.getElementById('discounts-month-label');
       if (monthLabel) monthLabel.textContent = new Date().toLocaleDateString('en-GB', { month: 'long' }) + "'s";
 
@@ -1508,10 +1521,16 @@
       var initial = escapeHtml((row.partner_name || '?').trim().charAt(0).toUpperCase());
       var isLounge11 = /lounge\s*11/i.test(row.partner_name || '');
       var imageUrl = safeUrl(row.image_url);
+      // Validated strictly (NN% NN%) before going into an inline style
+      // attribute - image_position is free text in the database, and
+      // while only the president can write it (migration 044's RPC
+      // already validates server-side), this is cheap insurance against
+      // a malformed/stale value breaking the attribute on render.
+      var imagePos = (row.image_position && /^\d{1,3}% \d{1,3}%$/.test(row.image_position)) ? row.image_position : '50% 50%';
       var cardClass = 'card discount-card' +
         (isLounge11 ? ' discount-card--pink' : '') +
         (imageUrl ? ' discount-card--has-image' : '');
-      var styleAttr = imageUrl ? ' style="--card-bg-image: url(\'' + escapeHtml(imageUrl) + '\');"' : '';
+      var styleAttr = imageUrl ? ' style="--card-bg-image: url(\'' + escapeHtml(imageUrl) + '\'); --card-bg-pos: ' + imagePos + ';"' : '';
 
       var isNew = row.created_at && (Date.now() - new Date(row.created_at).getTime()) < 14 * 24 * 60 * 60 * 1000;
       var topHtml = '<div class="discount-card-top"><span class="discount-card-badge" aria-hidden="true">' + initial + '</span>' +
@@ -1525,8 +1544,18 @@
       // stay legible against all of them rather than needing a separate
       // override for every combination (same reasoning as the on-photo
       // controls elsewhere on the site, e.g. the committee card toggle).
+      // Reposition toggle (migration 044) only makes sense once a card
+      // already has a photo to drag around - rendered next to the
+      // upload button, not instead of it, since re-uploading is still
+      // how the president replaces the photo itself.
+      var repositionHtml = isPresidentViewer && imageUrl
+        ? '<button type="button" class="discount-image-reposition-btn" data-discount-reposition-btn data-discount-id="' + escapeHtml(row.id) + '" title="Reposition photo (president only)">' +
+          REPOSITION_ICON_SVG +
+          '</button>'
+        : '';
       var uploadHtml = isPresidentViewer
-        ? '<label class="discount-image-upload-btn" title="Upload a photo for this card (president only)">' +
+        ? repositionHtml +
+          '<label class="discount-image-upload-btn" title="Upload a photo for this card (president only)">' +
           '<input type="file" accept="image/*" data-discount-image-input data-discount-id="' + escapeHtml(row.id) + '">' +
           '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/></svg>' +
           '</label>' +
@@ -1614,6 +1643,111 @@
           setTimeout(loadPerks, 700); // re-render so the card picks up its new photo properly
         });
     });
+
+    // President-only photo repositioning (migration 044) — drag anywhere
+    // on a has-image card, while its reposition button is toggled on, to
+    // pan the photo; the button becomes "Done" and saves the final
+    // position via president_set_discount_image_position. Pixel deltas
+    // are converted to background-position percent as a simple fraction
+    // of the card's own box — not a strict inverse of how `cover`
+    // actually overflows the image, but close enough to feel direct
+    // without needing the image's natural dimensions.
+    function clampPercent(n) { return Math.min(100, Math.max(0, n)); }
+
+    function parseCardBgPos(cardEl) {
+      var raw = (cardEl.style.getPropertyValue('--card-bg-pos') || '50% 50%').trim();
+      var m = raw.match(/^(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%$/);
+      return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : { x: 50, y: 50 };
+    }
+
+    function exitRepositionMode(cardEl) {
+      if (!cardEl) return;
+      cardEl.classList.remove('is-repositioning', 'is-dragging');
+      var btn = cardEl.querySelector('[data-discount-reposition-btn]');
+      if (btn) {
+        btn.innerHTML = REPOSITION_ICON_SVG;
+        btn.title = 'Reposition photo (president only)';
+        btn.classList.remove('is-active');
+      }
+      if (repositioningCard === cardEl) repositioningCard = null;
+      repositionDrag = null;
+    }
+
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-discount-reposition-btn]');
+      if (!btn || !perksContent || !perksContent.contains(btn)) return;
+      e.preventDefault();
+      var cardEl = btn.closest('.discount-card');
+      var discountId = btn.getAttribute('data-discount-id');
+      var statusEl = cardEl.querySelector('[data-discount-image-status]');
+
+      if (cardEl.classList.contains('is-repositioning')) {
+        var pos = parseCardBgPos(cardEl);
+        var posStr = Math.round(pos.x) + '% ' + Math.round(pos.y) + '%';
+        exitRepositionMode(cardEl);
+        if (statusEl) {
+          statusEl.textContent = 'Saving position…';
+          statusEl.className = 'discount-image-upload-status is-visible';
+        }
+        supabaseClient.rpc('president_set_discount_image_position', { p_discount_id: discountId, p_position: posStr }).then(function (result) {
+          if (!statusEl) return;
+          if (result.error) {
+            statusEl.textContent = "Couldn't save position: " + result.error.message;
+            statusEl.className = 'discount-image-upload-status is-visible is-error';
+            return;
+          }
+          statusEl.textContent = 'Position saved';
+          statusEl.className = 'discount-image-upload-status is-visible is-success';
+          setTimeout(function () { statusEl.className = 'discount-image-upload-status'; }, 2000);
+        });
+        return;
+      }
+
+      // Only one card can be in reposition mode at a time — starting on
+      // another cancels the first (without saving whatever it's mid-drag).
+      if (repositioningCard && repositioningCard !== cardEl) exitRepositionMode(repositioningCard);
+      repositioningCard = cardEl;
+      cardEl.classList.add('is-repositioning');
+      btn.innerHTML = REPOSITION_DONE_ICON_SVG;
+      btn.title = 'Save this position';
+      btn.classList.add('is-active');
+      if (statusEl) {
+        statusEl.textContent = 'Drag the photo, then tap the check to save';
+        statusEl.className = 'discount-image-upload-status is-visible';
+      }
+    });
+
+    document.addEventListener('pointerdown', function (e) {
+      var cardEl = e.target.closest('.discount-card.is-repositioning');
+      if (!cardEl || !perksContent || !perksContent.contains(cardEl)) return;
+      if (e.target.closest('a, button, input, label')) return; // let normal controls work even mid-reposition
+      e.preventDefault();
+      var pos = parseCardBgPos(cardEl);
+      var rect = cardEl.getBoundingClientRect();
+      repositionDrag = { cardEl: cardEl, startX: e.clientX, startY: e.clientY, x: pos.x, y: pos.y, width: rect.width, height: rect.height };
+      cardEl.classList.add('is-dragging');
+      if (cardEl.setPointerCapture) cardEl.setPointerCapture(e.pointerId);
+    });
+
+    document.addEventListener('pointermove', function (e) {
+      if (!repositionDrag) return;
+      var dx = e.clientX - repositionDrag.startX;
+      var dy = e.clientY - repositionDrag.startY;
+      // Dragging the photo right/down should reveal more of its
+      // left/top (like panning a map with a hand tool), which means the
+      // background-position percentage moves the opposite way.
+      var xPct = clampPercent(repositionDrag.x - (dx / repositionDrag.width) * 100);
+      var yPct = clampPercent(repositionDrag.y - (dy / repositionDrag.height) * 100);
+      repositionDrag.cardEl.style.setProperty('--card-bg-pos', xPct.toFixed(1) + '% ' + yPct.toFixed(1) + '%');
+    });
+
+    function endRepositionDrag() {
+      if (!repositionDrag) return;
+      repositionDrag.cardEl.classList.remove('is-dragging');
+      repositionDrag = null;
+    }
+    document.addEventListener('pointerup', endRepositionDrag);
+    document.addEventListener('pointercancel', endRepositionDrag);
   }
 
   // ---- Opportunities page: public preview, gated. Signed-out visitors
