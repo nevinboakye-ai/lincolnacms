@@ -275,6 +275,75 @@
     return result;
   }
 
+  // A small, deliberately safe "rich text" renderer for discount/
+  // opportunity descriptions, written by the committee via Table Editor.
+  // Everything is HTML-escaped first, then a small fixed set of
+  // markdown-style patterns is re-introduced as real tags on top of the
+  // already-escaped text — so there's no way for stored text to smuggle
+  // in arbitrary HTML, only the handful of tags this function itself
+  // chooses to emit. Blank lines become paragraph breaks, single line
+  // breaks become <br>, **bold**/*italic*/_italic_ work inline, and a
+  // block where every line starts with "- " or "* " becomes a bullet list.
+  function formatInlineRichText(str) {
+    var escaped = escapeHtml(str);
+    escaped = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    escaped = escaped.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    escaped = escaped.replace(/_(.+?)_/g, '<em>$1</em>');
+    return escaped;
+  }
+  function renderRichText(text) {
+    if (!text) return '';
+    var paragraphs = String(text).split(/\n\s*\n/);
+    return paragraphs.map(function (para) {
+      var lines = para.split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l.length; });
+      if (!lines.length) return '';
+      var isList = lines.every(function (l) { return /^[-*]\s+/.test(l); });
+      if (isList) {
+        var items = lines.map(function (l) {
+          return '<li>' + formatInlineRichText(l.replace(/^[-*]\s+/, '')) + '</li>';
+        }).join('');
+        return '<ul class="rich-text-list">' + items + '</ul>';
+      }
+      return '<p>' + lines.map(formatInlineRichText).join('<br>') + '</p>';
+    }).join('');
+  }
+
+  // A small confetti pop centred on the just-revealed code chip — plain
+  // DOM spans animated with a CSS keyframe (.discount-confetti-piece),
+  // removed once the animation finishes. Skipped outright for
+  // prefers-reduced-motion rather than firing an instant version of it.
+  var DISCOUNT_CONFETTI_COLORS = ['#d4a62b', '#e8c767', '#6fcf97', '#b28ff0', '#ef8bc4', '#7ab2f0'];
+  function celebrateDiscountReveal(cardEl) {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var codeEl = cardEl.querySelector('.discount-code');
+    if (!codeEl) return;
+    var cardRect = cardEl.getBoundingClientRect();
+    var codeRect = codeEl.getBoundingClientRect();
+    var burst = document.createElement('div');
+    burst.className = 'discount-confetti-burst';
+    burst.style.left = (codeRect.left - cardRect.left + codeRect.width / 2) + 'px';
+    burst.style.top = (codeRect.top - cardRect.top + codeRect.height / 2) + 'px';
+    for (var i = 0; i < 14; i++) {
+      var piece = document.createElement('span');
+      piece.className = 'discount-confetti-piece';
+      var angle = Math.random() * Math.PI * 2;
+      var distance = 36 + Math.random() * 54;
+      piece.style.setProperty('--x', (Math.cos(angle) * distance) + 'px');
+      piece.style.setProperty('--y', (Math.sin(angle) * distance - 20) + 'px');
+      piece.style.setProperty('--rot', (Math.random() * 540 - 270) + 'deg');
+      piece.style.background = DISCOUNT_CONFETTI_COLORS[Math.floor(Math.random() * DISCOUNT_CONFETTI_COLORS.length)];
+      piece.style.animationDelay = (Math.random() * 0.08) + 's';
+      burst.appendChild(piece);
+    }
+    cardEl.appendChild(burst);
+    setTimeout(function () { burst.remove(); }, 1000);
+  }
+
+  function discountUsageLabelHtml(usedCount) {
+    return '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>' +
+      (usedCount === 0 ? "Haven't used this yet" : usedCount === 1 ? 'Used once' : 'Used ' + usedCount + ' times');
+  }
+
   // Shared by every discount/perk card (LACMS discounts and MMG night
   // perks alike) — the code stays blurred behind a "Reveal code" button
   // until clicked, then a "Copy" button appears. Click handling for both
@@ -300,6 +369,22 @@
     if (revealBtn) {
       var revealWrap = revealBtn.closest('.discount-code');
       if (revealWrap) revealWrap.classList.add('is-revealed');
+
+      // The celebration + reveal-count RPC only apply to the LACMS
+      // discounts page — mmg-hub.html's perk cards share this exact
+      // button/markup via renderCodeReveal() too, but their row ids
+      // belong to mmg_perks, not public.discounts, so calling the RPC
+      // for them would just fail a foreign key check for no reason.
+      var discountCard = revealBtn.closest('#discounts-list .discount-card');
+      if (discountCard) {
+        celebrateDiscountReveal(discountCard);
+        var discountId = discountCard.getAttribute('data-discount-id');
+        if (discountId && window.supabaseClient) {
+          supabaseClient.rpc('record_discount_reveal', { p_discount_id: discountId }).then(function (result) {
+            if (result.error) console.error('Recording discount reveal failed:', result.error.message);
+          });
+        }
+      }
       return;
     }
     var copyBtn = e.target.closest('.discount-code-copy-btn');
@@ -311,6 +396,27 @@
         var original = copyBtn.innerHTML;
         copyBtn.textContent = 'Copied!';
         setTimeout(function () { copyBtn.innerHTML = original; }, 1500);
+      });
+      return;
+    }
+    var usageBtn = e.target.closest('[data-discount-usage-btn]');
+    if (usageBtn) {
+      var usageDiscountId = usageBtn.getAttribute('data-discount-id');
+      if (!usageDiscountId || !window.supabaseClient || usageBtn.disabled) return;
+      usageBtn.disabled = true;
+      supabaseClient.rpc('record_discount_used', { p_discount_id: usageDiscountId }).then(function (result) {
+        usageBtn.disabled = false;
+        if (result.error) { console.error('Marking discount as used failed:', result.error.message); return; }
+        var row = (result.data && result.data[0]) || {};
+        var wrap = usageBtn.closest('[data-discount-usage]');
+        var labelEl = wrap && wrap.querySelector('[data-discount-usage-label]');
+        if (labelEl) {
+          labelEl.innerHTML = discountUsageLabelHtml(row.used_count || 0);
+          labelEl.classList.add('is-used');
+          labelEl.classList.remove('discount-usage-bump');
+          void labelEl.offsetWidth; // restart the bump animation even on repeat clicks
+          labelEl.classList.add('discount-usage-bump');
+        }
       });
     }
   });
@@ -1326,15 +1432,35 @@
     });
 
     function loadPerks() {
+      var monthLabel = document.getElementById('discounts-month-label');
+      if (monthLabel) monthLabel.textContent = new Date().toLocaleDateString('en-GB', { month: 'long' }) + "'s";
+
       Promise.all([
         supabaseClient.from('discounts').select('*').order('sort_order', { ascending: true }),
-        supabaseClient.from('member_opportunities').select('*').order('sort_order', { ascending: true })
+        supabaseClient.from('member_opportunities').select('*').order('sort_order', { ascending: true }),
+        // The signed-in member's own reveal/used counters (migration
+        // 042) — RLS only ever returns their own rows, so this is safe
+        // to fetch unfiltered; folded into each discount card below so
+        // "Used 3 times" survives a reload instead of resetting to zero.
+        supabaseClient.from('discount_usage').select('discount_id, reveal_count, used_count')
       ]).then(function (results) {
         if (perksAuthGate) perksAuthGate.style.display = 'none';
         perksContent.style.display = '';
 
-        renderPerkList(results[0].data, document.getElementById('discounts-list'), document.getElementById('discounts-empty'), renderDiscountCard);
-        renderPerkList(results[1].data, document.getElementById('member-opportunities-list'), document.getElementById('member-opportunities-empty'), renderOpportunityCard);
+        var usageByDiscountId = {};
+        (results[2].data || []).forEach(function (u) {
+          usageByDiscountId[u.discount_id] = u;
+        });
+        if (results[2].error) console.error('Loading discount usage failed:', results[2].error.message);
+
+        var discounts = results[0].data || [];
+        renderPerkList(discounts, document.getElementById('discounts-list'), document.getElementById('discounts-empty'), function (row) {
+          return renderDiscountCard(row, usageByDiscountId[row.id]);
+        });
+        var countLine = document.getElementById('discounts-count-line');
+        if (countLine) countLine.textContent = discounts.length ? (discounts.length === 1 ? '1 partner live right now' : discounts.length + ' partners live right now') : '';
+
+        renderOpportunitiesTeaser(results[1].data || []);
       });
     }
 
@@ -1348,6 +1474,26 @@
       listEl.innerHTML = rows.map(cardFn).join('');
     }
 
+    // Members-first opportunities get a "coming soon" tease rather than
+    // being shown in full — real titles/descriptions still render (so
+    // there's something genuine behind the blur, not placeholder text),
+    // just behind the same blur + gradient + floating-card treatment
+    // opportunities.html already uses for its own signed-out preview.
+    function renderOpportunitiesTeaser(rows) {
+      var wrap = document.getElementById('member-opportunities-wrap');
+      var listEl = document.getElementById('member-opportunities-list');
+      var emptyEl = document.getElementById('member-opportunities-empty');
+      if (!wrap || !listEl) return;
+      if (!rows.length) {
+        wrap.style.display = 'none';
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+      listEl.innerHTML = rows.map(renderOpportunityCard).join('');
+      wrap.style.display = '';
+    }
+
     function cardLink(url, label) {
       var safe = safeUrl(url);
       if (!safe) return '';
@@ -1355,23 +1501,41 @@
         '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>';
     }
 
-    function renderDiscountCard(row) {
+    function renderDiscountCard(row, usage) {
+      usage = usage || { reveal_count: 0, used_count: 0 };
       var initial = escapeHtml((row.partner_name || '?').trim().charAt(0).toUpperCase());
       var isLounge11 = /lounge\s*11/i.test(row.partner_name || '');
-      var cardClass = 'card discount-card' + (isLounge11 ? ' discount-card--pink' : '');
+      var imageUrl = safeUrl(row.image_url);
+      var cardClass = 'card discount-card' +
+        (isLounge11 ? ' discount-card--pink' : '') +
+        (imageUrl ? ' discount-card--has-image' : '');
+      var styleAttr = imageUrl ? ' style="--card-bg-image: url(\'' + escapeHtml(imageUrl) + '\');"' : '';
+
+      var isNew = row.created_at && (Date.now() - new Date(row.created_at).getTime()) < 14 * 24 * 60 * 60 * 1000;
+      var topHtml = '<div class="discount-card-top"><span class="discount-card-badge" aria-hidden="true">' + initial + '</span>' +
+        (isNew ? '<span class="new-badge">New</span>' : '') + '</div>';
+
       var addressHtml = row.address
         ? '<p class="discount-address"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg><span>' + escapeHtml(row.address) + '</span></p>'
         : '';
       var codeHtml = renderCodeReveal(row.code);
-      return '<div class="' + cardClass + '"><span class="discount-card-badge" aria-hidden="true">' + initial + '</span><h3 class="card-title">' +
-        escapeHtml(row.partner_name) + '</h3>' + addressHtml + '<p>' +
-        escapeHtml(row.description) + '</p>' + codeHtml + cardLink(row.link, 'Visit partner') + '</div>';
+      var usageHtml = row.code
+        ? '<div class="discount-usage" data-discount-usage>' +
+          '<span class="discount-usage-label' + (usage.used_count > 0 ? ' is-used' : '') + '" data-discount-usage-label>' + discountUsageLabelHtml(usage.used_count || 0) + '</span>' +
+          '<button type="button" class="discount-usage-btn" data-discount-usage-btn data-discount-id="' + escapeHtml(row.id) + '">I used this</button>' +
+          '</div>'
+        : '';
+
+      return '<div class="' + cardClass + '"' + styleAttr + ' data-discount-id="' + escapeHtml(row.id) + '">' + topHtml + '<h3 class="card-title">' +
+        escapeHtml(row.partner_name) + '</h3>' + addressHtml +
+        '<div class="discount-description">' + renderRichText(row.description) + '</div>' +
+        codeHtml + usageHtml + cardLink(row.link, 'Visit partner') + '</div>';
     }
 
     function renderOpportunityCard(row) {
       var tagHtml = row.category ? '<span class="card-tag">' + escapeHtml(row.category) + '</span>' : '';
-      return '<div class="card">' + tagHtml + '<h3 class="card-title"' + (row.category ? ' style="margin-top: var(--space-2);"' : '') + '>' + escapeHtml(row.title) + '</h3><p>' +
-        escapeHtml(row.description) + '</p>' + cardLink(row.link, 'Learn more') + '</div>';
+      return '<div class="card">' + tagHtml + '<h3 class="card-title"' + (row.category ? ' style="margin-top: var(--space-2);"' : '') + '>' + escapeHtml(row.title) + '</h3>' +
+        '<div class="discount-description">' + renderRichText(row.description) + '</div>' + cardLink(row.link, 'Learn more') + '</div>';
     }
   }
 

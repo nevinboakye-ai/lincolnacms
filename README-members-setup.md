@@ -893,3 +893,17 @@ Run [`db/migrations/041-activity-pre-tracking-baseline.sql`](db/migrations/041-a
 **Where it shows up**: folded into the All-time stat tile only, with a small "incl. ~X est. before tracking" note so it's never mistaken for exactly-tracked data. It deliberately never touches the chart - there's no way to know which day(s) those historical visits actually happened on, so putting a lump estimate on a specific bar would be more misleading than just not showing it there at all. Switching the chart to "All time" shows a one-line footnote explaining the same thing, since that's the one range where someone might otherwise notice the bars add up to less than the stat tile above them and wonder if something's broken.
 
 Leave both values at `0` (the default) if you don't have or want an estimate - the tile just shows exactly what's been tracked, same as every other tile.
+
+## 78. Discounts page revamp: teaser for opportunities, rich text, partner photos, self-reported usage tracking
+
+Run [`db/migrations/042-discounts-revamp.sql`](db/migrations/042-discounts-revamp.sql).
+
+**"Members-first opportunities" is now a tease, not a full list.** Real titles still render behind it (not placeholder text), but blurred and faded behind a floating "Coming soon" card - the exact same pattern `opportunities.html` already uses for its own signed-out preview, just reused here.
+
+**Discount (and opportunity) descriptions now support light formatting** - `**bold**`, `*italic*`/`_italic_`, blank lines for paragraph breaks, and a block where every line starts with `- ` becomes a bullet list. Written once in Table Editor, same as always, no new UI - just richer text than a single flat paragraph. Safe by construction: everything is HTML-escaped first, and only this fixed, small set of patterns is ever turned into real tags on top of that - there's no way stored text can inject arbitrary HTML.
+
+**A partner photo per discount** - `discounts.image_url` (new column), optional, president-only to set in practice: paste a public image URL via Table Editor. Shows as a banner strip across the top of the card that fades into the card's normal background well before reaching the title - never a full-card photo, and card text never depends on what's in the image for contrast.
+
+**Self-reported "times used" tracking** - new `discount_usage` table + `record_discount_reveal()`/`record_discount_used()` RPCs. Worth being upfront about the limit here: a discount gets redeemed by showing the digital membership card in person, and there's no till/POS integration, so this can never be a *verified* redemption count. What it actually tracks: "Reveal code" taps (a real, measurable action, now also a little celebration animation) and a deliberate "I used this" button a member can tap after redeeming in-store - entirely self-reported, shown back to them as "Used 3 times" on their own view of that card next time they're back.
+
+**Also, cosmetic**: a "LACMS [current month]'s Discounts" banner at the top of the page, computed from today's date client-side, so it never needs a manual edit when the month turns over; a "New" badge on anything added in the last 14 days; and a staggered entrance animation on the discount grid, same convention as the member-hub announcements feed.

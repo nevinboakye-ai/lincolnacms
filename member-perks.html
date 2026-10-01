@@ -7,7 +7,7 @@
 <title>Members Perks - LACMS</title>
 <meta name="description" content="Partner discounts and members-first opportunities for LACMS members.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-42">
+<link rel="stylesheet" href="css/styles.css?v=20260824-45">
 </head>
 <body>
 
@@ -111,18 +111,33 @@
 
       <div id="member-perks-content" style="display:none;">
 
+        <div class="discounts-month-banner">
+          <span class="discounts-month-banner-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7"/><path d="M12 2 2 9h20L12 2Z"/><circle cx="12" cy="13" r="2.4"/></svg></span>
+          <span>LACMS <strong id="discounts-month-label">This Month's</strong> Discounts</span>
+        </div>
+
         <div class="section-head">
           <span class="eyebrow">Partner discounts</span>
           <h2>Exclusive to members</h2>
+          <p id="discounts-count-line" class="dash-section-count"></p>
         </div>
         <div id="discounts-list" class="grid grid--2"></div>
         <p id="discounts-empty" style="display:none; color: var(--color-text-faint);">No discounts live yet - check back soon.</p>
 
         <div class="section-head" style="margin-top: var(--space-8);">
           <span class="eyebrow">Members-first opportunities</span>
-          <h2>Before anyone else sees them</h2>
+          <h2>Something new is coming</h2>
+          <p>A dedicated space for opportunities shared with LACMS members before anyone else sees them - here first.</p>
         </div>
-        <div id="member-opportunities-list" class="grid grid--2"></div>
+        <div id="member-opportunities-wrap" class="opportunities-locked-wrap" style="display:none;">
+          <div id="member-opportunities-list" class="grid grid--2" aria-hidden="true"></div>
+          <div class="opportunities-locked-fade" aria-hidden="true"></div>
+          <div class="opportunities-locked-cta">
+            <span class="opportunities-locked-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <h3 style="margin: 0 0 4px;">Coming soon</h3>
+            <p style="margin: 0;">We're building a proper members-first opportunities experience - worth the wait.</p>
+          </div>
+        </div>
         <p id="member-opportunities-empty" style="display:none; color: var(--color-text-faint);">No members-first opportunities live yet - check back soon.</p>
 
       </div>
@@ -185,7 +200,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-42"></script>
-<script src="js/members.js?v=20260824-42"></script>
+<script src="js/main.js?v=20260824-45"></script>
+<script src="js/members.js?v=20260824-45"></script>
 </body>
 </html>

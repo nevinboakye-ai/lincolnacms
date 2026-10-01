@@ -2537,7 +2537,8 @@ a.card:active { transform: translateY(-1px) scale(0.98); }
   border-radius: var(--radius-lg);
 }
 
-.opportunities-locked-wrap #opportunities-locked-rows {
+.opportunities-locked-wrap #opportunities-locked-rows,
+.opportunities-locked-wrap #member-opportunities-list {
   filter: blur(3px);
   opacity: 0.55;
   pointer-events: none;
@@ -4124,6 +4125,162 @@ body.intro-active { overflow: hidden; }
   transition: transform var(--dur-fast) var(--ease-standard);
 }
 .discount-card:hover .card-link .icon { transform: translateX(4px); }
+
+/* Staggered entrance, same convention as the member-hub feed's
+   .feed-item:nth-child stagger — replays every time loadPerks() repaints
+   the grid, which is fine/expected, same as that other list. The global
+   prefers-reduced-motion rule (*, *::before, *::after { animation-
+   duration: 0.001ms !important }) already collapses this to an instant,
+   fully-opaque render for anyone who needs it - no extra media query
+   needed here. */
+.discount-card { animation: discount-card-in 0.5s var(--ease-standard) forwards; opacity: 0; }
+.discount-card:nth-of-type(1) { animation-delay: 0s; }
+.discount-card:nth-of-type(2) { animation-delay: 0.08s; }
+.discount-card:nth-of-type(3) { animation-delay: 0.16s; }
+.discount-card:nth-of-type(4) { animation-delay: 0.24s; }
+.discount-card:nth-of-type(n+5) { animation-delay: 0.3s; }
+@keyframes discount-card-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Optional partner photo (migration 042's discounts.image_url) - a
+   banner strip across the top of the card that fades into the card's
+   normal background well before reaching the title, so text contrast
+   never depends on what's in the photo. --card-bg-image is set inline
+   per-card (the URL is dynamic data, can't live in a static class), so
+   this just wires that custom property into an actual background. */
+.discount-card.discount-card--has-image {
+  padding-top: 142px;
+  /* The gradient layer is sized to the card's own full box (100% 100%)
+     so its colour stops are literal pixels of this specific card, not
+     of a fixed 168px strip — important because background-size: cover
+     on the photo layer (below) sizes it to fill the *whole* card, not
+     just the top portion, so without this the photo would show through
+     anywhere the gradient hadn't already turned fully opaque. Going
+     solid by 165px (just past the padding above) means the photo only
+     ever shows in that top strip, however tall the card ends up being. */
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0) 0px, var(--color-surface) 165px), var(--card-bg-image);
+  background-size: 100% 100%, cover;
+  background-position: top left, top center;
+  background-repeat: no-repeat, no-repeat;
+}
+
+.discount-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.discount-description p:last-child { margin-bottom: 0; }
+.rich-text-list {
+  margin: 0 0 var(--space-3);
+  padding-left: 1.15em;
+  color: var(--color-text-muted);
+}
+.rich-text-list li { margin-bottom: 4px; }
+.rich-text-list li:last-child { margin-bottom: 0; }
+
+/* Self-reported usage tracker (migration 042's discount_usage /
+   record_discount_used RPC) - honest about what it actually is: no till
+   integration exists, so this can never be a verified redemption count,
+   just a member choosing to log "I used this" after showing their card
+   in person. Only rendered when a discount has a code at all. */
+.discount-usage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: -2px;
+}
+.discount-usage-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.76rem;
+  color: var(--color-text-faint);
+}
+.discount-usage-label .icon { width: 13px; height: 13px; flex-shrink: 0; }
+.discount-usage-label.is-used { color: var(--accent-green); }
+@keyframes discount-usage-bump {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+.discount-usage-bump { animation: discount-usage-bump 0.4s var(--ease-standard); }
+
+.discount-usage-btn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-faint);
+  background: transparent;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard), background var(--dur-base) var(--ease-standard);
+}
+.discount-usage-btn:hover { color: var(--color-gold-light); border-color: var(--color-gold-light); background: rgba(var(--gold-rgb), calc(0.1 * var(--tint-boost))); }
+.discount-usage-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* A little confetti pop centred on the code chip the moment it's
+   revealed - plain DOM spans + a CSS keyframe rather than a library,
+   same approach as the rest of the site's animation work. Spawned and
+   removed by celebrateDiscountReveal() in js/members.js; skipped
+   entirely there for prefers-reduced-motion rather than just playing an
+   instant version of it. */
+.discount-confetti-burst {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+.discount-confetti-piece {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 9px;
+  margin: -4px 0 0 -3px;
+  border-radius: 1px;
+  animation: discount-confetti-pop 0.85s cubic-bezier(0.25, 0.8, 0.3, 1) forwards;
+}
+@keyframes discount-confetti-pop {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--x), var(--y)) rotate(var(--rot)); opacity: 0; }
+}
+
+/* "LACMS [Month]'s Discounts" banner at the top of the page - computed
+   client-side from the current date (js/members.js), so it's never
+   stale and never needs a manual edit when the month turns over. */
+.discounts-month-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--space-5);
+  padding: 9px 18px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, rgba(var(--gold-rgb), calc(0.18 * var(--tint-boost))), rgba(var(--gold-light-rgb), calc(0.1 * var(--tint-boost))));
+  border: 1px solid rgba(var(--gold-light-rgb), calc(0.35 * var(--tint-boost)));
+  font-size: 0.92rem;
+  color: var(--color-text);
+}
+.discounts-month-banner-icon {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(var(--gold-rgb), calc(0.24 * var(--tint-boost)));
+  color: var(--color-gold-light);
+}
+.discounts-month-banner-icon .icon { width: 14px; height: 14px; }
+#discounts-month-label { color: var(--color-gold-light); font-weight: 700; }
 
 /* "Just joined the Network" ticker — one item visible at a time via a
    sliding track, so recent activity is always in view without ever
@@ -6656,12 +6813,39 @@ html, body { overflow-x: hidden; max-width: 100%; }
 :root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+4):hover,
 :root:not([data-theme="dark"]) .discount-card.discount-card--pink:hover { border-color: var(--on-deep-border-hover) !important; }
 :root:not([data-theme="dark"]) .discount-card .card-title { color: var(--on-deep) !important; }
-:root:not([data-theme="dark"]) .discount-card p { color: var(--on-deep-muted) !important; }
+:root:not([data-theme="dark"]) .discount-card p,
+:root:not([data-theme="dark"]) .discount-card .rich-text-list { color: var(--on-deep-muted) !important; }
 :root:not([data-theme="dark"]) .discount-card-badge { background: var(--on-deep-chip-bg) !important; color: var(--on-deep) !important; }
 :root:not([data-theme="dark"]) .discount-code-reveal-btn { background: var(--on-deep-chip-bg) !important; color: var(--on-deep) !important; }
 :root:not([data-theme="dark"]) .discount-code-reveal-btn:hover { background: var(--on-deep-chip-border) !important; }
 :root:not([data-theme="dark"]) .discount-card .discount-code-copy-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 :root:not([data-theme="dark"]) .discount-card .discount-code-copy-btn:hover { color: var(--on-deep) !important; border-color: var(--on-deep-border-hover) !important; }
+:root:not([data-theme="dark"]) .discount-card.discount-card--has-image { background-image: linear-gradient(180deg, rgba(0, 0, 0, 0) 0px, var(--color-surface) 165px), var(--card-bg-image) !important; background-size: 100% 100%, cover !important; background-position: top left, top center !important; background-repeat: no-repeat, no-repeat !important; }
+:root:not([data-theme="dark"]) .discount-usage-label { color: var(--on-deep-muted) !important; }
+:root:not([data-theme="dark"]) .discount-usage-label.is-used { color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .discount-usage-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
+:root:not([data-theme="dark"]) .discount-usage-btn:hover { border-color: var(--on-deep-border-hover) !important; background: var(--on-deep-chip-bg) !important; }
+
+/* A --has-image card's own background is only ever deep-coloured in the
+   photo strip itself (confined there by the gradient above) - the rest
+   of the card, where every bit of actual text sits (padding-top pushes
+   it all below the photo), is just this card's plain, already-correctly
+   -theme-flipping --color-surface. The on-deep rules above are right for
+   every *other* discount card (genuinely deep-coloured top to bottom in
+   light mode) but wrong here, so this undoes them specifically for
+   --has-image, restoring the normal light-mode text/border colours. */
+:root:not([data-theme="dark"]) .discount-card--has-image { border-color: var(--color-border-strong) !important; }
+:root:not([data-theme="dark"]) .discount-card--has-image:hover { border-color: var(--color-gold-light) !important; }
+:root:not([data-theme="dark"]) .discount-card--has-image .card-title { color: var(--color-text) !important; }
+:root:not([data-theme="dark"]) .discount-card--has-image p,
+:root:not([data-theme="dark"]) .discount-card--has-image .rich-text-list { color: var(--color-text-muted) !important; }
+:root:not([data-theme="dark"]) .discount-card--has-image .discount-card-badge { background: rgba(var(--gold-rgb), calc(0.2 * var(--tint-boost))) !important; color: var(--color-gold-light) !important; }
+:root:not([data-theme="dark"]) .discount-card--has-image .discount-code-reveal-btn { background: rgba(var(--gold-rgb), calc(0.18 * var(--tint-boost))) !important; color: var(--color-gold-light) !important; }
+:root:not([data-theme="dark"]) .discount-card--has-image .discount-code-copy-btn { color: var(--color-gold-light) !important; border-color: var(--color-border-strong) !important; }
+:root:not([data-theme="dark"]) .discount-card--has-image .discount-usage-label { color: var(--color-text-faint) !important; }
+:root:not([data-theme="dark"]) .discount-card--has-image .discount-usage-label.is-used { color: var(--accent-green) !important; }
+:root:not([data-theme="dark"]) .discount-card--has-image .discount-usage-btn { color: var(--color-text-faint) !important; border-color: var(--color-border-strong) !important; }
+:root:not([data-theme="dark"]) .discount-card--has-image .discount-usage-btn:hover { border-color: var(--color-gold-light) !important; background: rgba(var(--gold-rgb), calc(0.1 * var(--tint-boost))) !important; }
 
 /* ----- Dashboard stat tiles (president/committee dashboard) ----- */
 :root:not([data-theme="dark"]) .dash-stat--total { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }
@@ -6829,12 +7013,33 @@ html, body { overflow-x: hidden; max-width: 100%; }
 [data-theme="light"] .discount-card:nth-of-type(4n+4):hover,
 [data-theme="light"] .discount-card.discount-card--pink:hover { border-color: var(--on-deep-border-hover) !important; }
 [data-theme="light"] .discount-card .card-title { color: var(--on-deep) !important; }
-[data-theme="light"] .discount-card p { color: var(--on-deep-muted) !important; }
+[data-theme="light"] .discount-card p,
+[data-theme="light"] .discount-card .rich-text-list { color: var(--on-deep-muted) !important; }
 [data-theme="light"] .discount-card-badge { background: var(--on-deep-chip-bg) !important; color: var(--on-deep) !important; }
 [data-theme="light"] .discount-code-reveal-btn { background: var(--on-deep-chip-bg) !important; color: var(--on-deep) !important; }
 [data-theme="light"] .discount-code-reveal-btn:hover { background: var(--on-deep-chip-border) !important; }
 [data-theme="light"] .discount-card .discount-code-copy-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 [data-theme="light"] .discount-card .discount-code-copy-btn:hover { color: var(--on-deep) !important; border-color: var(--on-deep-border-hover) !important; }
+[data-theme="light"] .discount-card.discount-card--has-image { background-image: linear-gradient(180deg, rgba(0, 0, 0, 0) 0px, var(--color-surface) 165px), var(--card-bg-image) !important; background-size: 100% 100%, cover !important; background-position: top left, top center !important; background-repeat: no-repeat, no-repeat !important; }
+[data-theme="light"] .discount-usage-label { color: var(--on-deep-muted) !important; }
+[data-theme="light"] .discount-usage-label.is-used { color: var(--on-deep) !important; }
+[data-theme="light"] .discount-usage-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
+[data-theme="light"] .discount-usage-btn:hover { border-color: var(--on-deep-border-hover) !important; background: var(--on-deep-chip-bg) !important; }
+
+/* Same "undo" as the system-preference block above — see that block's
+   comment for why a --has-image card needs its own, non-deep colours. */
+[data-theme="light"] .discount-card--has-image { border-color: var(--color-border-strong) !important; }
+[data-theme="light"] .discount-card--has-image:hover { border-color: var(--color-gold-light) !important; }
+[data-theme="light"] .discount-card--has-image .card-title { color: var(--color-text) !important; }
+[data-theme="light"] .discount-card--has-image p,
+[data-theme="light"] .discount-card--has-image .rich-text-list { color: var(--color-text-muted) !important; }
+[data-theme="light"] .discount-card--has-image .discount-card-badge { background: rgba(var(--gold-rgb), calc(0.2 * var(--tint-boost))) !important; color: var(--color-gold-light) !important; }
+[data-theme="light"] .discount-card--has-image .discount-code-reveal-btn { background: rgba(var(--gold-rgb), calc(0.18 * var(--tint-boost))) !important; color: var(--color-gold-light) !important; }
+[data-theme="light"] .discount-card--has-image .discount-code-copy-btn { color: var(--color-gold-light) !important; border-color: var(--color-border-strong) !important; }
+[data-theme="light"] .discount-card--has-image .discount-usage-label { color: var(--color-text-faint) !important; }
+[data-theme="light"] .discount-card--has-image .discount-usage-label.is-used { color: var(--accent-green) !important; }
+[data-theme="light"] .discount-card--has-image .discount-usage-btn { color: var(--color-text-faint) !important; border-color: var(--color-border-strong) !important; }
+[data-theme="light"] .discount-card--has-image .discount-usage-btn:hover { border-color: var(--color-gold-light) !important; background: rgba(var(--gold-rgb), calc(0.1 * var(--tint-boost))) !important; }
 
 /* ----- Dashboard stat tiles (president/committee dashboard) ----- */
 [data-theme="light"] .dash-stat--total { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }
