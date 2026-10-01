@@ -97,6 +97,19 @@
   --deep-pink-solid: #85174f;
   --deep-blue-solid: #1e4f96;
 
+  /* The dark end of each --deep-* gradient above, as a reusable rgb
+     triple - needed where a rgba(..., alpha) needs to ramp smoothly
+     (e.g. the discount card photo fade below), which a gradient() value
+     like --deep-gold itself can't supply. Deliberately the DARK stop,
+     not the brighter accent --gold-rgb etc. tokens used for small badges
+     - those are too light to hold light on-deep text readable once a
+     photo's own brightness is mixed in underneath. */
+  --deep-gold-dark-rgb: 107, 68, 5;
+  --deep-green-dark-rgb: 13, 61, 34;
+  --deep-purple-dark-rgb: 64, 40, 95;
+  --deep-red-dark-rgb: 122, 16, 21;
+  --deep-pink-dark-rgb: 101, 14, 60;
+
   --on-deep: #fdf8ec;
   --on-deep-muted: rgba(253, 248, 236, 0.82);
   --on-deep-accent: #f0d488;
@@ -4145,28 +4158,34 @@ body.intro-active { overflow: hidden; }
 }
 
 /* Optional partner photo (migration 042's discounts.image_url, repositioned
-   via migration 044's --card-bg-pos). Shows across the WHOLE card, not just
-   a top strip - tinted by the same --deep-* colour the card would already
-   be using (gold/green/red/purple, or pink for Lounge 11 etc.), which is
-   itself a fixed ~86%-opacity gradient, so the photo stays softly visible
-   underneath rather than fading to a flat, opaque cutoff. Because that tint
-   is always dark/deep regardless of site theme, has-image cards also always
-   get the on-deep text treatment (see the light-mode overrides below) in
-   both themes, rather than needing the lighter, theme-flipped colours every
-   other part of a has-image card used to fall back to. --card-bg-image and
-   --card-bg-pos are both set inline per-card (dynamic data, can't live in a
-   static class) - this just wires those custom properties into a real
-   background, layered under the matching --deep-* colour for this card's
-   position/variant. Specified per nth-of-type/pink variant (rather than
-   one rule referencing a variable) so plain CSS custom properties can be
-   avoided for the gradient value itself - --deep-gold etc. are already
-   full gradient() values, not colours, so they can't be swapped via a
-   single custom property the way --card-bg-pos can. */
-.discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: var(--deep-gold), var(--card-bg-image); }
-.discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: var(--deep-green), var(--card-bg-image); }
-.discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: var(--deep-red), var(--card-bg-image); }
-.discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: var(--deep-purple), var(--card-bg-image); }
-.discount-card.discount-card--has-image.discount-card--pink { background-image: var(--deep-pink), var(--card-bg-image); }
+   via migration 044's --card-bg-pos). The photo shows fully at the very
+   top of the card (no text sits there - padding-top below pushes all of
+   it down past the fade), then a vertical tint ramps up quickly to a
+   strong, nearly-opaque version of this card's own colour (gold/green/
+   red/purple, or pink for Lounge 11 etc.) for the rest of the card, where
+   every bit of text lives - never a hard, flat cutoff, just consistently
+   dark enough everywhere text actually sits to stay easily readable, with
+   the photo still faintly there underneath. Because that tint is always
+   dark/deep regardless of site theme, has-image cards also always get the
+   on-deep text treatment (see the light-mode overrides below) in both
+   themes. Built from each colour's own --deep-*-dark-rgb (the dark end of
+   its --deep-* gradient, as a reusable triple - see where it's defined
+   above) rather than --deep-gold itself, since a gradient() value can't
+   supply a third, lower-alpha stop for the top of the card, and rather
+   than the brighter --gold-rgb etc. accent tokens, which measured out at
+   under 3:1 text contrast once a bright bit of photo mixes in underneath
+   - the darker stop comfortably clears 5:1 in the same worst case.
+   --card-bg-image and --card-bg-pos are both set inline per-card (dynamic
+   data, can't live in a static class) - this wires those custom
+   properties into the photo layer, under the tint. */
+.discount-card.discount-card--has-image {
+  padding-top: 148px;
+}
+.discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-gold-dark-rgb), 0.1) 0px, rgba(var(--deep-gold-dark-rgb), 0.94) 136px, rgba(var(--deep-gold-dark-rgb), 0.94) 100%), var(--card-bg-image); }
+.discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-green-dark-rgb), 0.1) 0px, rgba(var(--deep-green-dark-rgb), 0.94) 136px, rgba(var(--deep-green-dark-rgb), 0.94) 100%), var(--card-bg-image); }
+.discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-red-dark-rgb), 0.1) 0px, rgba(var(--deep-red-dark-rgb), 0.94) 136px, rgba(var(--deep-red-dark-rgb), 0.94) 100%), var(--card-bg-image); }
+.discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-purple-dark-rgb), 0.1) 0px, rgba(var(--deep-purple-dark-rgb), 0.94) 136px, rgba(var(--deep-purple-dark-rgb), 0.94) 100%), var(--card-bg-image); }
+.discount-card.discount-card--has-image.discount-card--pink { background-image: linear-gradient(180deg, rgba(var(--deep-pink-dark-rgb), 0.1) 0px, rgba(var(--deep-pink-dark-rgb), 0.94) 136px, rgba(var(--deep-pink-dark-rgb), 0.94) 100%), var(--card-bg-image); }
 .discount-card.discount-card--has-image {
   background-size: 100% 100%, cover;
   background-position: center, var(--card-bg-pos, center);
@@ -6335,6 +6354,16 @@ body.intro-active { overflow: hidden; }
   animation: feed-item-in 0.55s var(--ease-standard) 0.1s forwards;
 }
 
+/* Same standalone (non-grid) wrapper as .mmg-card-wrap, for pages that
+   show the plain membership card on its own - currently just the perks
+   page, so a member can see who they are while browsing discounts. */
+.perks-card-wrap {
+  max-width: 420px;
+  margin: 0 0 var(--space-7);
+  opacity: 0;
+  animation: feed-item-in 0.55s var(--ease-standard) 0.1s forwards;
+}
+
 .mmg-info-card {
   position: relative;
 }
@@ -6933,11 +6962,11 @@ html, body { overflow-x: hidden; max-width: 100%; }
    colour variant (see the base, theme-independent version of these five
    rules for why - same value, just needing !important here to win over
    that reset). */
-:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: var(--deep-gold), var(--card-bg-image) !important; }
-:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: var(--deep-green), var(--card-bg-image) !important; }
-:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: var(--deep-red), var(--card-bg-image) !important; }
-:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: var(--deep-purple), var(--card-bg-image) !important; }
-:root:not([data-theme="dark"]) .discount-card.discount-card--has-image.discount-card--pink { background-image: var(--deep-pink), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-gold-dark-rgb), 0.1) 0px, rgba(var(--deep-gold-dark-rgb), 0.94) 136px, rgba(var(--deep-gold-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-green-dark-rgb), 0.1) 0px, rgba(var(--deep-green-dark-rgb), 0.94) 136px, rgba(var(--deep-green-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-red-dark-rgb), 0.1) 0px, rgba(var(--deep-red-dark-rgb), 0.94) 136px, rgba(var(--deep-red-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-purple-dark-rgb), 0.1) 0px, rgba(var(--deep-purple-dark-rgb), 0.94) 136px, rgba(var(--deep-purple-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card.discount-card--has-image.discount-card--pink { background-image: linear-gradient(180deg, rgba(var(--deep-pink-dark-rgb), 0.1) 0px, rgba(var(--deep-pink-dark-rgb), 0.94) 136px, rgba(var(--deep-pink-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
 :root:not([data-theme="dark"]) .discount-card.discount-card--has-image { background-size: 100% 100%, cover !important; background-position: center, var(--card-bg-pos, center) !important; background-repeat: no-repeat, no-repeat !important; }
 :root:not([data-theme="dark"]) .discount-usage-label { color: var(--on-deep-muted) !important; }
 :root:not([data-theme="dark"]) .discount-usage-label.is-used { color: var(--on-deep) !important; }
@@ -7117,11 +7146,11 @@ html, body { overflow-x: hidden; max-width: 100%; }
 [data-theme="light"] .discount-code-reveal-btn:hover { background: var(--on-deep-chip-border) !important; }
 [data-theme="light"] .discount-card .discount-code-copy-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 [data-theme="light"] .discount-card .discount-code-copy-btn:hover { color: var(--on-deep) !important; border-color: var(--on-deep-border-hover) !important; }
-[data-theme="light"] .discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: var(--deep-gold), var(--card-bg-image) !important; }
-[data-theme="light"] .discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: var(--deep-green), var(--card-bg-image) !important; }
-[data-theme="light"] .discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: var(--deep-red), var(--card-bg-image) !important; }
-[data-theme="light"] .discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: var(--deep-purple), var(--card-bg-image) !important; }
-[data-theme="light"] .discount-card.discount-card--has-image.discount-card--pink { background-image: var(--deep-pink), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-gold-dark-rgb), 0.1) 0px, rgba(var(--deep-gold-dark-rgb), 0.94) 136px, rgba(var(--deep-gold-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-green-dark-rgb), 0.1) 0px, rgba(var(--deep-green-dark-rgb), 0.94) 136px, rgba(var(--deep-green-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-red-dark-rgb), 0.1) 0px, rgba(var(--deep-red-dark-rgb), 0.94) 136px, rgba(var(--deep-red-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-purple-dark-rgb), 0.1) 0px, rgba(var(--deep-purple-dark-rgb), 0.94) 136px, rgba(var(--deep-purple-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card.discount-card--has-image.discount-card--pink { background-image: linear-gradient(180deg, rgba(var(--deep-pink-dark-rgb), 0.1) 0px, rgba(var(--deep-pink-dark-rgb), 0.94) 136px, rgba(var(--deep-pink-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
 [data-theme="light"] .discount-card.discount-card--has-image { background-size: 100% 100%, cover !important; background-position: center, var(--card-bg-pos, center) !important; background-repeat: no-repeat, no-repeat !important; }
 [data-theme="light"] .discount-usage-label { color: var(--on-deep-muted) !important; }
 [data-theme="light"] .discount-usage-label.is-used { color: var(--on-deep) !important; }

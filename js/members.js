@@ -130,6 +130,55 @@
     other: 'Professional'
   };
 
+  var MEMBER_TYPE_LABELS = {
+    member: 'Member',
+    supporting_committee: 'Supporting Committee Member',
+    executive_committee: 'Executive Committee Member',
+    senior_sankofa_mentor: 'Senior Sankofa Mentor',
+    junior_sankofa_mentor: 'Junior Sankofa Mentor'
+  };
+
+  function setText(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value || '-';
+  }
+
+  // Populates just the digital membership card's own fields (not the
+  // "Your details" panel below it on the hub page) — shared by anywhere
+  // .member-card markup with these same element ids is embedded, so the
+  // card itself never has two different implementations to keep in sync
+  // (same spirit as js/main.js's shared card-flip builder, just for the
+  // data instead of the 3D behaviour).
+  function renderMemberCardFields(member) {
+    var courseYear = [member.course, member.year_of_study].filter(Boolean).join(' · ');
+    var typeLabel = MEMBER_TYPE_LABELS[member.member_type] || MEMBER_TYPE_LABELS.member;
+
+    setText('member-full-name', member.full_name);
+    setText('member-course-year', courseYear);
+    setText('member-number', member.membership_number);
+    setText('member-type-badge', typeLabel);
+
+    // committee_role (e.g. "President") is optional free text — only
+    // show it on the card when it's set.
+    var positionEl = document.getElementById('member-position');
+    if (positionEl) {
+      if (member.committee_role) {
+        positionEl.textContent = member.committee_role;
+        positionEl.style.display = '';
+      } else {
+        positionEl.style.display = 'none';
+      }
+    }
+
+    var statusEl = document.getElementById('member-status');
+    if (statusEl) {
+      var status = member.membership_status || 'active';
+      var label = status.charAt(0).toUpperCase() + status.slice(1);
+      statusEl.className = 'member-status-badge member-status-badge--' + status;
+      statusEl.innerHTML = '<span class="member-status-badge-dot" aria-hidden="true"></span>' + label;
+    }
+  }
+
   // A professional has no row in `members` — this is how every gate
   // that already checks the `members` table (nav, homepage perks card,
   // the members hub itself, opportunities, MoTM nominations) also
@@ -1171,51 +1220,27 @@
       if (locked) locked.style.display = isCommittee ? 'none' : '';
     }
 
-    var MEMBER_TYPE_LABELS = {
-      member: 'Member',
-      supporting_committee: 'Supporting Committee Member',
-      executive_committee: 'Executive Committee Member',
-      senior_sankofa_mentor: 'Senior Sankofa Mentor',
-      junior_sankofa_mentor: 'Junior Sankofa Mentor'
-    };
-
     function renderProfile(member, session) {
+      renderMemberCardFields(member);
       var courseYear = [member.course, member.year_of_study].filter(Boolean).join(' · ');
       var typeLabel = MEMBER_TYPE_LABELS[member.member_type] || MEMBER_TYPE_LABELS.member;
 
-      setText('member-full-name', member.full_name);
-      setText('member-course-year', courseYear);
       setText('member-course-year-2', courseYear);
-      setText('member-number', member.membership_number);
       setText('member-number-2', member.membership_number);
       setText('member-email', session.user.email);
-      setText('member-type-badge', typeLabel);
       setText('member-type-2', typeLabel);
 
       // committee_role (e.g. "President") is optional free text — only
-      // show it, on the card and in the details list, when it's set.
-      var positionEl = document.getElementById('member-position');
+      // show it in the details list when it's set (the card's own copy
+      // is handled by renderMemberCardFields above).
       var roleRow = document.getElementById('member-role-row');
       if (member.committee_role) {
-        if (positionEl) {
-          positionEl.textContent = member.committee_role;
-          positionEl.style.display = '';
-        }
         if (roleRow) {
           roleRow.style.display = '';
           setText('member-role-2', member.committee_role);
         }
-      } else {
-        if (positionEl) positionEl.style.display = 'none';
-        if (roleRow) roleRow.style.display = 'none';
-      }
-
-      var statusEl = document.getElementById('member-status');
-      if (statusEl) {
-        var status = member.membership_status || 'active';
-        var label = status.charAt(0).toUpperCase() + status.slice(1);
-        statusEl.className = 'member-status-badge member-status-badge--' + status;
-        statusEl.innerHTML = '<span class="member-status-badge-dot" aria-hidden="true"></span>' + label;
+      } else if (roleRow) {
+        roleRow.style.display = 'none';
       }
 
       document.querySelectorAll('[data-member-name-inline]').forEach(function (el) {
@@ -1268,11 +1293,6 @@
       var proDetails = document.getElementById('member-details-professional');
       if (memberDetails) memberDetails.style.display = 'none';
       if (proDetails) proDetails.style.display = '';
-    }
-
-    function setText(id, value) {
-      var el = document.getElementById(id);
-      if (el) el.textContent = value || '-';
     }
 
     var logoutBtn = document.getElementById('logout-btn');
@@ -1440,6 +1460,15 @@
           if (perksLocked) perksLocked.style.display = 'flex';
           return;
         }
+        // The member's own digital card at the top of the page — same
+        // card as member-hub.html (renderMemberCardFields), just this
+        // page's own copy of the markup. checkIsCommittee above only
+        // selected member_type, so this fetches the full row; committee
+        // members always have one by this point (that's what
+        // checkIsCommittee just confirmed), never a professional.
+        supabaseClient.from('members').select('*').eq('id', session.user.id).maybeSingle().then(function (result) {
+          if (result.data) renderMemberCardFields(result.data);
+        });
         loadPerks();
       });
     });
