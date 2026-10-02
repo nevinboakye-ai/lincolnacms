@@ -1080,3 +1080,11 @@ Run [`db/migrations/056-reset-join-dates-to-this-week.sql`](db/migrations/056-re
 **The member hub's "just joined the Network" banner now only names professionals.** Students who've joined are counted into the "and N others" part instead of being named (e.g. "Dr A, Dr B and 6 others just joined the Network."). If only students joined recently, it just says "N new members just joined the Network." with no names. The Network page's own ticker and "all time" history are unchanged - those still list everyone, professional or student, by name.
 
 **Every existing join event is reset to a random time within the last 5 days (migration 056).** Accounts were added over many weeks before anyone had access, so most had aged out of the banner's 30-day window. Only `network_join_events.created_at` is changed - the real `members.created_at` / `network_professionals.created_at` stay as they were.
+
+## 97. Email log and resend buttons on account requests
+
+Run [`db/migrations/057-account-request-email-log.sql`](db/migrations/057-account-request-email-log.sql).
+
+**Every account request card now has an Emails section** listing each email category (Approval email, Payment reminder) with its latest status - Sent/Failed and when - and a Send/Resend button. Approval email can be (re)sent on approved requests, payment reminder on pending ones; earlier attempts (up to 5) are listed underneath, including the error text for failed ones. The old standalone "Remind to pay" button moved into this section. Every attempt, successful or not, is written to a new `account_request_emails` table by the dashboard itself, so the Edge Function needed no change.
+
+**Failed sends are no longer silent.** Approving a request used to fire the welcome email and only log a console error if it failed, so a failure looked identical to success. Now the approval alert says the email failed and why, and the real reason from the Edge Function/Resend is shown (supabase-js normally hides it behind "non-2xx status code"). Most likely cause if you see "only send testing emails to your own address": `RESEND_FROM_EMAIL` isn't set to an address on a domain verified in Resend, so it's using Resend's sandbox sender, which can only deliver to the Resend account owner's own email.

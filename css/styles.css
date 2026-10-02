@@ -5206,6 +5206,28 @@ body.intro-active { overflow: hidden; }
 }
 .app-card-field-value { font-size: 0.88rem; color: var(--color-text); white-space: pre-wrap; }
 
+/* Emails section on an Account Requests card - one row per email
+   category, with its latest send status and a send/resend button. */
+.request-email-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-1);
+}
+.request-email-info { display: flex; flex-direction: column; gap: 2px; font-size: 0.88rem; }
+.request-email-status { font-size: 0.8rem; color: var(--color-text-faint); }
+.request-email-status.is-sent { color: var(--accent-green); }
+.request-email-status.is-failed { color: #ef8b8f; }
+.request-email-btn { padding: 6px 14px; font-size: 0.82rem; }
+.request-email-history {
+  margin: 4px 0 var(--space-2);
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  overflow-wrap: anywhere;
+}
+
 .app-card-delete-btn {
   margin-top: var(--space-4);
   font-size: 0.76rem;

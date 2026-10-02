@@ -4217,7 +4217,10 @@
           supabaseClient.rpc('president_get_sankofa_mentor_applications'),
           supabaseClient.rpc('president_get_motm_nominations'),
           supabaseClient.rpc('president_get_event_registrations'),
-          isPresident ? supabaseClient.rpc('president_get_account_requests') : Promise.resolve({ data: [], error: null })
+          isPresident ? supabaseClient.rpc('president_get_account_requests') : Promise.resolve({ data: [], error: null }),
+          isPresident
+            ? supabaseClient.from('account_request_emails').select('*').order('created_at', { ascending: false })
+            : Promise.resolve({ data: [], error: null })
         ]);
       }).then(function (results) {
         if (presidentAuthGate) presidentAuthGate.style.display = 'none';
@@ -4308,6 +4311,8 @@
             showSectionLoadError('account-requests-list', 'account-requests-empty', 'requests', results[8].error.message);
           } else {
             var accountRequestsList = results[8].data || [];
+            if (results[9].error) console.warn('Account request email log failed to load (has migration 057 been run?):', results[9].error.message);
+            accountRequestEmailsAll = results[9].error ? [] : (results[9].data || []);
             renderAccountRequests(accountRequestsList);
             var pendingCount = accountRequestsList.filter(function (r) { return r.status === 'pending'; }).length;
             setDashCount('requests', pendingCount + ' pending');
@@ -5132,6 +5137,7 @@
     // instead of typed in fresh (see approveAccountRequest). ----
     var accountRequestsAll = [];
     var accountRequestsFilter = 'pending';
+    var accountRequestEmailsAll = [];
     function renderAccountRequests(list) {
       accountRequestsAll = list;
       renderAccountRequestsFiltered(accountRequestsFilter);
@@ -5171,7 +5177,6 @@
           '<label class="checkbox-option"><input type="checkbox" data-request-paid-toggle data-id="' + escapeHtml(r.id) + '"' + (r.membership_paid ? ' checked' : '') + '> Membership payment confirmed</label>' +
           '</div>' +
           '<div style="display:flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3);">' +
-          '<button type="button" class="btn btn-outline" data-request-remind data-id="' + escapeHtml(r.id) + '">Remind to pay</button>' +
           '<button type="button" class="btn btn-primary" data-request-approve data-id="' + escapeHtml(r.id) + '">Approve &amp; create login</button>' +
           '<button type="button" class="btn btn-outline" data-request-reject data-id="' + escapeHtml(r.id) + '" style="color: #ef8b8f; border-color: #ef8b8f;">Reject</button>' +
           '</div>';
@@ -5193,6 +5198,7 @@
         appCardField('Year of study', r.year_of_study) +
         appCardField('Anything else', r.note) +
         '<div class="app-card-field">' + paidBadge + '</div>' +
+        '<div class="app-card-field" data-request-emails data-id="' + escapeHtml(r.id) + '">' + renderRequestEmailsInner(r) + '</div>' +
         actionsHtml +
         (r.status !== 'pending' ? '<button type="button" class="app-card-delete-btn" data-request-delete data-id="' + escapeHtml(r.id) + '">Remove this request</button>' : '') +
         '</div>' +
@@ -5214,7 +5220,74 @@
       supabaseClient.functions.invoke('send-account-email', {
         body: { type: type, email: request.email, full_name: request.full_name }
       }).then(function (result) {
-        onDone(result.error ? (result.error.message || 'Failed to send the email') : null);
+        return result.error ? describeEmailError(result.error) : null;
+      }).then(function (errorMessage) {
+        // Logged (migration 057) whether it worked or not, so the card's
+        // Emails section shows what was sent and why a send failed.
+        supabaseClient.from('account_request_emails').insert({
+          request_id: request.id,
+          email_type: type,
+          recipient: request.email,
+          status: errorMessage ? 'failed' : 'sent',
+          error: errorMessage ? String(errorMessage).slice(0, 1000) : null
+        }).select().single().then(function (logResult) {
+          if (logResult.error) console.error('Logging the email failed:', logResult.error.message);
+          else accountRequestEmailsAll.unshift(logResult.data);
+          onDone(errorMessage);
+        });
+      });
+    }
+
+    // supabase-js hides the Edge Function's own error text behind a
+    // generic "non-2xx status code" message - the real reason (e.g.
+    // Resend rejecting the recipient) is in the response body.
+    function describeEmailError(error) {
+      if (error && error.context && typeof error.context.json === 'function') {
+        return error.context.json().then(
+          function (body) { return (body && body.error) || error.message || 'Failed to send the email'; },
+          function () { return error.message || 'Failed to send the email'; }
+        );
+      }
+      return Promise.resolve((error && error.message) || 'Failed to send the email');
+    }
+
+    var REQUEST_EMAIL_CATEGORIES = [
+      { type: 'approved', label: 'Approval email', eligibleStatus: 'approved', sendLabel: 'Send', resendLabel: 'Resend' },
+      { type: 'payment_reminder', label: 'Payment reminder', eligibleStatus: 'pending', sendLabel: 'Send reminder', resendLabel: 'Resend reminder' }
+    ];
+    function renderRequestEmailsInner(r) {
+      var rows = REQUEST_EMAIL_CATEGORIES.map(function (cat) {
+        var history = accountRequestEmailsAll.filter(function (m) { return m.request_id === r.id && m.email_type === cat.type; });
+        var canSend = r.status === cat.eligibleStatus;
+        if (!history.length && !canSend) return '';
+        var latest = history[0];
+        var statusHtml;
+        if (!latest) {
+          statusHtml = '<span class="request-email-status">Not sent yet</span>';
+        } else if (latest.status === 'sent') {
+          statusHtml = '<span class="request-email-status is-sent">Sent ' + escapeHtml(timeAgo(latest.created_at)) + '</span>';
+        } else {
+          statusHtml = '<span class="request-email-status is-failed">Failed ' + escapeHtml(timeAgo(latest.created_at)) + '</span>';
+        }
+        var historyHtml = history.length > 1 || (latest && latest.status === 'failed')
+          ? '<div class="request-email-history">' + history.slice(0, 5).map(function (m) {
+              return '<div>' + (m.status === 'sent' ? 'Sent' : 'Failed') + ' - ' +
+                escapeHtml(new Date(m.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) +
+                (m.status === 'failed' && m.error ? ' - ' + escapeHtml(m.error) : '') + '</div>';
+            }).join('') + '</div>'
+          : '';
+        var btnHtml = canSend
+          ? '<button type="button" class="btn btn-outline request-email-btn" data-request-email-send data-type="' + cat.type + '" data-id="' + escapeHtml(r.id) + '">' + (history.length ? cat.resendLabel : cat.sendLabel) + '</button>'
+          : '';
+        return '<div class="request-email-row"><div class="request-email-info"><strong>' + cat.label + '</strong>' + statusHtml + '</div>' + btnHtml + '</div>' + historyHtml;
+      }).join('');
+      return '<div class="app-card-field-label">Emails</div>' + (rows || '<div class="app-card-field-value">Nothing sent.</div>');
+    }
+    function refreshRequestEmails(requestId) {
+      var r = accountRequestsAll.filter(function (x) { return x.id === requestId; })[0];
+      if (!r) return;
+      document.querySelectorAll('[data-request-emails][data-id="' + requestId + '"]').forEach(function (el) {
+        el.innerHTML = renderRequestEmailsInner(r);
       });
     }
 
@@ -5247,14 +5320,14 @@
         }
 
         supabaseClient.rpc('president_mark_account_request_approved', { target_id: r.id, new_member_id: r.auth_user_id }).then(function () {
-          // Best-effort — the account itself is already fully live by
-          // this point regardless of whether this send succeeds, so a
-          // Resend/Edge Function hiccup here is logged, not surfaced as
-          // an approval failure.
+          // The account is already fully live by this point regardless of
+          // whether this send succeeds, so a failed email isn't an approval
+          // failure - it's reported back separately (second argument) and
+          // can be resent from the request's Emails section.
           sendAccountEmail('approved', r, function (emailError) {
             if (emailError) console.error('Welcome email failed to send:', emailError);
+            onDone(null, emailError);
           });
-          onDone(null);
         });
       });
     }
@@ -5960,23 +6033,19 @@
         return;
       }
 
-      var requestRemindBtn = e.target.closest('[data-request-remind]');
-      if (requestRemindBtn) {
-        var remindId = requestRemindBtn.getAttribute('data-id');
-        var remindRequest = accountRequestsAll.filter(function (r) { return r.id === remindId; })[0];
-        if (!remindRequest) return;
-        var remindOriginalText = requestRemindBtn.textContent;
-        requestRemindBtn.disabled = true;
-        requestRemindBtn.textContent = 'Sending…';
-        sendAccountEmail('payment_reminder', remindRequest, function (emailError) {
-          requestRemindBtn.disabled = false;
-          if (emailError) {
-            requestRemindBtn.textContent = remindOriginalText;
-            window.alert("Couldn't send that email: " + emailError);
-            return;
-          }
-          requestRemindBtn.textContent = 'Reminder sent';
-          setTimeout(function () { requestRemindBtn.textContent = remindOriginalText; }, 2500);
+      var emailSendBtn = e.target.closest('[data-request-email-send]');
+      if (emailSendBtn) {
+        var emailReqId = emailSendBtn.getAttribute('data-id');
+        var emailType = emailSendBtn.getAttribute('data-type');
+        var emailRequest = accountRequestsAll.filter(function (r) { return r.id === emailReqId; })[0];
+        if (!emailRequest) return;
+        var alreadySent = accountRequestEmailsAll.some(function (m) { return m.request_id === emailReqId && m.email_type === emailType && m.status === 'sent'; });
+        if (alreadySent && !window.confirm('This email has already been sent to ' + emailRequest.email + '. Send it again?')) return;
+        emailSendBtn.disabled = true;
+        emailSendBtn.textContent = 'Sending…';
+        sendAccountEmail(emailType, emailRequest, function (emailError) {
+          refreshRequestEmails(emailReqId);
+          if (emailError) window.alert("Couldn't send that email: " + emailError);
         });
         return;
       }
@@ -5991,12 +6060,15 @@
         }
         requestApproveBtn.disabled = true;
         requestApproveBtn.textContent = 'Creating account…';
-        approveAccountRequest(approveRequest, function (errorMessage) {
+        approveAccountRequest(approveRequest, function (errorMessage, emailError) {
           if (errorMessage) {
             requestApproveBtn.disabled = false;
             requestApproveBtn.textContent = 'Approve & create login';
             window.alert("Couldn't approve this request: " + errorMessage);
             return;
+          }
+          if (emailError) {
+            window.alert("Approved - but the welcome email failed to send: " + emailError + "\n\nYou can resend it from this request's Emails section.");
           }
           loadPresidentDashboard();
         });
