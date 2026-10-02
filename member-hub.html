@@ -7,7 +7,7 @@
 <title>Members Hub - LACMS</title>
 <meta name="description" content="Your LACMS membership profile and digital membership card.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-56">
+<link rel="stylesheet" href="css/styles.css?v=20260824-57">
 </head>
 <body>
 
@@ -293,7 +293,7 @@
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </span>
         </a>
-        <a class="card quick-link-card quick-link-card--pink" href="member-network.html">
+        <a class="card quick-link-card quick-link-card--pink" id="network-card" href="member-network.html" style="display:none;">
           <span class="quick-link-icon" aria-hidden="true">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><path d="M2 20c0-3.3 2.7-6 6-6h2c3.3 0 6 2.7 6 6"/><circle cx="17" cy="8" r="2.4"/><path d="M22 20c0-2.6-1.8-4.7-4.2-5.4"/></svg>
           </span>
@@ -304,6 +304,14 @@
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </span>
         </a>
+        <div class="card quick-link-card quick-link-card--locked" id="network-locked-card">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          </span>
+          <span class="card-tag card-tag--soon">Coming soon</span>
+          <h3 class="card-title">Meet the LACMS Network</h3>
+          <p>The Network isn't live yet - check back soon.</p>
+        </div>
         <a class="card quick-link-card quick-link-card--purple" id="perks-card" href="member-perks.html">
           <span class="quick-link-icon" aria-hidden="true">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2h7a2 2 0 0 1 2 2v7a2 2 0 0 1-.59 1.41l-8 8a2 2 0 0 1-2.82 0l-7-7a2 2 0 0 1 0-2.82l8-8A2 2 0 0 1 12 2Z"/><circle cx="16.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/></svg>
@@ -450,7 +458,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-56"></script>
-<script src="js/members.js?v=20260824-56"></script>
+<script src="js/main.js?v=20260824-57"></script>
+<script src="js/members.js?v=20260824-57"></script>
 </body>
 </html>

@@ -355,21 +355,23 @@
       .then(function (result) { return result.data || null; });
   }
 
-  function isCommitteeMember(member) {
-    return !!member && (member.member_type === 'executive_committee' || member.member_type === 'supporting_committee');
-  }
-
-  // Perks, Sankofa applications and MoTM nominations are committee-only
-  // for now — "coming soon" for everyone else, including professionals
-  // (who are never committee, so this only ever needs to check
-  // `members`). Shared by the hub, perks, MoTM and Sankofa pages.
-  function checkIsCommittee(session) {
+  // Perks and Sankofa applications used to be committee-only "coming
+  // soon" previews; now open to any signed-in LACMS member (not
+  // professionals, not MMG guests — this only ever checks `members`),
+  // now that real member accounts actually exist via request-account.html
+  // rather than everyone still waiting on a feature with nobody able to
+  // use it yet. Sankofa itself still has its own separate
+  // sankofa_eligible gate on top of this, set per-member by the
+  // committee — this only ever controls whether someone can reach the
+  // page/section at all. Shared by the homepage impact card, the hub,
+  // and the Perks and Sankofa pages themselves.
+  function checkIsMember(session) {
     return supabaseClient
       .from('members')
-      .select('member_type')
+      .select('id')
       .eq('id', session.user.id)
       .maybeSingle()
-      .then(function (result) { return isCommitteeMember(result.data); });
+      .then(function (result) { return !!result.data; });
   }
 
   // ---- Site-wide: "Active members" stat (index.html, about.html) —
@@ -921,17 +923,16 @@
 
   // ---- Homepage: the "Discounts & Opportunities" impact card starts
   // locked (pointing at member-login.html) and only unlocks — new href,
-  // "you have access" badge — for committee members, since the perks
-  // page itself is committee-only for now ("coming soon" for everyone
-  // else). Signed out, non-committee members and professionals all
-  // correctly stay on the locked default. ----
+  // "you have access" badge — for signed-in LACMS members. Signed out,
+  // professionals and MMG guests all correctly stay on the locked
+  // default. ----
   var perksImpactCard = document.getElementById('perks-impact-card');
   if (perksImpactCard) {
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
       if (!session) return;
-      checkIsCommittee(session).then(function (isCommittee) {
-        if (!isCommittee) return;
+      checkIsMember(session).then(function (isMember) {
+        if (!isMember) return;
         perksImpactCard.href = 'member-perks.html';
         var badge = document.getElementById('perks-impact-badge');
         if (badge) {
@@ -1201,6 +1202,11 @@
             }
           });
       }
+
+      // The Network is president-only for now (same as member-network.html
+      // itself enforces) — everyone else sees the locked "coming soon"
+      // variant on this card, same pattern as the Perks/Sankofa pair.
+      togglePair('network-card', 'network-locked-card', session.user.id === PRESIDENT_UID);
     });
 
     var FEED_CATEGORY = {
@@ -1317,7 +1323,10 @@
           if (result.data) {
             if (authGate) authGate.style.display = 'none';
             renderProfile(result.data, session);
-            showHubContent(isCommitteeMember(result.data));
+            // Finding a members row here means they are one, full stop —
+            // Perks/Sankofa are open to every LACMS member now, not just
+            // committee.
+            showHubContent(true);
             return;
           }
           // No members row yet — they might be a member the committee
@@ -1329,7 +1338,7 @@
             if (claimedRow) {
               if (authGate) authGate.style.display = 'none';
               renderProfile(claimedRow, session);
-              showHubContent(isCommitteeMember(claimedRow));
+              showHubContent(true);
               return;
             }
             loadProfessionalProfile(session);
@@ -1360,19 +1369,19 @@
     }
 
     // Shared by both profile types — reveals the hub content/links grid,
-    // and toggles the locked/live variant of each not-yet-launched card
-    // (Perks, Sankofa, MoTM nominations): only committee members see the
-    // real thing right now, everyone else sees a locked "coming soon"
-    // card in its place. MoTM nomination is the one exception — it's
-    // open to every member and professional (not committee-only, see
-    // motm.html's own nomination form), so its card always shows
-    // unlocked here rather than following the isCommittee gate.
-    function showHubContent(isCommittee) {
+    // and toggles the locked/live variant of the Perks and Sankofa
+    // cards: open to any LACMS member (isMember), locked for anyone
+    // else (professionals, or — in practice never reached, since
+    // showHubContent(false) is always passed for them — see below).
+    // MoTM nomination is open to every member and professional alike
+    // (not gated at all, see motm.html's own nomination form), so its
+    // card always shows unlocked here regardless of isMember.
+    function showHubContent(isMember) {
       hubContent.style.display = '';
       var linksSection = document.getElementById('member-hub-content-links');
       if (linksSection) linksSection.style.display = '';
-      togglePair('perks-card', 'perks-locked-card', isCommittee);
-      togglePair('sankofa-apply-card', 'sankofa-coming-soon-card', isCommittee);
+      togglePair('perks-card', 'perks-locked-card', isMember);
+      togglePair('sankofa-apply-card', 'sankofa-coming-soon-card', isMember);
       togglePair('motm-nominate-card', 'motm-locked-card', true);
     }
 
@@ -1679,18 +1688,18 @@
         return;
       }
       isPresidentViewer = session.user.id === PRESIDENT_UID;
-      checkIsCommittee(session).then(function (isCommittee) {
-        if (!isCommittee) {
+      checkIsMember(session).then(function (isMember) {
+        if (!isMember) {
           if (perksAuthGate) perksAuthGate.style.display = 'none';
           if (perksLocked) perksLocked.style.display = 'flex';
           return;
         }
         // The member's own digital card at the top of the page — same
         // card as member-hub.html (renderMemberCardFields), just this
-        // page's own copy of the markup. checkIsCommittee above only
-        // selected member_type, so this fetches the full row; committee
-        // members always have one by this point (that's what
-        // checkIsCommittee just confirmed), never a professional.
+        // page's own copy of the markup. checkIsMember above only
+        // selected id, so this fetches the full row; a members row is
+        // guaranteed to exist by this point (that's what checkIsMember
+        // just confirmed), never a professional.
         supabaseClient.from('members').select('*').eq('id', session.user.id).maybeSingle().then(function (result) {
           if (result.data) renderMemberCardFields(result.data);
         });
@@ -2397,9 +2406,10 @@
   // (Mentor applications moved off this page entirely — see sankofa.html's
   // apply modal, which is a public, no-account short form submitting
   // straight into sankofa_mentor_applications, reviewed on the president
-  // dashboard.) Committee-gated, sankofa_eligible-gated, and closes 11
-  // October 2026 — enforced again in the DB by migration 029's trigger,
-  // this client-side check just gives a friendlier message. ----
+  // dashboard.) Open to any LACMS member, sankofa_eligible-gated on top
+  // of that (set per-member by the committee), and closes 11 October
+  // 2026 — enforced again in the DB by migration 029's trigger, this
+  // client-side check just gives a friendlier message. ----
   var sankofaFormWrap = document.getElementById('sankofa-form-wrap');
   var sankofaAlreadyApplied = document.getElementById('sankofa-already-applied');
   var sankofaNotEligible = document.getElementById('sankofa-not-eligible');
@@ -2416,8 +2426,8 @@
       }
       sankofaSession = session;
 
-      checkIsCommittee(session).then(function (isCommittee) {
-        if (!isCommittee) {
+      checkIsMember(session).then(function (isMember) {
+        if (!isMember) {
           if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
           var comingSoonNote = document.getElementById('sankofa-coming-soon-note');
           if (comingSoonNote) comingSoonNote.style.display = 'flex';
