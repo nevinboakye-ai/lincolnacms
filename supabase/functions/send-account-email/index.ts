@@ -37,6 +37,13 @@
 // every other privileged action on this site already uses (see
 // migration 025) - it never trusts a client-supplied "I'm the
 // president" flag, since that would just be a value anyone could send.
+//
+// CORS: a browser calling this (which is the only way it's ever called
+// - supabase.functions.invoke() from js/members.js) sends a preflight
+// OPTIONS request first, and refuses to even make the real POST if that
+// preflight doesn't come back with the right Access-Control-* headers.
+// Supabase doesn't add these automatically, so every response below -
+// including the OPTIONS short-circuit - carries them explicitly.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -44,6 +51,19 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 const RESEND_FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'LACMS <onboarding@resend.dev>';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+};
+
+function jsonResponse(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
 
 type EmailType = 'approved' | 'payment_reminder';
 
@@ -77,8 +97,11 @@ const TEMPLATES: Record<EmailType, (fullName: string) => { subject: string; html
 };
 
 Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+    return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
   try {
@@ -88,7 +111,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: isPresident, error: authError } = await supabase.rpc('is_president');
     if (authError || !isPresident) {
-      return new Response(JSON.stringify({ error: 'Not authorized' }), { status: 403 });
+      return jsonResponse({ error: 'Not authorized' }, 403);
     }
 
     const body = await req.json();
@@ -98,7 +121,7 @@ Deno.serve(async (req: Request) => {
 
     const template = TEMPLATES[type];
     if (!template || !email || !fullName) {
-      return new Response(JSON.stringify({ error: 'Invalid request - need a known type, email and full_name' }), { status: 400 });
+      return jsonResponse({ error: 'Invalid request - need a known type, email and full_name' }, 400);
     }
 
     const { subject, html } = template(fullName);
@@ -114,14 +137,11 @@ Deno.serve(async (req: Request) => {
 
     if (!resendResponse.ok) {
       const errText = await resendResponse.text();
-      return new Response(JSON.stringify({ error: 'Resend error: ' + errText }), { status: 502 });
+      return jsonResponse({ error: 'Resend error: ' + errText }, 502);
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return jsonResponse({ ok: true }, 200);
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+    return jsonResponse({ error: String(e) }, 500);
   }
 });
