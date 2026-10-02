@@ -83,6 +83,30 @@
     });
   }
 
+  // A brand new signUp() account occasionally isn't visible yet to the
+  // very next query that references it by foreign key (members.id,
+  // mmg_guests.id -> auth.users.id) - an eventual-consistency gap, not a
+  // real failure, that shows up as "violates foreign key constraint
+  // ..._id_fkey" on the profile insert that immediately follows signUp()
+  // everywhere this site creates an account (Create Account, and
+  // approving an account request). Retries a few times with backoff
+  // specifically for that one Postgres error code (23503, foreign_key_
+  // violation) before giving up for real - it almost always resolves
+  // within a second or two. insertFn is a thunk (not an already-started
+  // request) so each retry is a genuinely new attempt, not a reused,
+  // already-settled promise.
+  function insertWithFkRetry(insertFn, attempt) {
+    attempt = attempt || 1;
+    return insertFn().then(function (result) {
+      if (result.error && result.error.code === '23503' && attempt < 5) {
+        return new Promise(function (resolve) {
+          setTimeout(function () { resolve(insertWithFkRetry(insertFn, attempt + 1)); }, 500 * attempt);
+        });
+      }
+      return result;
+    });
+  }
+
   function showMessage(el, message) {
     if (!el) return;
     el.textContent = message;
@@ -195,17 +219,35 @@
   if (requestAccountForm) {
     var requestCourseSelect = document.getElementById('request-course');
     var requestYearSelect = document.getElementById('request-year');
+    var requestCourseOtherWrap = document.getElementById('request-course-other-wrap');
+    var requestCourseOtherInput = document.getElementById('request-course-other');
     LACMS_COURSES.forEach(function (c) {
       var opt = document.createElement('option');
       opt.value = c;
       opt.textContent = c;
       requestCourseSelect.appendChild(opt);
     });
+    // "Other" is deliberately not part of the shared LACMS_COURSES list
+    // (that one also feeds the Network page's course grouping and the
+    // dashboard's course field, where a literal "Other" entry wouldn't
+    // mean anything) - it only exists here, as an escape hatch for a
+    // course that isn't one of LACMS's usual ones yet.
+    var otherOpt = document.createElement('option');
+    otherOpt.value = 'Other';
+    otherOpt.textContent = 'Other';
+    requestCourseSelect.appendChild(otherOpt);
     LACMS_YEARS.forEach(function (y) {
       var opt = document.createElement('option');
       opt.value = y;
       opt.textContent = y;
       requestYearSelect.appendChild(opt);
+    });
+
+    requestCourseSelect.addEventListener('change', function () {
+      var isOther = requestCourseSelect.value === 'Other';
+      requestCourseOtherWrap.style.display = isOther ? '' : 'none';
+      requestCourseOtherInput.required = isOther;
+      if (!isOther) requestCourseOtherInput.value = '';
     });
 
     requestAccountForm.addEventListener('submit', function (e) {
@@ -215,12 +257,16 @@
 
       var name = document.getElementById('request-name').value.trim();
       var email = document.getElementById('request-email').value.trim();
-      var course = requestCourseSelect.value;
+      var course = requestCourseSelect.value === 'Other'
+        ? requestCourseOtherInput.value.trim()
+        : requestCourseSelect.value;
       var year = requestYearSelect.value;
       var note = document.getElementById('request-note').value.trim();
 
       if (!name || !email || !course || !year) {
-        showMessage(statusEl, 'Fill in your name, email, course and year.');
+        showMessage(statusEl, requestCourseSelect.value === 'Other' && !course
+          ? 'Tell us what course you\'re on.'
+          : 'Fill in your name, email, course and year.');
         return;
       }
 
@@ -5051,13 +5097,15 @@
         var newUserId = signUpResult.data.user.id;
         var needsPasswordEmail = !!signUpResult.data.session;
 
-        supabaseClient.from('members').insert({
-          id: newUserId,
-          full_name: r.full_name,
-          course: r.course,
-          year_of_study: r.year_of_study,
-          member_type: 'member',
-          membership_status: 'active'
+        insertWithFkRetry(function () {
+          return supabaseClient.from('members').insert({
+            id: newUserId,
+            full_name: r.full_name,
+            course: r.course,
+            year_of_study: r.year_of_study,
+            member_type: 'member',
+            membership_status: 'active'
+          });
         }).then(function (insertResult) {
           if (insertResult.error) {
             onDone("The login was created, but saving their profile failed (" + insertResult.error.message + "). Finish it from Table Editor using this account id: " + newUserId);
@@ -5615,39 +5663,45 @@
           // case it shouldn't have, and skipped the one case it should.)
           var needsPasswordEmail = !!signUpResult.data.session;
 
-          var profileInsert;
+          var profileInsertFn;
           if (currentAccountType === 'member') {
-            profileInsert = supabaseClient.from('members').insert({
-              id: newUserId,
-              full_name: name,
-              course: document.getElementById('create-member-course').value.trim() || null,
-              year_of_study: normalizeYearOfStudy(document.getElementById('create-member-year').value) || null,
-              member_type: document.getElementById('create-member-type').value,
-              committee_role: document.getElementById('create-member-role').value.trim() || null,
-              sankofa_eligible: document.getElementById('create-member-sankofa').checked,
-              mmg_attendee: document.getElementById('create-member-mmg-attendee').checked,
-              mmg_committee: document.getElementById('create-member-mmg-committee').checked
-            });
+            profileInsertFn = function () {
+              return supabaseClient.from('members').insert({
+                id: newUserId,
+                full_name: name,
+                course: document.getElementById('create-member-course').value.trim() || null,
+                year_of_study: normalizeYearOfStudy(document.getElementById('create-member-year').value) || null,
+                member_type: document.getElementById('create-member-type').value,
+                committee_role: document.getElementById('create-member-role').value.trim() || null,
+                sankofa_eligible: document.getElementById('create-member-sankofa').checked,
+                mmg_attendee: document.getElementById('create-member-mmg-attendee').checked,
+                mmg_committee: document.getElementById('create-member-mmg-committee').checked
+              });
+            };
           } else if (currentAccountType === 'professional') {
-            profileInsert = supabaseClient.from('network_professionals').insert({
-              user_id: newUserId,
-              email: email,
-              full_name: name,
-              title: document.getElementById('create-pro-title').value.trim() || 'Professional',
-              organisation: document.getElementById('create-pro-organisation').value.trim() || null,
-              category: document.getElementById('create-pro-category').value,
-              linkedin_url: document.getElementById('create-pro-linkedin').value.trim() || null
-            });
+            profileInsertFn = function () {
+              return supabaseClient.from('network_professionals').insert({
+                user_id: newUserId,
+                email: email,
+                full_name: name,
+                title: document.getElementById('create-pro-title').value.trim() || 'Professional',
+                organisation: document.getElementById('create-pro-organisation').value.trim() || null,
+                category: document.getElementById('create-pro-category').value,
+                linkedin_url: document.getElementById('create-pro-linkedin').value.trim() || null
+              });
+            };
           } else {
-            profileInsert = supabaseClient.from('mmg_guests').insert({
-              id: newUserId,
-              full_name: name,
-              university: document.getElementById('create-mmg-university').value.trim() || 'Not set',
-              access_level: document.getElementById('create-mmg-access').value
-            });
+            profileInsertFn = function () {
+              return supabaseClient.from('mmg_guests').insert({
+                id: newUserId,
+                full_name: name,
+                university: document.getElementById('create-mmg-university').value.trim() || 'Not set',
+                access_level: document.getElementById('create-mmg-access').value
+              });
+            };
           }
 
-          profileInsert.then(function (profileResult) {
+          insertWithFkRetry(profileInsertFn).then(function (profileResult) {
             if (profileResult.error) {
               btn.disabled = false;
               statusEl.style.color = '#ef8b8f';
