@@ -1323,10 +1323,10 @@
           if (result.data) {
             if (authGate) authGate.style.display = 'none';
             renderProfile(result.data, session);
-            // Finding a members row here means they are one, full stop —
-            // Perks/Sankofa are open to every LACMS member now, not just
-            // committee.
-            showHubContent(true);
+            // Perks is open to every LACMS member now, not just
+            // committee; Sankofa is Medicine-only — showHubContent reads
+            // the row itself to work out which cards to show.
+            showHubContent(result.data);
             return;
           }
           // No members row yet — they might be a member the committee
@@ -1338,7 +1338,7 @@
             if (claimedRow) {
               if (authGate) authGate.style.display = 'none';
               renderProfile(claimedRow, session);
-              showHubContent(true);
+              showHubContent(claimedRow);
               return;
             }
             loadProfessionalProfile(session);
@@ -1362,26 +1362,31 @@
             return;
           }
           renderProfessionalProfile(proRow, session);
-          // Professionals are never committee members.
-          showHubContent(false);
+          // Professionals have no members row, so no course to check —
+          // every one of these cards stays locked/hidden for them.
+          showHubContent(null);
         });
       });
     }
 
     // Shared by both profile types — reveals the hub content/links grid,
-    // and toggles the locked/live variant of the Perks and Sankofa
-    // cards: open to any LACMS member (isMember), locked for anyone
-    // else (professionals, or — in practice never reached, since
-    // showHubContent(false) is always passed for them — see below).
-    // MoTM nomination is open to every member and professional alike
-    // (not gated at all, see motm.html's own nomination form), so its
-    // card always shows unlocked here regardless of isMember.
-    function showHubContent(isMember) {
+    // toggles the locked/live Perks card (open to any LACMS member),
+    // and shows the Sankofa card only for Medicine members specifically
+    // — not a locked/"coming soon" state, just not shown at all for
+    // anyone else, since it's a real, live feature that simply isn't
+    // for them rather than something not built yet. MoTM nomination is
+    // open to every member and professional alike (not gated at all,
+    // see motm.html's own nomination form), so its card always shows
+    // unlocked here regardless. `member` is the signed-in member's own
+    // row, or null for a professional (who gets every one of these
+    // locked/hidden, same as before).
+    function showHubContent(member) {
       hubContent.style.display = '';
       var linksSection = document.getElementById('member-hub-content-links');
       if (linksSection) linksSection.style.display = '';
-      togglePair('perks-card', 'perks-locked-card', isMember);
-      togglePair('sankofa-apply-card', 'sankofa-coming-soon-card', isMember);
+      togglePair('perks-card', 'perks-locked-card', !!member);
+      var sankofaCard = document.getElementById('sankofa-apply-card');
+      if (sankofaCard) sankofaCard.style.display = (member && member.course === 'Medicine') ? '' : 'none';
       togglePair('motm-nominate-card', 'motm-locked-card', true);
     }
 
@@ -2406,10 +2411,12 @@
   // (Mentor applications moved off this page entirely — see sankofa.html's
   // apply modal, which is a public, no-account short form submitting
   // straight into sankofa_mentor_applications, reviewed on the president
-  // dashboard.) Open to any LACMS member, sankofa_eligible-gated on top
-  // of that (set per-member by the committee), and closes 11 October
-  // 2026 — enforced again in the DB by migration 029's trigger, this
-  // client-side check just gives a friendlier message. ----
+  // dashboard.) Medicine members only now (not Pharmacy, not the old
+  // manual "Sankofa eligible" checkbox) — automatic, based on the
+  // member's own course, not something the committee has to flag
+  // per-person. Also closes 11 October 2026 — both rules enforced again
+  // in the DB by migration 054's trigger, this client-side check just
+  // gives a friendlier message. ----
   var sankofaFormWrap = document.getElementById('sankofa-form-wrap');
   var sankofaAlreadyApplied = document.getElementById('sankofa-already-applied');
   var sankofaNotEligible = document.getElementById('sankofa-not-eligible');
@@ -2435,12 +2442,12 @@
         }
         supabaseClient
           .from('members')
-          .select('sankofa_eligible')
+          .select('course')
           .eq('id', session.user.id)
           .single()
           .then(function (result) {
             if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
-            if (result.error || !result.data || !result.data.sankofa_eligible) {
+            if (result.error || !result.data || result.data.course !== 'Medicine') {
               if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
               return;
             }
