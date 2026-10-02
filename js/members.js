@@ -257,16 +257,17 @@
 
       var name = document.getElementById('request-name').value.trim();
       var email = document.getElementById('request-email').value.trim();
+      var studentNumber = document.getElementById('request-student-number').value.trim();
       var course = requestCourseSelect.value === 'Other'
         ? requestCourseOtherInput.value.trim()
         : requestCourseSelect.value;
       var year = requestYearSelect.value;
       var note = document.getElementById('request-note').value.trim();
 
-      if (!name || !email || !course || !year) {
+      if (!name || !email || !studentNumber || !course || !year) {
         showMessage(statusEl, requestCourseSelect.value === 'Other' && !course
           ? 'Tell us what course you\'re on.'
-          : 'Fill in your name, email, course and year.');
+          : 'Fill in your name, email, student number, course and year.');
         return;
       }
 
@@ -277,7 +278,7 @@
 
       supabaseClient
         .from('account_requests')
-        .insert({ full_name: name, email: email, course: course, year_of_study: year, note: note || null })
+        .insert({ full_name: name, email: email, student_number: studentNumber, course: course, year_of_study: year, note: note || null })
         .then(function (result) {
           if (result.error) {
             btn.disabled = false;
@@ -5050,6 +5051,7 @@
         '</div>' +
         '<div class="app-card-body">' +
         appCardField('Email', r.email) +
+        appCardField('Student number', r.student_number) +
         appCardField('Course', r.course) +
         appCardField('Year of study', r.year_of_study) +
         appCardField('Anything else', r.note) +
@@ -5114,6 +5116,7 @@
             full_name: r.full_name,
             course: r.course,
             year_of_study: r.year_of_study,
+            student_number: r.student_number,
             member_type: 'member',
             membership_status: 'active'
           });
@@ -5379,6 +5382,7 @@
         '<div data-edit-fields="member" style="display:none;">' +
         '<div class="field"><label for="edit-member-course">Course</label><input type="text" id="edit-member-course" list="create-course-options"></div>' +
         '<div class="field"><label for="edit-member-year">Year of study</label><input type="text" id="edit-member-year" placeholder="e.g. Year 2, Foundation Doctor"></div>' +
+        '<div class="field"><label for="edit-member-student-number">Student number <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label><input type="text" id="edit-member-student-number"></div>' +
         '<div class="field"><label for="edit-member-status">Membership status</label><select id="edit-member-status"><option value="active">Active</option><option value="expired">Expired</option><option value="pending">Pending</option></select></div>' +
         '<div class="field"><label for="edit-member-type">Member type</label><select id="edit-member-type">' +
         '<option value="member">Member</option><option value="supporting_committee">Supporting committee</option><option value="executive_committee">Executive committee</option><option value="senior_sankofa_mentor">Senior Sankofa mentor</option><option value="junior_sankofa_mentor">Junior Sankofa mentor</option>' +
@@ -5462,6 +5466,7 @@
         if (type === 'member') {
           document.getElementById('edit-member-course').value = row.course || '';
           document.getElementById('edit-member-year').value = row.year_of_study || '';
+          document.getElementById('edit-member-student-number').value = row.student_number || '';
           document.getElementById('edit-member-status').value = row.membership_status || 'active';
           document.getElementById('edit-member-type').value = row.member_type || 'member';
           document.getElementById('edit-member-role').value = row.committee_role || '';
@@ -5499,6 +5504,7 @@
           full_name: name,
           course: document.getElementById('edit-member-course').value.trim() || null,
           year_of_study: normalizeYearOfStudy(document.getElementById('edit-member-year').value) || null,
+          student_number: document.getElementById('edit-member-student-number').value.trim() || null,
           membership_status: document.getElementById('edit-member-status').value,
           member_type: document.getElementById('edit-member-type').value,
           committee_role: document.getElementById('edit-member-role').value.trim() || null,
@@ -5691,6 +5697,7 @@
                 full_name: name,
                 course: document.getElementById('create-member-course').value.trim() || null,
                 year_of_study: normalizeYearOfStudy(document.getElementById('create-member-year').value) || null,
+                student_number: document.getElementById('create-member-student-number').value.trim() || null,
                 member_type: document.getElementById('create-member-type').value,
                 committee_role: document.getElementById('create-member-role').value.trim() || null,
                 sankofa_eligible: document.getElementById('create-member-sankofa').checked,

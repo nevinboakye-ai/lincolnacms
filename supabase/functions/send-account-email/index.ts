@@ -65,34 +65,100 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
+// full_name ultimately traces back to the public request form (even for
+// an email triggered from the dashboard, it's still whatever text the
+// original requester typed in) - escaped before going into an HTML
+// email for the same reason every database field gets escaped before
+// going into the site's own HTML elsewhere.
+function escapeHtml(str: string) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ---------------------------------------------------------------------
+// Branded HTML shell - every real email client strips <link>/external
+// stylesheets and many strip <style> blocks too, so this is all inline
+// styles on purpose, not an oversight. Colours and fonts are pulled
+// straight from css/styles.css's own tokens (--color-gold #d4a62b,
+// --font-display's Georgia/serif fallback, --font-body's system-font
+// fallback) rather than the actual web fonts, since those can't load in
+// an email anyway - this uses exactly what the site already falls back
+// to for anyone without them.
+// ---------------------------------------------------------------------
+
+const LOGO_URL = 'https://lincolnacms.uk/Media/ACMS%20Branding/logo.png';
+const GOLD = '#d4a62b';
+const SERIF = 'Georgia, "Times New Roman", serif';
+const SANS = '-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
+
+function emailButton(href: string, label: string) {
+  return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 24px 0;"><tr><td style="border-radius:8px; background:' + GOLD + ';">' +
+    '<a href="' + href + '" style="display:inline-block; padding:12px 24px; font-family:' + SANS + '; font-size:15px; font-weight:700; color:#1a1500; text-decoration:none; border-radius:8px;">' + label + '</a>' +
+    '</td></tr></table>';
+}
+
+function renderEmailShell(preheader: string, bodyHtml: string) {
+  return (
+    '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>' +
+    '<body style="margin:0; padding:0; background:#0a0a0c;">' +
+    '<div style="display:none; max-height:0; overflow:hidden; opacity:0;">' + preheader + '</div>' +
+    '<div style="padding: 32px 16px; font-family:' + SANS + ';">' +
+    '<div style="max-width:480px; margin:0 auto; background:#141414; border-radius:14px; overflow:hidden; border:1px solid rgba(212,166,43,0.3);">' +
+    '<div style="height:5px; background:linear-gradient(90deg, #d4a62b 0%, #d4a62b 33%, #1e7a46 33%, #1e7a46 66%, #c1272d 66%, #c1272d 100%);"></div>' +
+    '<div style="padding:32px 32px 4px; text-align:center;">' +
+    '<img src="' + LOGO_URL + '" width="56" height="56" alt="LACMS" style="border-radius:50%; display:inline-block;">' +
+    '<div style="margin-top:12px; color:' + GOLD + '; font-weight:700; letter-spacing:0.08em; font-size:13px; text-transform:uppercase; font-family:' + SANS + ';">LACMS</div>' +
+    '<div style="color:#837e73; font-size:11px; margin-top:2px; font-family:' + SANS + ';">Lincoln African Caribbean Medical Society</div>' +
+    '</div>' +
+    '<div style="padding:12px 32px 8px; color:#f5f1e6; font-family:' + SANS + '; font-size:15px; line-height:1.65;">' +
+    bodyHtml +
+    '</div>' +
+    '<div style="padding:20px 32px 28px; border-top:1px solid rgba(255,255,255,0.08); margin-top:12px; text-align:center; font-family:' + SANS + '; font-size:12px; color:#837e73;">' +
+    'University of Lincoln, Brayford Pool, Lincoln<br>' +
+    '<a href="mailto:acms@lincolnsu.com" style="color:' + GOLD + '; text-decoration:none;">acms@lincolnsu.com</a>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '</body></html>'
+  );
+}
+
 type EmailType = 'approved' | 'payment_reminder';
 
 const TEMPLATES: Record<EmailType, (fullName: string) => { subject: string; html: string }> = {
   approved: (fullName) => ({
     subject: 'Your LACMS account is live!',
-    html:
-      '<p>Hi ' + fullName + ',</p>' +
-      '<p>Good news - your LACMS account has been approved and is ready to go. Check your inbox for a separate email with a link to set your password, then you\'re straight in.</p>' +
-      '<p>Once you\'re signed in, you can start using:</p>' +
-      '<ul>' +
+    html: renderEmailShell(
+      "You're officially in - here's what's waiting for you.",
+      '<h1 style="font-family:' + SERIF + '; font-size:22px; font-weight:400; color:#f5f1e6; margin:8px 0 4px;">Welcome to LACMS, ' + fullName + '.</h1>' +
+      '<p>Good news - your account has been approved and is ready to go. Check your inbox for a separate email with a link to set your password, then you\'re straight in.</p>' +
+      '<p style="margin-bottom:6px;">Once you\'re signed in, you can start using:</p>' +
+      '<ul style="margin:0 0 8px; padding-left:20px;">' +
       '<li>Your digital membership card</li>' +
       '<li>Partner discounts and perks</li>' +
       '<li>Sankofa Circle mentorship</li>' +
       '<li>The LACMS Network</li>' +
       '<li>Members-first opportunities, events and more</li>' +
       '</ul>' +
-      '<p><a href="https://lincolnacms.uk/member-login.html">Log in to LACMS</a></p>' +
-      '<p>Welcome to LACMS!</p>' +
-      '<p>- The LACMS Committee</p>'
+      emailButton('https://lincolnacms.uk/member-login.html', 'Log in to LACMS') +
+      '<p style="color:#b5b0a3;">Welcome to the family - we\'re glad you\'re here.</p>' +
+      '<p style="color:#b5b0a3; margin-bottom:0;">- The LACMS Committee</p>'
+    )
   }),
   payment_reminder: (fullName) => ({
     subject: "Finish joining LACMS - membership payment needed",
-    html:
-      '<p>Hi ' + fullName + ',</p>' +
+    html: renderEmailShell(
+      'One quick step left before we can get your account set up.',
+      '<h1 style="font-family:' + SERIF + '; font-size:22px; font-weight:400; color:#f5f1e6; margin:8px 0 4px;">Almost there, ' + fullName + '.</h1>' +
       '<p>Thanks for requesting your LACMS account! Before we can approve it, we need your membership payment to have gone through the University of Lincoln Students\' Union.</p>' +
-      '<p>If you haven\'t already, you can join/pay here: <a href="https://lincolnsu.com/activities/view/acs-medical">lincolnsu.com/activities/view/acs-medical</a></p>' +
-      '<p>Once that\'s done, get in touch at acms@lincolnsu.com and we\'ll get your account approved.</p>' +
-      '<p>- The LACMS Committee</p>'
+      '<p>If you haven\'t already, you can join/pay here:</p>' +
+      emailButton('https://lincolnsu.com/activities/view/acs-medical', 'Join via the Students\' Union') +
+      '<p>Once that\'s done, get in touch at <a href="mailto:acms@lincolnsu.com" style="color:' + GOLD + ';">acms@lincolnsu.com</a> and we\'ll get your account approved.</p>' +
+      '<p style="color:#b5b0a3; margin-bottom:0;">- The LACMS Committee</p>'
+    )
   })
 };
 
@@ -124,7 +190,7 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: 'Invalid request - need a known type, email and full_name' }, 400);
     }
 
-    const { subject, html } = template(fullName);
+    const { subject, html } = template(escapeHtml(fullName));
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',

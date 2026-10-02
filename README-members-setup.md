@@ -1005,3 +1005,13 @@ Run [`db/migrations/051-account-requests-year-list.sql`](db/migrations/051-accou
 The function checks `is_president()` itself before sending anything, using whoever's actually signed in and clicking the button - the same authorization boundary every other privileged action on this site already uses, not something the browser could fake. If the function isn't deployed yet, or a secret's missing, Approve/Remind still work for their main job (creating the account, or just telling you it failed) - only the email itself won't go out, and you'll see a clear error rather than it silently not happening.
 
 **Year of study also changed**: Year 6 is gone, replaced with a Foundation Year option at the start and a Masters option at the end - so the full list is now Foundation Year, Year 1-5, Masters.
+
+## 88. CORS fix, student number, and branded emails
+
+Run [`db/migrations/052-student-number.sql`](db/migrations/052-student-number.sql). Redeploy [`supabase/functions/send-account-email/index.ts`](supabase/functions/send-account-email/index.ts) with its latest contents (open the function in the Supabase dashboard's editor, replace everything with the current file, Deploy again - same function, no need to create a new one).
+
+**Fixed "Failed to send a request to the Edge Function"** - a browser calling an Edge Function sends a quick preflight check first, which Supabase doesn't approve automatically; the function needed to explicitly say it accepts browser requests (CORS headers) and didn't. Every response from it, including that preflight, now carries them.
+
+**Student number** is now collected on the request form - required, sits right under email - and carried through to the real `members` row once approved, mainly so it can be cross-checked against the Students' Union's own membership records if a payment ever needs confirming by more than name/email alone. Also addable from the dashboard's Create Account form and from an existing member's Edit Account modal (optional in both, since there's no way to require it retroactively for members who already exist).
+
+**The two automatic emails now actually look like they're from LACMS**, not a plain, unstyled block of text: the LACMS crest, the gold/green/red tricolor strip the rest of the site uses everywhere, a serif heading in the same font family as the site's own headings (with the same web-safe fallback, since email clients can't load the real web font anyway), a proper gold call-to-action button instead of a bare link, and a footer with the university address and contact email. Built with inline styles throughout rather than a stylesheet, since most email clients strip anything that isn't inline.
