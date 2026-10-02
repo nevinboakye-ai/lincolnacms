@@ -4320,6 +4320,17 @@ body.intro-active { overflow: hidden; }
 .discount-usage-btn:hover { color: var(--color-gold-light); border-color: var(--color-gold-light); background: rgba(var(--gold-rgb), calc(0.1 * var(--tint-boost))); }
 .discount-usage-btn:disabled { opacity: 0.6; cursor: default; }
 
+/* "Undo" state (migration 055) - a fixed red tone rather than a theme
+   token, same reasoning as the account-dashboard's own reject/error
+   colour (#ef8b8f): it needs to read as "this reverses something"
+   regardless of theme or which deep card colour it's sitting on, not
+   shift with light/dark mode the way the button's normal gold accent
+   does. Needs its own !important overrides below alongside the
+   button's normal ones, for the same reason those exist - a has-image
+   or light-mode deep card already forces this button's colour. */
+.discount-usage-btn.is-undo { color: #ef8b8f; border-color: rgba(239, 139, 143, 0.5); }
+.discount-usage-btn.is-undo:hover { color: #ef8b8f; border-color: #ef8b8f; background: rgba(193, 39, 45, 0.14); }
+
 /* President-only photo upload, floating in the card's top-right corner.
    Fixed dark/white rather than theme tokens - this sits on top of six
    different card colours (plus the --has-image photo zone) in both
@@ -7026,6 +7037,8 @@ html, body { overflow-x: hidden; max-width: 100%; }
 :root:not([data-theme="dark"]) .discount-usage-label.is-used { color: var(--on-deep) !important; }
 :root:not([data-theme="dark"]) .discount-usage-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 :root:not([data-theme="dark"]) .discount-usage-btn:hover { border-color: var(--on-deep-border-hover) !important; background: var(--on-deep-chip-bg) !important; }
+:root:not([data-theme="dark"]) .discount-usage-btn.is-undo { color: #ef8b8f !important; border-color: rgba(239, 139, 143, 0.6) !important; }
+:root:not([data-theme="dark"]) .discount-usage-btn.is-undo:hover { border-color: #ef8b8f !important; background: rgba(193, 39, 45, 0.18) !important; }
 
 /* ----- Dashboard stat tiles (president/committee dashboard) ----- */
 :root:not([data-theme="dark"]) .dash-stat--total { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }
@@ -7210,6 +7223,8 @@ html, body { overflow-x: hidden; max-width: 100%; }
 [data-theme="light"] .discount-usage-label.is-used { color: var(--on-deep) !important; }
 [data-theme="light"] .discount-usage-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 [data-theme="light"] .discount-usage-btn:hover { border-color: var(--on-deep-border-hover) !important; background: var(--on-deep-chip-bg) !important; }
+[data-theme="light"] .discount-usage-btn.is-undo { color: #ef8b8f !important; border-color: rgba(239, 139, 143, 0.6) !important; }
+[data-theme="light"] .discount-usage-btn.is-undo:hover { border-color: #ef8b8f !important; background: rgba(193, 39, 45, 0.18) !important; }
 
 /* ----- Dashboard stat tiles (president/committee dashboard) ----- */
 [data-theme="light"] .dash-stat--total { background: var(--deep-gold) !important; border-color: var(--on-deep-border) !important; }

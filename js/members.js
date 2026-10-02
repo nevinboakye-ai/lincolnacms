@@ -107,6 +107,21 @@
     });
   }
 
+  // Fisher-Yates, in place on a shallow copy — used by the discounts
+  // page to show partners in a different order on every load, so the
+  // same few names at the top don't quietly become the only ones anyone
+  // actually sees.
+  function shuffleArray(arr) {
+    var copy = arr.slice();
+    for (var i = copy.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = tmp;
+    }
+    return copy;
+  }
+
   function showMessage(el, message) {
     if (!el) return;
     el.textContent = message;
@@ -617,23 +632,74 @@
     if (usageBtn) {
       var usageDiscountId = usageBtn.getAttribute('data-discount-id');
       if (!usageDiscountId || !window.supabaseClient || usageBtn.disabled) return;
+
+      // While this button reads "Undo", tapping it means exactly that -
+      // covers both "realised the mistake a few seconds later" and "the
+      // accidental tap right after the first one", which a plain
+      // confirm-before-counting dialog wouldn't catch on its own.
+      if (usageBtn.classList.contains('is-undo')) {
+        usageBtn.disabled = true;
+        supabaseClient.rpc('undo_discount_used', { p_discount_id: usageDiscountId }).then(function (result) {
+          usageBtn.disabled = false;
+          if (result.error) { console.error('Undoing discount usage failed:', result.error.message); return; }
+          var row = (result.data && result.data[0]) || {};
+          updateDiscountUsageLabel(usageBtn, row.used_count || 0);
+          endDiscountUsageUndoWindow(usageBtn);
+        });
+        return;
+      }
+
       usageBtn.disabled = true;
       supabaseClient.rpc('record_discount_used', { p_discount_id: usageDiscountId }).then(function (result) {
         usageBtn.disabled = false;
         if (result.error) { console.error('Marking discount as used failed:', result.error.message); return; }
         var row = (result.data && result.data[0]) || {};
-        var wrap = usageBtn.closest('[data-discount-usage]');
-        var labelEl = wrap && wrap.querySelector('[data-discount-usage-label]');
-        if (labelEl) {
-          labelEl.innerHTML = discountUsageLabelHtml(row.used_count || 0);
-          labelEl.classList.add('is-used');
-          labelEl.classList.remove('discount-usage-bump');
-          void labelEl.offsetWidth; // restart the bump animation even on repeat clicks
-          labelEl.classList.add('discount-usage-bump');
-        }
+        updateDiscountUsageLabel(usageBtn, row.used_count || 0);
+        startDiscountUsageUndoWindow(usageBtn);
       });
     }
   });
+
+  function updateDiscountUsageLabel(usageBtn, usedCount) {
+    var wrap = usageBtn.closest('[data-discount-usage]');
+    var labelEl = wrap && wrap.querySelector('[data-discount-usage-label]');
+    if (labelEl) {
+      labelEl.innerHTML = discountUsageLabelHtml(usedCount);
+      labelEl.classList.toggle('is-used', usedCount > 0);
+      labelEl.classList.remove('discount-usage-bump');
+      void labelEl.offsetWidth; // restart the bump animation even on repeat clicks
+      labelEl.classList.add('discount-usage-bump');
+    }
+  }
+
+  // A brief, counted-down "Undo" window right after tapping "I used
+  // this" - the fix for "tapped it by accident, no way back". Turns the
+  // same button into "Undo (N)" for a few seconds rather than adding a
+  // confirm() dialog in front of every tap, which would get in the way
+  // of the common case (genuinely using a discount again) just to catch
+  // the rare one. Reverts to the normal button on its own once the
+  // window closes, so a real re-use later still works the same as always.
+  var DISCOUNT_USAGE_UNDO_SECONDS = 8;
+  function startDiscountUsageUndoWindow(usageBtn) {
+    var secondsLeft = DISCOUNT_USAGE_UNDO_SECONDS;
+    usageBtn.classList.add('is-undo');
+    usageBtn.textContent = 'Undo (' + secondsLeft + ')';
+    usageBtn._discountUndoTimer = setTimeout(function tick() {
+      secondsLeft -= 1;
+      if (secondsLeft <= 0) {
+        endDiscountUsageUndoWindow(usageBtn);
+        return;
+      }
+      usageBtn.textContent = 'Undo (' + secondsLeft + ')';
+      usageBtn._discountUndoTimer = setTimeout(tick, 1000);
+    }, 1000);
+  }
+  function endDiscountUsageUndoWindow(usageBtn) {
+    clearTimeout(usageBtn._discountUndoTimer);
+    usageBtn._discountUndoTimer = null;
+    usageBtn.classList.remove('is-undo');
+    usageBtn.textContent = 'I used this';
+  }
 
   // MMG portal: makes sure a self-registered external guest ends up with a
   // row in mmg_guests. Called after both sign-up and sign-in, since with
@@ -1736,7 +1802,13 @@
         });
         if (results[2].error) console.error('Loading discount usage failed:', results[2].error.message);
 
-        var discounts = results[0].data || [];
+        // Shuffled fresh on every load (not just once per session) so
+        // the same handful of partners at the top doesn't quietly become
+        // the only ones anyone actually scrolls to - sort_order above
+        // still matters for literally everything else that reads this
+        // table (the dashboard, Table Editor), this only reorders the
+        // member-facing list itself.
+        var discounts = shuffleArray(results[0].data || []);
         renderPerkList(discounts, document.getElementById('discounts-list'), document.getElementById('discounts-empty'), function (row) {
           return renderDiscountCard(row, usageByDiscountId[row.id], isPresidentViewer);
         });
