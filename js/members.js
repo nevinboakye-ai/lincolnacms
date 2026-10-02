@@ -857,16 +857,16 @@
         '<p>Are you applying as a mentee or a mentor?</p>' +
         '<div class="sankofa-apply-choice-grid">' +
         '<button type="button" class="sankofa-apply-choice-btn" data-sankofa-apply-choice="mentee">' +
-        '<strong>Mentee</strong><span>Medical or pharmacy student - LACMS membership required</span>' +
+        '<strong>Mentee</strong><span>Medicine student - LACMS membership required</span>' +
         '</button>' +
         '<button type="button" class="sankofa-apply-choice-btn" data-sankofa-apply-choice="mentor">' +
-        '<strong>Mentor</strong><span>Doctor, pharmacist or healthcare professional - no account needed</span>' +
+        '<strong>Mentor</strong><span>Doctor or healthcare professional - no account needed</span>' +
         '</button>' +
         '</div></div>' +
 
         '<div data-sankofa-apply-step="mentee" style="display:none;">' +
         '<h2 style="margin-top:0;">Mentee applications</h2>' +
-        '<p>Open to LACMS members - Medicine or Pharmacy students. Applications close Sunday 11 October 2026.</p>' +
+        '<p>Open to LACMS members - Medicine students. Applications close Sunday 11 October 2026.</p>' +
         '<a class="btn btn-primary btn-block" id="sankofa-apply-mentee-cta" href="join.html">Continue</a>' +
         '</div>' +
 
@@ -876,7 +876,7 @@
         '<form id="sankofa-mentor-quick-form">' +
         '<div class="field"><label for="sqf-name">Full name</label><input type="text" id="sqf-name" autocomplete="name" required></div>' +
         '<div class="field"><label for="sqf-email">Email</label><input type="email" id="sqf-email" autocomplete="email" required></div>' +
-        '<div class="field"><label for="sqf-title">Job title</label><input type="text" id="sqf-title" placeholder="e.g. Consultant Cardiologist, F1 Doctor, Community Pharmacist" required></div>' +
+        '<div class="field"><label for="sqf-title">Job title</label><input type="text" id="sqf-title" placeholder="e.g. Consultant Cardiologist, F1 Doctor, GP" required></div>' +
         '<div class="field"><label for="sqf-org">Organisation <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label><input type="text" id="sqf-org" placeholder="e.g. Nottingham University Hospitals NHS Trust"></div>' +
         '<div class="field"><label for="sqf-linkedin">LinkedIn <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label><input type="url" id="sqf-linkedin" placeholder="https://linkedin.com/in/…"></div>' +
         '<div class="field"><label for="sqf-offer">Why do you want to mentor, or what can you offer?</label><textarea id="sqf-offer" maxlength="600" placeholder="A sentence or two is plenty - specialty, what you could help with, why it matters to you." required></textarea></div>' +
