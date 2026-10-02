@@ -184,7 +184,7 @@
   // are LACMS's actual courses/years", rather than free text that could
   // drift (a typo'd course name would never match anything elsewhere on
   // the site that groups or filters by course).
-  var LACMS_COURSES = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing and Midwifery', 'Paramedic Science'];
+  var LACMS_COURSES = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing', 'Midwifery', 'Biomedical Science', 'Occupational Therapy'];
   var LACMS_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6'];
 
   // ---- Request-account page (request-account.html): public, no login
@@ -3346,7 +3346,7 @@
     // BMedSci", "Nursing and Midwifery BSc (Hons)"), so an exact-match
     // lookup against these plain names would never hit and everything
     // would fall through to alphabetical order instead.
-    var NETWORK_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing and Midwifery', 'Paramedic Science'];
+    var NETWORK_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing', 'Midwifery', 'Biomedical Science', 'Occupational Therapy'];
     var NETWORK_ACCENTS = ['gold', 'green', 'red', 'purple'];
     var NETWORK_ACCENT_COLORS = {
       gold: { accent: 'var(--color-gold)', light: 'var(--color-gold-light)', bg: 'rgba(212, 166, 43, 0.18)' },
@@ -4557,7 +4557,7 @@
     // then green/red/purple for whichever courses follow it) — dupli-
     // cated locally rather than shared since this page's script scope
     // is entirely separate from member-network.html's.
-    var DASH_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing and Midwifery', 'Paramedic Science'];
+    var DASH_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing', 'Midwifery', 'Biomedical Science', 'Occupational Therapy'];
     var DASH_ACCENTS = ['gold', 'green', 'red', 'purple'];
     var DASH_ACCENT_COLORS = {
       gold: { bg: 'rgba(212, 166, 43, 0.22)', fg: 'var(--color-gold-light)' },
