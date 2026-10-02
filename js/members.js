@@ -5160,7 +5160,26 @@
         return;
       }
       if (emptyEl) emptyEl.style.display = 'none';
-      listEl.innerHTML = filtered.map(renderAccountRequestCard).join('');
+      listEl.innerHTML = renderBulkApprovalBar() + filtered.map(renderAccountRequestCard).join('');
+    }
+
+    // Approved requests that have no successful approval email logged -
+    // e.g. approved while sending was misconfigured, or before the email
+    // log existed. One click sends all of them (see the bulk handler).
+    function requestsMissingApprovalEmail() {
+      return accountRequestsAll.filter(function (r) {
+        return r.status === 'approved' && !accountRequestEmailsAll.some(function (m) {
+          return m.request_id === r.id && m.email_type === 'approved' && m.status === 'sent';
+        });
+      });
+    }
+    function renderBulkApprovalBar() {
+      var missing = requestsMissingApprovalEmail();
+      if (!missing.length) return '';
+      return '<div class="app-card" style="padding: var(--space-3); display:flex; align-items:center; justify-content:space-between; gap: var(--space-2); flex-wrap:wrap;">' +
+        '<span style="font-size:0.88rem;">' + missing.length + (missing.length === 1 ? ' approved account has' : ' approved accounts have') + ' no approval email sent yet.</span>' +
+        '<button type="button" class="btn btn-primary request-email-btn" data-request-email-bulk>Send approval email to ' + (missing.length === 1 ? 'them' : 'all ' + missing.length) + '</button>' +
+        '</div>';
     }
     var ACCOUNT_REQUEST_STATUS_KEY = { pending: 'pending', approved: 'active', rejected: 'expired' };
     function renderAccountRequestCard(r) {
@@ -6030,6 +6049,34 @@
         requestsFilterTab.parentElement.querySelectorAll('[data-requests-filter]').forEach(function (t) { t.classList.remove('is-active'); });
         requestsFilterTab.classList.add('is-active');
         renderAccountRequestsFiltered(requestsFilterTab.getAttribute('data-requests-filter'));
+        return;
+      }
+
+      var emailBulkBtn = e.target.closest('[data-request-email-bulk]');
+      if (emailBulkBtn) {
+        var queue = requestsMissingApprovalEmail();
+        if (!queue.length) return;
+        if (!window.confirm('Send the approval email to ' + queue.length + (queue.length === 1 ? ' person' : ' people') + '?')) return;
+        emailBulkBtn.disabled = true;
+        var done = 0;
+        var failures = [];
+        // One at a time with a short gap - Resend rate-limits to a couple
+        // of requests per second, and a burst would get rejected.
+        (function next() {
+          if (done >= queue.length) {
+            renderAccountRequestsFiltered(accountRequestsFilter);
+            window.alert((queue.length - failures.length) + ' of ' + queue.length + ' sent.' +
+              (failures.length ? '\n\nFailed:\n' + failures.slice(0, 5).join('\n') + (failures.length > 5 ? '\n...and ' + (failures.length - 5) + ' more (see each request\'s Emails section).' : '') : ''));
+            return;
+          }
+          var req = queue[done];
+          emailBulkBtn.textContent = 'Sending ' + (done + 1) + ' of ' + queue.length + '…';
+          sendAccountEmail('approved', req, function (emailError) {
+            if (emailError) failures.push(req.full_name + ': ' + emailError);
+            done += 1;
+            setTimeout(next, 700);
+          });
+        })();
         return;
       }
 
