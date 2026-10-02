@@ -209,7 +209,7 @@
   // drift (a typo'd course name would never match anything elsewhere on
   // the site that groups or filters by course).
   var LACMS_COURSES = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing', 'Midwifery', 'Biomedical Science', 'Occupational Therapy'];
-  var LACMS_YEARS = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6'];
+  var LACMS_YEARS = ['Foundation Year', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Masters'];
 
   // ---- Request-account page (request-account.html): public, no login
   // needed — replaces the committee creating every member's login by
@@ -5028,20 +5028,12 @@
 
       var actionsHtml = '';
       if (r.status === 'pending') {
-        var remindSubject = encodeURIComponent('Finish joining LACMS - membership required first');
-        var remindBody = encodeURIComponent(
-          'Hi ' + r.full_name + ',\n\n' +
-          "Thanks for requesting your LACMS account! Before we can set up your login, we need your membership payment to have gone through the Students' Union.\n\n" +
-          "If you haven't already, you can join/pay here: https://lincolnsu.com/activities/view/acs-medical\n\n" +
-          "Once that's done, just reply here and we'll get your account approved.\n\n" +
-          'Thanks,\nLACMS Committee'
-        );
         actionsHtml =
           '<div class="app-card-field">' +
           '<label class="checkbox-option"><input type="checkbox" data-request-paid-toggle data-id="' + escapeHtml(r.id) + '"' + (r.membership_paid ? ' checked' : '') + '> Membership payment confirmed</label>' +
           '</div>' +
           '<div style="display:flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3);">' +
-          '<a class="btn btn-outline" href="mailto:' + encodeURIComponent(r.email) + '?subject=' + remindSubject + '&body=' + remindBody + '">Remind to pay</a>' +
+          '<button type="button" class="btn btn-outline" data-request-remind data-id="' + escapeHtml(r.id) + '">Remind to pay</button>' +
           '<button type="button" class="btn btn-primary" data-request-approve data-id="' + escapeHtml(r.id) + '">Approve &amp; create login</button>' +
           '<button type="button" class="btn btn-outline" data-request-reject data-id="' + escapeHtml(r.id) + '" style="color: #ef8b8f; border-color: #ef8b8f;">Reject</button>' +
           '</div>';
@@ -5066,6 +5058,25 @@
         (r.status !== 'pending' ? '<button type="button" class="app-card-delete-btn" data-request-delete data-id="' + escapeHtml(r.id) + '">Remove this request</button>' : '') +
         '</div>' +
         '</div>';
+    }
+
+    // Sends one of the two automatic emails behind this section - "your
+    // account is live" on approval, or a payment reminder - through the
+    // send-account-email Supabase Edge Function (see
+    // supabase/functions/send-account-email/index.ts), which does the
+    // actual sending via Resend. This is the one place on the whole site
+    // that sends an email with nobody clicking "send" themselves -
+    // everywhere else, "contact this person" is a mailto: link, since
+    // there's no other email infrastructure here at all. Fails clearly
+    // (rather than silently) if the function hasn't been deployed yet or
+    // Resend isn't configured, since that's exactly the kind of thing
+    // worth knowing about immediately rather than assuming it worked.
+    function sendAccountEmail(type, request, onDone) {
+      supabaseClient.functions.invoke('send-account-email', {
+        body: { type: type, email: request.email, full_name: request.full_name }
+      }).then(function (result) {
+        onDone(result.error ? (result.error.message || 'Failed to send the email') : null);
+      });
     }
 
     // Mirrors the Create Account form's own signUp()-then-insert flow
@@ -5113,7 +5124,16 @@
           }
 
           supabaseClient.rpc('president_mark_account_request_approved', { target_id: r.id, new_member_id: newUserId }).then(function () {
-            function finish() { onDone(null); }
+            function finish() {
+              // Best-effort — the account itself is already fully live
+              // by this point regardless of whether this send succeeds,
+              // so a Resend/Edge Function hiccup here is logged, not
+              // surfaced as an approval failure.
+              sendAccountEmail('approved', r, function (emailError) {
+                if (emailError) console.error('Welcome email failed to send:', emailError);
+              });
+              onDone(null);
+            }
             if (needsPasswordEmail) {
               approveClient.auth.resetPasswordForEmail(r.email, { redirectTo: loginPageUrl }).then(finish);
             } else {
@@ -5818,6 +5838,27 @@
         requestsFilterTab.parentElement.querySelectorAll('[data-requests-filter]').forEach(function (t) { t.classList.remove('is-active'); });
         requestsFilterTab.classList.add('is-active');
         renderAccountRequestsFiltered(requestsFilterTab.getAttribute('data-requests-filter'));
+        return;
+      }
+
+      var requestRemindBtn = e.target.closest('[data-request-remind]');
+      if (requestRemindBtn) {
+        var remindId = requestRemindBtn.getAttribute('data-id');
+        var remindRequest = accountRequestsAll.filter(function (r) { return r.id === remindId; })[0];
+        if (!remindRequest) return;
+        var remindOriginalText = requestRemindBtn.textContent;
+        requestRemindBtn.disabled = true;
+        requestRemindBtn.textContent = 'Sending…';
+        sendAccountEmail('payment_reminder', remindRequest, function (emailError) {
+          requestRemindBtn.disabled = false;
+          if (emailError) {
+            requestRemindBtn.textContent = remindOriginalText;
+            window.alert("Couldn't send that email: " + emailError);
+            return;
+          }
+          requestRemindBtn.textContent = 'Reminder sent';
+          setTimeout(function () { requestRemindBtn.textContent = remindOriginalText; }, 2500);
+        });
         return;
       }
 
