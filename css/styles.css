@@ -4179,19 +4179,34 @@ body.intro-active { overflow: hidden; }
    - the darker stop comfortably clears 5:1 in the same worst case.
    --card-bg-image and --card-bg-pos are both set inline per-card (dynamic
    data, can't live in a static class) - this wires those custom
-   properties into the photo layer, under the tint. */
+   properties into the photo layer, under the tint. The fade's own end
+   point lives in --discount-photo-fade (read by every gradient below)
+   rather than a bare 136px, purely so the mobile breakpoint further down
+   can shrink the whole photo band - padding-top and the fade - with one
+   rule instead of overriding every colour variant in both themes. */
 .discount-card.discount-card--has-image {
   padding-top: 148px;
 }
-.discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-gold-dark-rgb), 0.1) 0px, rgba(var(--deep-gold-dark-rgb), 0.94) 136px, rgba(var(--deep-gold-dark-rgb), 0.94) 100%), var(--card-bg-image); }
-.discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-green-dark-rgb), 0.1) 0px, rgba(var(--deep-green-dark-rgb), 0.94) 136px, rgba(var(--deep-green-dark-rgb), 0.94) 100%), var(--card-bg-image); }
-.discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-red-dark-rgb), 0.1) 0px, rgba(var(--deep-red-dark-rgb), 0.94) 136px, rgba(var(--deep-red-dark-rgb), 0.94) 100%), var(--card-bg-image); }
-.discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-purple-dark-rgb), 0.1) 0px, rgba(var(--deep-purple-dark-rgb), 0.94) 136px, rgba(var(--deep-purple-dark-rgb), 0.94) 100%), var(--card-bg-image); }
-.discount-card.discount-card--has-image.discount-card--pink { background-image: linear-gradient(180deg, rgba(var(--deep-pink-dark-rgb), 0.1) 0px, rgba(var(--deep-pink-dark-rgb), 0.94) 136px, rgba(var(--deep-pink-dark-rgb), 0.94) 100%), var(--card-bg-image); }
+.discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-gold-dark-rgb), 0.1) 0px, rgba(var(--deep-gold-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-gold-dark-rgb), 0.94) 100%), var(--card-bg-image); }
+.discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-green-dark-rgb), 0.1) 0px, rgba(var(--deep-green-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-green-dark-rgb), 0.94) 100%), var(--card-bg-image); }
+.discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-red-dark-rgb), 0.1) 0px, rgba(var(--deep-red-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-red-dark-rgb), 0.94) 100%), var(--card-bg-image); }
+.discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-purple-dark-rgb), 0.1) 0px, rgba(var(--deep-purple-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-purple-dark-rgb), 0.94) 100%), var(--card-bg-image); }
+.discount-card.discount-card--has-image.discount-card--pink { background-image: linear-gradient(180deg, rgba(var(--deep-pink-dark-rgb), 0.1) 0px, rgba(var(--deep-pink-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-pink-dark-rgb), 0.94) 100%), var(--card-bg-image); }
 .discount-card.discount-card--has-image {
   background-size: 100% 100%, cover;
   background-position: center, var(--card-bg-pos, center);
   background-repeat: no-repeat, no-repeat;
+}
+
+/* On phones, a collapsed grid of these cards is mostly just photo before
+   anyone's tapped anything - shrink the band (and move the fade's end
+   point in to match) rather than carrying the same desktop-sized photo
+   straight down a narrow column. */
+@media (max-width: 640px) {
+  .discount-card.discount-card--has-image {
+    padding-top: 104px;
+    --discount-photo-fade: 92px;
+  }
 }
 
 /* Drag-to-reposition (migration 044) - active while the president has a
@@ -7025,11 +7040,11 @@ html, body { overflow-x: hidden; max-width: 100%; }
    colour variant (see the base, theme-independent version of these five
    rules for why - same value, just needing !important here to win over
    that reset). */
-:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-gold-dark-rgb), 0.1) 0px, rgba(var(--deep-gold-dark-rgb), 0.94) 136px, rgba(var(--deep-gold-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
-:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-green-dark-rgb), 0.1) 0px, rgba(var(--deep-green-dark-rgb), 0.94) 136px, rgba(var(--deep-green-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
-:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-red-dark-rgb), 0.1) 0px, rgba(var(--deep-red-dark-rgb), 0.94) 136px, rgba(var(--deep-red-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
-:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-purple-dark-rgb), 0.1) 0px, rgba(var(--deep-purple-dark-rgb), 0.94) 136px, rgba(var(--deep-purple-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
-:root:not([data-theme="dark"]) .discount-card.discount-card--has-image.discount-card--pink { background-image: linear-gradient(180deg, rgba(var(--deep-pink-dark-rgb), 0.1) 0px, rgba(var(--deep-pink-dark-rgb), 0.94) 136px, rgba(var(--deep-pink-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-gold-dark-rgb), 0.1) 0px, rgba(var(--deep-gold-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-gold-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-green-dark-rgb), 0.1) 0px, rgba(var(--deep-green-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-green-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-red-dark-rgb), 0.1) 0px, rgba(var(--deep-red-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-red-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-purple-dark-rgb), 0.1) 0px, rgba(var(--deep-purple-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-purple-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+:root:not([data-theme="dark"]) .discount-card.discount-card--has-image.discount-card--pink { background-image: linear-gradient(180deg, rgba(var(--deep-pink-dark-rgb), 0.1) 0px, rgba(var(--deep-pink-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-pink-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
 :root:not([data-theme="dark"]) .discount-card.discount-card--has-image { background-size: 100% 100%, cover !important; background-position: center, var(--card-bg-pos, center) !important; background-repeat: no-repeat, no-repeat !important; }
 :root:not([data-theme="dark"]) .discount-usage-label { color: var(--on-deep-muted) !important; }
 :root:not([data-theme="dark"]) .discount-usage-label.is-used { color: var(--on-deep) !important; }
@@ -7211,11 +7226,11 @@ html, body { overflow-x: hidden; max-width: 100%; }
 [data-theme="light"] .discount-code-reveal-btn:hover { background: var(--on-deep-chip-border) !important; }
 [data-theme="light"] .discount-card .discount-code-copy-btn { color: var(--on-deep) !important; border-color: var(--on-deep-border) !important; }
 [data-theme="light"] .discount-card .discount-code-copy-btn:hover { color: var(--on-deep) !important; border-color: var(--on-deep-border-hover) !important; }
-[data-theme="light"] .discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-gold-dark-rgb), 0.1) 0px, rgba(var(--deep-gold-dark-rgb), 0.94) 136px, rgba(var(--deep-gold-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
-[data-theme="light"] .discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-green-dark-rgb), 0.1) 0px, rgba(var(--deep-green-dark-rgb), 0.94) 136px, rgba(var(--deep-green-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
-[data-theme="light"] .discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-red-dark-rgb), 0.1) 0px, rgba(var(--deep-red-dark-rgb), 0.94) 136px, rgba(var(--deep-red-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
-[data-theme="light"] .discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-purple-dark-rgb), 0.1) 0px, rgba(var(--deep-purple-dark-rgb), 0.94) 136px, rgba(var(--deep-purple-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
-[data-theme="light"] .discount-card.discount-card--has-image.discount-card--pink { background-image: linear-gradient(180deg, rgba(var(--deep-pink-dark-rgb), 0.1) 0px, rgba(var(--deep-pink-dark-rgb), 0.94) 136px, rgba(var(--deep-pink-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+1).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-gold-dark-rgb), 0.1) 0px, rgba(var(--deep-gold-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-gold-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+2).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-green-dark-rgb), 0.1) 0px, rgba(var(--deep-green-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-green-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+3).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-red-dark-rgb), 0.1) 0px, rgba(var(--deep-red-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-red-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card:nth-of-type(4n+4).discount-card--has-image { background-image: linear-gradient(180deg, rgba(var(--deep-purple-dark-rgb), 0.1) 0px, rgba(var(--deep-purple-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-purple-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
+[data-theme="light"] .discount-card.discount-card--has-image.discount-card--pink { background-image: linear-gradient(180deg, rgba(var(--deep-pink-dark-rgb), 0.1) 0px, rgba(var(--deep-pink-dark-rgb), 0.94) var(--discount-photo-fade, 136px), rgba(var(--deep-pink-dark-rgb), 0.94) 100%), var(--card-bg-image) !important; }
 [data-theme="light"] .discount-card.discount-card--has-image { background-size: 100% 100%, cover !important; background-position: center, var(--card-bg-pos, center) !important; background-repeat: no-repeat, no-repeat !important; }
 [data-theme="light"] .discount-usage-label { color: var(--on-deep-muted) !important; }
 [data-theme="light"] .discount-usage-label.is-used { color: var(--on-deep) !important; }

@@ -1058,3 +1058,9 @@ Run [`db/migrations/055-undo-discount-used.sql`](db/migrations/055-undo-discount
 No migration - CSS only.
 
 **A discount's photo now shows on the collapsed card, not just once it's expanded.** The photo (and its tint, so text stays readable) used to only switch on via `.is-expanded.discount-card--has-image` in css/styles.css - a collapsed card was just badge + name on the plain card colour, and the photo only appeared after tapping to expand. Dropped `.is-expanded` from that rule (and its two light-mode `!important` overrides) so any card with a photo shows it immediately, collapsed or not; tapping still expands the same card to reveal the address/code/description underneath exactly as before, that part's unchanged.
+
+## 94. Shorter discount photos on mobile
+
+No migration - CSS only.
+
+**On phones, a collapsed discount card's photo band is now shorter.** Once 93 made the photo always-visible, a grid of collapsed cards on a narrow phone screen was mostly just photo, stacked one under another - each card's 148px photo band plus its badge/title row added up fast with nothing to scroll past yet. Added a `max-width: 640px` rule that shrinks that band to 104px (and brings the tint's fade point in from 136px to 92px to match) - the hardcoded `136px` in every colour's gradient was switched to `var(--discount-photo-fade, 136px)` first so the one mobile rule adjusts all of them, in both themes, rather than needing its own override for each colour. Desktop and tablet widths are untouched; expanding a card still shows its photo at full size on any screen.
