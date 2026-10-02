@@ -1342,7 +1342,7 @@
 
       supabaseClient
         .from('network_join_events')
-        .select('full_name')
+        .select('full_name, event_type')
         .gte('created_at', sinceIso)
         .order('created_at', { ascending: false })
         .then(function (result) {
@@ -1360,17 +1360,22 @@
           // account within the window can't inflate the count or push
           // a real second person out of the first three names shown.
           var deduped = dedupeJoinEventsByName(result.data || []);
-          var total = deduped.length;
-          var rows = deduped.slice(0, 3);
-          if (!rows.length) return;
+          if (!deduped.length) return;
 
-          var names = rows.map(function (r) { return '<strong>' + escapeHtml(r.full_name) + '</strong>'; });
-          var extra = total - names.length;
+          // Only professionals are named here - students who joined are
+          // folded into the "and N others" count instead (the Network
+          // page's own ticker/history still lists everyone by name).
+          var professionals = deduped.filter(function (r) { return r.event_type === 'professional'; });
+          var shown = professionals.slice(0, 3);
+          var names = shown.map(function (r) { return '<strong>' + escapeHtml(r.full_name) + '</strong>'; });
+          var extra = deduped.length - names.length;
           var text;
-          if (names.length === 1) {
-            text = names[0] + ' just joined the Network.';
+          if (!names.length) {
+            text = deduped.length + (deduped.length === 1 ? ' new member' : ' new members') + ' just joined the Network.';
           } else if (extra <= 0) {
-            text = names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' just joined the Network.';
+            text = names.length === 1
+              ? names[0] + ' just joined the Network.'
+              : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' just joined the Network.';
           } else {
             text = names.join(', ') + ' and ' + extra + (extra === 1 ? ' other' : ' others') + ' just joined the Network.';
           }
