@@ -3532,6 +3532,50 @@
     // would fall through to alphabetical order instead.
     var NETWORK_COURSE_ORDER = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing', 'Midwifery', 'Biomedical Science', 'Occupational Therapy'];
     var NETWORK_ACCENTS = ['gold', 'green', 'red', 'purple'];
+
+    // The same course turns up under different names - older accounts
+    // were saved with the full degree title ("Medicine BMBS BMedSci"),
+    // newer ones from the request form with the short name ("Medicine") -
+    // which used to land in separate sections. Every raw course string is
+    // mapped to one display name per course: a fixed preferred full title
+    // where we know it, otherwise the longest (most complete) variant
+    // actually in use. The old combined "Nursing and Midwifery ..." title
+    // is deliberately left on its own, since it can't be split between the
+    // two courses that replaced it.
+    var NETWORK_PREFERRED_COURSE_NAMES = { 'medicine': 'Medicine BMBS BMedSci' };
+    var networkCourseCanon = {};
+    function networkCourseBase(raw) {
+      var lower = (raw || '').toLowerCase();
+      if (lower.indexOf('nursing') !== -1 && lower.indexOf('midwifery') !== -1) return null;
+      for (var i = 0; i < NETWORK_COURSE_ORDER.length; i++) {
+        if (lower.indexOf(NETWORK_COURSE_ORDER[i].toLowerCase()) !== -1) return NETWORK_COURSE_ORDER[i].toLowerCase();
+      }
+      return null;
+    }
+    function buildNetworkCourseCanon(members) {
+      var rawsByBase = {};
+      networkCourseCanon = {};
+      members.forEach(function (m) {
+        var raw = (m.course || '').trim();
+        if (!raw) return;
+        var base = networkCourseBase(raw);
+        if (!base) { networkCourseCanon[raw] = raw; return; }
+        if (!rawsByBase[base]) rawsByBase[base] = [];
+        if (rawsByBase[base].indexOf(raw) === -1) rawsByBase[base].push(raw);
+      });
+      Object.keys(rawsByBase).forEach(function (base) {
+        var raws = rawsByBase[base];
+        var display = NETWORK_PREFERRED_COURSE_NAMES[base] || raws.slice().sort(function (a, b) { return b.length - a.length; })[0];
+        raws.forEach(function (raw) { networkCourseCanon[raw] = display; });
+      });
+    }
+    function networkCourseLabel(raw) {
+      var trimmed = (raw || '').trim();
+      if (!trimmed) return raw;
+      if (networkCourseCanon[trimmed]) return networkCourseCanon[trimmed];
+      var base = networkCourseBase(trimmed);
+      return (base && NETWORK_PREFERRED_COURSE_NAMES[base]) || raw;
+    }
     var NETWORK_ACCENT_COLORS = {
       gold: { accent: 'var(--color-gold)', light: 'var(--color-gold-light)', bg: 'rgba(212, 166, 43, 0.18)' },
       green: { accent: '#6fcf97', light: '#6fcf97', bg: 'rgba(30, 122, 70, 0.2)' },
@@ -3610,7 +3654,7 @@
         colors = NETWORK_ACCENT_COLORS.green;
         isCommittee = false;
       } else {
-        detail = [row.course, row.year_of_study].filter(Boolean).join(' · ');
+        detail = [networkCourseLabel(row.course), row.year_of_study].filter(Boolean).join(' · ');
         var courseKey = (row.course || '').trim() || 'Course not set';
         colors = networkCourseAccents[courseKey] || NETWORK_ACCENT_COLORS.gold;
         isCommittee = row.member_type === 'executive_committee' || row.member_type === 'supporting_committee';
@@ -3758,7 +3802,7 @@
     function renderNetworkHistoryRow(row) {
       var subtitle = row.event_type === 'professional'
         ? [row.title, row.organisation].filter(Boolean).join(' · ')
-        : [row.course, row.year_of_study].filter(Boolean).join(' · ');
+        : [networkCourseLabel(row.course), row.year_of_study].filter(Boolean).join(' · ');
       return '<div class="network-history-row">' +
         '<div class="network-history-info">' +
         '<div class="network-history-name">' + escapeHtml(row.full_name) + '</div>' +
@@ -3848,8 +3892,9 @@
     function renderNetworkMembers(members) {
       var wrap = document.getElementById('network-members-sections');
       var byCourse = {};
+      buildNetworkCourseCanon(members);
       members.forEach(function (m) {
-        var course = (m.course || '').trim() || 'Course not set';
+        var course = networkCourseLabel((m.course || '').trim()) || 'Course not set';
         if (!byCourse[course]) byCourse[course] = [];
         byCourse[course].push(m);
       });
@@ -3863,6 +3908,9 @@
       wrap.innerHTML = courses.map(function (course, i) {
         var colors = NETWORK_ACCENT_COLORS[NETWORK_ACCENTS[i % NETWORK_ACCENTS.length]];
         networkCourseAccents[course] = colors;
+        Object.keys(networkCourseCanon).forEach(function (raw) {
+          if (networkCourseCanon[raw] === course) networkCourseAccents[raw] = colors;
+        });
         var courseMembers = byCourse[course];
 
         var byYear = {};
@@ -3907,7 +3955,7 @@
         linkedinHtml +
         '<span class="network-card-avatar">' + escapeHtml(networkInitials(m.full_name)) + '</span>' +
         '<span class="network-card-name">' + escapeHtml(m.full_name) + '</span>' +
-        '<span class="network-card-meta">' + escapeHtml([m.course, m.year_of_study ? yearGroupLabel(m.year_of_study) : ''].filter(Boolean).join(' · ') || '-') + '</span>' +
+        '<span class="network-card-meta">' + escapeHtml([networkCourseLabel(m.course), m.year_of_study ? yearGroupLabel(m.year_of_study) : ''].filter(Boolean).join(' · ') || '-') + '</span>' +
         badgeHtml +
         '</button>';
     }
@@ -4005,7 +4053,7 @@
           '<span class="network-modal-avatar" style="background: var(--color-bg-alt); color: var(--color-gold-light);">' + escapeHtml(networkInitials(record.full_name)) + '</span>' +
           '<h2 class="network-modal-name" id="network-modal-name">' + escapeHtml(record.full_name) + '</h2>' +
           (roleLabel ? '<p class="network-modal-role">' + escapeHtml(roleLabel) + '</p>' : '') +
-          '<p class="network-modal-meta">' + escapeHtml([record.course, record.year_of_study ? yearGroupLabel(record.year_of_study) : ''].filter(Boolean).join(' · ') || '-') + '</p>' +
+          '<p class="network-modal-meta">' + escapeHtml([networkCourseLabel(record.course), record.year_of_study ? yearGroupLabel(record.year_of_study) : ''].filter(Boolean).join(' · ') || '-') + '</p>' +
           bioHtml +
           linkedinBtn(record.linkedin_url);
       } else {
