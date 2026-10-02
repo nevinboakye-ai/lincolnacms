@@ -134,7 +134,7 @@ const TEMPLATES: Record<EmailType, (fullName: string) => { subject: string; html
     html: renderEmailShell(
       "You're officially in - here's what's waiting for you.",
       '<h1 style="font-family:' + SERIF + '; font-size:22px; font-weight:400; color:#f5f1e6; margin:8px 0 4px;">Welcome to LACMS, ' + fullName + '.</h1>' +
-      '<p>Good news - your account has been approved and is ready to go. Check your inbox for a separate email with a link to set your password, then you\'re straight in.</p>' +
+      '<p>Good news - your account has been approved and is ready to go. Log in with the email and password you set when you applied - no further setup needed.</p>' +
       '<p style="margin-bottom:6px;">Once you\'re signed in, you can start using:</p>' +
       '<ul style="margin:0 0 8px; padding-left:20px;">' +
       '<li>Your digital membership card</li>' +

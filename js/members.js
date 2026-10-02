@@ -257,6 +257,8 @@
 
       var name = document.getElementById('request-name').value.trim();
       var email = document.getElementById('request-email').value.trim();
+      var password = document.getElementById('request-password').value;
+      var passwordConfirm = document.getElementById('request-password-confirm').value;
       var studentNumber = document.getElementById('request-student-number').value.trim();
       var course = requestCourseSelect.value === 'Other'
         ? requestCourseOtherInput.value.trim()
@@ -264,10 +266,18 @@
       var year = requestYearSelect.value;
       var note = document.getElementById('request-note').value.trim();
 
-      if (!name || !email || !studentNumber || !course || !year) {
+      if (!name || !email || !password || !studentNumber || !course || !year) {
         showMessage(statusEl, requestCourseSelect.value === 'Other' && !course
           ? 'Tell us what course you\'re on.'
-          : 'Fill in your name, email, student number, course and year.');
+          : 'Fill in your name, email, password, student number, course and year.');
+        return;
+      }
+      if (password.length < 8) {
+        showMessage(statusEl, 'Your password needs to be at least 8 characters.');
+        return;
+      }
+      if (password !== passwordConfirm) {
+        showMessage(statusEl, "Those passwords don't match.");
         return;
       }
 
@@ -276,26 +286,59 @@
       statusEl.style.color = 'var(--color-text-muted)';
       showMessage(statusEl, 'Sending…');
 
-      supabaseClient
-        .from('account_requests')
-        .insert({ full_name: name, email: email, student_number: studentNumber, course: course, year_of_study: year, note: note || null })
-        .then(function (result) {
-          if (result.error) {
-            btn.disabled = false;
-            statusEl.style.color = '#ef8b8f';
-            // Postgres' unique-violation code, from the one-pending-
-            // request-per-email index — worth catching and rephrasing,
-            // since the raw constraint-violation message means nothing
-            // to someone filling in a form. Every other error shows as-is.
-            showMessage(statusEl, result.error.code === '23505'
-              ? "You've already got a request pending review - the committee will get to it soon."
-              : (result.error.message || "Couldn't send your request - try again, or email acms@lincolnsu.com."));
-            return;
-          }
-          document.getElementById('request-account-sent-email').textContent = email;
-          document.getElementById('request-account-form-wrap').style.display = 'none';
-          document.getElementById('request-account-success').style.display = '';
-        });
+      // The password is set here, for real, rather than at approval time
+      // - so this is a genuine signUp() (on an isolated, non-session-
+      // persisting client, so this browser never ends up holding a live
+      // session for an account that isn't approved yet), not the
+      // random-password-then-email-a-link dance the dashboard's Create
+      // Account form still uses. Approving later just has to attach a
+      // members row to this same auth id - no further signUp() call, no
+      // second email needed to get them logged in.
+      var requestSignupClient = createImplicitFlowClient();
+      // emailRedirectTo matters even though no password step happens on
+      // the other end of it any more - if this project has "Confirm
+      // email" switched on, signUp() still sends its own confirmation
+      // email regardless of anything here, and without this it would
+      // fall back to the project's generic Site URL instead of landing
+      // them somewhere that actually makes sense once confirmed.
+      var requestSignupRedirect = window.location.origin + '/member-login.html';
+      requestSignupClient.auth.signUp({ email: email, password: password, options: { emailRedirectTo: requestSignupRedirect } }).then(function (signUpResult) {
+        if (signUpResult.error || !signUpResult.data || !signUpResult.data.user) {
+          btn.disabled = false;
+          statusEl.style.color = '#ef8b8f';
+          showMessage(statusEl, (signUpResult.error && signUpResult.error.message) || "Couldn't create your login - the email may already be in use.");
+          return;
+        }
+        var authUserId = signUpResult.data.user.id;
+
+        supabaseClient
+          .from('account_requests')
+          .insert({
+            full_name: name, email: email, auth_user_id: authUserId, student_number: studentNumber,
+            course: course, year_of_study: year, note: note || null
+          })
+          .then(function (result) {
+            if (result.error) {
+              btn.disabled = false;
+              statusEl.style.color = '#ef8b8f';
+              // Postgres' unique-violation code, from the one-pending-
+              // request-per-email index — worth catching and
+              // rephrasing, since the raw constraint-violation message
+              // means nothing to someone filling in a form (and in this
+              // specific case genuinely can't happen on a first-ever
+              // submission, since signUp() above would already have
+              // rejected a second attempt with the same email first).
+              // Every other error shows as-is.
+              showMessage(statusEl, result.error.code === '23505'
+                ? "You've already got a request pending review - the committee will get to it soon."
+                : (result.error.message || "Your login was created, but saving your request failed - email acms@lincolnsu.com so the committee can finish this for you."));
+              return;
+            }
+            document.getElementById('request-account-sent-email').textContent = email;
+            document.getElementById('request-account-form-wrap').style.display = 'none';
+            document.getElementById('request-account-success').style.display = '';
+          });
+      });
     });
   }
 
@@ -5081,68 +5124,43 @@
       });
     }
 
-    // Mirrors the Create Account form's own signUp()-then-insert flow
-    // (below) almost exactly - same isolated, non-session-persisting
-    // client so the president's own session is never touched, same
-    // "confirm email on vs off" branching for which single email
-    // actually goes out. The one addition is the final RPC call, which
-    // just records that this specific request became this specific
-    // member - never anything Postgres could have done on its own,
-    // since only the browser can call Supabase Auth's signup API.
+    // The requester already chose and confirmed their own password back
+    // on request-account.html, so their login already fully exists
+    // (r.auth_user_id) - approving just has to attach a real members row
+    // to that same account. No signUp() here at all, and so no password-
+    // setup email either (the old flow needed one because the dashboard
+    // had just invented a random password nobody could ever use).
     function approveAccountRequest(r, onDone) {
-      var randomPassword = function () {
-        var bytes = new Uint8Array(24);
-        window.crypto.getRandomValues(bytes);
-        return Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
-      };
-      var approveClient = createImplicitFlowClient();
-      var loginPageUrl = window.location.origin + '/member-login.html';
+      if (!r.auth_user_id) {
+        onDone("This request has no account attached to it (it predates the switch to setting a password at request time) - create their login from Create Account instead, then delete this request.");
+        return;
+      }
 
-      approveClient.auth.signUp({
-        email: r.email,
-        password: randomPassword(),
-        options: { emailRedirectTo: loginPageUrl }
-      }).then(function (signUpResult) {
-        if (signUpResult.error || !signUpResult.data || !signUpResult.data.user) {
-          onDone((signUpResult.error && signUpResult.error.message) || "Couldn't create the account - the email may already be in use.");
+      insertWithFkRetry(function () {
+        return supabaseClient.from('members').insert({
+          id: r.auth_user_id,
+          full_name: r.full_name,
+          course: r.course,
+          year_of_study: r.year_of_study,
+          student_number: r.student_number,
+          member_type: 'member',
+          membership_status: 'active'
+        });
+      }).then(function (insertResult) {
+        if (insertResult.error) {
+          onDone("Their login already exists, but saving their profile failed (" + insertResult.error.message + "). Finish it from Table Editor using this account id: " + r.auth_user_id);
           return;
         }
-        var newUserId = signUpResult.data.user.id;
-        var needsPasswordEmail = !!signUpResult.data.session;
 
-        insertWithFkRetry(function () {
-          return supabaseClient.from('members').insert({
-            id: newUserId,
-            full_name: r.full_name,
-            course: r.course,
-            year_of_study: r.year_of_study,
-            student_number: r.student_number,
-            member_type: 'member',
-            membership_status: 'active'
+        supabaseClient.rpc('president_mark_account_request_approved', { target_id: r.id, new_member_id: r.auth_user_id }).then(function () {
+          // Best-effort — the account itself is already fully live by
+          // this point regardless of whether this send succeeds, so a
+          // Resend/Edge Function hiccup here is logged, not surfaced as
+          // an approval failure.
+          sendAccountEmail('approved', r, function (emailError) {
+            if (emailError) console.error('Welcome email failed to send:', emailError);
           });
-        }).then(function (insertResult) {
-          if (insertResult.error) {
-            onDone("The login was created, but saving their profile failed (" + insertResult.error.message + "). Finish it from Table Editor using this account id: " + newUserId);
-            return;
-          }
-
-          supabaseClient.rpc('president_mark_account_request_approved', { target_id: r.id, new_member_id: newUserId }).then(function () {
-            function finish() {
-              // Best-effort — the account itself is already fully live
-              // by this point regardless of whether this send succeeds,
-              // so a Resend/Edge Function hiccup here is logged, not
-              // surfaced as an approval failure.
-              sendAccountEmail('approved', r, function (emailError) {
-                if (emailError) console.error('Welcome email failed to send:', emailError);
-              });
-              onDone(null);
-            }
-            if (needsPasswordEmail) {
-              approveClient.auth.resetPasswordForEmail(r.email, { redirectTo: loginPageUrl }).then(finish);
-            } else {
-              finish();
-            }
-          });
+          onDone(null);
         });
       });
     }

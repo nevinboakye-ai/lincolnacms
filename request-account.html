@@ -7,7 +7,7 @@
 <title>Request your LACMS account</title>
 <meta name="description" content="Already paid your LACMS membership? Request your account and the committee will set up your login.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-55">
+<link rel="stylesheet" href="css/styles.css?v=20260824-56">
 </head>
 <body>
 
@@ -113,6 +113,15 @@
             <input type="email" id="request-email" name="request-email" autocomplete="email" placeholder="The email you used to pay via the Students' Union" required>
           </div>
           <div class="field">
+            <label for="request-password">Password</label>
+            <input type="password" id="request-password" name="request-password" autocomplete="new-password" minlength="8" required>
+            <span class="hint">At least 8 characters. This is what you'll log in with once your account's approved - no separate password-setup email needed.</span>
+          </div>
+          <div class="field">
+            <label for="request-password-confirm">Confirm password</label>
+            <input type="password" id="request-password-confirm" name="request-password-confirm" autocomplete="new-password" minlength="8" required>
+          </div>
+          <div class="field">
             <label for="request-student-number">Student number</label>
             <input type="text" id="request-student-number" name="request-student-number" placeholder="Your University of Lincoln student number" required>
           </div>
@@ -147,7 +156,7 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         </span>
         <h2 style="margin-top:0;">Request sent</h2>
-        <p>The committee will review this and set up your login shortly - you'll get an email to set your password once it's approved. If anything needs checking first (like confirming your membership payment), someone may reach out to <strong id="request-account-sent-email"></strong> directly.</p>
+        <p>The committee will review this shortly, and you'll get an email once your account's approved - from there, just log in with the email and password you set here. If anything needs checking first (like confirming your membership payment), someone may reach out to <strong id="request-account-sent-email"></strong> directly.</p>
         <a class="btn btn-outline btn-block" href="index.html">Back to the homepage</a>
       </div>
 
@@ -210,7 +219,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-55"></script>
-<script src="js/members.js?v=20260824-55"></script>
+<script src="js/main.js?v=20260824-56"></script>
+<script src="js/members.js?v=20260824-56"></script>
 </body>
 </html>

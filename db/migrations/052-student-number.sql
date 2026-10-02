@@ -43,7 +43,13 @@ create policy "Anyone can submit an account request"
     and created_member_id is null
   );
 
-create or replace function public.president_get_account_requests()
+-- Postgres won't let create or replace change a function's column list
+-- (its "row type", in the error this throws without the drop) - only
+-- its body - so the new student_number column means this one has to be
+-- dropped and recreated rather than just replaced.
+drop function if exists public.president_get_account_requests();
+
+create function public.president_get_account_requests()
 returns table (
   id uuid, full_name text, email text, student_number text, course text, year_of_study text,
   note text, status text, membership_paid boolean,
