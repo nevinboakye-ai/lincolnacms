@@ -131,7 +131,7 @@ Added a reusable red/green/gold tricolour bar (`.tricolor-bar`, small variant `.
 ## 8. Design system
 
 - Colours: black/near-black background, gold accent (`#d4a62b`), with red/green used as event-category dots, tags and the tricolour accent bar — drawn from your crest.
-- Fonts: Playfair Display (headings) + Inter (body), loaded from Google Fonts.
+- Fonts: Fraunces (headings) + Inter (body), loaded from Google Fonts.
 - All tokens live at the top of `css/styles.css` under `:root` if you want to adjust the palette later.
 
 ## 9. Removing the draft banner
