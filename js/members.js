@@ -389,6 +389,33 @@
       .then(function (result) { return !!result.data; });
   }
 
+  // Hub Access (migration 060): what the signed-in user is allowed to use
+  // is decided by rules the president edits on the dashboard, evaluated
+  // in Postgres. This asks once per page for the caller's own result:
+  // { feature: { allowed, blockedDisplay } }, or null if it couldn't be
+  // loaded (e.g. the migration hasn't been run) - every caller then falls
+  // back to the rule it used before this existed, so nothing breaks.
+  var hubAccessPromise = null;
+  function getHubAccess() {
+    if (!hubAccessPromise) {
+      hubAccessPromise = supabaseClient.rpc('get_my_hub_access').then(function (result) {
+        if (result.error) {
+          console.warn('Hub access unavailable, using built-in rules:', result.error.message);
+          return null;
+        }
+        var map = {};
+        (result.data || []).forEach(function (r) {
+          map[r.feature] = { allowed: !!r.allowed, blockedDisplay: r.blocked_display };
+        });
+        return map;
+      }, function () { return null; });
+    }
+    return hubAccessPromise;
+  }
+  function hubFeatureAllowed(access, feature, fallbackAllowed) {
+    return access && access[feature] ? access[feature].allowed : fallbackAllowed;
+  }
+
   // ---- Site-wide: "Active members" stat (index.html, about.html) —
   // hidden until 30 September 2026 (launch), then reads live from
   // site_settings.active_member_count instead of a hardcoded number —
@@ -1237,6 +1264,7 @@
   if (hubContent) {
     var authGate = document.getElementById('auth-gate');
     var hubError = document.getElementById('hub-error');
+    var hubSessionUserId = null;
 
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
@@ -1244,6 +1272,7 @@
         window.location.href = 'member-login.html';
         return;
       }
+      hubSessionUserId = session.user.id;
       loadProfile(session);
       loadFeed();
       loadRecentJoins();
@@ -1269,10 +1298,6 @@
           });
       }
 
-      // The Network is president-only for now (same as member-network.html
-      // itself enforces) — everyone else sees the locked "coming soon"
-      // variant on this card, same pattern as the Perks/Sankofa pair.
-      togglePair('network-card', 'network-locked-card', session.user.id === PRESIDENT_UID);
     });
 
     var FEED_CATEGORY = {
@@ -1288,12 +1313,17 @@
       var feedSection = document.getElementById('member-feed-section');
       var feedEmpty = document.getElementById('feed-empty');
 
-      supabaseClient
-        .from('announcements')
-        .select('*')
-        .order('pinned', { ascending: false })
-        .order('published_at', { ascending: false })
-        .then(function (result) {
+      getHubAccess().then(function (access) {
+        // No access to the feed (Hub Access rules): leave the section
+        // hidden rather than showing an empty "No news yet".
+        if (!hubFeatureAllowed(access, 'news_feed', true)) return null;
+        return supabaseClient
+          .from('announcements')
+          .select('*')
+          .order('pinned', { ascending: false })
+          .order('published_at', { ascending: false });
+      }).then(function (result) {
+          if (!result) return;
           if (feedSection) feedSection.style.display = '';
           var rows = result.data || [];
           if (!rows.length) {
@@ -1340,12 +1370,17 @@
       since.setDate(since.getDate() - 30);
       var sinceIso = since.toISOString();
 
-      supabaseClient
-        .from('network_join_events')
-        .select('full_name, event_type')
-        .gte('created_at', sinceIso)
-        .order('created_at', { ascending: false })
-        .then(function (result) {
+      getHubAccess().then(function (access) {
+        // Names of who joined the Network - only for people the Hub
+        // Access rules let into the Network.
+        if (!hubFeatureAllowed(access, 'network', true)) return null;
+        return supabaseClient
+          .from('network_join_events')
+          .select('full_name, event_type')
+          .gte('created_at', sinceIso)
+          .order('created_at', { ascending: false });
+      }).then(function (result) {
+          if (!result) return;
           // A failed query used to just render nothing here — no banner,
           // no error, indistinguishable from "no one's joined recently"
           // from the outside. Logging it means a real problem (RLS,
@@ -1452,13 +1487,31 @@
     // row, or null for a professional (who gets every one of these
     // locked/hidden, same as before).
     function showHubContent(member) {
-      hubContent.style.display = '';
-      var linksSection = document.getElementById('member-hub-content-links');
-      if (linksSection) linksSection.style.display = '';
-      togglePair('perks-card', 'perks-locked-card', !!member);
-      var sankofaCard = document.getElementById('sankofa-apply-card');
-      if (sankofaCard) sankofaCard.style.display = (member && member.course === 'Medicine') ? '' : 'none';
-      togglePair('motm-nominate-card', 'motm-locked-card', true);
+      getHubAccess().then(function (access) {
+        hubContent.style.display = '';
+        var linksSection = document.getElementById('member-hub-content-links');
+        if (linksSection) linksSection.style.display = '';
+
+        // Which cards someone sees comes from the Hub Access rules; if
+        // those can't be loaded, the rules these cards used before.
+        var isPresident = !!(hubSessionUserId && hubSessionUserId === PRESIDENT_UID);
+        applyHubCard(access, 'perks', 'perks-card', 'perks-locked-card', !!member);
+        applyHubCard(access, 'sankofa', 'sankofa-apply-card', null, !!(member && /medicine/i.test(member.course || '')));
+        applyHubCard(access, 'network', 'network-card', 'network-locked-card', isPresident);
+        applyHubCard(access, 'motm_nominate', 'motm-nominate-card', 'motm-locked-card', true);
+      });
+    }
+
+    // Shows the live card when allowed; otherwise a locked "coming soon"
+    // card or nothing, per the rule's "without access" setting (and only
+    // where a locked variant of that card actually exists).
+    function applyHubCard(access, feature, liveId, lockedId, fallbackAllowed) {
+      var allowed = hubFeatureAllowed(access, feature, fallbackAllowed);
+      var display = access && access[feature] ? access[feature].blockedDisplay : 'locked';
+      var live = document.getElementById(liveId);
+      var locked = lockedId ? document.getElementById(lockedId) : null;
+      if (live) live.style.display = allowed ? '' : 'none';
+      if (locked) locked.style.display = (!allowed && display === 'locked') ? '' : 'none';
     }
 
     function togglePair(liveId, lockedId, isCommittee) {
@@ -1764,8 +1817,9 @@
         return;
       }
       isPresidentViewer = session.user.id === PRESIDENT_UID;
-      checkIsMember(session).then(function (isMember) {
-        if (!isMember) {
+      Promise.all([checkIsMember(session), getHubAccess()]).then(function (gate) {
+        var isMember = gate[0];
+        if (!hubFeatureAllowed(gate[1], 'perks', isMember)) {
           if (perksAuthGate) perksAuthGate.style.display = 'none';
           if (perksLocked) perksLocked.style.display = 'flex';
           return;
@@ -2383,6 +2437,11 @@
           return getProfessionalRow(session).then(function (proRow) { return !!proRow; });
         })
         .then(function (isEligible) {
+          return getHubAccess().then(function (access) {
+            return hubFeatureAllowed(access, 'motm_nominate', true) ? isEligible : false;
+          });
+        })
+        .then(function (isEligible) {
           if (!isEligible) {
             if (nominateLocked) nominateLocked.style.display = 'flex';
             return;
@@ -2593,30 +2652,44 @@
       }
       sankofaSession = session;
 
-      checkIsMember(session).then(function (isMember) {
+      Promise.all([checkIsMember(session), getHubAccess()]).then(function (gate) {
+        var isMember = gate[0];
+        var access = gate[1];
+        // The application is saved against a members row, so it needs a
+        // real member on top of whatever the access rules say.
         if (!isMember) {
           if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
           var comingSoonNote = document.getElementById('sankofa-coming-soon-note');
           if (comingSoonNote) comingSoonNote.style.display = 'flex';
           return;
         }
+
+        function proceed(allowed) {
+          if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
+          if (!allowed) {
+            if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
+            return;
+          }
+          if (Date.now() > SANKOFA_MENTEE_DEADLINE) {
+            var deadlineNote = document.getElementById('sankofa-mentee-deadline-passed');
+            if (deadlineNote) deadlineNote.style.display = 'flex';
+            return;
+          }
+          checkExistingApplication(session);
+        }
+
+        if (access && access.sankofa) {
+          proceed(access.sankofa.allowed);
+          return;
+        }
+        // Hub access unavailable - the original Medicine-only rule.
         supabaseClient
           .from('members')
           .select('course')
           .eq('id', session.user.id)
           .single()
           .then(function (result) {
-            if (sankofaAuthGate) sankofaAuthGate.style.display = 'none';
-            if (result.error || !result.data || result.data.course !== 'Medicine') {
-              if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
-              return;
-            }
-            if (Date.now() > SANKOFA_MENTEE_DEADLINE) {
-              var deadlineNote = document.getElementById('sankofa-mentee-deadline-passed');
-              if (deadlineNote) deadlineNote.style.display = 'flex';
-              return;
-            }
-            checkExistingApplication(session);
+            proceed(!result.error && !!result.data && /medicine/i.test(result.data.course || ''));
           });
       });
     });
@@ -3678,18 +3751,19 @@
         window.location.href = 'member-login.html';
         return;
       }
-      // The Network is president-only for now — everyone else sees a
-      // "coming soon" note in place of the real page, the same UX
-      // shortcut used for Perks/Sankofa/MoTM before they launched (the
-      // real access control, if this ever needs to be enforced server-
-      // side too, would live in RLS on the members/network tables).
-      if (session.user.id !== PRESIDENT_UID) {
-        if (networkAuthGate) networkAuthGate.style.display = 'none';
-        var networkLocked = document.getElementById('network-locked');
-        if (networkLocked) networkLocked.style.display = 'flex';
-        return;
-      }
-      loadNetwork();
+      // Who can open the Network is decided by the Hub Access rules (the
+      // president edits them on the dashboard). If those can't be loaded,
+      // fall back to the original rule: president only. Anyone without
+      // access sees a "coming soon" note in place of the real page.
+      getHubAccess().then(function (access) {
+        if (!hubFeatureAllowed(access, 'network', session.user.id === PRESIDENT_UID)) {
+          if (networkAuthGate) networkAuthGate.style.display = 'none';
+          var networkLocked = document.getElementById('network-locked');
+          if (networkLocked) networkLocked.style.display = 'flex';
+          return;
+        }
+        loadNetwork();
+      });
     });
 
     // "So-and-so just joined the LACMS Network" — one row per new
@@ -4188,7 +4262,7 @@
     var ONLINE_WINDOW_MS = 5 * 60 * 1000;
     var presidentUserId = null;
     var dashboardRole = null;
-    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'create', 'manage'];
+    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'create', 'manage'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
@@ -4244,7 +4318,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'requests', 'create', 'manage'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'requests', 'access', 'create', 'manage'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {
@@ -4272,6 +4346,7 @@
           showDashSection(section);
           window.history.replaceState(null, '', '#' + section);
           if (section === 'webactivity') loadWebActivity();
+          if (section === 'access' && dashboardRole === 'president') loadHubAccess();
         });
       });
       document.querySelectorAll('[data-dash-back]').forEach(function (btn) {
@@ -4289,6 +4364,7 @@
       if (DASH_SECTIONS.indexOf(initialSection) !== -1) {
         showDashSection(initialSection);
         if (initialSection === 'webactivity') loadWebActivity();
+        if (initialSection === 'access' && dashboardRole === 'president') loadHubAccess();
       }
     }
     function setDashCount(section, text) {
@@ -5479,6 +5555,297 @@
             onDone(null, emailError);
           });
         });
+      });
+    }
+
+
+    // ---- Hub Access (president only): rules for who can use each part
+    // of the members hub (hub_access_rules), plus a person-by-person grid
+    // showing the resulting access and letting the president force one
+    // person on/off (hub_access_overrides). All evaluation happens in
+    // Postgres (migration 060) - this only edits rules and displays the
+    // computed result, so what's shown here is what's really enforced. ----
+    var HUB_FEATURES = [
+      { key: 'perks', label: 'Discounts & opportunities', short: 'Perks', desc: 'Partner discount codes and members-first opportunities.', canLock: true },
+      { key: 'sankofa', label: 'Sankofa Circle application', short: 'Sankofa', desc: 'Applying for a Sankofa mentorship Circle.', canLock: false },
+      { key: 'network', label: 'The LACMS Network', short: 'Network', desc: 'The member and professional directory.', canLock: true },
+      { key: 'motm_nominate', label: 'Member of the Month nominations', short: 'MoTM', desc: 'Nominating someone for Member of the Month.', canLock: false },
+      { key: 'news_feed', label: 'News & updates feed', short: 'News', desc: 'The announcements feed on the hub.', canLock: false }
+    ];
+    var HUB_ROLE_ORDER = ['member', 'executive_committee', 'supporting_committee', 'senior_sankofa_mentor', 'junior_sankofa_mentor'];
+    var hubRules = [];
+    var hubPeople = [];
+    var hubTypeFilter = 'all';
+    var hubSearchText = '';
+    var hubMenuEl = null;
+
+    function showHubStatus(message, kind) {
+      var el = document.getElementById('hub-access-status');
+      if (!el) return;
+      if (!message) { el.style.display = 'none'; return; }
+      el.textContent = message;
+      el.style.display = 'block';
+      el.classList.toggle('is-success', kind === 'success');
+    }
+
+    function loadHubAccess() {
+      return Promise.all([
+        supabaseClient.rpc('president_get_hub_rules'),
+        supabaseClient.rpc('president_get_hub_access')
+      ]).then(function (res) {
+        if (res[0].error || res[1].error) {
+          var msg = (res[0].error || res[1].error).message;
+          console.error('Hub access failed to load:', msg);
+          showHubStatus("Couldn't load hub access - has migration 060 been run? (" + msg + ')');
+          return;
+        }
+        showHubStatus('');
+        hubRules = res[0].data || [];
+        var byUser = {};
+        (res[1].data || []).forEach(function (row) {
+          var p = byUser[row.user_id];
+          if (!p) {
+            p = byUser[row.user_id] = { id: row.user_id, name: row.full_name || 'Unnamed', type: row.person_type, memberType: row.member_type, course: row.course, year: row.year_of_study, cells: {} };
+          }
+          p.cells[row.feature] = { allowed: row.allowed, via: row.via };
+        });
+        hubPeople = Object.keys(byUser).map(function (k) { return byUser[k]; })
+          .sort(function (a, b) { return a.name.localeCompare(b.name); });
+        renderHubRules();
+        renderHubMatrix();
+      });
+    }
+
+    function hubCheckbox(attrs, label, checked) {
+      return '<label class="checkbox-option"><input type="checkbox" ' + attrs + (checked ? ' checked' : '') + '> ' + escapeHtml(label) + '</label>';
+    }
+
+    function renderHubRules() {
+      var wrap = document.getElementById('hub-access-rules');
+      if (!wrap) return;
+      // Cards with unsaved edits are kept as they are (only their "N of M
+      // people" count is refreshed), so saving or forcing one thing never
+      // throws away what's half-edited in another card.
+      var dirty = {};
+      wrap.querySelectorAll('[data-hub-rule].is-dirty').forEach(function (c) { dirty[c.getAttribute('data-hub-rule')] = c; });
+
+      var html = HUB_FEATURES.map(function (f) {
+        var rule = hubRules.filter(function (r) { return r.feature === f.key; })[0];
+        if (!rule) return '';
+        var withAccess = hubPeople.filter(function (p) { return p.cells[f.key] && p.cells[f.key].allowed; }).length;
+        var courseOptions = LACMS_COURSES.slice();
+        (rule.courses || []).forEach(function (c) { if (courseOptions.indexOf(c) === -1) courseOptions.push(c); });
+
+        var roles = HUB_ROLE_ORDER.map(function (t) {
+          return hubCheckbox('data-hub-role="' + t + '"', MEMBER_TYPE_LABELS[t] || t, rule.member_types && rule.member_types.indexOf(t) !== -1);
+        }).join('');
+        var courses = courseOptions.map(function (c) {
+          return hubCheckbox('data-hub-course="' + escapeHtml(c) + '"', c, rule.courses && rule.courses.indexOf(c) !== -1);
+        }).join('');
+        var blockedHtml = f.canLock
+          ? '<div class="hub-rule-group"><span class="hub-rule-label">Without access, the hub shows</span>' +
+            '<label class="checkbox-option"><input type="radio" name="hub-blocked-' + f.key + '" value="locked"' + (rule.blocked_display === 'locked' ? ' checked' : '') + '> A locked "coming soon" card</label>' +
+            '<label class="checkbox-option"><input type="radio" name="hub-blocked-' + f.key + '" value="hidden"' + (rule.blocked_display === 'hidden' ? ' checked' : '') + '> Nothing at all</label></div>'
+          : '<input type="hidden" data-hub-blocked value="hidden">';
+
+        var who = [];
+        if (rule.allow_members) who.push('Members');
+        if (rule.allow_professionals) who.push('Professionals');
+        var summaryParts = [who.length ? who.join(' + ') : 'Nobody (just you)'];
+        if (rule.allow_members && rule.member_types && rule.member_types.length) {
+          summaryParts.push(rule.member_types.map(function (t) { return MEMBER_TYPE_LABELS[t] || t; }).join(', '));
+        }
+        if (rule.allow_members && rule.courses && rule.courses.length) summaryParts.push(rule.courses.join(', '));
+
+        return '<details class="hub-rule-card" data-hub-rule="' + f.key + '">' +
+          '<summary class="hub-rule-head"><div class="hub-rule-headtext"><h3 class="hub-rule-title">' + escapeHtml(f.label) + '</h3>' +
+          '<p class="hub-rule-desc">' + escapeHtml(summaryParts.join(' · ')) + '</p></div>' +
+          '<div class="hub-rule-count"><strong>' + withAccess + '</strong> of ' + hubPeople.length + ' have access</div>' +
+          '<svg class="icon hub-rule-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></summary>' +
+          '<div class="hub-rule-body">' +
+          '<p class="hub-rule-desc">' + escapeHtml(f.desc) + '</p>' +
+          '<div class="hub-rule-fields">' +
+          '<div class="hub-rule-group"><span class="hub-rule-label">Who</span>' +
+          hubCheckbox('data-hub-allow-members', 'Members', rule.allow_members) +
+          hubCheckbox('data-hub-allow-pros', 'Professionals', rule.allow_professionals) + '</div>' +
+          '<div class="hub-rule-group"><span class="hub-rule-label">Only these member roles <small>(none ticked = every role)</small></span><div class="hub-rule-chips">' + roles + '</div></div>' +
+          '<div class="hub-rule-group"><span class="hub-rule-label">Only these courses <small>(none ticked = every course)</small></span><div class="hub-rule-chips">' + courses + '</div></div>' +
+          blockedHtml +
+          '</div>' +
+          '<div class="hub-rule-actions"><button type="button" class="btn btn-primary" data-hub-save disabled>Save changes</button></div>' +
+          '</div></details>';
+      }).join('');
+
+      var fresh = document.createElement('div');
+      fresh.innerHTML = html;
+      var nodes = Array.from(fresh.children).map(function (card) {
+        var key = card.getAttribute('data-hub-rule');
+        var kept = dirty[key];
+        if (!kept) return card;
+        var keptCount = kept.querySelector('.hub-rule-count');
+        var newCount = card.querySelector('.hub-rule-count');
+        if (keptCount && newCount) keptCount.innerHTML = newCount.innerHTML;
+        kept.open = true;
+        return kept;
+      });
+      wrap.replaceChildren.apply(wrap, nodes);
+    }
+
+    function renderHubMatrix() {
+      var table = document.getElementById('hub-access-matrix');
+      var emptyEl = document.getElementById('hub-access-empty');
+      if (!table) return;
+      var q = hubSearchText.trim().toLowerCase();
+      var features = HUB_FEATURES.filter(function (f) { return hubRules.some(function (r) { return r.feature === f.key; }); });
+
+      var rows = hubPeople.filter(function (p) {
+        if (q && p.name.toLowerCase().indexOf(q) === -1) return false;
+        if (hubTypeFilter === 'member' || hubTypeFilter === 'professional') return p.type === hubTypeFilter;
+        if (hubTypeFilter === 'forced') {
+          return features.some(function (f) { var c = p.cells[f.key]; return c && (c.via === 'override_allow' || c.via === 'override_deny'); });
+        }
+        return true;
+      });
+
+      if (emptyEl) emptyEl.style.display = rows.length ? 'none' : 'block';
+      table.style.display = rows.length ? '' : 'none';
+
+      var head = '<thead><tr><th class="hub-matrix-person">Person</th>' +
+        features.map(function (f) { return '<th title="' + escapeHtml(f.label) + '">' + escapeHtml(f.short) + '</th>'; }).join('') + '</tr></thead>';
+
+      var body = '<tbody>' + rows.map(function (p) {
+        var sub = p.type === 'professional'
+          ? 'Professional'
+          : [MEMBER_TYPE_LABELS[p.memberType] || 'Member', p.course, p.year].filter(Boolean).join(' · ');
+        var cells = features.map(function (f) {
+          var c = p.cells[f.key] || { allowed: false, via: 'rule' };
+          var cls = 'hub-cell ' + (c.allowed ? 'hub-cell--yes' : 'hub-cell--no');
+          var label;
+          if (c.via === 'president') { cls += ' hub-cell--president'; label = 'Always has access (president)'; }
+          else if (c.via === 'override_allow') { cls += ' hub-cell--forced'; label = 'Forced on for this person'; }
+          else if (c.via === 'override_deny') { cls += ' hub-cell--forced'; label = 'Forced off for this person'; }
+          else label = c.allowed ? 'Has access by the rule' : 'No access by the rule';
+          var disabled = c.via === 'president' ? ' disabled' : '';
+          return '<td><button type="button" class="' + cls + '" data-hub-cell data-uid="' + escapeHtml(p.id) + '" data-feature="' + f.key + '"' + disabled +
+            ' aria-label="' + escapeHtml(p.name + ', ' + f.label + ': ' + label) + '" title="' + escapeHtml(label) + '">' +
+            (c.via === 'president' ? '&#9733;' : (c.allowed ? '&#10003;' : '&#10005;')) + '</button></td>';
+        }).join('');
+        return '<tr data-hub-row><th scope="row" class="hub-matrix-person"><span class="hub-matrix-name">' + escapeHtml(p.name) + '</span><span class="hub-matrix-sub">' + escapeHtml(sub) + '</span></th>' + cells + '</tr>';
+      }).join('') + '</tbody>';
+
+      table.innerHTML = head + body;
+    }
+
+    function closeHubMenu() {
+      if (hubMenuEl) { hubMenuEl.remove(); hubMenuEl = null; }
+    }
+
+    function openHubMenu(btn) {
+      closeHubMenu();
+      var uid = btn.getAttribute('data-uid');
+      var feature = btn.getAttribute('data-feature');
+      var person = hubPeople.filter(function (p) { return p.id === uid; })[0];
+      var meta = HUB_FEATURES.filter(function (f) { return f.key === feature; })[0];
+      if (!person || !meta) return;
+      var via = person.cells[feature] ? person.cells[feature].via : 'rule';
+      var current = via === 'override_allow' ? 'allow' : (via === 'override_deny' ? 'deny' : 'default');
+      var options = [
+        { mode: 'default', label: 'Follow the rule' },
+        { mode: 'allow', label: 'Always allow' },
+        { mode: 'deny', label: 'Always block' }
+      ];
+      var menu = document.createElement('div');
+      menu.className = 'hub-cell-menu';
+      menu.setAttribute('role', 'menu');
+      menu.innerHTML = '<div class="hub-cell-menu-title">' + escapeHtml(person.name) + '<span>' + escapeHtml(meta.label) + '</span></div>' +
+        options.map(function (o) {
+          return '<button type="button" role="menuitemradio" aria-checked="' + (o.mode === current) + '" class="hub-cell-menu-item' + (o.mode === current ? ' is-current' : '') + '" data-hub-mode="' + o.mode + '" data-uid="' + escapeHtml(uid) + '" data-feature="' + feature + '">' + o.label + '</button>';
+        }).join('');
+      document.body.appendChild(menu);
+      hubMenuEl = menu;
+      var rect = btn.getBoundingClientRect();
+      var left = Math.min(Math.max(8, rect.left + rect.width / 2 - menu.offsetWidth / 2), window.innerWidth - menu.offsetWidth - 8);
+      menu.style.left = left + window.scrollX + 'px';
+      menu.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+      var first = menu.querySelector('.is-current') || menu.querySelector('button');
+      if (first) first.focus();
+    }
+
+    function saveHubRule(card) {
+      var feature = card.getAttribute('data-hub-rule');
+      var roles = Array.from(card.querySelectorAll('[data-hub-role]:checked')).map(function (el) { return el.getAttribute('data-hub-role'); });
+      var courses = Array.from(card.querySelectorAll('[data-hub-course]:checked')).map(function (el) { return el.getAttribute('data-hub-course'); });
+      var blockedRadio = card.querySelector('input[type="radio"]:checked');
+      var blockedHidden = card.querySelector('[data-hub-blocked]');
+      var allowMembers = card.querySelector('[data-hub-allow-members]').checked;
+      var allowPros = card.querySelector('[data-hub-allow-pros]').checked;
+      var saveBtn = card.querySelector('[data-hub-save]');
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+      supabaseClient.rpc('president_set_hub_rule', {
+        p_feature: feature,
+        p_allow_members: allowMembers,
+        p_allow_professionals: allowPros,
+        p_member_types: roles.length ? roles : null,
+        p_courses: courses.length ? courses : null,
+        p_blocked_display: blockedRadio ? blockedRadio.value : (blockedHidden ? blockedHidden.value : 'hidden')
+      }).then(function (result) {
+        if (result.error) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save changes';
+          showHubStatus("Couldn't save: " + result.error.message);
+          return;
+        }
+        card.classList.remove('is-dirty');
+        var meta = HUB_FEATURES.filter(function (f) { return f.key === feature; })[0];
+        loadHubAccess().then(function () { showHubStatus('Saved - ' + (meta ? meta.label : feature) + ' access updated.', 'success'); });
+      });
+    }
+
+    var hubAccessPanel = document.getElementById('dash-panel-access');
+    if (hubAccessPanel) {
+      hubAccessPanel.addEventListener('change', function (e) {
+        var card = e.target.closest('[data-hub-rule]');
+        if (!card) return;
+        card.classList.add('is-dirty');
+        var btn = card.querySelector('[data-hub-save]');
+        if (btn) btn.disabled = false;
+      });
+      hubAccessPanel.addEventListener('click', function (e) {
+        var saveBtn = e.target.closest('[data-hub-save]');
+        if (saveBtn) { saveHubRule(saveBtn.closest('[data-hub-rule]')); return; }
+        var cell = e.target.closest('[data-hub-cell]');
+        if (cell && !cell.disabled) { e.stopPropagation(); openHubMenu(cell); return; }
+        var filterTab = e.target.closest('[data-hub-filter]');
+        if (filterTab) {
+          filterTab.parentElement.querySelectorAll('[data-hub-filter]').forEach(function (t) { t.classList.remove('is-active'); });
+          filterTab.classList.add('is-active');
+          hubTypeFilter = filterTab.getAttribute('data-hub-filter');
+          renderHubMatrix();
+        }
+      });
+      var hubSearchInput = document.getElementById('hub-access-search');
+      if (hubSearchInput) {
+        hubSearchInput.addEventListener('input', function () { hubSearchText = hubSearchInput.value; renderHubMatrix(); });
+      }
+      document.addEventListener('click', function (e) {
+        if (!hubMenuEl) return;
+        var item = e.target.closest('[data-hub-mode]');
+        if (item && hubMenuEl.contains(item)) {
+          var uid = item.getAttribute('data-uid');
+          var feature = item.getAttribute('data-feature');
+          closeHubMenu();
+          supabaseClient.rpc('president_set_hub_override', { p_user: uid, p_feature: feature, p_mode: item.getAttribute('data-hub-mode') }).then(function (result) {
+            if (result.error) { showHubStatus("Couldn't change that: " + result.error.message); return; }
+            loadHubAccess();
+          });
+          return;
+        }
+        if (!hubMenuEl.contains(e.target) && !e.target.closest('[data-hub-cell]')) closeHubMenu();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && hubMenuEl) closeHubMenu();
       });
     }
 

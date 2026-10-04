@@ -8,7 +8,7 @@
 <meta name="description" content="For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-69">
+<link rel="stylesheet" href="css/styles.css?v=20260824-70">
 </head>
 <body>
 
@@ -156,6 +156,12 @@
               <span class="dash-nav-card-title">Account Requests</span>
               <span class="dash-nav-card-desc">Review and approve self-submitted requests for a login</span>
               <span class="dash-nav-card-count" id="dash-count-requests">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="access">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+              <span class="dash-nav-card-title">Hub Access</span>
+              <span class="dash-nav-card-desc">See who can use each part of the members hub, and change it</span>
+              <span class="dash-nav-card-count">&nbsp;</span>
             </button>
             <button type="button" class="dash-nav-card" data-dash-section="create">
               <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg></span>
@@ -376,6 +382,49 @@
             <p id="account-requests-empty" style="display:none; color: var(--color-text-faint);">No pending requests right now - you're all caught up.</p>
           </div>
 
+          <div class="dash-panel" id="dash-panel-access" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+
+            <div class="section-head">
+              <span class="eyebrow">Hub access</span>
+              <h2>Who can see what</h2>
+              <p>Set the rules for each part of the members hub below, then check the person-by-person grid to see exactly who gets what. Changes apply straight away - you always keep access to everything.</p>
+            </div>
+
+            <p id="hub-access-status" class="auth-error" role="status" style="display:none;"></p>
+            <div id="hub-access-rules" class="hub-rules"></div>
+
+            <div class="section-head" style="margin-top: var(--space-6);">
+              <span class="eyebrow">Person by person</span>
+              <h2>Access grid</h2>
+              <p>Click any tick or cross to force access on or off for that one person, regardless of the rules above.</p>
+            </div>
+
+            <div class="dash-toolbar">
+              <div class="network-search">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="search" id="hub-access-search" placeholder="Search by name…">
+              </div>
+              <div class="dash-filter-tabs" id="hub-access-type-tabs">
+                <button type="button" class="dash-filter-tab is-active" data-hub-filter="all">All</button>
+                <button type="button" class="dash-filter-tab" data-hub-filter="member">Members</button>
+                <button type="button" class="dash-filter-tab" data-hub-filter="professional">Professionals</button>
+                <button type="button" class="dash-filter-tab" data-hub-filter="forced">With overrides</button>
+              </div>
+            </div>
+            <div class="hub-legend" aria-hidden="true">
+              <span><span class="hub-cell hub-cell--yes">&#10003;</span> Has access</span>
+              <span><span class="hub-cell hub-cell--no">&#10005;</span> No access</span>
+              <span><span class="hub-cell hub-cell--yes hub-cell--forced">&#10003;</span> Forced on</span>
+              <span><span class="hub-cell hub-cell--no hub-cell--forced">&#10005;</span> Forced off</span>
+            </div>
+            <div class="hub-matrix-wrap"><table class="hub-matrix" id="hub-access-matrix"></table></div>
+            <p id="hub-access-empty" style="display:none; color: var(--color-text-faint);">No one matches that.</p>
+          </div>
+
           <div class="dash-panel" id="dash-panel-create" style="display:none;">
             <button type="button" class="dash-panel-back" data-dash-back>
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -585,8 +634,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-69"></script>
-<script src="js/members.js?v=20260824-69"></script>
-<script src="js/notifications.js?v=20260824-69"></script>
+<script src="js/main.js?v=20260824-70"></script>
+<script src="js/members.js?v=20260824-70"></script>
+<script src="js/notifications.js?v=20260824-70"></script>
 </body>
 </html>

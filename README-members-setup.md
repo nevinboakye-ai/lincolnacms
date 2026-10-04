@@ -1130,3 +1130,17 @@ The migration also back-dates the eight seeded events from 058 so nobody opens t
 ## 102. "Member" tag on confirmed Network members
 
 No migration - JS only. Confirmed members on the Network page (cards and the profile popup) with no committee role or mentor title now carry a **Member** tag, alongside the existing "Pending" tag on accounts that haven't signed up yet. Committee roles and Sankofa mentor titles still show as before; Member is only the fallback.
+
+## 103. Hub Access - choose who can use each part of the members hub (president only)
+
+Run [`db/migrations/060-hub-access.sql`](db/migrations/060-hub-access.sql) (wrapped in a transaction - if anything fails, nothing is applied). Needs 003, 008, 013, 015, 017, 025, 029, 054.
+
+**New dashboard section: Hub Access** (president only - hidden from Executive Committee members, and the data functions behind it refuse anyone but you). Two parts:
+- **Rules, one card per hub feature** - Discounts & opportunities, Sankofa Circle application, the Network, Member of the Month nominations, and the News & updates feed. For each: allow Members and/or Professionals, optionally limit to certain member roles (Executive Committee, Supporting Committee, Sankofa mentors...) and/or certain courses (none ticked = no limit), and - for Perks and the Network - whether people without access see a locked "coming soon" card or nothing. Each card shows how many people currently have access.
+- **Access grid** - everyone (members and professionals) by feature, with a tick or cross for whether they get it. Click any cell to force that one person on ("Always allow"), off ("Always block"), or back to following the rule. Forced cells have a gold ring; you (the president) always have everything. Search by name, or filter to members, professionals, or just people with overrides.
+
+**It's enforced in the database, not just hidden in the page:** Discounts (Perks), the News feed, new Sankofa mentee applications, MoTM nominations, and the Network member directory all check these rules server-side. The hub cards, the Perks/Sankofa/Network/MoTM pages, the hub's "just joined" banner and the notification counts all follow them too. Not enforced in the database: the professionals directory and the "just joined" feed on the Network page itself - those are page-level only (as the Network always was).
+
+**Defaults match how things worked before:** Perks - members; Sankofa - members on Medicine; Network - nobody but you; MoTM nominations and News feed - members and professionals. Course matching is "contains", so "Medicine" also covers "Medicine BMBS BMedSci" - the old exact "Medicine" check (page and database trigger) missed members saved with the full degree title; the Sankofa trigger now uses these rules (deadline unchanged). If the migration hasn't been run, every page quietly falls back to the old built-in rules.
+
+**Things to know:** a Sankofa application is saved against a members row, so a professional can be granted Sankofa access but won't be able to submit. Opening the Network to people reveals the directory to them, so check the rule before ticking Members. Course/role rules only affect members; professionals are controlled by the Professionals tick (and per-person overrides).
