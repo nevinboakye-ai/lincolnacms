@@ -981,6 +981,156 @@
     return api;
   }
 
+
+  // =======================================================================
+  // PDF preview: rendered with PDF.js onto canvases at the container's full
+  // width (so a whole page is visible side to side on a phone - the
+  // browsers' own embedded viewers start zoomed in on mobile). Pages render
+  // lazily as they scroll into view; +/- zoom and "fit width" are provided.
+  // Falls back to the browser's embedded viewer if PDF.js can't load.
+  // =======================================================================
+  var PDFJS_BASE = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  function loadPdfJs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (loadPdfJs.p) return loadPdfJs.p;
+    loadPdfJs.p = new Promise(function (resolve, reject) {
+      var sc = document.createElement('script');
+      sc.src = PDFJS_BASE + 'pdf.min.js';
+      sc.onload = function () {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      };
+      sc.onerror = function () { loadPdfJs.p = null; reject(new Error('PDF.js failed to load')); };
+      document.head.appendChild(sc);
+    });
+    return loadPdfJs.p;
+  }
+
+  function renderPdf(slot, url, r) {
+    slot.classList.remove('res-embed--loading');
+    slot.classList.add('res-embed--pdf');
+    slot.innerHTML =
+      '<div class="res-pdf-bar"><span class="res-pdf-pages" aria-live="polite">Loading…</span>' +
+      '<span class="res-pdf-zoom"><button type="button" data-pdf-out aria-label="Zoom out">&minus;</button>' +
+      '<button type="button" data-pdf-fit aria-label="Fit page width">Fit</button>' +
+      '<button type="button" data-pdf-in aria-label="Zoom in">+</button></span></div>' +
+      '<div class="res-pdf" tabindex="0" aria-label="PDF preview of ' + escapeHtml(r.title) + '"></div>';
+    var box = slot.querySelector('.res-pdf');
+    var pagesLabel = slot.querySelector('.res-pdf-pages');
+    var zoom = 1;
+    var pdfDoc = null;
+    var wrappers = [];
+    var io = null;
+
+    function fallback() {
+      slot.classList.remove('res-embed--pdf');
+      slot.innerHTML = '<iframe src="' + escapeHtml(url) + '" title="' + escapeHtml(r.title) + '" loading="lazy"></iframe>';
+    }
+
+    function pageWidth() { return Math.max(160, box.clientWidth - 16); }
+
+    function sizeWrappers(ratio) {
+      var w = pageWidth() * zoom;
+      wrappers.forEach(function (wr) {
+        var rt = wr._ratio || ratio;
+        wr.style.width = w + 'px';
+        wr.style.height = Math.round(w * rt) + 'px';
+        wr._rendered = false;
+      });
+    }
+
+    function renderPage(wr) {
+      if (wr._rendered || wr._busy || !pdfDoc) return;
+      wr._busy = true;
+      pdfDoc.getPage(wr._n).then(function (page) {
+        var base = page.getViewport({ scale: 1 });
+        wr._ratio = base.height / base.width;
+        var cssW = pageWidth() * zoom;
+        var scale = cssW / base.width;
+        var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+        var vp = page.getViewport({ scale: scale * dpr });
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.floor(vp.width);
+        canvas.height = Math.floor(vp.height);
+        canvas.style.width = Math.round(cssW) + 'px';
+        canvas.style.height = Math.round(cssW * wr._ratio) + 'px';
+        wr.style.width = Math.round(cssW) + 'px';
+        wr.style.height = Math.round(cssW * wr._ratio) + 'px';
+        return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise.then(function () {
+          wr.innerHTML = '';
+          wr.appendChild(canvas);
+          wr._rendered = true;
+          wr._busy = false;
+        });
+      }).catch(function () { wr._busy = false; });
+    }
+
+    function renderVisible() {
+      var top = box.scrollTop;
+      var bottom = top + box.clientHeight;
+      wrappers.forEach(function (wr) {
+        var t = wr.offsetTop;
+        var b = t + wr.offsetHeight;
+        if (b > top - 400 && t < bottom + 400) renderPage(wr);
+      });
+    }
+
+    function updateLabel() {
+      var current = 1;
+      var probe = box.scrollTop + 40;
+      for (var i = 0; i < wrappers.length; i++) {
+        if (wrappers[i].offsetTop + wrappers[i].offsetHeight > probe) { current = i + 1; break; }
+        current = i + 1;
+      }
+      pagesLabel.textContent = 'Page ' + current + ' of ' + wrappers.length;
+    }
+
+    function setZoom(z) {
+      var next = Math.max(0.6, Math.min(3, z));
+      if (next === zoom) return;
+      // Keep the same spot in the document in view while resizing.
+      var progress = box.scrollHeight ? box.scrollTop / box.scrollHeight : 0;
+      zoom = next;
+      sizeWrappers();
+      box.scrollTop = progress * box.scrollHeight;
+      renderVisible();
+      updateLabel();
+    }
+
+    slot.querySelector('[data-pdf-in]').addEventListener('click', function () { setZoom(zoom + 0.25); });
+    slot.querySelector('[data-pdf-out]').addEventListener('click', function () { setZoom(zoom - 0.25); });
+    slot.querySelector('[data-pdf-fit]').addEventListener('click', function () { setZoom(1); });
+    box.addEventListener('scroll', function () { renderVisible(); updateLabel(); }, { passive: true });
+    var resizeTimer = null;
+    window.addEventListener('resize', function onResize() {
+      if (!document.body.contains(box)) { window.removeEventListener('resize', onResize); return; }
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () { sizeWrappers(); renderVisible(); }, 150);
+    });
+
+    loadPdfJs().then(function (lib) {
+      return lib.getDocument({ url: url }).promise;
+    }).then(function (pdf) {
+      pdfDoc = pdf;
+      return pdf.getPage(1).then(function (first) {
+        var base = first.getViewport({ scale: 1 });
+        var ratio = base.height / base.width;
+        for (var n = 1; n <= pdf.numPages; n++) {
+          var wr = document.createElement('div');
+          wr.className = 'res-pdf-page';
+          wr._n = n;
+          wr._ratio = ratio;
+          wr.setAttribute('aria-label', 'Page ' + n);
+          box.appendChild(wr);
+          wrappers.push(wr);
+        }
+        sizeWrappers(ratio);
+        renderVisible();
+        updateLabel();
+      });
+    }).catch(fallback);
+  }
+
   // ---- Preview / open ---------------------------------------------------------------
   function openResource(r) {
     if (r.kind === 'link') {
@@ -1031,8 +1181,8 @@
       slot.classList.remove('res-embed--loading');
       var noPreview = '<div class="res-link-card">' + thumbHtml(r) + '<div><strong>' + escapeHtml(r.file_name || '') + (r.file_size ? ' (' + formatBytes(r.file_size) + ')' : '') + '</strong><span>No inline preview for this file type - download to view.</span></div></div>';
       if (!url) { slot.classList.add('res-embed--card'); slot.innerHTML = '<p class="res-meta">Couldn\'t load the preview - you can still download it.</p>'; return; }
-      if (ext === 'pdf') slot.innerHTML = '<iframe src="' + escapeHtml(url) + '" title="' + escapeHtml(r.title) + '" loading="lazy"></iframe>';
-      else if (IMAGE_EXTS.indexOf(ext) !== -1) slot.innerHTML = '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(r.title) + '">';
+      if (ext === 'pdf') renderPdf(slot, url, r);
+      else if (IMAGE_EXTS.indexOf(ext) !== -1) { slot.classList.add('res-embed--img'); slot.innerHTML = '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(r.title) + '">'; }
       else if (r.preview_path) {
         signedUrl(r.preview_path).then(function (pu) {
           if (pu) slot.innerHTML = '<img src="' + escapeHtml(pu) + '" alt="">';

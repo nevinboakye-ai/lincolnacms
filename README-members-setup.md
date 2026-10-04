@@ -1253,3 +1253,7 @@ Front-end only. On a resource card with a long description, "Read more" no longe
 ## 116. Resources: sort by most popular
 
 Front-end only (uses the likes/comments from migration 066). The sort dropdown on the Resources page has a new **Most popular** option: resources are ranked by likes plus comments (a comment counts double, since it's a stronger signal than a like), with ties broken newest-first. It ranks the whole list, not just the page of cards currently showing, and works together with the course chips and the other filters.
+
+## 117. Resources: PDF preview fits the full page width (mobile fix)
+
+Front-end only. On phones the browser's built-in PDF viewer inside the preview popup opened heavily zoomed in. PDFs are now drawn with PDF.js (loaded on demand from cdnjs) onto canvases sized to the popup's full width, so each page is visible edge to edge from the start, in a tall scrolling area with a "Page X of N" indicator and **-** / **Fit** / **+** zoom buttons (zoomed pages scroll sideways). Pages render lazily as they scroll into view and re-fit if the phone is rotated. If PDF.js can't load (offline, blocked), it falls back to the browser's own viewer. The popup itself is also roomier on phones (smaller padding, near-edge-to-edge), image previews size to the width instead of being letterboxed, and video embeds use 16:9.
