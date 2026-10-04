@@ -4029,7 +4029,7 @@
       // plain "Pending" badge — even if they're destined to be
       // committee once they join, they aren't yet, so the committee
       // gold treatment is reserved for confirmed members.
-      var roleLabel = m.is_pending ? 'Pending' : (m.committee_role || NETWORK_TYPE_LABELS[m.member_type]);
+      var roleLabel = m.is_pending ? 'Pending' : (m.committee_role || NETWORK_TYPE_LABELS[m.member_type] || 'Member');
       var badgeHtml = roleLabel ? '<span class="network-card-badge">' + escapeHtml(roleLabel) + '</span>' : '';
       var linkedinHtml = safeUrl(m.linkedin_url) ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
       var isCommittee = !m.is_pending && (m.member_type === 'executive_committee' || m.member_type === 'supporting_committee');
@@ -4126,7 +4126,7 @@
       };
 
       if (type === 'member') {
-        var roleLabel = record.is_pending ? 'Pending' : (record.committee_role || NETWORK_TYPE_LABELS[record.member_type]);
+        var roleLabel = record.is_pending ? 'Pending' : (record.committee_role || NETWORK_TYPE_LABELS[record.member_type] || 'Member');
         var bioHtml = record.is_pending
           ? '<p class="network-modal-bio" style="font-style:italic; color: var(--color-text-faint);">Still finishing sign-up - their full profile will appear here once they\'ve joined LACMS.</p>'
           : (record.bio

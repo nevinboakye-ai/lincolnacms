@@ -1126,3 +1126,7 @@ Run [`db/migrations/059-notifications.sql`](db/migrations/059-notifications.sql)
 **Adding a section later:** add it to the CHECK in `notification_seen`, a UNION branch in `get_my_notifications()`, and a row in `SECTIONS` in js/notifications.js.
 
 The migration also back-dates the eight seeded events from 058 so nobody opens the site to "8 new events" on day one. Also fixed: on a signed-in phone the header's icon buttons were wider than a 375px screen and pushed the menu button partly off-screen; the header spacing is tightened to fit the new bell as well.
+
+## 102. "Member" tag on confirmed Network members
+
+No migration - JS only. Confirmed members on the Network page (cards and the profile popup) with no committee role or mentor title now carry a **Member** tag, alongside the existing "Pending" tag on accounts that haven't signed up yet. Committee roles and Sankofa mentor titles still show as before; Member is only the fallback.
