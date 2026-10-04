@@ -1112,3 +1112,17 @@ Run [`db/migrations/058-site-events.sql`](db/migrations/058-site-events.sql).
 **Don't change `slug` on an event people have registered for** - registrations are stored against it. A new event needs a lowercase-with-hyphens slug (e.g. `spring-social`).
 
 events.html still contains the original events as static HTML: it's what shows if the table is empty or can't load, and what search engines/no-JS visitors see. Once the table has active rows, the live rows replace it. The homepage's event carousel (index.html) is still static HTML and does not read this table. The Midlands Medics Gala details text no longer has an inline "MMG Portal" link (plain text only) - the title and the MMG Portal button link there instead.
+
+## 101. Notifications - a bell with a count of what's new
+
+Run [`db/migrations/059-notifications.sql`](db/migrations/059-notifications.sql). Needs the earlier migrations for the tables it reads (008, 003, 058, 013, 011, 029, 009, 010).
+
+**Signed-in users now see a bell in the header** with a red count of content published since they last looked. Clicking it lists each section with how many are new, the latest title and how long ago, linking straight to the page. "Mark all as read" clears everything. The same counts also show as small pills on the Events / News / MoTM / Gallery nav links (desktop and mobile menu) and on the member hub's Perks card. The bell only appears once there's a session, so signed-out visitors see nothing new.
+
+**What counts as new, and what clears it:** announcements (member hub), discounts + members-first opportunities (Perks), events (`site_events`), news posts, Member of the Month honourees, gallery photos, and the MMG updates/perks you have access to. Visiting a section's own page marks it as seen (the hub marks announcements). Counting is "published after the last time you saw that section"; a section you've never opened counts from when your account was created, so someone new sees what's been added since they signed up. Only genuinely new rows count - editing an existing discount or event doesn't re-notify.
+
+**How it's built:** per-user "last seen" times live in `notification_seen` (own rows only). `get_my_notifications()` does all the counting in one call and runs as the signed-in user, so row-level security decides what anyone is told about - e.g. MMG updates only count for people with MMG access, and nobody is notified about content they couldn't open. `mark_notifications_seen()` stamps with the server clock, not the browser's. Because it's stored server-side, read state follows the user across devices. The page shows last-known counts instantly from the session, then refreshes on load, every 60s while the tab is visible, and when the tab regains focus. If the migration hasn't been run, no bell appears (nothing breaks).
+
+**Adding a section later:** add it to the CHECK in `notification_seen`, a UNION branch in `get_my_notifications()`, and a row in `SECTIONS` in js/notifications.js.
+
+The migration also back-dates the eight seeded events from 058 so nobody opens the site to "8 new events" on day one. Also fixed: on a signed-in phone the header's icon buttons were wider than a 375px screen and pushed the menu button partly off-screen; the header spacing is tightened to fit the new bell as well.
