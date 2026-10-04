@@ -7623,7 +7623,7 @@ body.guide-open { overflow: hidden; }
 .res-card--open::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(120deg, rgba(var(--gold-rgb), 0.12), transparent 55%); opacity: 0; transition: opacity var(--dur-base) var(--ease-standard); pointer-events: none; }
 .res-card--open:hover { transform: translateY(-4px); border-color: rgba(var(--gold-rgb), 0.55); box-shadow: 0 20px 40px -22px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(var(--gold-rgb), 0.18); }
 .res-card--open:hover::before { opacity: 1; }
-.res-card--open:active { transform: translateY(-1px) scale(0.988); transition-duration: 0.08s; }
+.res-card--open.is-pressed { transform: translateY(-1px) scale(0.988); transition-duration: 0.08s; }
 .res-card--open .res-thumb img { transition: transform 0.5s var(--ease-standard), opacity 0.35s var(--ease-standard); }
 .res-card--open:hover .res-thumb img { transform: scale(1.07); }
 .res-title-btn { display: inline; padding: 0; margin: 0; background: none; border: none; font: inherit; color: inherit; text-align: left; cursor: pointer; background-image: linear-gradient(var(--color-gold), var(--color-gold)); background-size: 0% 2px; background-position: 0 100%; background-repeat: no-repeat; transition: background-size 0.3s var(--ease-standard), color var(--dur-base) var(--ease-standard); }
@@ -7679,7 +7679,7 @@ body.guide-open { overflow: hidden; }
 
 @media (prefers-reduced-motion: reduce) {
   .res-card--open, .res-card--open::before, .res-card--open .res-thumb img, .res-card-go, .res-title-btn, .res-like, .res-comment-btn, .res-comment { transition: none; }
-  .res-card--open:hover, .res-card--open:active { transform: none; }
+  .res-card--open:hover, .res-card--open.is-pressed { transform: none; }
   .res-ripple, .res-like.is-popping .res-heart, .res-like.is-popping .res-burst, .res-dialog.is-grow, .res-comment.is-fresh { animation: none; }
 }
 

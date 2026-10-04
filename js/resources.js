@@ -878,6 +878,7 @@
     });
   }
 
+  var press = null; // pointer-down state for the card being pressed: { card, x, y, moved }
   var rendered = {};
   function renderCards(container, rows, opts) {
     rows.forEach(function (r) { rendered[r.id] = r; });
@@ -1363,6 +1364,7 @@
       more.setAttribute('aria-expanded', open ? 'true' : 'false');
       return;
     }
+    if (press && press.moved) return; // the tail end of a drag isn't a click
     var like = e.target.closest('[data-res-like]');
     if (like) { var lr = cardFromEvent(e); if (lr) toggleLike(lr.id); return; }
     var r = cardFromEvent(e);
@@ -1400,10 +1402,26 @@
     $('res-load-more').addEventListener('click', function () { shown += PAGE_SIZE; renderBrowse(); });
     $('res-list').addEventListener('click', onListClick);
     $('res-browse-list').addEventListener('click', onListClick);
+    // Press / ripple feedback is reserved for a genuine click: it starts on
+    // pointer-down but is cancelled the moment the pointer moves more than a
+    // few pixels (dragging, text selection, touch scrolling), and the ripple
+    // itself only appears when the click actually completes.
+    var DRAG_PX = 6;
+    function endPress() {
+      if (press && press.card) press.card.classList.remove('is-pressed');
+    }
     [$('res-list'), $('res-browse-list')].forEach(function (box) {
       box.addEventListener('pointerdown', function (e) {
+        if (e.button !== undefined && e.button !== 0) return;
         var card = e.target.closest('.res-card');
-        if (!card || e.target.closest('button, a, input, select, textarea') || reduceMotion) return;
+        if (!card || e.target.closest('button, a, input, select, textarea')) { press = null; return; }
+        press = { card: card, x: e.clientX, y: e.clientY, moved: false };
+        if (!reduceMotion) card.classList.add('is-pressed');
+      });
+      box.addEventListener('click', function (e) {
+        var card = e.target.closest('.res-card');
+        if (!card || reduceMotion || e.target.closest('button, a, input, select, textarea')) return;
+        if (press && press.moved) return;
         var rect = card.getBoundingClientRect();
         var rip = document.createElement('span');
         rip.className = 'res-ripple';
@@ -1411,7 +1429,22 @@
         rip.style.top = (e.clientY - rect.top) + 'px';
         card.appendChild(rip);
         setTimeout(function () { rip.remove(); }, 650);
-      });
+      }, true);
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (!press || press.moved) return;
+      if (Math.abs(e.clientX - press.x) > DRAG_PX || Math.abs(e.clientY - press.y) > DRAG_PX) {
+        press.moved = true;
+        endPress();
+      }
+    });
+    ['pointerup', 'pointercancel', 'dragstart'].forEach(function (type) {
+      document.addEventListener(type, function () {
+        endPress();
+        // Leave `moved` readable for the click that follows pointerup.
+        if (press && !press.moved) press = null;
+        else if (press) setTimeout(function () { press = null; }, 0);
+      }, true);
     });
     [$('res-empty'), $('res-browse-empty')].forEach(function (box) {
       box.addEventListener('click', function (e) {

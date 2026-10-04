@@ -1241,3 +1241,7 @@ On the page: a resource appears under every course chip it belongs to (and count
 ## 113. Heading font changed from Playfair Display to Fraunces
 
 Front-end only. The site's display serif (headings, titles, the big numbers and names) was Playfair Display; it's now **Fraunces** - a warmer, more characterful serif with an optical-size axis, so large headings stay sharp and small ones stay sturdy. It's set in one place: the `@import` line at the top of css/styles.css and the `--font-display` variable. To try a different serif, change those two. (Emails still use Georgia, since email clients can't load web fonts.)
+
+## 114. Resources: press and ripple only on a real click, not a drag
+
+Front-end only. The card's squash-on-press and gold ripple used to fire on every pointer-down, so scrolling by touch, dragging, or selecting text over a card all triggered the "tap" animation. Now the press effect starts on pointer-down but is cancelled the moment the pointer moves more than 6 px (or the browser takes over for scrolling), the ripple only appears when a click actually completes, and the tail end of a drag no longer opens the preview. A small wobble while clicking (under 6 px) still counts as a click.
