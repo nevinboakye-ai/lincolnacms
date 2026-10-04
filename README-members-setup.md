@@ -1245,3 +1245,7 @@ Front-end only. The site's display serif (headings, titles, the big numbers and 
 ## 114. Resources: press and ripple only on a real click, not a drag
 
 Front-end only. The card's squash-on-press and gold ripple used to fire on every pointer-down, so scrolling by touch, dragging, or selecting text over a card all triggered the "tap" animation. Now the press effect starts on pointer-down but is cancelled the moment the pointer moves more than 6 px (or the browser takes over for scrolling), the ripple only appears when a click actually completes, and the tail end of a drag no longer opens the preview. A small wobble while clicking (under 6 px) still counts as a click.
+
+## 115. Resources: "Read more" opens the preview
+
+Front-end only. On a resource card with a long description, "Read more" no longer expands the card in place - it opens the full preview popup (which shows the whole description, the file/link preview, likes and comments), growing out of the card like a click on the card itself.

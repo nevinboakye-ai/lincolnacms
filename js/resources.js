@@ -715,7 +715,7 @@
       '<h3 class="res-title"><button type="button" class="res-title-btn" data-res-preview>' + escapeHtml(r.title) + '</button></h3>' +
       bylineHtml(r, 'md') +
       '<p class="res-desc">' + escapeHtml(r.description) + '</p>' +
-      (long ? '<button type="button" class="res-more" data-res-more aria-expanded="false">Read more</button>' : '') +
+      (long ? '<button type="button" class="res-more" data-res-more aria-haspopup="dialog">Read more</button>' : '') +
       (details.length ? '<p class="res-meta res-meta--faint">' + details.join(' · ') + '</p>' : '') +
       reject +
       '<div class="res-card-foot">' + (r.status === 'approved' ? socialHtml(r.id) : '<span></span>') +
@@ -1356,12 +1356,13 @@
   }
 
   function onListClick(e) {
+    // "Read more" opens the full preview (which shows the whole description).
     var more = e.target.closest('[data-res-more]');
     if (more) {
-      var card = more.closest('.res-card');
-      var open = card.classList.toggle('is-open');
-      more.textContent = open ? 'Show less' : 'Read more';
-      more.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (press && press.moved) return;
+      var moreCard = more.closest('.res-card');
+      var moreRes = moreCard && rendered[moreCard.getAttribute('data-id')];
+      if (moreRes) previewResource(moreRes, { from: moreCard });
       return;
     }
     if (press && press.moved) return; // the tail end of a drag isn't a click
