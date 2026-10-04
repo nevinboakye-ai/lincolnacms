@@ -28,7 +28,7 @@
     { name: 'Midwifery', accent: 'green' },
     { name: 'Biomedical Science', accent: 'red' },
     { name: 'Occupational Therapy', accent: 'purple' },
-    { name: 'General', accent: 'gold', label: 'General (all courses)' }
+    { name: 'General', accent: 'gold', label: 'Other (All courses)' }
   ];
   var TYPES = {
     notes: 'Notes', past_paper: 'Past paper', slides: 'Slides', video: 'Video', website: 'Website / tool',
