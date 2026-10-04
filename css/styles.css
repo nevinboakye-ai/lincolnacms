@@ -7209,6 +7209,19 @@ body.guide-open { overflow: hidden; }
   .tour-spot, .tour-card, .guide-dialog, .guide-backdrop, .tour-root, .tour-progress-bar { transition: none; }
 }
 
+.pending-bulk { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-3); margin: var(--space-3) 0; border: 1px solid var(--color-gold); border-radius: var(--radius-md); font-size: 0.9rem; background: rgba(var(--gold-rgb), 0.08); }
+.pending-list { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); }
+.pending-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-3); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.pending-row.is-dup { border-left: 3px solid var(--color-gold); }
+.pending-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pending-row-name { font-weight: 600; }
+.pending-row-meta { font-size: 0.8rem; color: var(--color-text-muted); overflow-wrap: anywhere; }
+.pending-flag { align-self: flex-start; margin-top: 4px; padding: 2px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; background: rgba(var(--gold-rgb), 0.18); color: var(--color-gold-light); }
+.pending-flag--certain { background: rgba(193, 39, 45, 0.18); color: #ef8b8f; }
+:root[data-theme="light"] .pending-flag--certain { color: #c1272d; }
+.pending-row-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.pending-remove-btn { padding: 6px 14px; font-size: 0.82rem; color: #ef8b8f; border-color: #ef8b8f; }
+
 /* =========================================================
    Notifications - header bell + dropdown panel + nav count pills
    (js/notifications.js; counts come from get_my_notifications()).

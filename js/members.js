@@ -4287,7 +4287,7 @@
       if (dashboardRole === 'president') return true;
       return DASH_SHARED_SECTIONS.indexOf(section) !== -1 && !!dashAllowed[section];
     }
-    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'create', 'manage'];
+    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'pending', 'create', 'manage'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
@@ -4362,7 +4362,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'requests', 'access', 'create', 'manage'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'create', 'manage'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {
@@ -4391,6 +4391,7 @@
           window.history.replaceState(null, '', '#' + section);
           if (section === 'webactivity') loadWebActivity();
           if (section === 'access' && dashboardRole === 'president') loadHubAccess();
+          if (section === 'pending' && dashboardRole === 'president') loadPendingMembers();
         });
       });
       document.querySelectorAll('[data-dash-back]').forEach(function (btn) {
@@ -4409,6 +4410,7 @@
         showDashSection(initialSection);
         if (initialSection === 'webactivity') loadWebActivity();
         if (initialSection === 'access' && dashboardRole === 'president') loadHubAccess();
+        if (initialSection === 'pending' && dashboardRole === 'president') loadPendingMembers();
       }
     }
     function setDashCount(section, text) {
@@ -4498,6 +4500,7 @@
           var activityTotal = members.length + professionals.length + mmgGuests.length + pendingMembers.length;
           setDashCount('activity', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
           renderManageAccountsList(members, professionals, mmgGuests);
+          setDashCount('pending', pendingMembers.length + (pendingMembers.length === 1 ? ' without an account' : ' without accounts'));
           setDashCount('manage', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
         }
 
@@ -5947,6 +5950,160 @@
       document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && hubMenuEl) closeHubMenu();
       });
+    }
+
+
+    // ---- Pending Members (president only): people added to the Network
+    // before they had an account (pending_members). Lists them (flagging
+    // ones that already have an account or share a member's name - the
+    // duplicates), and lets the president add, hide from the Network, or
+    // remove them (migration 063). ----
+    var pendingAll = [];
+    var pendingFilter = 'all';
+    var pendingSearchText = '';
+
+    function showPendingStatus(message, kind) {
+      var el = document.getElementById('pending-status');
+      if (!el) return;
+      if (!message) { el.style.display = 'none'; return; }
+      el.textContent = message;
+      el.style.display = 'block';
+      el.classList.toggle('is-success', kind === 'success');
+    }
+
+    function loadPendingMembers() {
+      return supabaseClient.rpc('president_get_pending_members_detailed').then(function (result) {
+        if (result.error) {
+          console.error('Pending members failed to load:', result.error.message);
+          showPendingStatus("Couldn't load pending members - has migration 063 been run? (" + result.error.message + ')');
+          return;
+        }
+        showPendingStatus('');
+        pendingAll = result.data || [];
+        renderPendingMembers();
+      });
+    }
+
+    function renderPendingMembers() {
+      var list = document.getElementById('pending-list');
+      var emptyEl = document.getElementById('pending-empty');
+      var countEl = document.getElementById('pending-count-line');
+      var bulk = document.getElementById('pending-bulk');
+      var bulkText = document.getElementById('pending-bulk-text');
+      if (!list) return;
+
+      var certain = pendingAll.filter(function (p) { return p.dup_kind === 'account'; });
+      var dups = pendingAll.filter(function (p) { return p.dup_kind; });
+      if (countEl) countEl.textContent = pendingAll.length + ' pending - ' + dups.length + ' possible ' + (dups.length === 1 ? 'duplicate' : 'duplicates');
+      if (bulk) {
+        bulk.style.display = certain.length ? 'flex' : 'none';
+        if (bulkText) bulkText.textContent = certain.length + (certain.length === 1 ? ' pending member already has' : ' pending members already have') + ' an account with the same email.';
+      }
+
+      var q = pendingSearchText.trim().toLowerCase();
+      var rows = pendingAll.filter(function (p) {
+        if (pendingFilter === 'dups' && !p.dup_kind) return false;
+        if (q && (p.full_name || '').toLowerCase().indexOf(q) === -1 && (p.email || '').toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      });
+      if (emptyEl) {
+        emptyEl.style.display = rows.length ? 'none' : 'block';
+        emptyEl.textContent = pendingFilter === 'dups' && !q ? 'No duplicates - nice and clean.' : 'No pending members match.';
+      }
+
+      list.innerHTML = rows.map(function (p) {
+        var meta = [MEMBER_TYPE_LABELS[p.member_type] || 'Member', p.committee_role, p.course, p.year_of_study].filter(Boolean).join(' · ');
+        var flag = '';
+        if (p.dup_kind === 'account') flag = '<span class="pending-flag pending-flag--certain">Already has an account (' + escapeHtml(p.dup_name || '') + ')</span>';
+        else if (p.dup_kind === 'name') flag = '<span class="pending-flag">Same name as an existing member - check</span>';
+        return '<div class="pending-row' + (p.dup_kind ? ' is-dup' : '') + '">' +
+          '<div class="pending-row-main"><span class="pending-row-name">' + escapeHtml(p.full_name) + '</span>' +
+          '<span class="pending-row-meta">' + escapeHtml(p.email) + '</span>' +
+          '<span class="pending-row-meta">' + escapeHtml(meta) + ' · added ' + escapeHtml(timeAgo(p.created_at)) + '</span>' + flag + '</div>' +
+          '<div class="pending-row-actions">' +
+          '<label class="checkbox-option"><input type="checkbox" data-pending-visible data-id="' + escapeHtml(p.id) + '"' + (p.visible_in_network ? ' checked' : '') + '> On the Network</label>' +
+          '<button type="button" class="btn btn-outline pending-remove-btn" data-pending-remove data-id="' + escapeHtml(p.id) + '" data-name="' + escapeHtml(p.full_name) + '">Remove</button>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    var pendingPanel = document.getElementById('dash-panel-pending');
+    if (pendingPanel) {
+      var pendingCourses = document.getElementById('pending-course-options');
+      if (pendingCourses) pendingCourses.innerHTML = LACMS_COURSES.map(function (c) { return '<option value="' + escapeHtml(c) + '"></option>'; }).join('');
+      var pendingYear = document.getElementById('pending-add-year');
+      if (pendingYear) LACMS_YEARS.forEach(function (y) { pendingYear.insertAdjacentHTML('beforeend', '<option>' + escapeHtml(y) + '</option>'); });
+      var pendingType = document.getElementById('pending-add-type');
+      if (pendingType) pendingType.innerHTML = Object.keys(MEMBER_TYPE_LABELS).map(function (k) { return '<option value="' + k + '">' + escapeHtml(MEMBER_TYPE_LABELS[k]) + '</option>'; }).join('');
+
+      var pendingSearchInput = document.getElementById('pending-search');
+      if (pendingSearchInput) pendingSearchInput.addEventListener('input', function () { pendingSearchText = pendingSearchInput.value; renderPendingMembers(); });
+
+      pendingPanel.addEventListener('click', function (e) {
+        var tab = e.target.closest('[data-pending-filter]');
+        if (tab) {
+          tab.parentElement.querySelectorAll('[data-pending-filter]').forEach(function (t) { t.classList.remove('is-active'); });
+          tab.classList.add('is-active');
+          pendingFilter = tab.getAttribute('data-pending-filter');
+          renderPendingMembers();
+          return;
+        }
+        var removeBtn = e.target.closest('[data-pending-remove]');
+        if (removeBtn) {
+          if (!window.confirm('Remove ' + removeBtn.getAttribute('data-name') + ' from the pending list? They will also disappear from the Network.')) return;
+          removeBtn.disabled = true;
+          supabaseClient.rpc('president_delete_pending_member', { p_id: removeBtn.getAttribute('data-id') }).then(function (result) {
+            if (result.error) { removeBtn.disabled = false; showPendingStatus("Couldn't remove them: " + result.error.message); return; }
+            loadPendingMembers();
+            loadPresidentDashboard();
+          });
+          return;
+        }
+        if (e.target.closest('#pending-remove-dups')) {
+          var certainCount = pendingAll.filter(function (p) { return p.dup_kind === 'account'; }).length;
+          if (!window.confirm('Remove ' + certainCount + ' pending ' + (certainCount === 1 ? 'member' : 'members') + ' who already ' + (certainCount === 1 ? 'has' : 'have') + ' an account? Their accounts are not affected.')) return;
+          supabaseClient.rpc('president_remove_pending_duplicates').then(function (result) {
+            if (result.error) { showPendingStatus("Couldn't remove duplicates: " + result.error.message); return; }
+            loadPendingMembers().then(function () { showPendingStatus('Removed ' + result.data + ' duplicate' + (result.data === 1 ? '' : 's') + '.', 'success'); });
+            loadPresidentDashboard();
+          });
+        }
+      });
+
+      pendingPanel.addEventListener('change', function (e) {
+        var box = e.target.closest('[data-pending-visible]');
+        if (!box) return;
+        box.disabled = true;
+        supabaseClient.rpc('president_set_pending_visibility', { p_id: box.getAttribute('data-id'), p_visible: box.checked }).then(function (result) {
+          box.disabled = false;
+          if (result.error) { box.checked = !box.checked; showPendingStatus("Couldn't change that: " + result.error.message); return; }
+          var row = pendingAll.filter(function (p) { return p.id === box.getAttribute('data-id'); })[0];
+          if (row) row.visible_in_network = box.checked;
+        });
+      });
+
+      var pendingAddForm = document.getElementById('pending-add-form');
+      if (pendingAddForm) {
+        pendingAddForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var submitBtn = pendingAddForm.querySelector('button[type="submit"]');
+          submitBtn.disabled = true;
+          supabaseClient.rpc('president_add_pending_member', {
+            p_email: document.getElementById('pending-add-email').value,
+            p_full_name: document.getElementById('pending-add-name').value,
+            p_course: document.getElementById('pending-add-course').value,
+            p_year_of_study: document.getElementById('pending-add-year').value,
+            p_member_type: document.getElementById('pending-add-type').value
+          }).then(function (result) {
+            submitBtn.disabled = false;
+            if (result.error) { showPendingStatus(result.error.message); return; }
+            pendingAddForm.reset();
+            document.getElementById('pending-add-card').open = false;
+            loadPendingMembers().then(function () { showPendingStatus('Added - they\'ll be claimed automatically when they sign in with that email.', 'success'); });
+            loadPresidentDashboard();
+          });
+        });
+      }
     }
 
     // ---- Gallery submissions browser — the storage bucket has no name

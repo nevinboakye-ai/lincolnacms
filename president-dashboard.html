@@ -8,7 +8,7 @@
 <meta name="description" content="For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-72">
+<link rel="stylesheet" href="css/styles.css?v=20260824-73">
 </head>
 <body>
 
@@ -162,6 +162,12 @@
               <span class="dash-nav-card-title">Hub Access</span>
               <span class="dash-nav-card-desc">See who can use each part of the members hub, and change it</span>
               <span class="dash-nav-card-count">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="pending">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><circle cx="19" cy="7" r="3" stroke-dasharray="2 2.4"/></svg></span>
+              <span class="dash-nav-card-title">Pending Members</span>
+              <span class="dash-nav-card-desc">People added before they had an account - add, hide or remove them</span>
+              <span class="dash-nav-card-count" id="dash-count-pending">&nbsp;</span>
             </button>
             <button type="button" class="dash-nav-card" data-dash-section="create">
               <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg></span>
@@ -425,6 +431,54 @@
             <p id="hub-access-empty" style="display:none; color: var(--color-text-faint);">No one matches that.</p>
           </div>
 
+          <div class="dash-panel" id="dash-panel-pending" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Pending members</span>
+              <h2>Added before they had an account</h2>
+              <p>These people appear on the Network as "Pending" until they sign in with the same email. Anyone who already has an account but is still listed here is flagged as a duplicate - remove them so they only show once. (The same table is also in Supabase under Table Editor &rarr; <code>pending_members</code>.)</p>
+              <p id="pending-count-line" class="dash-section-count"></p>
+            </div>
+
+            <p id="pending-status" class="auth-error" role="status" style="display:none;"></p>
+
+            <details class="hub-rule-card" id="pending-add-card" style="margin-bottom: var(--space-4);">
+              <summary class="hub-rule-head">
+                <div class="hub-rule-headtext"><h3 class="hub-rule-title">Add a pending member</h3>
+                <p class="hub-rule-desc">They'll be claimed automatically when they sign in with this email.</p></div>
+                <svg class="icon hub-rule-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+              </summary>
+              <form class="hub-rule-body" id="pending-add-form" novalidate>
+                <div class="field"><label for="pending-add-name">Full name</label><input type="text" id="pending-add-name" autocomplete="off" required></div>
+                <div class="field"><label for="pending-add-email">Email</label><input type="email" id="pending-add-email" autocomplete="off" required></div>
+                <div class="field"><label for="pending-add-course">Course</label><input type="text" id="pending-add-course" list="pending-course-options" autocomplete="off"><datalist id="pending-course-options"></datalist></div>
+                <div class="field"><label for="pending-add-year">Year of study</label><select id="pending-add-year"><option value="">Select…</option></select></div>
+                <div class="field"><label for="pending-add-type">Member type</label><select id="pending-add-type"></select></div>
+                <div class="hub-rule-actions"><button type="submit" class="btn btn-primary">Add pending member</button></div>
+              </form>
+            </details>
+
+            <div class="dash-toolbar">
+              <div class="network-search">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="search" id="pending-search" placeholder="Search by name or email…">
+              </div>
+              <div class="dash-filter-tabs" id="pending-filter-tabs">
+                <button type="button" class="dash-filter-tab is-active" data-pending-filter="all">All</button>
+                <button type="button" class="dash-filter-tab" data-pending-filter="dups">Possible duplicates</button>
+              </div>
+            </div>
+            <div class="pending-bulk" id="pending-bulk" style="display:none;">
+              <span id="pending-bulk-text"></span>
+              <button type="button" class="btn btn-outline" id="pending-remove-dups">Remove them</button>
+            </div>
+            <div class="pending-list" id="pending-list"></div>
+            <p id="pending-empty" style="display:none; color: var(--color-text-faint);">No pending members.</p>
+          </div>
+
           <div class="dash-panel" id="dash-panel-create" style="display:none;">
             <button type="button" class="dash-panel-back" data-dash-back>
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -634,9 +688,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-72"></script>
-<script src="js/members.js?v=20260824-72"></script>
-<script src="js/notifications.js?v=20260824-72"></script>
-<script src="js/guidance.js?v=20260824-72"></script>
+<script src="js/main.js?v=20260824-73"></script>
+<script src="js/members.js?v=20260824-73"></script>
+<script src="js/notifications.js?v=20260824-73"></script>
+<script src="js/guidance.js?v=20260824-73"></script>
 </body>
 </html>
