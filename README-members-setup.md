@@ -1102,3 +1102,13 @@ No migration - JS only (needs 057 from section 97 already run).
 No migration - JS only, display-side (stored `members.course` values are untouched).
 
 **Courses saved under different names now share one section on the LACMS Network page.** Older accounts carry the full degree title ("Medicine BMBS BMedSci") and newer ones from the request form carry the short name ("Medicine"), which used to land in two separate sections. They're now matched to one course and shown under one name: Medicine always as "Medicine BMBS BMedSci", and every other course under the longest/most complete variant actually in use (e.g. "Pharmacy" + "Pharmacy MPharm" shows as "Pharmacy MPharm"). The same name is used on member cards, the profile popup and the join ticker/history. The old combined "Nursing and Midwifery ..." title stays in its own section on purpose - it can't be split between Nursing and Midwifery, which are now separate courses. To change a course's displayed name, edit `NETWORK_PREFERRED_COURSE_NAMES` in js/members.js.
+
+## 100. Events page text editable in Supabase
+
+Run [`db/migrations/058-site-events.sql`](db/migrations/058-site-events.sql).
+
+**Edit events in Supabase: Dashboard -> Table Editor -> `site_events`.** The migration creates the table and seeds it with the eight events currently on events.html, so nothing changes until you edit a row. Each row is one event: `name`, `date_text` (free text, e.g. "30 September 2026" or "TBC"), `time_note` (the small line under the date - put the real time/venue here), `summary` (short blurb), `tag`, `details` (the text revealed on expanding; blank lines make paragraphs), plus optional `title_url`, `link_label`/`link_url` and `button_label`/`button_url`. Untick `is_active` to hide an event, change `sort_order` to reorder, add a row to add an event. The public can read active rows; only you can edit them.
+
+**Don't change `slug` on an event people have registered for** - registrations are stored against it. A new event needs a lowercase-with-hyphens slug (e.g. `spring-social`).
+
+events.html still contains the original events as static HTML: it's what shows if the table is empty or can't load, and what search engines/no-JS visitors see. Once the table has active rows, the live rows replace it. The homepage's event carousel (index.html) is still static HTML and does not read this table. The Midlands Medics Gala details text no longer has an inline "MMG Portal" link (plain text only) - the title and the MMG Portal button link there instead.

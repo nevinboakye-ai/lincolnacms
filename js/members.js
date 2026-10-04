@@ -2183,6 +2183,86 @@
       '</div>';
   }
 
+  // ---- Events page content from Supabase (site_events, migration 058).
+  // events.html ships the same events as static HTML - the fallback if
+  // the table's empty or can't be reached - and this swaps in the live
+  // rows (editable in Table Editor) once they load. The swapped-in rows
+  // need the same behaviours the static ones got at page load (expand/
+  // collapse, the signed-in Register button, hiding "RSVP" for signed-in
+  // visitors), so those are re-wired here. ----
+  function safeEventUrl(url) {
+    var u = String(url || '').trim();
+    if (!u) return '';
+    if (/^[a-z][a-z0-9+.-]*:/i.test(u)) return /^(https?:|mailto:|tel:)/i.test(u) ? encodeURI(u) : '';
+    if (u.indexOf('//') === 0) return '';
+    return encodeURI(u);
+  }
+
+  function renderSiteEventRow(row) {
+    var chevron = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+    var titleUrl = safeEventUrl(row.title_url);
+    var titleHtml = titleUrl ? '<a href="' + escapeHtml(titleUrl) + '">' + escapeHtml(row.name) + '</a>' : escapeHtml(row.name);
+    var tagHtml = row.tag ? '<span class="card-tag' + (row.tag_is_gold ? ' card-tag--gold' : '') + '">' + escapeHtml(row.tag) + '</span>' : '';
+    var linkUrl = safeEventUrl(row.link_url);
+    var linkHtml = linkUrl && row.link_label
+      ? '<a class="card-link" href="' + escapeHtml(linkUrl) + '" style="margin-top: var(--space-2);">' + escapeHtml(row.link_label) +
+        '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>'
+      : '';
+    var buttonUrl = safeEventUrl(row.button_url);
+    var buttonHtml = buttonUrl && row.button_label
+      ? '<a class="btn btn-primary btn-glow" href="' + escapeHtml(buttonUrl) + '">' + escapeHtml(row.button_label) + '</a>'
+      : '';
+    var detailsId = 'details-' + row.slug;
+    var detailsHtml = row.details
+      ? '<div class="reveal-panel event-row-details" id="' + escapeHtml(detailsId) + '"><div class="reveal-panel-inner"><div class="reveal-panel-content">' + renderRichText(row.details) + '</div></div></div>'
+      : '';
+    return '<article class="event-row' + (row.is_flagship ? ' event-row--flagship' : '') + '" id="' + escapeHtml(row.slug) + '" data-expand-row>' +
+      '<div class="event-row-date">' + escapeHtml(row.date_text) + (row.time_note ? '<br><span class="event-row-date-note">' + escapeHtml(row.time_note) + '</span>' : '') + '</div>' +
+      '<div><h2 class="event-row-title">' + titleHtml + '</h2><p>' + escapeHtml(row.summary) + '</p>' + tagHtml + linkHtml + '</div>' +
+      '<div class="event-row-actions">' + buttonHtml +
+      '<a class="btn btn-outline" href="join.html" data-hide-when-signed-in>RSVP</a>' +
+      '<button type="button" class="btn btn-outline member-register-btn" data-event-slug="' + escapeHtml(row.slug) + '" data-event-name="' + escapeHtml(row.name) + '" style="display:none;">Register</button>' +
+      (detailsHtml ? '<button type="button" class="chevron-toggle-btn" data-expand-btn aria-expanded="false" aria-controls="' + escapeHtml(detailsId) + '" aria-label="More about ' + escapeHtml(row.name) + '">' + chevron + '</button>' : '') +
+      '</div>' + detailsHtml + '</article>';
+  }
+
+  var dbEventList = document.querySelector('[data-events-from-db]');
+  if (dbEventList) {
+    supabaseClient
+      .from('site_events')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .then(function (result) {
+        if (result.error) {
+          console.error('Events failed to load from Supabase, keeping the built-in list:', result.error.message);
+          return;
+        }
+        var rows = result.data || [];
+        if (!rows.length) return;
+        dbEventList.innerHTML = rows.map(renderSiteEventRow).join('');
+
+        // Same expand/collapse behaviour js/main.js gives static rows at load.
+        dbEventList.querySelectorAll('[data-expand-row]').forEach(function (row) {
+          var btn = row.querySelector('[data-expand-btn]');
+          row.addEventListener('click', function (e) {
+            if (e.target.closest('a')) return;
+            var open = row.classList.toggle('is-expanded');
+            if (btn) btn.setAttribute('aria-expanded', String(open));
+          });
+        });
+
+        wireEventRegisterButtons();
+        supabaseClient.auth.getSession().then(function (sessionResult) {
+          if (!(sessionResult.data && sessionResult.data.session)) return;
+          dbEventList.querySelectorAll('[data-hide-when-signed-in]').forEach(function (el) { el.style.display = 'none'; });
+        });
+
+        var hashTarget = window.location.hash && document.getElementById(window.location.hash.slice(1));
+        if (hashTarget) hashTarget.scrollIntoView();
+      });
+  }
+
   // ---- Events page: member registration. Each event card carries two
   // buttons: a plain "RSVP" link to join.html (data-hide-when-signed-in,
   // so it only ever shows to a signed-out visitor — prompting them to
@@ -2194,6 +2274,7 @@
   // any signed-in account, member or professional alike, since neither
   // this check nor the event_registrations RLS policies distinguish
   // between the two. ----
+  function wireEventRegisterButtons() {
   var registerButtons = document.querySelectorAll('.member-register-btn');
   if (registerButtons.length) {
     supabaseClient.auth.getSession().then(function (result) {
@@ -2264,6 +2345,8 @@
       }
     });
   }
+  }
+  wireEventRegisterButtons();
 
   // ---- MoTM page: nomination form for any signed-in LACMS member or
   // Network professional (matches the DB insert policy from migration
