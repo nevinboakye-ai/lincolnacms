@@ -7,7 +7,7 @@
 <title>LACMS Resources - LACMS</title>
 <meta name="description" content="Study resources shared by LACMS members - notes, past papers, websites and more, organised by course.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-78">
+<link rel="stylesheet" href="css/styles.css?v=20260824-79">
 </head>
 <body>
 
@@ -85,7 +85,7 @@
   <section class="page-hero container">
     <span class="eyebrow">Members Hub</span>
     <h1 class="page-hero-title">LACMS Resources</h1>
-    <p class="page-hero-lede">Study resources shared by members, for members - notes, past papers, slides, websites and more, organised by course.</p>
+    <p class="page-hero-lede">Study resources shared by members, for members - notes, past papers, slides, websites and more, and filter by course.</p>
     <div class="tricolor-bar tricolor-bar--sm" aria-hidden="true"><span></span><span></span><span></span></div>
   </section>
 
@@ -132,33 +132,12 @@
           </div>
 
           <div class="res-section-head">
-            <h2>Choose a course</h2>
-            <p>Each tile holds the resources shared for that course.</p>
+            <h2>All resources</h2>
+            <p id="res-all-sub" aria-live="polite"></p>
           </div>
-          <div class="res-course-grid" id="res-course-grid" aria-busy="true"></div>
 
-          <div id="res-recent-wrap" hidden>
-            <div class="res-section-head">
-              <h2>Recently added</h2>
-              <p>The latest resources shared across every course.</p>
-            </div>
-            <div class="res-list" id="res-recent"></div>
-          </div>
-        </div>
+          <div class="res-chips" id="res-course-chips" role="group" aria-label="Filter by course" aria-busy="true"></div>
 
-        <div id="res-view-list" hidden>
-          <nav class="res-crumbs" aria-label="Breadcrumb">
-            <button type="button" id="res-back-btn">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
-              All courses
-            </button>
-            <span aria-hidden="true">/</span>
-            <span id="res-crumb-current" aria-current="page"></span>
-          </nav>
-          <div class="res-section-head">
-            <h2 id="res-list-title"></h2>
-            <p id="res-list-sub" aria-live="polite"></p>
-          </div>
           <div class="res-filters" id="res-filters">
             <div class="network-search res-search">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -173,6 +152,27 @@
           <div class="res-active-filters" id="res-active-filters" hidden>
             <span id="res-active-text"></span>
             <button type="button" class="link-button" id="res-clear-filters">Clear filters</button>
+          </div>
+
+          <div class="res-list" id="res-browse-list"></div>
+          <div class="res-empty" id="res-browse-empty" hidden></div>
+          <div class="res-more-wrap" id="res-more-wrap" hidden>
+            <button type="button" class="btn btn-outline" id="res-load-more">Show more</button>
+          </div>
+        </div>
+
+        <div id="res-view-list" hidden>
+          <nav class="res-crumbs" aria-label="Breadcrumb">
+            <button type="button" id="res-back-btn">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+              All resources
+            </button>
+            <span aria-hidden="true">/</span>
+            <span id="res-crumb-current" aria-current="page"></span>
+          </nav>
+          <div class="res-section-head">
+            <h2 id="res-list-title"></h2>
+            <p id="res-list-sub" aria-live="polite"></p>
           </div>
           <div class="res-list" id="res-list"></div>
           <div class="res-empty" id="res-empty" hidden></div>
@@ -238,10 +238,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-78"></script>
-<script src="js/members.js?v=20260824-78"></script>
-<script src="js/notifications.js?v=20260824-78"></script>
-<script src="js/guidance.js?v=20260824-78"></script>
-<script src="js/resources.js?v=20260824-78"></script>
+<script src="js/main.js?v=20260824-79"></script>
+<script src="js/members.js?v=20260824-79"></script>
+<script src="js/notifications.js?v=20260824-79"></script>
+<script src="js/guidance.js?v=20260824-79"></script>
+<script src="js/resources.js?v=20260824-79"></script>
 </body>
 </html>

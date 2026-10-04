@@ -75,8 +75,7 @@
   var newByCourse = {};
   var newTotal = 0;
   var prevSeen = null;
-  var currentCourse = null;
-  var courseItems = [];
+  var currentCourse = '';
   var urlCache = {}; // storage path -> { url, at }
 
   // ---- Helpers ------------------------------------------------------------
@@ -386,11 +385,6 @@
     }, showLocked);
   });
 
-  function skeletonTiles() {
-    var out = '';
-    for (var i = 0; i < 9; i++) out += '<div class="res-skel res-skel-tile" style="--i:' + i + '"></div>';
-    return out;
-  }
   function skeletonCards(n) {
     var out = '';
     for (var i = 0; i < n; i++) out += '<div class="res-skel res-skel-card" style="--i:' + i + '"></div>';
@@ -400,7 +394,7 @@
   function start() {
     if (gate) gate.style.display = 'none';
     appEl.style.display = '';
-    $('res-course-grid').innerHTML = skeletonTiles();
+    $('res-course-chips').innerHTML = '<span class="res-skel res-skel-chip"></span><span class="res-skel res-skel-chip"></span><span class="res-skel res-skel-chip"></span><span class="res-skel res-skel-chip"></span>';
     buildFilterOptions();
     ['res-filter-type', 'res-filter-source', 'res-filter-year', 'res-sort'].forEach(function (id) { enhanceSelect($(id)); });
     wireEvents();
@@ -409,7 +403,6 @@
     prev.then(function (ts) { prevSeen = ts; }).then(function () {
       return Promise.all([loadCounts(), loadNewCounts()]);
     }).then(function () {
-      renderHome();
       route();
     });
     window.addEventListener('hashchange', route);
@@ -455,7 +448,12 @@
     return !!(prevSeen && r.status === 'approved' && r.approved_at && r.uploader_id !== userId && new Date(r.approved_at) > new Date(prevSeen));
   }
 
-  // ---- Routing: #c=<course>, #review, #mine ------------------------------------
+  // ---- Routing: everything in one place (optionally #c=<course>), #review, #mine ----
+  var allItems = [];
+  var loadedAll = false;
+  var PAGE_SIZE = 18;
+  var shown = PAGE_SIZE;
+
   function showView(view) {
     ['res-view-home', 'res-view-list'].forEach(function (id) {
       var node = $(id);
@@ -467,47 +465,46 @@
   function route() {
     closeOpenSelect(false);
     var hash = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
-    if (hash.indexOf('c=') === 0) { showView('res-view-list'); openCourse(hash.slice(2)); }
-    else if (hash === 'review' && isAdmin) { showView('res-view-list'); openSpecial('review'); }
-    else if (hash === 'mine') { showView('res-view-list'); openSpecial('mine'); }
-    else { currentCourse = null; showView('res-view-home'); renderHome(); }
-    if (hash) window.scrollTo({ top: 0 });
+    if (hash === 'review' && isAdmin) { showView('res-view-list'); openSpecial('review'); window.scrollTo({ top: 0 }); return; }
+    if (hash === 'mine') { showView('res-view-list'); openSpecial('mine'); window.scrollTo({ top: 0 }); return; }
+    var wanted = hash.indexOf('c=') === 0 ? hash.slice(2) : '';
+    currentCourse = COURSES.some(function (c) { return c.name === wanted; }) ? wanted : '';
+    showView('res-view-home');
+    shown = PAGE_SIZE;
+    renderChips();
+    if (loadedAll) renderBrowse(); else loadAll();
   }
   function go(hash) { window.location.hash = hash; if (!hash) route(); }
-
-  // ---- Home: course tiles + what's new --------------------------------------------
-  function renderHome() {
-    var grid = $('res-course-grid');
-    grid.setAttribute('aria-busy', 'false');
-    grid.innerHTML = COURSES.map(function (c, i) {
-      var n = counts[c.name] || { approved: 0, pending: 0 };
-      var fresh = newByCourse[c.name] || 0;
-      return '<button type="button" class="res-course-tile res-accent-' + c.accent + ' res-anim-in" style="--i:' + i + '" data-course="' + escapeHtml(c.name) + '">' +
-        '<span class="res-course-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[c.name] || ICONS.General) + '</svg></span>' +
-        '<span class="res-course-name">' + escapeHtml(c.label || c.name) + '</span>' +
-        '<span class="res-course-count"><span data-countup="' + n.approved + '">' + n.approved + '</span> ' + (n.approved === 1 ? 'resource' : 'resources') + '</span>' +
-        (fresh ? '<span class="res-new-pill"><span class="res-new-dot" aria-hidden="true"></span>' + fresh + ' new</span>' : '') +
-        (isAdmin && n.pending ? '<span class="res-count-pill res-count-pill--alert res-course-pending">' + n.pending + ' to review</span>' : '') +
-        '<svg class="icon res-course-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>' +
-        '</button>';
-    }).join('');
-    Array.prototype.forEach.call(grid.querySelectorAll('[data-countup]'), function (node) { countUp(node, parseInt(node.getAttribute('data-countup'), 10)); });
-
-    var banner = $('res-whatsnew');
-    if (newTotal > 0) {
-      banner.hidden = false;
-      $('res-whatsnew-text').textContent = newTotal + (newTotal === 1 ? ' new resource' : ' new resources') + ' since your last visit.';
-      $('res-whatsnew-jump').textContent = 'See what\'s new';
-    } else banner.hidden = true;
-    loadRecent();
+  function setCourse(name) {
+    var target = name ? 'c=' + encodeURIComponent(name) : '';
+    if (decodeURIComponent((window.location.hash || '').replace(/^#/, '')) === (name ? 'c=' + name : '')) return;
+    window.location.hash = target;
+    if (!name) route();
   }
 
-  function loadRecent() {
-    supabaseClient.from('resources').select('*').eq('status', 'approved').order('approved_at', { ascending: false }).limit(4).then(function (r) {
-      var rows = (r && r.data) || [];
-      $('res-recent-wrap').hidden = !rows.length;
-      if (rows.length) renderCards($('res-recent'), rows, { mode: 'recent' });
-    }, function () { /* optional section */ });
+  // ---- Course filter chips (with counts and "new" dots) ----------------------------
+  function renderChips() {
+    var wrap = $('res-course-chips');
+    wrap.setAttribute('aria-busy', 'false');
+    var total = 0;
+    COURSES.forEach(function (c) { total += (counts[c.name] || { approved: 0 }).approved; });
+    function chip(name, label, count, fresh, iconKey) {
+      var active = (name || '') === (currentCourse || '');
+      return '<button type="button" class="res-chip' + (active ? ' is-active' : '') + '" data-chip="' + escapeHtml(name) + '" aria-pressed="' + active + '">' +
+        (iconKey ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[iconKey] + '</svg>' : '') +
+        '<span class="res-chip-label">' + escapeHtml(label) + '</span>' +
+        '<span class="res-chip-count">' + count + '</span>' +
+        (fresh ? '<span class="res-chip-new" title="' + fresh + ' new" aria-label="' + fresh + ' new"></span>' : '') +
+        '</button>';
+    }
+    wrap.innerHTML = chip('', 'All courses', total, newTotal, null) + COURSES.map(function (c) {
+      return chip(c.name, c.label || c.name, (counts[c.name] || { approved: 0 }).approved, newByCourse[c.name] || 0, c.name);
+    }).join('');
+    // On a phone the chip strip scrolls sideways - keep the chosen one in view.
+    var activeChip = wrap.querySelector('.is-active');
+    if (activeChip && wrap.scrollWidth > wrap.clientWidth) {
+      wrap.scrollTo({ left: activeChip.offsetLeft - (wrap.clientWidth - activeChip.offsetWidth) / 2, behavior: reduceMotion ? 'auto' : 'smooth' });
+    }
   }
 
   // ---- Filters ------------------------------------------------------------------
@@ -524,28 +521,24 @@
     syncSelects();
   }
 
-  // ---- Lists --------------------------------------------------------------------
-  function openCourse(name) {
-    if (!COURSES.some(function (c) { return c.name === name; })) { go(''); return; }
-    currentCourse = name;
-    $('res-filters').hidden = false;
-    $('res-active-filters').hidden = true;
-    $('res-crumb-current').textContent = courseLabel(name);
-    $('res-list-title').textContent = courseLabel(name);
-    $('res-list-sub').textContent = 'Loading…';
-    $('res-list').innerHTML = skeletonCards(3);
-    $('res-empty').hidden = true;
-    resetFilters();
-
-    supabaseClient.from('resources').select('*').eq('course', name).eq('status', 'approved').order('approved_at', { ascending: false }).then(function (r) {
-      if (currentCourse !== name) return;
-      if (r.error) { $('res-list-sub').textContent = "Couldn't load these resources: " + r.error.message; $('res-list').innerHTML = ''; return; }
-      courseItems = r.data || [];
-      renderCourseList();
+  // ---- The one list -----------------------------------------------------------------
+  function loadAll() {
+    $('res-browse-list').innerHTML = skeletonCards(3);
+    $('res-browse-empty').hidden = true;
+    $('res-more-wrap').hidden = true;
+    supabaseClient.from('resources').select('*').eq('status', 'approved').order('approved_at', { ascending: false }).limit(500).then(function (r) {
+      if (r.error) {
+        $('res-all-sub').textContent = "Couldn't load the resources: " + r.error.message;
+        $('res-browse-list').innerHTML = '';
+        return;
+      }
+      allItems = r.data || [];
+      loadedAll = true;
+      renderBrowse();
     });
   }
 
-  function renderCourseList() {
+  function renderBrowse() {
     var q = $('res-search').value.trim().toLowerCase();
     var type = $('res-filter-type').value;
     var source = $('res-filter-source').value;
@@ -553,11 +546,12 @@
     var sort = $('res-sort').value;
     $('res-search-clear').hidden = !q;
 
-    var rows = courseItems.filter(function (r) {
+    var inCourse = allItems.filter(function (r) { return !currentCourse || r.course === currentCourse; });
+    var rows = inCourse.filter(function (r) {
       if (type && r.resource_type !== type) return false;
       if (source && r.source_type !== source) return false;
       if (year && r.year_of_study !== year) return false;
-      if (q && [r.title, r.topic, r.uploader_name, r.description].join(' ').toLowerCase().indexOf(q) === -1) return false;
+      if (q && [r.title, r.topic, r.uploader_name, r.description, courseLabel(r.course)].join(' ').toLowerCase().indexOf(q) === -1) return false;
       return true;
     });
     rows.sort(function (a, b) {
@@ -568,21 +562,38 @@
     });
 
     var filtered = !!(q || type || source || year);
-    var af = $('res-active-filters');
-    af.hidden = !filtered;
-    if (filtered) $('res-active-text').textContent = 'Showing ' + rows.length + ' of ' + courseItems.length;
+    $('res-active-filters').hidden = !(filtered || currentCourse);
+    if (filtered || currentCourse) {
+      $('res-active-text').textContent = 'Showing ' + rows.length + ' of ' + allItems.length + (currentCourse ? ' · ' + courseLabel(currentCourse) : '');
+    }
 
-    var freshHere = courseItems.filter(isNew).length;
-    $('res-list-sub').textContent = courseItems.length + (courseItems.length === 1 ? ' resource' : ' resources') + (freshHere ? ' · ' + freshHere + ' new since your last visit' : '');
-    renderCards($('res-list'), rows, { mode: 'browse' });
+    var freshHere = inCourse.filter(isNew).length;
+    $('res-all-sub').textContent = (currentCourse ? courseLabel(currentCourse) + ': ' : '') + inCourse.length + (inCourse.length === 1 ? ' resource' : ' resources') + (freshHere ? ' · ' + freshHere + ' new since your last visit' : '');
 
-    var empty = $('res-empty');
+    var banner = $('res-whatsnew');
+    if (newTotal > 0) {
+      banner.hidden = false;
+      $('res-whatsnew-text').textContent = newTotal + (newTotal === 1 ? ' new resource' : ' new resources') + ' since your last visit.';
+      $('res-whatsnew-jump').textContent = 'See what\'s new';
+    } else banner.hidden = true;
+
+    var slice = rows.slice(0, shown);
+    renderCards($('res-browse-list'), slice, { mode: 'all' });
+
+    var more = rows.length - slice.length;
+    $('res-more-wrap').hidden = more <= 0;
+    if (more > 0) $('res-load-more').textContent = 'Show ' + Math.min(PAGE_SIZE, more) + ' more (' + more + ' left)';
+
+    var empty = $('res-browse-empty');
     if (rows.length) { empty.hidden = true; return; }
     empty.hidden = false;
+    var narrowed = filtered || currentCourse;
     empty.innerHTML = emptyState(
-      courseItems.length ? 'No matches' : 'No resources here yet',
-      courseItems.length ? 'Nothing fits those filters - try loosening them.' : 'Be the first to share one for ' + courseLabel(currentCourse) + '.',
-      courseItems.length ? '<button type="button" class="btn btn-outline" data-res-clear>Clear filters</button>' : '<button type="button" class="btn btn-primary" data-res-share>Share a resource</button>'
+      allItems.length ? 'No matches' : 'No resources yet',
+      allItems.length ? 'Nothing fits those filters - try loosening them.' : 'Be the first to share one.',
+      narrowed && allItems.length
+        ? '<button type="button" class="btn btn-outline" data-res-clear>Clear filters</button>'
+        : '<button type="button" class="btn btn-primary" data-res-share>Share a resource</button>'
     );
   }
 
@@ -591,11 +602,9 @@
       '<strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(text) + '</span>' + (action || '') + '</div>';
   }
 
+  // ---- My submissions / Review queue ---------------------------------------------------
   function openSpecial(kind) {
-    currentCourse = null;
     var isReview = kind === 'review';
-    $('res-filters').hidden = true;
-    $('res-active-filters').hidden = true;
     $('res-crumb-current').textContent = isReview ? 'Review queue' : 'My submissions';
     $('res-list-title').textContent = isReview ? 'Review queue' : 'My submissions';
     $('res-list-sub').textContent = 'Loading…';
@@ -1054,10 +1063,9 @@
   function refreshCurrent() {
     Promise.all([loadCounts(), loadNewCounts()]).then(function () {
       var hash = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
-      if (hash.indexOf('c=') === 0) openCourse(hash.slice(2));
-      else if (hash === 'review' && isAdmin) openSpecial('review');
+      if (hash === 'review' && isAdmin) openSpecial('review');
       else if (hash === 'mine') openSpecial('mine');
-      else renderHome();
+      else { loadedAll = false; renderChips(); loadAll(); }
     });
   }
 
@@ -1072,7 +1080,7 @@
     var editing = !!existing;
     var ex = existing || {};
     var courseOptions = COURSES.map(function (c) {
-      var sel = existing ? existing.course === c.name : (currentCourse === c.name);
+      var sel = existing ? existing.course === c.name : (!!currentCourse && currentCourse === c.name);
       return '<option value="' + escapeHtml(c.name) + '"' + (sel ? ' selected' : '') + '>' + escapeHtml(c.label || c.name) + '</option>';
     }).join('');
     var typeOptions = Object.keys(TYPES).map(function (k) { return '<option value="' + k + '"' + (ex.resource_type === k ? ' selected' : '') + '>' + TYPES[k] + '</option>'; }).join('');
@@ -1328,21 +1336,22 @@
     $('res-review-link').addEventListener('click', function () { go('review'); });
     $('res-back-btn').addEventListener('click', function () { go(''); });
     $('res-whatsnew-jump').addEventListener('click', function () {
-      var recent = $('res-recent-wrap');
-      if (!recent.hidden) recent.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+      $('res-browse-list').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     });
-    $('res-course-grid').addEventListener('click', function (e) {
-      var tile = e.target.closest('[data-course]');
-      if (tile) go('c=' + encodeURIComponent(tile.getAttribute('data-course')));
+    $('res-course-chips').addEventListener('click', function (e) {
+      var chip = e.target.closest('[data-chip]');
+      if (chip) setCourse(chip.getAttribute('data-chip'));
     });
+    function rerender() { shown = PAGE_SIZE; renderBrowse(); }
     ['res-search', 'res-filter-type', 'res-filter-source', 'res-filter-year', 'res-sort'].forEach(function (id) {
-      $(id).addEventListener(id === 'res-search' ? 'input' : 'change', renderCourseList);
+      $(id).addEventListener(id === 'res-search' ? 'input' : 'change', rerender);
     });
-    $('res-search-clear').addEventListener('click', function () { $('res-search').value = ''; renderCourseList(); $('res-search').focus(); });
-    $('res-clear-filters').addEventListener('click', function () { resetFilters(); renderCourseList(); });
+    $('res-search-clear').addEventListener('click', function () { $('res-search').value = ''; rerender(); $('res-search').focus(); });
+    $('res-clear-filters').addEventListener('click', function () { resetFilters(); if (currentCourse) setCourse(''); else rerender(); });
+    $('res-load-more').addEventListener('click', function () { shown += PAGE_SIZE; renderBrowse(); });
     $('res-list').addEventListener('click', onListClick);
-    $('res-recent').addEventListener('click', onListClick);
-    [$('res-list'), $('res-recent')].forEach(function (box) {
+    $('res-browse-list').addEventListener('click', onListClick);
+    [$('res-list'), $('res-browse-list')].forEach(function (box) {
       box.addEventListener('pointerdown', function (e) {
         var card = e.target.closest('.res-card');
         if (!card || e.target.closest('button, a, input, select, textarea') || reduceMotion) return;
@@ -1355,15 +1364,17 @@
         setTimeout(function () { rip.remove(); }, 650);
       });
     });
-    $('res-empty').addEventListener('click', function (e) {
-      if (e.target.closest('[data-res-share]')) openShareDialog(null);
-      else if (e.target.closest('[data-res-clear]')) { resetFilters(); renderCourseList(); }
+    [$('res-empty'), $('res-browse-empty')].forEach(function (box) {
+      box.addEventListener('click', function (e) {
+        if (e.target.closest('[data-res-share]')) openShareDialog(null);
+        else if (e.target.closest('[data-res-clear]')) { resetFilters(); if (currentCourse) setCourse(''); else rerender(); }
+      });
     });
-    // "/" jumps to search while browsing a course (like most docs sites).
+    // "/" jumps to search while browsing (like most docs sites).
     document.addEventListener('keydown', function (e) {
       if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
       var tag = (document.activeElement && document.activeElement.tagName) || '';
-      if (/INPUT|TEXTAREA|SELECT/.test(tag) || document.querySelector('.guide-backdrop') || $('res-filters').hidden || $('res-view-list').hidden) return;
+      if (/INPUT|TEXTAREA|SELECT/.test(tag) || document.querySelector('.guide-backdrop') || $('res-view-home').hidden) return;
       e.preventDefault();
       $('res-search').focus();
     });

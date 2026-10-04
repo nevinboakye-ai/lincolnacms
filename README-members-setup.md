@@ -1223,3 +1223,9 @@ Run [`db/migrations/066-resource-likes-comments.sql`](db/migrations/066-resource
 **Click anywhere on a card to open the full preview.** (The title is a real button too, so keyboard users get the same.) Buttons and links on the card still do their own thing, and selecting text doesn't trigger it.
 
 **Card animation.** Hover: the card lifts, gets a gold edge and glow, the thumbnail zooms, the title underlines and an arrow slides in. Press: it squashes slightly and a gold ripple spreads from the click point. Opening: the preview grows out of the card you clicked. Reduced-motion settings turn all of it off. (Also fixed: the entrance animation was freezing cards in place so hover lifts never showed.)
+
+## 111. Resources: one list with a course filter (replaces the course tiles)
+
+No migration - front-end only. (Supersedes the "one tile per course" layout described in section 108.)
+
+LACMS Resources now shows **every resource in one list**, newest first, with a row of **course chips** above it ("All courses" plus each course and "Other (All courses)"), each with its resource count and a red dot when something in it is new since your last visit. Click a chip to filter; click "All courses" (or Clear filters) to go back. Each card shows its course as a badge so it's clear where it belongs. The type, source (personal/external), year and sort dropdowns and the search box (which now also matches course names) work together with the chips, and the list loads 18 at a time with a "Show more" button. `member-resources.html#c=Medicine` still deep-links to a course. On phones the chip row scrolls sideways and keeps the selected chip in view. Sharing a resource while a course chip is selected pre-selects that course in the form. "My submissions" and the executive "Review queue" are unchanged. Cards keep their avatars, likes/comments, hover and click animations, and the "Recently added" strip is gone since the whole list is already newest-first.
