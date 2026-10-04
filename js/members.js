@@ -412,6 +412,7 @@
     }
     return hubAccessPromise;
   }
+  var DASHBOARD_FEATURES = ['dash_mmg', 'dash_sankofa', 'dash_motm', 'dash_events', 'dash_gallery'];
   function hubFeatureAllowed(access, feature, fallbackAllowed) {
     return access && access[feature] ? access[feature].allowed : fallbackAllowed;
   }
@@ -1286,16 +1287,25 @@
       if (session.user.id === PRESIDENT_UID) {
         if (presidentCard) presidentCard.style.display = '';
       } else if (presidentCard) {
-        supabaseClient
-          .from('members')
-          .select('member_type')
-          .eq('id', session.user.id)
-          .maybeSingle()
-          .then(function (memberResult) {
-            if (memberResult.data && memberResult.data.member_type === 'executive_committee') {
-              presidentCard.style.display = '';
-            }
-          });
+        // Anyone the Hub Access rules give at least one dashboard section
+        // (by default: Executive Committee members). If the rules can't
+        // be loaded, the original Executive-Committee-only check.
+        getHubAccess().then(function (access) {
+          if (access) {
+            if (DASHBOARD_FEATURES.some(function (f) { return access[f] && access[f].allowed; })) presidentCard.style.display = '';
+            return;
+          }
+          supabaseClient
+            .from('members')
+            .select('member_type')
+            .eq('id', session.user.id)
+            .maybeSingle()
+            .then(function (memberResult) {
+              if (memberResult.data && memberResult.data.member_type === 'executive_committee') {
+                presidentCard.style.display = '';
+              }
+            });
+        });
       }
 
     });
@@ -4262,13 +4272,26 @@
     var ONLINE_WINDOW_MS = 5 * 60 * 1000;
     var presidentUserId = null;
     var dashboardRole = null;
+    // The five sections non-presidents can be given (by Hub Access rules),
+    // and which rule feature controls each.
+    var DASH_SHARED_SECTIONS = ['mmg', 'sankofa', 'motm', 'events', 'gallery'];
+    var DASH_FEATURE_FOR = { mmg: 'dash_mmg', sankofa: 'dash_sankofa', motm: 'dash_motm', events: 'dash_events', gallery: 'dash_gallery' };
+    var dashAllowed = {};
+    // President: everything. Anyone else: only the shared sections the
+    // rules allow - never the president-only ones (accounts, activity,
+    // requests, hub access).
+    function dashCan(section) {
+      if (dashboardRole === 'president') return true;
+      return DASH_SHARED_SECTIONS.indexOf(section) !== -1 && !!dashAllowed[section];
+    }
     var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'create', 'manage'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
       dashboardRole = role;
       if (role !== 'president') {
-        PRESIDENT_ONLY_SECTIONS.forEach(function (section) {
+        PRESIDENT_ONLY_SECTIONS.concat(DASH_SHARED_SECTIONS).forEach(function (section) {
+          if (dashCan(section)) return;
           var card = document.querySelector('[data-dash-section="' + section + '"]');
           if (card) card.style.display = 'none';
         });
@@ -4299,18 +4322,36 @@
         enterDashboard(session, 'president');
         return;
       }
-      supabaseClient
-        .from('members')
-        .select('member_type')
-        .eq('id', session.user.id)
-        .maybeSingle()
-        .then(function (memberResult) {
-          if (memberResult.data && memberResult.data.member_type === 'executive_committee') {
+      // Anyone else gets exactly the dashboard sections the Hub Access
+      // rules give them (default: Executive Committee, all five). If the
+      // rules can't be loaded, the original rule: Executive Committee
+      // members get all five.
+      getHubAccess().then(function (access) {
+        if (access) {
+          DASH_SHARED_SECTIONS.forEach(function (sec) {
+            dashAllowed[sec] = !!(access[DASH_FEATURE_FOR[sec]] && access[DASH_FEATURE_FOR[sec]].allowed);
+          });
+          if (DASH_SHARED_SECTIONS.some(function (sec) { return dashAllowed[sec]; })) {
             enterDashboard(session, 'exec_committee');
-            return;
+          } else {
+            window.location.href = 'member-hub.html';
           }
-          window.location.href = 'member-hub.html';
-        });
+          return;
+        }
+        supabaseClient
+          .from('members')
+          .select('member_type')
+          .eq('id', session.user.id)
+          .maybeSingle()
+          .then(function (memberResult) {
+            if (memberResult.data && memberResult.data.member_type === 'executive_committee') {
+              DASH_SHARED_SECTIONS.forEach(function (sec) { dashAllowed[sec] = true; });
+              enterDashboard(session, 'exec_committee');
+              return;
+            }
+            window.location.href = 'member-hub.html';
+          });
+      });
     });
 
     // ---- Landing grid of section cards, replacing one long scroll —
@@ -4328,7 +4369,7 @@
       // Executive Committee member falls back to the landing grid
       // instead of opening an empty, error-filled panel; the RPCs
       // behind it would refuse the data either way.
-      if (section && dashboardRole !== 'president' && PRESIDENT_ONLY_SECTIONS.indexOf(section) !== -1) {
+      if (section && !dashCan(section)) {
         section = null;
       }
       currentOpenSection = section;
@@ -4419,11 +4460,11 @@
           isPresident ? supabaseClient.rpc('president_get_members') : Promise.resolve({ data: [], error: null }),
           isPresident ? supabaseClient.rpc('president_get_pending_members') : Promise.resolve({ data: [], error: null }),
           isPresident ? supabaseClient.rpc('president_get_professionals') : Promise.resolve({ data: [], error: null }),
-          supabaseClient.rpc('president_get_mmg_guests'),
-          supabaseClient.rpc('president_get_sankofa_applications'),
-          supabaseClient.rpc('president_get_sankofa_mentor_applications'),
-          supabaseClient.rpc('president_get_motm_nominations'),
-          supabaseClient.rpc('president_get_event_registrations'),
+          dashCan('mmg') ? supabaseClient.rpc('president_get_mmg_guests') : Promise.resolve({ data: [], error: null }),
+          dashCan('sankofa') ? supabaseClient.rpc('president_get_sankofa_applications') : Promise.resolve({ data: [], error: null }),
+          dashCan('sankofa') ? supabaseClient.rpc('president_get_sankofa_mentor_applications') : Promise.resolve({ data: [], error: null }),
+          dashCan('motm') ? supabaseClient.rpc('president_get_motm_nominations') : Promise.resolve({ data: [], error: null }),
+          dashCan('events') ? supabaseClient.rpc('president_get_event_registrations') : Promise.resolve({ data: [], error: null }),
           isPresident ? supabaseClient.rpc('president_get_account_requests') : Promise.resolve({ data: [], error: null }),
           isPresident
             ? supabaseClient.from('account_request_emails').select('*').order('created_at', { ascending: false })
@@ -4432,7 +4473,7 @@
       }).then(function (results) {
         if (presidentAuthGate) presidentAuthGate.style.display = 'none';
 
-        if ((isPresident && (results[0].error || results[1].error || results[2].error)) || results[3].error) {
+        if ((isPresident && (results[0].error || results[1].error || results[2].error)) || (dashCan('mmg') && results[3].error)) {
           showMessage(presidentHubError, "Couldn't load the dashboard right now - try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.");
           return;
         }
@@ -4457,8 +4498,10 @@
           setDashCount('manage', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
         }
 
-        renderMmgSection(mmgGuests);
-        setDashCount('mmg', mmgGuests.length + (mmgGuests.length === 1 ? ' guest' : ' guests'));
+        if (dashCan('mmg')) {
+          renderMmgSection(mmgGuests);
+          setDashCount('mmg', mmgGuests.length + (mmgGuests.length === 1 ? ' guest' : ' guests'));
+        }
 
         // Sankofa mentee applications (migration 028) and mentor
         // applications (migration 029, a separate public no-account
@@ -4489,14 +4532,18 @@
           };
         });
         var sankofaMerged = mentees.concat(mentors).sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
-        if (results[4].error && results[5].error) {
+        if (!dashCan('sankofa')) {
+          // not shown to this person - nothing to render
+        } else if (results[4].error && results[5].error) {
           showSectionLoadError('sankofa-applications-list', 'sankofa-applications-empty', 'sankofa', results[4].error.message);
         } else {
           renderSankofaApplications(sankofaMerged);
           setDashCount('sankofa', sankofaMerged.length + (sankofaMerged.length === 1 ? ' application' : ' applications') + (results[4].error || results[5].error ? ' (partial - see console)' : ''));
         }
 
-        if (results[6].error) {
+        if (!dashCan('motm')) {
+          // not shown to this person
+        } else if (results[6].error) {
           console.error('MoTM nominations failed to load:', results[6].error.message);
           showSectionLoadError('motm-nominations-list', 'motm-nominations-empty', 'motm', results[6].error.message);
         } else {
@@ -4504,7 +4551,9 @@
           renderMotmNominations(motmList);
           setDashCount('motm', motmList.length + (motmList.length === 1 ? ' nomination' : ' nominations'));
         }
-        if (results[7].error) {
+        if (!dashCan('events')) {
+          // not shown to this person
+        } else if (results[7].error) {
           console.error('Event registrations failed to load:', results[7].error.message);
           showSectionLoadError('event-registrations-sections', 'event-registrations-empty', 'events', results[7].error.message);
         } else {
@@ -4525,8 +4574,10 @@
             setDashCount('requests', pendingCount + ' pending');
           }
         }
-        loadGallerySubmissions();
-        loadGalleryManage();
+        if (dashCan('gallery')) {
+          loadGallerySubmissions();
+          loadGalleryManage();
+        }
 
         dashLastLoaded = new Date();
         var updatedLabel = document.getElementById('dash-updated-label');
@@ -5570,7 +5621,12 @@
       { key: 'sankofa', label: 'Sankofa Circle application', short: 'Sankofa', desc: 'Applying for a Sankofa mentorship Circle.', canLock: false },
       { key: 'network', label: 'The LACMS Network', short: 'Network', desc: 'The member and professional directory.', canLock: true },
       { key: 'motm_nominate', label: 'Member of the Month nominations', short: 'MoTM', desc: 'Nominating someone for Member of the Month.', canLock: false },
-      { key: 'news_feed', label: 'News & updates feed', short: 'News', desc: 'The announcements feed on the hub.', canLock: false }
+      { key: 'news_feed', label: 'News & updates feed', short: 'News', desc: 'The announcements feed on the hub.', canLock: false },
+      { key: 'dash_mmg', label: 'Dashboard: MMG', short: 'MMG', desc: 'The MMG guests section of the Platform Activity Dashboard.', dash: true },
+      { key: 'dash_sankofa', label: 'Dashboard: Sankofa', short: 'Sankofa', desc: 'Sankofa mentee and mentor applications on the dashboard.', dash: true },
+      { key: 'dash_motm', label: 'Dashboard: Nominations', short: 'Nominations', desc: 'Member of the Month nominations on the dashboard.', dash: true },
+      { key: 'dash_events', label: 'Dashboard: Events', short: 'Events', desc: 'Who has registered for which event.', dash: true },
+      { key: 'dash_gallery', label: 'Dashboard: Gallery', short: 'Gallery', desc: 'Member gallery submissions and the live gallery.', dash: true }
     ];
     var HUB_ROLE_ORDER = ['member', 'executive_committee', 'supporting_committee', 'senior_sankofa_mentor', 'junior_sankofa_mentor'];
     var hubRules = [];
@@ -5605,7 +5661,7 @@
         (res[1].data || []).forEach(function (row) {
           var p = byUser[row.user_id];
           if (!p) {
-            p = byUser[row.user_id] = { id: row.user_id, name: row.full_name || 'Unnamed', type: row.person_type, memberType: row.member_type, course: row.course, year: row.year_of_study, cells: {} };
+            p = byUser[row.user_id] = { id: row.user_id, name: row.full_name || 'Unnamed', type: row.person_type, memberType: row.member_type, title: row.committee_role, course: row.course, year: row.year_of_study, cells: {} };
           }
           p.cells[row.feature] = { allowed: row.allowed, via: row.via };
         });
@@ -5635,6 +5691,13 @@
         var withAccess = hubPeople.filter(function (p) { return p.cells[f.key] && p.cells[f.key].allowed; }).length;
         var courseOptions = LACMS_COURSES.slice();
         (rule.courses || []).forEach(function (c) { if (courseOptions.indexOf(c) === -1) courseOptions.push(c); });
+        var titleOptions = [];
+        hubPeople.forEach(function (p) { if (p.title && titleOptions.indexOf(p.title) === -1) titleOptions.push(p.title); });
+        (rule.titles || []).forEach(function (t) { if (titleOptions.indexOf(t) === -1) titleOptions.push(t); });
+        titleOptions.sort(function (a, b) { return a.localeCompare(b); });
+        var titles = titleOptions.length
+          ? titleOptions.map(function (t) { return hubCheckbox('data-hub-title="' + escapeHtml(t) + '"', t, rule.titles && rule.titles.indexOf(t) !== -1); }).join('')
+          : '<span class="hub-rule-desc">No one has a committee title set yet - add titles in Manage Accounts.</span>';
 
         var roles = HUB_ROLE_ORDER.map(function (t) {
           return hubCheckbox('data-hub-role="' + t + '"', MEMBER_TYPE_LABELS[t] || t, rule.member_types && rule.member_types.indexOf(t) !== -1);
@@ -5655,6 +5718,7 @@
         if (rule.allow_members && rule.member_types && rule.member_types.length) {
           summaryParts.push(rule.member_types.map(function (t) { return MEMBER_TYPE_LABELS[t] || t; }).join(', '));
         }
+        if (rule.allow_members && rule.titles && rule.titles.length) summaryParts.push(rule.titles.join(', '));
         if (rule.allow_members && rule.courses && rule.courses.length) summaryParts.push(rule.courses.join(', '));
 
         return '<details class="hub-rule-card" data-hub-rule="' + f.key + '">' +
@@ -5669,7 +5733,8 @@
           hubCheckbox('data-hub-allow-members', 'Members', rule.allow_members) +
           hubCheckbox('data-hub-allow-pros', 'Professionals', rule.allow_professionals) + '</div>' +
           '<div class="hub-rule-group"><span class="hub-rule-label">Only these member roles <small>(none ticked = every role)</small></span><div class="hub-rule-chips">' + roles + '</div></div>' +
-          '<div class="hub-rule-group"><span class="hub-rule-label">Only these courses <small>(none ticked = every course)</small></span><div class="hub-rule-chips">' + courses + '</div></div>' +
+          '<div class="hub-rule-group"><span class="hub-rule-label">Only these committee titles <small>(none ticked = every title)</small></span><div class="hub-rule-chips">' + titles + '</div></div>' +
+          (f.dash ? '' : '<div class="hub-rule-group"><span class="hub-rule-label">Only these courses <small>(none ticked = every course)</small></span><div class="hub-rule-chips">' + courses + '</div></div>') +
           blockedHtml +
           '</div>' +
           '<div class="hub-rule-actions"><button type="button" class="btn btn-primary" data-hub-save disabled>Save changes</button></div>' +
@@ -5678,17 +5743,41 @@
 
       var fresh = document.createElement('div');
       fresh.innerHTML = html;
-      var nodes = Array.from(fresh.children).map(function (card) {
+      var dashKeys = HUB_FEATURES.filter(function (f) { return f.dash; }).map(function (f) { return f.key; });
+      var nodes = [];
+      var addedHubHeading = false;
+      var addedDashHeading = false;
+      Array.from(fresh.children).forEach(function (card) {
         var key = card.getAttribute('data-hub-rule');
-        var kept = dirty[key];
-        if (!kept) return card;
-        var keptCount = kept.querySelector('.hub-rule-count');
-        var newCount = card.querySelector('.hub-rule-count');
-        if (keptCount && newCount) keptCount.innerHTML = newCount.innerHTML;
-        kept.open = true;
-        return kept;
+        var isDash = dashKeys.indexOf(key) !== -1;
+        if (!isDash && !addedHubHeading) {
+          addedHubHeading = true;
+          nodes.push(hubGroupHeading('Members hub', 'Which parts of the hub each person sees.'));
+        }
+        if (isDash && !addedDashHeading) {
+          addedDashHeading = true;
+          nodes.push(hubGroupHeading('Platform Activity Dashboard', 'Which dashboard sections each committee member sees. Only the president ever sees Activity, Account Requests, Create/Manage Accounts and this page.'));
+        }
+        nodes.push(hubKeepOrNew(card, key, dirty));
       });
       wrap.replaceChildren.apply(wrap, nodes);
+    }
+
+    function hubGroupHeading(title, sub) {
+      var h = document.createElement('div');
+      h.className = 'hub-group-title';
+      h.innerHTML = '<h3>' + escapeHtml(title) + '</h3><p>' + escapeHtml(sub) + '</p>';
+      return h;
+    }
+
+    function hubKeepOrNew(card, key, dirty) {
+      var kept = dirty[key];
+      if (!kept) return card;
+      var keptCount = kept.querySelector('.hub-rule-count');
+      var newCount = card.querySelector('.hub-rule-count');
+      if (keptCount && newCount) keptCount.innerHTML = newCount.innerHTML;
+      kept.open = true;
+      return kept;
     }
 
     function renderHubMatrix() {
@@ -5710,13 +5799,19 @@
       if (emptyEl) emptyEl.style.display = rows.length ? 'none' : 'block';
       table.style.display = rows.length ? '' : 'none';
 
-      var head = '<thead><tr><th class="hub-matrix-person">Person</th>' +
-        features.map(function (f) { return '<th title="' + escapeHtml(f.label) + '">' + escapeHtml(f.short) + '</th>'; }).join('') + '</tr></thead>';
+      var hubCols = features.filter(function (f) { return !f.dash; });
+      var dashCols = features.filter(function (f) { return f.dash; });
+      var head = '<thead>' +
+        '<tr class="hub-matrix-groups"><th class="hub-matrix-person"></th>' +
+        (hubCols.length ? '<th colspan="' + hubCols.length + '">Members hub</th>' : '') +
+        (dashCols.length ? '<th colspan="' + dashCols.length + '" class="hub-matrix-group-dash">Dashboard</th>' : '') +
+        '</tr><tr><th class="hub-matrix-person">Person</th>' +
+        features.map(function (f) { return '<th title="' + escapeHtml(f.label) + '"' + (f.dash ? ' class="hub-matrix-group-dash"' : '') + '>' + escapeHtml(f.short) + '</th>'; }).join('') + '</tr></thead>';
 
       var body = '<tbody>' + rows.map(function (p) {
         var sub = p.type === 'professional'
           ? 'Professional'
-          : [MEMBER_TYPE_LABELS[p.memberType] || 'Member', p.course, p.year].filter(Boolean).join(' · ');
+          : [MEMBER_TYPE_LABELS[p.memberType] || 'Member', p.title, p.course, p.year].filter(Boolean).join(' · ');
         var cells = features.map(function (f) {
           var c = p.cells[f.key] || { allowed: false, via: 'rule' };
           var cls = 'hub-cell ' + (c.allowed ? 'hub-cell--yes' : 'hub-cell--no');
@@ -5726,7 +5821,7 @@
           else if (c.via === 'override_deny') { cls += ' hub-cell--forced'; label = 'Forced off for this person'; }
           else label = c.allowed ? 'Has access by the rule' : 'No access by the rule';
           var disabled = c.via === 'president' ? ' disabled' : '';
-          return '<td><button type="button" class="' + cls + '" data-hub-cell data-uid="' + escapeHtml(p.id) + '" data-feature="' + f.key + '"' + disabled +
+          return '<td' + (f.dash ? ' class="hub-matrix-group-dash"' : '') + '><button type="button" class="' + cls + '" data-hub-cell data-uid="' + escapeHtml(p.id) + '" data-feature="' + f.key + '"' + disabled +
             ' aria-label="' + escapeHtml(p.name + ', ' + f.label + ': ' + label) + '" title="' + escapeHtml(label) + '">' +
             (c.via === 'president' ? '&#9733;' : (c.allowed ? '&#10003;' : '&#10005;')) + '</button></td>';
         }).join('');
@@ -5775,6 +5870,7 @@
       var feature = card.getAttribute('data-hub-rule');
       var roles = Array.from(card.querySelectorAll('[data-hub-role]:checked')).map(function (el) { return el.getAttribute('data-hub-role'); });
       var courses = Array.from(card.querySelectorAll('[data-hub-course]:checked')).map(function (el) { return el.getAttribute('data-hub-course'); });
+      var titles = Array.from(card.querySelectorAll('[data-hub-title]:checked')).map(function (el) { return el.getAttribute('data-hub-title'); });
       var blockedRadio = card.querySelector('input[type="radio"]:checked');
       var blockedHidden = card.querySelector('[data-hub-blocked]');
       var allowMembers = card.querySelector('[data-hub-allow-members]').checked;
@@ -5789,6 +5885,7 @@
         p_allow_professionals: allowPros,
         p_member_types: roles.length ? roles : null,
         p_courses: courses.length ? courses : null,
+        p_titles: titles.length ? titles : null,
         p_blocked_display: blockedRadio ? blockedRadio.value : (blockedHidden ? blockedHidden.value : 'hidden')
       }).then(function (result) {
         if (result.error) {

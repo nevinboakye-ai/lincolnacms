@@ -6973,6 +6973,12 @@ html, body { overflow-x: hidden; max-width: 100%; }
 .hub-rule-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: var(--space-1) var(--space-3); }
 .hub-rule-actions { display: flex; justify-content: flex-end; }
 
+.hub-group-title { margin-top: var(--space-4); }
+.hub-group-title:first-child { margin-top: 0; }
+.hub-group-title h3 { margin: 0; font-size: 1.1rem; font-family: var(--font-display); }
+.hub-group-title p { margin: 2px 0 0; font-size: 0.85rem; color: var(--color-text-muted); }
+.hub-matrix thead .hub-matrix-groups th { background: var(--color-surface); border-bottom: 1px solid var(--color-border); color: var(--color-gold-light); letter-spacing: 0.06em; }
+.hub-matrix .hub-matrix-group-dash { border-left: 1px solid var(--color-border); }
 .hub-legend { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-3) 0; font-size: 0.8rem; color: var(--color-text-muted); }
 .hub-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .hub-legend .hub-cell { width: 22px; height: 22px; font-size: 0.7rem; cursor: default; }

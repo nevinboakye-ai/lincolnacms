@@ -1144,3 +1144,15 @@ Run [`db/migrations/060-hub-access.sql`](db/migrations/060-hub-access.sql) (wrap
 **Defaults match how things worked before:** Perks - members; Sankofa - members on Medicine; Network - nobody but you; MoTM nominations and News feed - members and professionals. Course matching is "contains", so "Medicine" also covers "Medicine BMBS BMedSci" - the old exact "Medicine" check (page and database trigger) missed members saved with the full degree title; the Sankofa trigger now uses these rules (deadline unchanged). If the migration hasn't been run, every page quietly falls back to the old built-in rules.
 
 **Things to know:** a Sankofa application is saved against a members row, so a professional can be granted Sankofa access but won't be able to submit. Opening the Network to people reveals the directory to them, so check the rule before ticking Members. Course/role rules only affect members; professionals are controlled by the Professionals tick (and per-person overrides).
+
+## 104. Hub Access now covers the Platform Activity Dashboard, by committee title
+
+Run [`db/migrations/061-hub-access-dashboard.sql`](db/migrations/061-hub-access-dashboard.sql) (after 060; also a single transaction). Needs 037 and 060.
+
+**Each shared dashboard section now has its own rule** in Hub Access (a new "Platform Activity Dashboard" group): MMG, Sankofa, Nominations, Events and Gallery. Instead of every Executive Committee member seeing all five, you can choose who sees each one - by member role, by **committee title** (the "Committee role" set on each account, e.g. Treasurer, Events Officer - ticking titles means only people holding one of them), or person by person using the grid, which now has a Dashboard column group. The default for all five is exactly what it was: Executive Committee members. Titles can also be used on the hub-feature rules above (e.g. Network for the Treasurer only).
+
+**What a person with partial access sees:** the dashboard card on the hub appears if they have at least one section; on the dashboard itself they only get the section cards they're allowed (a link to a section they don't have falls back to the landing grid), and the page only loads data for those sections. Anyone left with no sections is sent back to the hub.
+
+**Enforced in the database:** every function behind the five sections (MMG guests, Sankofa applications/mentor applications and their actions, MoTM nominations, event registrations) and the gallery storage/table policies now check that section's rule instead of "president or Executive Committee". User Activity, Website Activity, Account Requests, Create/Manage Accounts and Hub Access stay president-only and aren't part of these rules. If the rules can't be loaded, the dashboard falls back to the old behaviour (Executive Committee members get all five).
+
+Titles are matched case-insensitively against the committee role text, so "treasurer" and "Treasurer" are the same - but "Events Lead" and "Events Officer" are different titles.
