@@ -1,0 +1,773 @@
+// Guidance for signed-in users: gentle reminders to nominate for Member of
+// the Month / apply for Sankofa, a "complete your Network profile" prompt,
+// and an optional guided tour of the members hub and the rest of the site.
+//
+// Everything here is optional and dismissible, and none of it runs for
+// signed-out visitors. What's been seen/answered is remembered per user
+// (user_ui_state, migration 062) so it follows them across devices; if
+// that table isn't there yet it quietly falls back to this browser's
+// localStorage, so nothing breaks before the migration is run.
+(function () {
+  'use strict';
+
+  if (typeof supabaseIsConfigured === 'undefined' || !supabaseIsConfigured || typeof supabaseClient === 'undefined' || !supabaseClient) return;
+
+  var SANKOFA_DEADLINE = new Date('2026-10-11T23:59:59+01:00').getTime();
+  var page = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var session = null;
+  var userId = null;
+  var uiState = {};
+  var uiStateServerOk = false;
+  var tourRunning = false;
+  var overlayOpen = false; // a modal (offer / profile prompt / tour) is on screen
+
+  // ---- Small helpers ----------------------------------------------------
+  function escapeHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function daysFromNow(n) { return new Date(Date.now() + n * 86400000).toISOString(); }
+  function el(tag, className, html) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (html != null) node.innerHTML = html;
+    return node;
+  }
+  function isVisible(node) {
+    if (!node) return false;
+    var r = node.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return false;
+    var style = window.getComputedStyle(node);
+    return style.visibility !== 'hidden' && style.display !== 'none';
+  }
+  function sget(key) { try { return window.sessionStorage.getItem(key); } catch (e) { return null; } }
+  function sset(key, value) { try { window.sessionStorage.setItem(key, value); } catch (e) { /* ignore */ } }
+  function sdel(key) { try { window.sessionStorage.removeItem(key); } catch (e) { /* ignore */ } }
+
+  // ---- Per-user remembered state ---------------------------------------
+  function localKey(key) { return 'lacms-ui:' + userId + ':' + key; }
+  function readLocal(key) {
+    try { var raw = window.localStorage.getItem(localKey(key)); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+  }
+  function writeLocal(key, value) {
+    try { window.localStorage.setItem(localKey(key), JSON.stringify(value)); } catch (e) { /* ignore */ }
+  }
+
+  function loadState() {
+    return supabaseClient.from('user_ui_state').select('key, value').then(function (result) {
+      if (result.error) {
+        console.warn('Saved guidance state unavailable, using this browser only:', result.error.message);
+        return;
+      }
+      uiStateServerOk = true;
+      (result.data || []).forEach(function (row) { uiState[row.key] = row.value; });
+    }, function () { /* offline etc. - fall back to local */ });
+  }
+  function getState(key) {
+    return uiState[key] !== undefined ? uiState[key] : readLocal(key);
+  }
+  function setState(key, value) {
+    uiState[key] = value;
+    writeLocal(key, value);
+    if (!uiStateServerOk) return Promise.resolve();
+    return supabaseClient.from('user_ui_state').upsert({
+      user_id: userId, key: key, value: value, updated_at: new Date().toISOString()
+    }).then(function (result) {
+      if (result.error) console.warn('Could not save guidance state:', result.error.message);
+    });
+  }
+
+  // ---- What the user can do (drives the reminders) ----------------------
+  var ctxPromise = null;
+  function getContext() {
+    if (ctxPromise) return ctxPromise;
+    var month = new Date().toISOString().slice(0, 7);
+    ctxPromise = Promise.all([
+      supabaseClient.rpc('get_my_hub_access'),
+      supabaseClient.from('members').select('id, full_name, course').eq('id', userId).maybeSingle(),
+      supabaseClient.from('motm_nominations').select('id').eq('nominator_id', userId).eq('nomination_month', month).maybeSingle(),
+      supabaseClient.from('sankofa_applications').select('id').eq('member_id', userId).limit(1)
+    ]).then(function (res) {
+      var access = null;
+      if (!res[0].error) {
+        access = {};
+        (res[0].data || []).forEach(function (r) { access[r.feature] = !!r.allowed; });
+      }
+      var member = res[1].data || null;
+      var nominated = !!res[2].data;
+      var applied = !!(res[3].data && res[3].data.length);
+      // If the Hub Access rules can't be read, fall back to the original
+      // rules: any member can nominate; Medicine members can apply.
+      var motmAllowed = access && access.motm_nominate !== undefined ? access.motm_nominate : !!member;
+      var sankofaAllowed = access && access.sankofa !== undefined ? access.sankofa : !!(member && /medicine/i.test(member.course || ''));
+      return {
+        access: access,
+        member: member,
+        nudges: {
+          motm: !!(motmAllowed && !nominated),
+          sankofa: !!(sankofaAllowed && member && !applied && Date.now() <= SANKOFA_DEADLINE)
+        }
+      };
+    }, function () { return { access: null, member: null, nudges: { motm: false, sankofa: false } }; });
+    return ctxPromise;
+  }
+
+  // =======================================================================
+  // 1. Reminders: pulsing hub cards + a small dismissible pill elsewhere.
+  // =======================================================================
+  var NUDGES = [
+    // Sankofa first - it's the one with a deadline.
+    { key: 'sankofa', cardId: 'sankofa-apply-card', badge: 'Apply now', href: 'member-sankofa.html', hidePages: ['member-sankofa.html'], text: 'Applications for a Sankofa Circle are open - apply today' },
+    { key: 'motm', cardId: 'motm-nominate-card', badge: 'Prizes to win', href: 'motm.html#nominate', hidePages: ['motm.html'], text: 'Nominate someone for Member of the Month - the winner and runners-up win LACMS prizes' }
+  ];
+  var QUIET_PAGES = ['member-login.html', 'login.html', 'request-account.html', 'join.html', 'mmg-login.html', 'president-dashboard.html', 'member-hub.html'];
+
+  function startNudges() {
+    getContext().then(function (ctx) {
+      if (page === 'member-hub.html') applyCardNudges(ctx);
+      else showPill(ctx);
+    });
+  }
+
+  function applyCardNudges(ctx) {
+    var tries = 0;
+    (function attempt() {
+      var linksSection = document.getElementById('member-hub-content-links');
+      // The hub reveals its cards only once it knows what you can access;
+      // wait for that so a card that's about to be hidden never flashes.
+      if (!linksSection || linksSection.style.display === 'none') {
+        if (++tries < 60) { setTimeout(attempt, 200); }
+        return;
+      }
+      NUDGES.forEach(function (n) {
+        var card = document.getElementById(n.cardId);
+        if (!card || card.style.display === 'none' || !ctx.nudges[n.key] || card.querySelector('.nudge-badge')) return;
+        card.classList.add('is-nudging');
+        var badge = el('span', 'nudge-badge', '<span class="nudge-badge-dot" aria-hidden="true"></span>' + escapeHtml(n.badge));
+        card.appendChild(badge);
+      });
+    })();
+  }
+
+  function showPill(ctx) {
+    if (QUIET_PAGES.indexOf(page) !== -1) return;
+    var active = NUDGES.filter(function (n) {
+      return ctx.nudges[n.key] && n.hidePages.indexOf(page) === -1 && sget('lacms-nudge-dismissed:' + n.key) !== '1';
+    });
+    if (!active.length) return;
+    var nudge = active[0];
+
+    setTimeout(function () {
+      if (overlayOpen || tourRunning || document.querySelector('.nudge-pill')) return;
+      var pill = el('div', 'nudge-pill');
+      pill.setAttribute('role', 'complementary');
+      pill.setAttribute('aria-label', 'Reminder');
+      pill.innerHTML =
+        '<a class="nudge-pill-link" href="' + nudge.href + '"><span class="nudge-pill-dot" aria-hidden="true"></span>' +
+        '<span class="nudge-pill-text">' + escapeHtml(nudge.text) + '</span></a>' +
+        '<button type="button" class="nudge-pill-close" aria-label="Dismiss reminder">&times;</button>';
+      document.body.appendChild(pill);
+      requestAnimationFrame(function () { pill.classList.add('is-in'); });
+      pill.querySelector('.nudge-pill-close').addEventListener('click', function () {
+        // Gone for this browser session; it comes back next visit until done.
+        sset('lacms-nudge-dismissed:' + nudge.key, '1');
+        pill.classList.remove('is-in');
+        setTimeout(function () { pill.remove(); }, 250);
+      });
+    }, 3500);
+  }
+
+  // =======================================================================
+  // 2. "Complete your Network profile" prompt.
+  // =======================================================================
+  // After a "Not now" the next ask comes after 3, then 7, 14 and 30 days.
+  var PROFILE_BACKOFF_DAYS = [3, 7, 14, 30];
+
+  function loadOwnProfile() {
+    return supabaseClient.from('network_professionals').select('bio, linkedin_url').eq('user_id', userId).maybeSingle().then(function (proResult) {
+      if (proResult.data) return { isPro: true, bio: proResult.data.bio || '', linkedin: proResult.data.linkedin_url || '' };
+      return supabaseClient.from('member_profiles').select('bio, linkedin_url').eq('id', userId).maybeSingle().then(function (r) {
+        return { isPro: false, bio: (r.data && r.data.bio) || '', linkedin: (r.data && r.data.linkedin_url) || '' };
+      });
+    });
+  }
+
+  function maybePromptProfile() {
+    var st = getState('profile_prompt') || {};
+    if (st.done || st.never) return;
+    if (st.next_due_at && Date.now() < new Date(st.next_due_at).getTime()) return;
+
+    loadOwnProfile().then(function (profile) {
+      if (profile.bio && profile.linkedin) {
+        setState('profile_prompt', Object.assign({}, st, { done: true }));
+        return;
+      }
+      setTimeout(function () {
+        if (overlayOpen || tourRunning) return;
+        openProfilePrompt(profile, st);
+      }, 1600);
+    }, function () { /* can't read the profile - don't nag */ });
+  }
+
+  function openProfilePrompt(profile, st) {
+    var firstTime = !(st.shown > 0);
+    var dismissals = st.dismissals || 0;
+    overlayOpen = true;
+    var previouslyFocused = document.activeElement;
+
+    var backdrop = el('div', 'guide-backdrop');
+    var dialog = el('div', 'guide-dialog');
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'profile-prompt-title');
+    dialog.innerHTML =
+      '<button type="button" class="guide-close" data-pp-later aria-label="Close">&times;</button>' +
+      '<span class="guide-eyebrow">LACMS Network</span>' +
+      '<h2 class="guide-title" id="profile-prompt-title">' + (firstTime ? 'Welcome to the Network - tell people about you' : 'Finish your Network profile') + '</h2>' +
+      '<p class="guide-text">Your profile is what other members and professionals see on your Network card. A couple of lines and a LinkedIn link makes it much easier for people to connect with you.</p>' +
+      '<form class="guide-form" novalidate>' +
+      '<div class="field"><label for="pp-bio">About you</label>' +
+      '<textarea id="pp-bio" maxlength="280" rows="4" placeholder="Interests, the specialty you\'re drawn to, what you\'re working towards - whatever you\'d want a fellow member to know."></textarea>' +
+      '<span class="guide-count" id="pp-count" aria-live="polite">0 / 280</span></div>' +
+      '<div class="field"><label for="pp-linkedin">LinkedIn <span class="guide-optional">(optional)</span></label>' +
+      '<input type="url" id="pp-linkedin" placeholder="https://www.linkedin.com/in/yourname" autocomplete="url"></div>' +
+      '<p class="guide-error" id="pp-error" role="alert" hidden></p>' +
+      '<div class="guide-actions"><button type="submit" class="btn btn-primary">Save my profile</button>' +
+      '<button type="button" class="btn btn-outline" data-pp-later>Not now</button></div>' +
+      (dismissals >= 2 ? '<button type="button" class="guide-linkbtn" data-pp-never>Don\'t ask me again</button>' : '') +
+      '</form>';
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+    document.body.classList.add('guide-open');
+
+    var bio = dialog.querySelector('#pp-bio');
+    var linkedin = dialog.querySelector('#pp-linkedin');
+    var count = dialog.querySelector('#pp-count');
+    var errorEl = dialog.querySelector('#pp-error');
+    bio.value = profile.bio;
+    linkedin.value = profile.linkedin;
+    function updateCount() { count.textContent = bio.value.length + ' / 280'; }
+    updateCount();
+    bio.addEventListener('input', updateCount);
+    requestAnimationFrame(function () { backdrop.classList.add('is-in'); bio.focus(); });
+
+    // Counts as "shown" the moment it appears, so closing the tab
+    // without answering still spaces out the next ask.
+    setState('profile_prompt', Object.assign({}, st, {
+      shown: (st.shown || 0) + 1,
+      last_shown_at: new Date().toISOString()
+    }));
+
+    function close(next) {
+      document.removeEventListener('keydown', onKey, true);
+      backdrop.classList.remove('is-in');
+      document.body.classList.remove('guide-open');
+      overlayOpen = false;
+      setTimeout(function () { backdrop.remove(); }, reduceMotion ? 0 : 200);
+      if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus();
+      if (next) setState('profile_prompt', Object.assign({}, getState('profile_prompt') || {}, next));
+    }
+    var saved = false;
+    function snooze() {
+      if (saved) { close(null); return; }
+      var n = dismissals;
+      var days = PROFILE_BACKOFF_DAYS[Math.min(n, PROFILE_BACKOFF_DAYS.length - 1)];
+      close({ dismissals: n + 1, next_due_at: daysFromNow(days) });
+    }
+
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); snooze(); return; }
+      if (e.key === 'Tab') trapFocus(e, dialog);
+    }
+    document.addEventListener('keydown', onKey, true);
+
+    dialog.addEventListener('click', function (e) {
+      if (e.target.closest('[data-pp-later]')) snooze();
+      else if (e.target.closest('[data-pp-never]')) close({ never: true });
+    });
+
+    dialog.querySelector('form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var bioValue = bio.value.trim();
+      var linkValue = linkedin.value.trim();
+      errorEl.hidden = true;
+
+      if (!bioValue && !linkValue) {
+        errorEl.textContent = 'Add a line about yourself or a LinkedIn link - or choose "Not now".';
+        errorEl.hidden = false;
+        return;
+      }
+      if (linkValue) {
+        var parsed = null;
+        try { parsed = new URL(linkValue); } catch (err) { parsed = null; }
+        if (!parsed || !/^https?:$/.test(parsed.protocol) || !/(^|\.)linkedin\.com$/i.test(parsed.hostname)) {
+          errorEl.textContent = 'That doesn\'t look like a LinkedIn link - it should start with https://www.linkedin.com/in/';
+          errorEl.hidden = false;
+          return;
+        }
+      }
+
+      var submit = dialog.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      submit.textContent = 'Saving…';
+      var save = profile.isPro
+        ? supabaseClient.rpc('update_professional_profile', { p_linkedin_url: linkValue || null, p_bio: bioValue || null })
+        : supabaseClient.from('member_profiles').upsert({ id: userId, linkedin_url: linkValue || null, bio: bioValue || null, updated_at: new Date().toISOString() });
+      save.then(function (result) {
+        if (result.error) {
+          submit.disabled = false;
+          submit.textContent = 'Save my profile';
+          errorEl.textContent = "Couldn't save that: " + result.error.message;
+          errorEl.hidden = false;
+          return;
+        }
+        saved = true;
+        var complete = !!(bioValue && linkValue);
+        setState('profile_prompt', Object.assign({}, getState('profile_prompt') || {}, complete ? { done: true } : { next_due_at: daysFromNow(14) }));
+        dialog.innerHTML = '<div class="guide-done"><span class="guide-done-tick" aria-hidden="true">&#10003;</span><h2 class="guide-title">Saved</h2><p class="guide-text">' +
+          (complete ? 'Your Network profile is all set.' : 'Thanks - you can add the rest any time from your Members Hub.') + '</p></div>';
+        setTimeout(function () { close(null); }, 1500);
+      });
+    });
+  }
+
+  // =======================================================================
+  // 3. Guided tour.
+  // =======================================================================
+  // Each step: where it happens (page), what it points at (target: first
+  // visible selector wins; null = centred card), and what to say. A step
+  // marked optional is skipped when its target isn't on screen (e.g. a
+  // card hidden for this person by Hub Access).
+  var HUB = 'member-hub.html';
+  var STEPS = [
+    { page: HUB, target: null, title: 'Welcome to LACMS', body: 'This short tour shows you around the Members Hub first, then the rest of the site. It takes about two minutes, and you can leave at any time.' },
+    { page: HUB, target: ['#member-card-member', '#member-card-professional'], title: 'Your membership card', body: 'Your digital membership card, with your name and membership number. Keep it handy - it\'s how you show you\'re a member.' },
+    { page: HUB, target: ['[data-tour="details"]'], title: 'Your details', body: 'Your account at a glance. From here you can edit your Network profile (a short bio and your LinkedIn), change your password, or log out.', optional: true },
+    { page: HUB, target: ['#member-feed-section'], title: 'News & updates', body: 'Announcements from the committee appear here, newest first.', optional: true },
+    { page: HUB, target: ['#perks-card'], title: 'Discounts & opportunities', body: 'Partner discount codes and opportunities shared with members before anyone else.', optional: true },
+    { page: HUB, target: ['#sankofa-apply-card'], title: 'Sankofa Circles', body: 'Our mentorship programme. Medicine members can apply here to be matched into a Circle of mentors and mentees.', optional: true },
+    { page: HUB, target: ['#network-card', '#network-locked-card'], title: 'The LACMS Network', body: 'A directory of members and the professionals supporting us. It\'s being built right now and opens up soon.', optional: true },
+    { page: HUB, target: ['a.quick-link-card[href="events.html"]'], title: 'Events', body: 'See what\'s coming up and register for events straight from your account.', optional: true },
+    { page: HUB, target: ['#motm-nominate-card'], title: 'Member of the Month', body: 'Nominate someone who\'s gone above and beyond - the winner and runners-up win exciting LACMS prizes.', optional: true },
+    { page: HUB, target: ['#member-hub-mmg-section'], title: 'Midlands Medics Gala', body: 'If you\'re part of the Gala, your updates from the committee show up here.', optional: true },
+    { page: HUB, target: ['#president-dashboard-card'], title: 'Platform dashboard', body: 'The committee\'s tools for running LACMS - you only see this because you\'ve been given access.', optional: true },
+    { page: HUB, target: ['.notif-bell'], title: 'Notifications', body: 'The bell shows how much new content has appeared since you last looked - discounts, events, news and more. Open it to jump straight there.', optional: true },
+    { page: HUB, target: ['[data-theme-toggle]'], title: 'Light or dark', body: 'Switch between light and dark mode any time.', optional: true },
+    { page: HUB, target: ['.nav-links', '.nav-toggle'], title: 'Finding your way around', body: 'The menu takes you to every page on the site. Now let\'s look at some of them.', optional: true },
+
+    { page: 'member-perks.html', target: ['#discounts-list'], title: 'Partner discounts', body: 'Tap a card to see the details and your code. Use "I used this" to keep track of what you\'ve redeemed - there\'s a few seconds to undo a mis-tap.', optional: true },
+    { page: 'events.html', target: ['.event-list'], title: 'Events', body: 'Open any event for the details, and use Register to reserve your place. You can cancel a registration from here too.' },
+    { page: 'programmes.html', target: ['.programme-card'], title: 'Programmes', body: 'What LACMS runs beyond events - mentorship, study skills, widening access and more.', optional: true },
+    { page: 'opportunities.html', target: ['#opportunities-list', '#opportunities-locked-wrap'], title: 'Opportunities', body: 'Work experience, bursaries and volunteering shared by the society.', optional: true },
+    { page: 'motm.html', target: ['#nominate'], title: 'Nominate for Member of the Month', body: 'Tell us who deserves recognition and why. The winner and runners-up win exciting LACMS prizes - and you can nominate once a month.' },
+    { page: 'news.html', target: ['#news-feed-list', '#main .section'], title: 'News', body: 'Stories from the society. Members can like and comment on posts.' },
+    { page: 'gallery.html', target: ['#gallery-submit-form-wrap', '#main .section'], title: 'Gallery', body: 'Photos from our events - and you can send in your own for the committee to feature.', optional: true },
+    { page: 'about.html', target: ['#committee'], title: 'Meet the committee', body: 'The people who run LACMS. Tap a card to read their story.' },
+    { page: HUB, target: null, title: 'You\'re all set', body: 'That\'s the tour. You can replay it any time with "Take the tour" at the top of your Members Hub. Enjoy LACMS!', last: true }
+  ];
+
+  var tourDom = null;
+  var tourIndex = 0;
+  var tourDirection = 1;
+  var tourRaf = null;
+  var tourShownOnThisPage = false;
+
+  function tourSaved() {
+    var raw = sget('lacms-tour');
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+  }
+  function tourSave(i) { sset('lacms-tour', JSON.stringify({ i: i })); }
+
+  function startTour() {
+    tourSave(0);
+    if (page !== STEPS[0].page) {
+      sset('lacms-tour-nav', STEPS[0].page);
+      window.location.href = STEPS[0].page;
+      return;
+    }
+    tourDirection = 1;
+    resumeTour(0);
+  }
+
+  function resumeTour(i) {
+    tourRunning = true;
+    overlayOpen = true;
+    tourIndex = i;
+    buildTourDom();
+    showTourStep(i, tourDirection);
+  }
+
+  function endTour(status) {
+    tourRunning = false;
+    overlayOpen = false;
+    sdel('lacms-tour');
+    sdel('lacms-tour-nav');
+    if (tourRaf) cancelAnimationFrame(tourRaf);
+    document.removeEventListener('keydown', onTourKey, true);
+    window.removeEventListener('resize', scheduleReposition);
+    window.removeEventListener('scroll', scheduleReposition, true);
+    if (tourDom) {
+      var dom = tourDom;
+      tourDom = null;
+      dom.root.classList.remove('is-in');
+      setTimeout(function () { dom.root.remove(); }, reduceMotion ? 0 : 200);
+    }
+    if (status) setState('tour', { status: status, at: new Date().toISOString(), step: tourIndex });
+  }
+
+  function buildTourDom() {
+    if (tourDom) return;
+    var root = el('div', 'tour-root');
+    var blocker = el('div', 'tour-blocker');
+    var spot = el('div', 'tour-spot');
+    var card = el('div', 'tour-card');
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    card.setAttribute('aria-labelledby', 'tour-title');
+    card.innerHTML =
+      '<button type="button" class="guide-close" data-tour-skip aria-label="End tour">&times;</button>' +
+      '<div class="tour-progress" aria-hidden="true"><span class="tour-progress-bar"></span></div>' +
+      '<span class="guide-eyebrow" id="tour-step-label"></span>' +
+      '<h2 class="guide-title" id="tour-title"></h2>' +
+      '<p class="guide-text" id="tour-body"></p>' +
+      '<div class="tour-nav"><button type="button" class="guide-linkbtn" data-tour-skip>Skip tour</button>' +
+      '<div class="tour-nav-btns"><button type="button" class="btn btn-outline" data-tour-back>Back</button>' +
+      '<button type="button" class="btn btn-primary" data-tour-next>Next</button></div></div>' +
+      '<div class="visually-hidden" aria-live="polite" id="tour-live"></div>';
+    root.appendChild(blocker);
+    root.appendChild(spot);
+    root.appendChild(card);
+    document.body.appendChild(root);
+    tourDom = { root: root, spot: spot, card: card, target: null };
+
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('[data-tour-next]')) tourNext();
+      else if (e.target.closest('[data-tour-back]')) tourBack();
+      else if (e.target.closest('[data-tour-skip]')) endTour('skipped');
+    });
+    document.addEventListener('keydown', onTourKey, true);
+    window.addEventListener('resize', scheduleReposition);
+    window.addEventListener('scroll', scheduleReposition, true);
+    requestAnimationFrame(function () { root.classList.add('is-in'); });
+  }
+
+  function onTourKey(e) {
+    if (!tourRunning) return;
+    if (e.key === 'Escape') { e.preventDefault(); endTour('skipped'); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); tourNext(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); tourBack(); }
+    else if (e.key === 'Tab' && tourDom) trapFocus(e, tourDom.card);
+  }
+
+  function findTarget(step) {
+    if (!step.target) return null;
+    for (var i = 0; i < step.target.length; i++) {
+      var found = document.querySelector(step.target[i]);
+      if (found && isVisible(found)) return found;
+    }
+    return null;
+  }
+
+  function goToStep(i) {
+    var step = STEPS[i];
+    tourIndex = i;
+    tourSave(i);
+    if (step.page !== page) {
+      sset('lacms-tour-nav', step.page);
+      tourDom && tourDom.card.classList.add('is-loading');
+      window.location.href = step.page;
+      return;
+    }
+    showTourStep(i, tourDirection);
+  }
+  function tourNext() {
+    if (tourIndex >= STEPS.length - 1) { endTour('completed'); return; }
+    tourDirection = 1;
+    goToStep(tourIndex + 1);
+  }
+  function tourBack() {
+    if (tourIndex <= 0) return;
+    tourDirection = -1;
+    goToStep(tourIndex - 1);
+  }
+
+  // Shows a step once its target has appeared (cards and lists fill in
+  // after the page's own data loads), skipping optional steps whose
+  // target never does.
+  function showTourStep(i, direction) {
+    var step = STEPS[i];
+    var started = Date.now();
+    var token = {};
+    showTourStep.token = token;
+    // The first step after a page loads gets a few seconds for its
+    // content to arrive; later steps on the same page are already
+    // there, so a missing optional target is skipped almost at once.
+    var maxWait = tourShownOnThisPage ? 600 : 5000;
+
+    (function wait() {
+      if (showTourStep.token !== token || !tourRunning) return;
+      var target = findTarget(step);
+      if (target || !step.target || Date.now() - started > maxWait) {
+        if (!target && step.target && step.optional) {
+          // Not available to this person / not on screen - move along.
+          var next = i + direction;
+          if (next < 0) { next = i + 1; direction = 1; }
+          if (next >= STEPS.length) { endTour('completed'); return; }
+          tourDirection = direction;
+          goToStep(next);
+          return;
+        }
+        tourShownOnThisPage = true;
+        renderTourStep(i, target);
+        return;
+      }
+      setTimeout(wait, 100);
+    })();
+  }
+
+  function renderTourStep(i, target) {
+    var step = STEPS[i];
+    tourDom.target = target;
+    var card = tourDom.card;
+    card.classList.remove('is-loading');
+    card.querySelector('#tour-step-label').textContent = 'Step ' + (i + 1) + ' of ' + STEPS.length;
+    card.querySelector('#tour-title').textContent = step.title;
+    card.querySelector('#tour-body').textContent = step.body;
+    card.querySelector('.tour-progress-bar').style.width = Math.round(((i + 1) / STEPS.length) * 100) + '%';
+    card.querySelector('[data-tour-back]').disabled = i === 0;
+    card.querySelector('[data-tour-next]').textContent = step.last || i === STEPS.length - 1 ? 'Finish' : (STEPS[i + 1] && STEPS[i + 1].page !== step.page ? 'Next page' : 'Next');
+    card.querySelector('#tour-live').textContent = step.title;
+
+    tourToken = {};
+    if (target) ensureVisible(target, 0, tourToken);
+    positionTour();
+    setTimeout(positionTour, reduceMotion ? 50 : 450);
+    var nextBtn = card.querySelector('[data-tour-next]');
+    if (nextBtn) nextBtn.focus({ preventScroll: true });
+  }
+
+  // Brings the target on screen (clear of the sticky header and, on
+  // phones, of the bottom sheet). Smooth first, then - since content
+  // above can still be shifting as the page settles - re-checks and
+  // jumps if it hasn't landed.
+  var tourToken = null;
+  function ensureVisible(target, attempt, token) {
+    if (!tourRunning || tourToken !== token || !document.body.contains(target)) return;
+    var vh = window.innerHeight;
+    var narrow = window.innerWidth < 640;
+    var r = target.getBoundingClientRect();
+    var bottomLimit = vh - (narrow ? 230 : 24);
+    var tooTall = r.height > (bottomLimit - 70);
+    var ok = tooTall ? (r.top >= 50 && r.top <= vh * 0.45) : (r.top >= 70 && r.bottom <= bottomLimit);
+    if (ok) { positionTour(); return; }
+    var y = tooTall
+      ? r.top + window.pageYOffset - 80
+      : r.top + window.pageYOffset - Math.max(80, (bottomLimit - r.height) / 2);
+    window.scrollTo({ top: Math.max(0, y), behavior: (attempt === 0 && !reduceMotion) ? 'smooth' : 'auto' });
+    if (attempt < 4) setTimeout(function () { ensureVisible(target, attempt + 1, token); }, attempt === 0 ? 500 : 200);
+    else positionTour();
+  }
+
+  function scheduleReposition() {
+    if (tourRaf) return;
+    tourRaf = requestAnimationFrame(function () { tourRaf = null; positionTour(); });
+  }
+
+  function positionTour() {
+    if (!tourDom) return;
+    var spot = tourDom.spot;
+    var card = tourDom.card;
+    var target = tourDom.target;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var pad = 8;
+    var narrow = vw < 640;
+
+    if (!target || !document.body.contains(target)) {
+      spot.classList.add('is-hidden');
+      card.classList.add('is-centered');
+      card.style.top = '';
+      card.style.left = '';
+      return;
+    }
+    card.classList.remove('is-centered');
+    spot.classList.remove('is-hidden');
+
+    var r = target.getBoundingClientRect();
+    // Clip to the viewport so a very tall target highlights what's visible.
+    var top = Math.max(r.top - pad, 4);
+    var bottom = Math.min(r.bottom + pad, vh - 4);
+    var left = Math.max(r.left - pad, 4);
+    var right = Math.min(r.right + pad, vw - 4);
+    // A very tall target (a whole list) only has its top highlighted, so
+    // there's always room for the card beside/below it.
+    var maxSpot = narrow ? vh * 0.34 : vh * 0.5;
+    if (bottom - top > maxSpot) bottom = top + maxSpot;
+    if (bottom <= top || right <= left) {
+      spot.classList.add('is-hidden');
+    }
+    spot.style.top = top + 'px';
+    spot.style.left = left + 'px';
+    spot.style.width = (right - left) + 'px';
+    spot.style.height = Math.max(0, bottom - top) + 'px';
+
+    if (narrow) {
+      // Bottom sheet on phones.
+      card.style.top = '';
+      card.style.left = '';
+      return;
+    }
+    var cw = card.offsetWidth;
+    var ch = card.offsetHeight;
+    var spaceBelow = vh - bottom;
+    var spaceAbove = top;
+    var y;
+    if (spaceBelow >= ch + 16) y = bottom + 12;
+    else if (spaceAbove >= ch + 16) y = top - ch - 12;
+    else if (vh - ch - 28 - top >= 120) {
+      // Neither side has room: shrink the highlight so the card fits below it.
+      bottom = vh - ch - 28;
+      spot.style.height = (bottom - top) + 'px';
+      y = bottom + 12;
+    } else y = Math.max(12, Math.min(vh - ch - 12, vh / 2 - ch / 2));
+    var x = Math.max(12, Math.min(vw - cw - 12, (left + right) / 2 - cw / 2));
+    card.style.top = Math.round(y) + 'px';
+    card.style.left = Math.round(x) + 'px';
+  }
+
+  function trapFocus(e, container) {
+    var focusable = container.querySelectorAll('button:not([disabled]), a[href], input, textarea, select, [tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    else if (!container.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+  }
+
+  // ---- The one-time offer, on the hub -----------------------------------
+  function maybeOfferTour(ctx) {
+    var st = getState('tour');
+    if (st) return; // offered before - it's a one-time offer
+    var tries = 0;
+    (function attempt() {
+      var content = document.getElementById('member-hub-content');
+      // A brand-new member first has to accept the terms (its own modal
+      // on the hub) - the offer waits until that's out of the way rather
+      // than stacking a second dialog on top.
+      var terms = document.getElementById('terms-gate-modal');
+      var termsOpen = terms && window.getComputedStyle(terms).display !== 'none';
+      if (!content || content.style.display === 'none' || termsOpen) {
+        if (++tries < 900) setTimeout(attempt, 400);
+        return;
+      }
+      setTimeout(function () {
+        if (overlayOpen || tourRunning || getState('tour')) return;
+        var stillTerms = document.getElementById('terms-gate-modal');
+        if (stillTerms && window.getComputedStyle(stillTerms).display !== 'none') { attempt(); return; }
+        openTourOffer(ctx);
+      }, 1200);
+    })();
+  }
+
+  function openTourOffer(ctx) {
+    overlayOpen = true;
+    var previouslyFocused = document.activeElement;
+    var nameEl = document.querySelector('[data-member-name-inline]');
+    var first = (nameEl && nameEl.textContent && nameEl.textContent !== 'member' ? nameEl.textContent : (ctx.member && ctx.member.full_name) || '').trim().split(/\s+/)[0];
+
+    var backdrop = el('div', 'guide-backdrop');
+    var dialog = el('div', 'guide-dialog guide-dialog--offer');
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'tour-offer-title');
+    dialog.innerHTML =
+      '<span class="guide-eyebrow">Welcome</span>' +
+      '<h2 class="guide-title" id="tour-offer-title">' + (first ? 'Welcome to LACMS, ' + escapeHtml(first) + '!' : 'Welcome to LACMS!') + '</h2>' +
+      '<p class="guide-text">Would you like a quick tour? We\'ll walk you through everything on your Members Hub, then the rest of the site. It takes about two minutes.</p>' +
+      '<div class="guide-actions guide-actions--stack"><button type="button" class="btn btn-primary btn-block" data-offer-yes>Show me around</button>' +
+      '<button type="button" class="btn btn-outline btn-block" data-offer-later>Maybe later</button></div>' +
+      '<p class="guide-fine">You can start the tour whenever you like from "Take the tour" at the top of this page.</p>';
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+    document.body.classList.add('guide-open');
+    requestAnimationFrame(function () { backdrop.classList.add('is-in'); dialog.querySelector('[data-offer-yes]').focus(); });
+    setState('tour', { status: 'offered', at: new Date().toISOString() });
+
+    function close(status, thenStart) {
+      document.removeEventListener('keydown', onKey, true);
+      backdrop.classList.remove('is-in');
+      document.body.classList.remove('guide-open');
+      overlayOpen = false;
+      setTimeout(function () { backdrop.remove(); }, reduceMotion ? 0 : 200);
+      if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus();
+      if (status) setState('tour', { status: status, at: new Date().toISOString() });
+      if (thenStart) startTour();
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close('later'); }
+      else if (e.key === 'Tab') trapFocus(e, dialog);
+    }
+    document.addEventListener('keydown', onKey, true);
+    dialog.addEventListener('click', function (e) {
+      if (e.target.closest('[data-offer-yes]')) close('started', true);
+      else if (e.target.closest('[data-offer-later]')) close('later');
+    });
+  }
+
+  // ---- Wiring -------------------------------------------------------------
+  function revealTourLinks() {
+    document.querySelectorAll('[data-start-tour]').forEach(function (b) { b.hidden = false; });
+  }
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-start-tour]')) {
+      e.preventDefault();
+      if (!tourRunning && !overlayOpen) startTour();
+    }
+  });
+  document.addEventListener('lacms:network-opened', function () { if (userId) maybePromptProfile(); });
+
+  function init(sess) {
+    session = sess;
+    userId = sess.user.id;
+    revealTourLinks();
+
+    loadState().then(function () {
+      // Resume a tour that's mid-way (we navigated here as part of it).
+      var saved = tourSaved();
+      var navFlag = sget('lacms-tour-nav');
+      if (saved && typeof saved.i === 'number' && STEPS[saved.i]) {
+        if (navFlag === page || STEPS[saved.i].page === page && navFlag === null) {
+          sdel('lacms-tour-nav');
+          if (STEPS[saved.i].page === page) {
+            resumeTour(saved.i);
+            return;
+          }
+        }
+        // They wandered off mid-tour: it's over rather than yanking them back.
+        sdel('lacms-tour');
+        sdel('lacms-tour-nav');
+      }
+
+      if (/[?&]tour=1\b/.test(window.location.search)) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+        startTour();
+        return;
+      }
+
+      getContext().then(function (ctx) {
+        if (page === HUB) maybeOfferTour(ctx);
+      });
+      startNudges();
+    });
+  }
+
+  supabaseClient.auth.getSession().then(function (result) {
+    var sess = result.data && result.data.session;
+    if (sess) init(sess);
+  });
+})();

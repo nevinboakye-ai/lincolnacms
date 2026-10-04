@@ -4007,6 +4007,9 @@
         // Runs after renderNetworkMembers() so networkCourseAccents is
         // already populated — the ticker's colours depend on it.
         loadNetworkActivity();
+        // js/guidance.js listens for this to ask people to fill in their
+        // Network profile (first open, then now and then until they do).
+        document.dispatchEvent(new CustomEvent('lacms:network-opened'));
       });
     }
 

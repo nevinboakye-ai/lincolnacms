@@ -7,7 +7,7 @@
 <title>Members Hub - LACMS</title>
 <meta name="description" content="Your LACMS membership profile and digital membership card.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-71">
+<link rel="stylesheet" href="css/styles.css?v=20260824-72">
 </head>
 <body>
 
@@ -85,6 +85,7 @@
     <span class="eyebrow">Members Hub</span>
     <h1 class="page-hero-title"><span data-greeting-word>Welcome back</span>, <span data-member-name-inline>member</span></h1>
     <p class="page-hero-lede">Your profile, digital membership card and account controls.</p>
+    <p style="margin-top: var(--space-3);"><button type="button" class="link-button" data-start-tour hidden>New here? Take the tour</button></p>
     <div class="tricolor-bar tricolor-bar--sm" aria-hidden="true"><span></span><span></span><span></span></div>
   </section>
 
@@ -168,7 +169,7 @@
           </div>
         </div>
 
-        <div>
+        <div data-tour="details">
           <h2>Your details</h2>
           <div id="member-details-member">
             <div class="member-info-row">
@@ -359,7 +360,7 @@
           </span>
           <span class="card-tag">Member of the Month</span>
           <h3 class="card-title">Nominate for Member of the Month</h3>
-          <p>Put forward someone who's gone above and beyond this month.</p>
+          <p>Put forward someone who's gone above and beyond this month. The winner and runners-up win exciting LACMS prizes!</p>
           <span class="card-link">Nominate
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </span>
@@ -450,8 +451,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-71"></script>
-<script src="js/members.js?v=20260824-71"></script>
-<script src="js/notifications.js?v=20260824-71"></script>
+<script src="js/main.js?v=20260824-72"></script>
+<script src="js/members.js?v=20260824-72"></script>
+<script src="js/notifications.js?v=20260824-72"></script>
+<script src="js/guidance.js?v=20260824-72"></script>
 </body>
 </html>
