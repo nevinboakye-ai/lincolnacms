@@ -348,6 +348,7 @@
     { page: HUB, target: ['[data-tour="details"]'], title: 'Your details', body: 'Your account at a glance. From here you can edit your Network profile (a short bio and your LinkedIn), change your password, or log out.', optional: true },
     { page: HUB, target: ['#member-feed-section'], title: 'News & updates', body: 'Announcements from the committee appear here, newest first.', optional: true },
     { page: HUB, target: ['#perks-card'], title: 'Discounts & opportunities', body: 'Partner discount codes and opportunities shared with members before anyone else.', optional: true },
+    { page: HUB, target: ['#resources-card', '#resources-locked-card'], title: 'LACMS Resources', body: 'A library of study resources - notes, past papers, websites and more - shared by members and organised by course. Members can add their own too.', optional: true },
     { page: HUB, target: ['#sankofa-apply-card'], title: 'Sankofa Circles', body: 'Our mentorship programme. Medicine members can apply here to be matched into a Circle of mentors and mentees.', optional: true },
     { page: HUB, target: ['#network-card', '#network-locked-card'], title: 'The LACMS Network', body: 'A directory of members and the professionals supporting us. It\'s being built right now and opens up soon.', optional: true },
     { page: HUB, target: ['a.quick-link-card[href="events.html"]'], title: 'Events', body: 'See what\'s coming up and register for events straight from your account.', optional: true },

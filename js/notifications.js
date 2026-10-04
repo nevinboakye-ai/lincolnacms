@@ -30,7 +30,8 @@
     { key: 'news', label: 'News', singular: 'new post', plural: 'new posts', href: 'news.html', page: 'news.html', navHref: 'news.html' },
     { key: 'motm', label: 'Member of the Month', singular: 'new honouree', plural: 'new honourees', href: 'motm.html', page: 'motm.html', navHref: 'motm.html' },
     { key: 'gallery', label: 'Gallery', singular: 'new photo', plural: 'new photos', href: 'gallery.html', page: 'gallery.html', navHref: 'gallery.html' },
-    { key: 'mmg', label: 'Midlands Medics Gala', singular: 'new update', plural: 'new updates', href: 'mmg-hub.html', page: 'mmg-hub.html' }
+    { key: 'mmg', label: 'Midlands Medics Gala', singular: 'new update', plural: 'new updates', href: 'mmg-hub.html', page: 'mmg-hub.html' },
+    { key: 'resources', label: 'LACMS Resources', singular: 'new resource', plural: 'new resources', href: 'member-resources.html', page: 'member-resources.html' }
   ];
   var POLL_MS = 60 * 1000;
 

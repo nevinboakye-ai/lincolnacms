@@ -1566,6 +1566,21 @@
         applyHubCard(access, 'sankofa', 'sankofa-apply-card', null, !!(member && /medicine/i.test(member.course || '')));
         applyHubCard(access, 'network', 'network-card', 'network-locked-card', isPresident);
         applyHubCard(access, 'motm_nominate', 'motm-nominate-card', 'motm-locked-card', true);
+        // LACMS Resources: if the rules can't be read, executives only.
+        var isExecViewer = isPresident || !!(member && member.member_type === 'executive_committee');
+        applyHubCard(access, 'resources', 'resources-card', 'resources-locked-card', isExecViewer);
+        var resourcesCard = document.getElementById('resources-card');
+        if (resourcesCard && resourcesCard.style.display !== 'none' && isExecViewer) {
+          // Executives see how many submissions are waiting for review.
+          supabaseClient.rpc('get_resource_counts').then(function (r) {
+            if (r.error) return;
+            var pending = (r.data || []).reduce(function (sum, row) { return sum + (row.pending_count || 0); }, 0);
+            if (pending > 0 && !resourcesCard.querySelector('.nudge-badge')) {
+              resourcesCard.style.position = 'relative';
+              resourcesCard.insertAdjacentHTML('beforeend', '<span class="nudge-badge"><span class="nudge-badge-dot" aria-hidden="true"></span>' + pending + ' to review</span>');
+            }
+          });
+        }
       });
     }
 
@@ -6122,6 +6137,7 @@
       { key: 'network', label: 'The LACMS Network', short: 'Network', desc: 'The member and professional directory.', canLock: true },
       { key: 'motm_nominate', label: 'Member of the Month nominations', short: 'MoTM', desc: 'Nominating someone for Member of the Month.', canLock: false },
       { key: 'news_feed', label: 'News & updates feed', short: 'News', desc: 'The announcements feed on the hub.', canLock: false },
+      { key: 'resources', label: 'LACMS Resources', short: 'Resources', desc: 'The study resources library shared by members (until opened up, executives only).', canLock: true },
       { key: 'dash_mmg', label: 'Dashboard: MMG', short: 'MMG', desc: 'The MMG guests section of the Platform Activity Dashboard.', dash: true },
       { key: 'dash_sankofa', label: 'Dashboard: Sankofa', short: 'Sankofa', desc: 'Sankofa mentee and mentor applications on the dashboard.', dash: true },
       { key: 'dash_motm', label: 'Dashboard: Nominations', short: 'Nominations', desc: 'Member of the Month nominations on the dashboard.', dash: true },
