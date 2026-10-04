@@ -97,6 +97,19 @@
     if (days < 7) return days + (days === 1 ? ' day ago' : ' days ago');
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   }
+  var YEAR_ORDER = ['Foundation Year', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Masters'];
+  function coursesOf(r) { return (r && r.courses && r.courses.length) ? r.courses : []; }
+  function yearsOf(r) { return (r && r.years) ? r.years : []; }
+  function coursesLabel(r) { return coursesOf(r).map(courseLabel).join(', '); }
+  // "Year 1, Year 2, Year 3" -> "Years 1-3"; otherwise a plain list.
+  function yearsLabel(years) {
+    var sorted = YEAR_ORDER.filter(function (y) { return years.indexOf(y) !== -1; });
+    if (!sorted.length) return '';
+    var nums = sorted.map(function (y) { var m = /^Year (\d)$/.exec(y); return m ? parseInt(m[1], 10) : null; });
+    if (sorted.length >= 3 && nums.every(function (n, i) { return n !== null && (i === 0 || n === nums[i - 1] + 1); })) return 'Years ' + nums[0] + '-' + nums[nums.length - 1];
+    if (sorted.length >= 3 && sorted.length === YEAR_ORDER.length) return 'All years';
+    return sorted.join(', ');
+  }
   function courseLabel(name) {
     var c = COURSES.filter(function (x) { return x.name === name; })[0];
     return c ? (c.label || c.name) : name;
@@ -420,8 +433,8 @@
       counts = {};
       var pending = 0;
       (r.data || []).forEach(function (row) {
+        if (row.course === '__all') { counts.__all = { approved: row.approved_count, pending: row.pending_count }; pending = row.pending_count; return; }
         counts[row.course] = { approved: row.approved_count, pending: row.pending_count };
-        pending += row.pending_count;
       });
       var reviewLink = $('res-review-link');
       reviewLink.hidden = !isAdmin;
@@ -436,10 +449,10 @@
     newByCourse = {};
     newTotal = 0;
     if (!prevSeen) return Promise.resolve();
-    return supabaseClient.from('resources').select('course, approved_at, uploader_id').eq('status', 'approved').gt('approved_at', prevSeen).then(function (r) {
+    return supabaseClient.from('resources').select('courses, approved_at, uploader_id').eq('status', 'approved').gt('approved_at', prevSeen).then(function (r) {
       (r.data || []).forEach(function (row) {
         if (row.uploader_id === userId) return;
-        newByCourse[row.course] = (newByCourse[row.course] || 0) + 1;
+        (row.courses || []).forEach(function (c) { newByCourse[c] = (newByCourse[c] || 0) + 1; });
         newTotal++;
       });
     }, function () { /* markers are a nicety */ });
@@ -486,8 +499,7 @@
   function renderChips() {
     var wrap = $('res-course-chips');
     wrap.setAttribute('aria-busy', 'false');
-    var total = 0;
-    COURSES.forEach(function (c) { total += (counts[c.name] || { approved: 0 }).approved; });
+    var total = (counts.__all || { approved: 0 }).approved;
     function chip(name, label, count, fresh, iconKey) {
       var active = (name || '') === (currentCourse || '');
       return '<button type="button" class="res-chip' + (active ? ' is-active' : '') + '" data-chip="' + escapeHtml(name) + '" aria-pressed="' + active + '">' +
@@ -546,12 +558,13 @@
     var sort = $('res-sort').value;
     $('res-search-clear').hidden = !q;
 
-    var inCourse = allItems.filter(function (r) { return !currentCourse || r.course === currentCourse; });
+    var inCourse = allItems.filter(function (r) { return !currentCourse || coursesOf(r).indexOf(currentCourse) !== -1; });
     var rows = inCourse.filter(function (r) {
       if (type && r.resource_type !== type) return false;
       if (source && r.source_type !== source) return false;
-      if (year && r.year_of_study !== year) return false;
-      if (q && [r.title, r.topic, r.uploader_name, r.description, courseLabel(r.course)].join(' ').toLowerCase().indexOf(q) === -1) return false;
+      // A resource with no years listed is for any year, so it matches too.
+      if (year && yearsOf(r).length && yearsOf(r).indexOf(year) === -1) return false;
+      if (q && [r.title, r.topic, r.uploader_name, r.description, coursesLabel(r)].join(' ').toLowerCase().indexOf(q) === -1) return false;
       return true;
     });
     rows.sort(function (a, b) {
@@ -649,6 +662,14 @@
     return '<span class="res-thumb-icon">' + FILE_ICON + '<span class="res-thumb-ext">' + escapeHtml((ext || 'file').toUpperCase()) + '</span></span>';
   }
 
+  // Up to two course badges, then "+N" (full list on hover).
+  function courseBadges(r) {
+    var list = coursesOf(r);
+    var shown = list.slice(0, 2).map(function (c) { return '<span class="res-badge res-badge--course">' + escapeHtml(courseLabel(c)) + '</span>'; }).join('');
+    if (list.length > 2) shown += '<span class="res-badge res-badge--course" title="' + escapeHtml(coursesLabel(r)) + '">+' + (list.length - 2) + '</span>';
+    return shown;
+  }
+
   function statusBadge(r) {
     if (r.status === 'pending') return '<span class="res-badge res-badge--pending">Pending review</span>';
     if (r.status === 'rejected') return '<span class="res-badge res-badge--rejected">Not approved</span>';
@@ -688,8 +709,8 @@
       '<div class="res-tags">' + (isNew(r) ? '<span class="res-new-pill"><span class="res-new-dot" aria-hidden="true"></span>New</span>' : '') +
       '<span class="res-badge">' + escapeHtml(TYPES[r.resource_type] || 'Other') + '</span>' +
       '<span class="res-badge res-badge--' + r.source_type + '">' + (r.source_type === 'personal' ? 'Personal' : 'External') + '</span>' +
-      (r.year_of_study ? '<span class="res-badge">' + escapeHtml(r.year_of_study) + '</span>' : '') +
-      (mode !== 'browse' ? '<span class="res-badge res-badge--course">' + escapeHtml(courseLabel(r.course)) + '</span>' : '') +
+      (yearsOf(r).length ? '<span class="res-badge" title="' + escapeHtml(yearsOf(r).join(', ')) + '">' + escapeHtml(yearsLabel(yearsOf(r))) + '</span>' : '') +
+      courseBadges(r) +
       statusBadge(r) + '</div>' +
       '<h3 class="res-title"><button type="button" class="res-title-btn" data-res-preview>' + escapeHtml(r.title) + '</button></h3>' +
       bylineHtml(r, 'md') +
@@ -960,7 +981,7 @@
   function previewResource(r, opts) {
     opts = opts || {};
     var head = '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
-      '<span class="guide-eyebrow">' + escapeHtml(TYPES[r.resource_type] || 'Resource') + ' · ' + escapeHtml(courseLabel(r.course)) + '</span>' +
+      '<span class="guide-eyebrow">' + escapeHtml(TYPES[r.resource_type] || 'Resource') + ' · ' + escapeHtml(coursesLabel(r)) + (yearsOf(r).length ? ' · ' + escapeHtml(yearsLabel(yearsOf(r))) : '') + '</span>' +
       '<h2 class="guide-title">' + escapeHtml(r.title) + '</h2>' + bylineHtml(r, 'lg');
     var social = r.status === 'approved'
       ? '<div class="res-pv-social">' + socialHtml(r.id) + '</div>' +
@@ -1070,6 +1091,21 @@
   }
 
   // ---- Share / edit dialog ------------------------------------------------------------
+  // Multi-select as toggle pills (real checkboxes underneath, so keyboard
+  // and screen readers get native behaviour), with Select all / Clear.
+  function chipGroup(name, labelText, hint, items, selected) {
+    return '<div class="field res-chipfield" data-chipfield="' + name + '">' +
+      '<div class="res-chips-head"><span class="res-label" id="' + name + '-label">' + labelText + (hint ? ' <span class="guide-optional">' + hint + '</span>' : '') + '</span>' +
+      '<span class="res-chips-tools"><span class="res-chips-count" data-chips-count aria-live="polite"></span>' +
+      '<button type="button" class="res-chips-link" data-chips-all>Select all</button><button type="button" class="res-chips-link" data-chips-none>Clear</button></span></div>' +
+      '<div class="ui-chips" role="group" aria-labelledby="' + name + '-label">' + items.map(function (it) {
+        return '<label class="ui-chip"><input type="checkbox" name="' + name + '" value="' + escapeHtml(it.value) + '"' + (selected.indexOf(it.value) !== -1 ? ' checked' : '') + '><span>' + escapeHtml(it.label) + '</span></label>';
+      }).join('') + '</div></div>';
+  }
+  function chipValues(root, name) {
+    return Array.prototype.map.call(root.querySelectorAll('input[name="' + name + '"]:checked'), function (i) { return i.value; });
+  }
+
   function seg(name, options, current) {
     return '<div class="ui-seg" role="radiogroup">' + options.map(function (o) {
       return '<label class="ui-seg-opt"><input type="radio" name="' + name + '" value="' + o.value + '"' + (o.value === current ? ' checked' : '') + '><span>' + o.label + '</span></label>';
@@ -1079,12 +1115,11 @@
   function openShareDialog(existing) {
     var editing = !!existing;
     var ex = existing || {};
-    var courseOptions = COURSES.map(function (c) {
-      var sel = existing ? existing.course === c.name : (!!currentCourse && currentCourse === c.name);
-      return '<option value="' + escapeHtml(c.name) + '"' + (sel ? ' selected' : '') + '>' + escapeHtml(c.label || c.name) + '</option>';
-    }).join('');
+    var selectedCourses = existing ? coursesOf(existing) : (currentCourse ? [currentCourse] : []);
+    var selectedYears = existing ? yearsOf(existing) : [];
+    var courseItems = COURSES.map(function (c) { return { value: c.name, label: c.label || c.name }; });
+    var yearItems = YEARS.map(function (y) { return { value: y, label: y }; });
     var typeOptions = Object.keys(TYPES).map(function (k) { return '<option value="' + k + '"' + (ex.resource_type === k ? ' selected' : '') + '>' + TYPES[k] + '</option>'; }).join('');
-    var yearOptions = '<option value="">Any / not specific</option>' + YEARS.map(function (y) { return '<option' + (ex.year_of_study === y ? ' selected' : '') + '>' + y + '</option>'; }).join('');
 
     var dlg = openDialog(
       '<button type="button" class="guide-close" data-dialog-close aria-label="Cancel">&times;</button>' +
@@ -1094,7 +1129,7 @@
         ? 'As an executive, what you share is published straight away.'
         : 'An executive committee member reviews every resource before it appears for other members' + (editing ? ' - editing sends it back for review.' : '.')) + '</p>' +
       '<form class="guide-form res-form" id="res-form" novalidate>' +
-      '<div class="field"><label for="rs-course">Course</label><select id="rs-course">' + courseOptions + '</select></div>' +
+      chipGroup('rs-courses', 'Courses', '(pick every course it helps)', courseItems, selectedCourses) +
       '<div class="field"><label for="rs-title">Title</label><input type="text" id="rs-title" maxlength="140" value="' + escapeHtml(ex.title || '') + '" placeholder="e.g. Cardiovascular physiology - summary notes" data-autofocus></div>' +
       (editing ? '' :
         '<div class="field"><span class="res-label">What are you sharing?</span>' + seg('rs-kind', [{ value: 'file', label: 'Upload a file' }, { value: 'link', label: 'Add a link' }], 'file') + '</div>' +
@@ -1105,8 +1140,8 @@
         '<div class="field" data-rs-kind="link" hidden><label for="rs-url">Link</label><input type="text" id="rs-url" inputmode="url" placeholder="https://..." autocomplete="off"><div class="res-linkpreview" id="rs-linkpreview" hidden></div></div>') +
       (editing && ex.kind === 'link' ? '<div class="field"><label for="rs-url">Link</label><input type="text" id="rs-url" inputmode="url" value="' + escapeHtml(ex.url || '') + '" autocomplete="off"></div>' : '') +
       '<div class="field"><label for="rs-desc">Description</label><textarea id="rs-desc" maxlength="1500" rows="4" placeholder="What is it, who is it useful for, and how should people use it?">' + escapeHtml(ex.description || '') + '</textarea><span class="guide-count" id="rs-count" aria-live="polite">0 / 1500</span></div>' +
-      '<div class="res-form-row"><div class="field"><label for="rs-type">Type</label><select id="rs-type">' + typeOptions + '</select></div>' +
-      '<div class="field"><label for="rs-year">Year of study <span class="guide-optional">(optional)</span></label><select id="rs-year">' + yearOptions + '</select></div></div>' +
+      '<div class="field"><label for="rs-type">Type</label><select id="rs-type">' + typeOptions + '</select></div>' +
+      chipGroup('rs-years', 'Years of study', '(optional - leave empty if it suits any year)', yearItems, selectedYears) +
       '<div class="field"><label for="rs-topic">Topic / module <span class="guide-optional">(optional)</span></label><input type="text" id="rs-topic" maxlength="120" value="' + escapeHtml(ex.topic || '') + '" placeholder="e.g. Cardiology, Pharmacokinetics"></div>' +
       '<div class="field"><span class="res-label">Where is it from?</span>' + seg('rs-source', [{ value: 'personal', label: 'My own work' }, { value: 'external', label: 'From somewhere else' }], ex.source_type === 'external' ? 'external' : 'personal') + '</div>' +
       '<div class="field" id="rs-credit-field" hidden><label for="rs-credit">Source / author</label><input type="text" id="rs-credit" maxlength="200" value="' + escapeHtml(ex.source_credit || '') + '" placeholder="Who made it or where it\'s from - e.g. Osmosis, BMJ, Prof. Smith (Lincoln)"></div>' +
@@ -1123,7 +1158,18 @@
     var form = d.querySelector('#res-form');
     var errorEl = d.querySelector('#rs-error');
     var progress = d.querySelector('#rs-progress');
-    ['rs-course', 'rs-type', 'rs-year'].forEach(function (id) { enhanceSelect(d.querySelector('#' + id)); });
+    enhanceSelect(d.querySelector('#rs-type'));
+
+    // Pill groups: live "N selected" and Select all / Clear.
+    Array.prototype.forEach.call(d.querySelectorAll('[data-chipfield]'), function (field) {
+      var name = field.getAttribute('data-chipfield');
+      var count = field.querySelector('[data-chips-count]');
+      function update() { var n = chipValues(field, name).length; count.textContent = n ? n + ' selected' : ''; }
+      update();
+      field.addEventListener('change', update);
+      field.querySelector('[data-chips-all]').addEventListener('click', function () { field.querySelectorAll('input[type="checkbox"]').forEach(function (i) { i.checked = true; }); update(); });
+      field.querySelector('[data-chips-none]').addEventListener('click', function () { field.querySelectorAll('input[type="checkbox"]').forEach(function (i) { i.checked = false; }); update(); });
+    });
 
     function val(id) { return d.querySelector('#' + id).value.trim(); }
     function kindVal() { return editing ? ex.kind : form.querySelector('input[name="rs-kind"]:checked').value; }
@@ -1195,6 +1241,9 @@
       var title = val('rs-title');
       var desc = val('rs-desc');
       var kind = kindVal();
+      var pickedCourses = COURSES.map(function (c) { return c.name; }).filter(function (n) { return chipValues(d, 'rs-courses').indexOf(n) !== -1; });
+      var pickedYears = YEARS.filter(function (y) { return chipValues(d, 'rs-years').indexOf(y) !== -1; });
+      if (!pickedCourses.length) { showError('Pick at least one course this resource is for.'); return; }
       if (title.length < 3) { showError('Give it a title (at least 3 characters).'); return; }
       if (desc.length < 10) { showError('Add a short description (at least 10 characters) so people know what it is.'); return; }
       if (sourceVal() === 'external' && !val('rs-credit')) { showError('Say where it\'s from (the author or website) so it\'s credited properly.'); return; }
@@ -1229,13 +1278,13 @@
       progress.hidden = false;
 
       var fields = {
-        course: val('rs-course'),
+        courses: pickedCourses,
+        years: pickedYears,
         title: title,
         description: desc,
         resource_type: val('rs-type'),
         source_type: sourceVal(),
         source_credit: sourceVal() === 'external' ? val('rs-credit') : null,
-        year_of_study: d.querySelector('#rs-year').value || null,
         topic: val('rs-topic') || null
       };
       function fail(message) {

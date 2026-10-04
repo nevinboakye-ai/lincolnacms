@@ -1574,7 +1574,9 @@
           // Executives see how many submissions are waiting for review.
           supabaseClient.rpc('get_resource_counts').then(function (r) {
             if (r.error) return;
-            var pending = (r.data || []).reduce(function (sum, row) { return sum + (row.pending_count || 0); }, 0);
+            var rows = r.data || [];
+            var allRow = rows.filter(function (row) { return row.course === '__all'; })[0];
+            var pending = allRow ? (allRow.pending_count || 0) : rows.reduce(function (sum, row) { return sum + (row.pending_count || 0); }, 0);
             if (pending > 0 && !resourcesCard.querySelector('.nudge-badge')) {
               resourcesCard.style.position = 'relative';
               resourcesCard.insertAdjacentHTML('beforeend', '<span class="nudge-badge"><span class="nudge-badge-dot" aria-hidden="true"></span>' + pending + ' to review</span>');

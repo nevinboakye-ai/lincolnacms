@@ -7701,6 +7701,25 @@ body.guide-open { overflow: hidden; }
 .res-more-wrap[hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .res-chip, .res-chip .icon { transition: none; } .res-chip:hover, .res-chip:active { transform: none; } .res-chip-new { animation: none; } }
 
+/* ---- Multi-select pills (Share dialog: courses and years) ---- */
+.res-chips-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; margin-bottom: 6px; }
+.res-chips-head .res-label { margin: 0; }
+.res-chips-tools { display: inline-flex; align-items: center; gap: var(--space-3); font-size: 0.78rem; }
+.res-chips-count { color: var(--color-gold-light); font-weight: 700; }
+.res-chips-link { background: none; border: none; padding: 0; font: inherit; font-size: 0.78rem; color: var(--color-text-faint); cursor: pointer; text-decoration: underline; }
+.res-chips-link:hover, .res-chips-link:focus-visible { color: var(--color-text); }
+.ui-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ui-chip { position: relative; margin: 0; }
+.ui-chip input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.ui-chip span { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; font-size: 0.84rem; color: var(--color-text-muted); background: var(--color-bg-alt); border: 1px solid var(--color-border-strong); transition: background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard), transform 0.15s var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard); }
+.ui-chip:hover span { border-color: var(--color-gold); color: var(--color-text); transform: translateY(-1px); }
+.ui-chip input:active + span { transform: scale(0.95); }
+.ui-chip input:focus-visible + span { box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.35); }
+.ui-chip input:checked + span { background: var(--color-gold-fill, #d4a62b); color: var(--color-on-gold, #1a1500); border-color: var(--color-gold); font-weight: 700; padding-left: 12px; }
+.ui-chip input:checked + span::before { content: ""; width: 12px; height: 12px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a1500' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / contain no-repeat; animation: res-chip-tick 0.2s var(--ease-standard); }
+@keyframes res-chip-tick { from { transform: scale(0); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .ui-chip span { transition: none; } .ui-chip input:checked + span::before { animation: none; } .ui-chip:hover span, .ui-chip input:active + span { transform: none; } }
+
 /* =========================================================
    Notifications - header bell + dropdown panel + nav count pills
    (js/notifications.js; counts come from get_my_notifications()).
