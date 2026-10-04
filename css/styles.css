@@ -7223,6 +7223,109 @@ body.guide-open { overflow: hidden; }
 .pending-remove-btn { padding: 6px 14px; font-size: 0.82rem; color: #ef8b8f; border-color: #ef8b8f; }
 
 /* =========================================================
+   Network management (president only, js/members.js "Network
+   management"): the tools bar, selectable cards, the selection bar and
+   the add/remove dialogs (which reuse the .guide-dialog look).
+   ========================================================= */
+
+.network-admin-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+  border: 1px dashed var(--color-gold);
+  border-radius: var(--radius-md);
+  background: rgba(var(--gold-rgb), 0.06);
+}
+.network-admin-bar .btn { padding: 7px 16px; font-size: 0.85rem; }
+.network-admin-bar [hidden], .network-selection-bar[hidden], .network-admin-toast[hidden], .network-admin-dialog [hidden] { display: none !important; }
+.network-admin-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-gold-light); margin-right: var(--space-2); }
+.network-admin-hint { font-size: 0.82rem; color: var(--color-text-muted); }
+
+/* Cards while managing: click selects instead of opening the profile. */
+#network-content.is-managing .network-card::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-strong);
+  background: var(--color-surface);
+  z-index: 2;
+}
+#network-content.is-managing .network-card { padding-left: 38px; }
+#network-content.is-managing .network-card.is-selected {
+  outline: 2px solid #c1272d;
+  outline-offset: 1px;
+}
+#network-content.is-managing .network-card.is-selected::before {
+  background: #c1272d url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center / 12px no-repeat;
+  border-color: #c1272d;
+}
+#network-content.is-managing .network-card.is-protected { opacity: 0.55; cursor: not-allowed; }
+#network-content.is-managing .network-card.is-protected::before { display: none; }
+#network-content.is-managing .network-card.is-protected { padding-left: var(--space-4); }
+
+.network-selection-bar {
+  position: fixed;
+  z-index: 120;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: calc(100vw - 24px);
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border: 1px solid #c1272d;
+  border-radius: 999px;
+  box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.6);
+  font-size: 0.88rem;
+}
+.network-selection-bar .btn { padding: 7px 16px; font-size: 0.85rem; }
+@media (max-width: 640px) {
+  .network-selection-bar { left: 12px; right: 12px; transform: none; border-radius: 16px; bottom: 12px; }
+}
+
+.network-admin-toast {
+  position: fixed;
+  z-index: 130;
+  left: 50%;
+  top: calc(var(--header-h) + 16px);
+  transform: translateX(-50%);
+  max-width: min(520px, calc(100vw - 24px));
+  padding: 10px 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-gold);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.6);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.network-modal-admin { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-border); }
+.network-modal-remove { color: #ef8b8f; border-color: #ef8b8f; }
+
+.network-admin-dialog { max-width: 520px; }
+.network-admin-list { margin: 0 0 var(--space-3); padding-left: 1.1em; max-height: 200px; overflow-y: auto; font-size: 0.92rem; }
+.network-admin-kind { color: var(--color-text-faint); font-size: 0.78rem; }
+.network-admin-more { list-style: none; margin-left: -1.1em; color: var(--color-text-faint); }
+.network-admin-confirm { margin: 0 0 var(--space-3); }
+.network-admin-danger { background: #c1272d; border-color: #c1272d; color: #fff; }
+.network-admin-danger:hover:not(:disabled) { background: #a51f25; border-color: #a51f25; }
+.network-admin-danger:disabled { opacity: 0.45; cursor: not-allowed; }
+.network-admin-fieldset { border: none; padding: 0; margin: 0 0 var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+.network-admin-fieldset legend { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-faint); margin-bottom: 4px; padding: 0; }
+.network-admin-dialog .checkbox-option { align-items: flex-start; }
+
+/* =========================================================
    Notifications - header bell + dropdown panel + nav count pills
    (js/notifications.js; counts come from get_my_notifications()).
    The badge/pills are a fixed red with white text in BOTH themes - it

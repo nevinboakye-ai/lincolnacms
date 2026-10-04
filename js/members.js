@@ -107,6 +107,63 @@
     });
   }
 
+  // President-only: creates a real login plus its profile row, then makes
+  // sure exactly one email goes to the new person to set their password.
+  // Shared by the dashboard's Create Account form and the Network page's
+  // Add person dialog. The login is created with a second, isolated
+  // Supabase client (persistSession: false) so it can never replace the
+  // president's own session; the profile row is then inserted with the
+  // president's real session (the is_president()-gated policies from
+  // migration 032). kind: 'member' | 'professional' | 'mmg'; profile: the
+  // table's own columns for that kind (the new user's id is added here).
+  // Resolves { error } on failure, or { userId, emailed } on success.
+  var accountCreationClient = null;
+  function randomLoginPassword() {
+    // Never shown or communicated - the new person gets a link to set
+    // their own. signUp() just requires some password.
+    var bytes = new Uint8Array(24);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
+  function createLoginAndProfile(spec) {
+    if (!accountCreationClient) accountCreationClient = createImplicitFlowClient();
+    var loginPageUrl = window.location.origin + '/' + (spec.kind === 'mmg' ? 'mmg-login.html' : 'member-login.html');
+
+    return accountCreationClient.auth.signUp({
+      email: spec.email,
+      password: randomLoginPassword(),
+      options: { emailRedirectTo: loginPageUrl }
+    }).then(function (signUpResult) {
+      if (signUpResult.error || !signUpResult.data || !signUpResult.data.user) {
+        return { error: (signUpResult.error && signUpResult.error.message) || "Couldn't create the account - the email may already be in use." };
+      }
+      var userId = signUpResult.data.user.id;
+      // A session coming back means "Confirm email" is off, so signUp()
+      // sent nothing itself and a password-reset email is the only way
+      // they'll get a working link; with it on, signUp() already sent its
+      // own confirmation email (routed to loginPageUrl) and a second one
+      // would just be a confusing duplicate.
+      var needsPasswordEmail = !!signUpResult.data.session;
+
+      var table = spec.kind === 'member' ? 'members' : spec.kind === 'professional' ? 'network_professionals' : 'mmg_guests';
+      var row = Object.assign({}, spec.profile);
+      if (spec.kind === 'professional') { row.user_id = userId; row.email = spec.email; row.full_name = spec.name; }
+      else { row.id = userId; row.full_name = spec.name; }
+
+      return insertWithFkRetry(function () { return supabaseClient.from(table).insert(row); }).then(function (profileResult) {
+        if (profileResult.error) {
+          return { error: "The login was created, but saving their profile failed (" + profileResult.error.message + "). Finish it from Table Editor using this account id: " + userId };
+        }
+        if (needsPasswordEmail) {
+          return accountCreationClient.auth.resetPasswordForEmail(spec.email, { redirectTo: loginPageUrl }).then(function () {
+            return { userId: userId, emailed: true };
+          });
+        }
+        return { userId: userId, emailed: true };
+      });
+    });
+  }
+
   // Fisher-Yates, in place on a shallow copy — used by the discounts
   // page to show partners in a different order on every load, so the
   // same few names at the top don't quietly become the only ones anyone
@@ -3685,6 +3742,11 @@
     var networkHubError = document.getElementById('hub-error');
     var networkAllMembers = [];
     var networkAllProfessionals = [];
+    var networkIsPresident = false;
+    var networkSelfId = null;
+    var networkManageMode = false;
+    var networkSelected = {};
+    var networkAdminReady = false;
     // Populated by renderNetworkMembers() — course name -> the exact
     // accent colours its section is currently using, so the ticker can
     // colour a member's join event to match their real card instead of
@@ -3772,6 +3834,8 @@
           if (networkLocked) networkLocked.style.display = 'flex';
           return;
         }
+        networkIsPresident = session.user.id === PRESIDENT_UID;
+        networkSelfId = session.user.id;
         loadNetwork();
       });
     });
@@ -3994,7 +4058,7 @@
         networkAllMembers = results[0].data || [];
         networkAllProfessionals = (results[1] && results[1].data) || [];
 
-        if (!networkAllMembers.length && !networkAllProfessionals.length) {
+        if (!networkAllMembers.length && !networkAllProfessionals.length && !networkIsPresident) {
           document.getElementById('network-empty').style.display = 'block';
           return;
         }
@@ -4004,6 +4068,7 @@
         renderNetworkProfessionals(networkAllProfessionals);
         updateNetworkCount(networkAllMembers.length + networkAllProfessionals.length);
         wireNetworkInteractions();
+        if (networkIsPresident) initNetworkAdmin();
         // Runs after renderNetworkMembers() so networkCourseAccents is
         // already populated — the ticker's colours depend on it.
         loadNetworkActivity();
@@ -4133,7 +4198,11 @@
     function renderNetworkProfessionals(rows) {
       var gridWrap = document.getElementById('network-professionals-wrap');
       var grid = document.getElementById('network-professionals-grid');
-      if (!rows.length) return;
+      if (!rows.length) {
+        gridWrap.style.display = 'none';
+        grid.innerHTML = '';
+        return;
+      }
       gridWrap.style.display = '';
       var sorted = rows.slice().sort(function (a, b) {
         return (a.full_name || '').localeCompare(b.full_name || '');
@@ -4156,10 +4225,424 @@
         '</button>';
     }
 
+
+    // =====================================================================
+    // President-only Network management: select people (pending or full
+    // accounts, members or professionals) and remove them, or add someone
+    // new. Everything goes through the president-gated policies/RPCs
+    // (migrations 032, 035, 063), so this is a convenience over the same
+    // permissions the dashboard already has - never a new way in.
+    // =====================================================================
+    function networkEntryFor(type, id) {
+      var record = type === 'member'
+        ? networkAllMembers.filter(function (m) { return String(m.id) === String(id); })[0]
+        : networkAllProfessionals.filter(function (p) { return String(p.id) === String(id); })[0];
+      if (!record) return null;
+      var kind = type === 'member' ? (record.is_pending ? 'pending' : 'member') : (record.user_id ? 'professional' : 'professional-pending');
+      return {
+        key: type + ':' + id,
+        type: type,
+        id: String(id),
+        kind: kind,
+        name: record.full_name || 'Unnamed',
+        record: record,
+        // Never let the president remove their own account from here.
+        protectedSelf: (type === 'member' && String(id) === String(networkSelfId)) || (type === 'professional' && record.user_id && record.user_id === networkSelfId)
+      };
+    }
+
+    var NETWORK_KIND_LABEL = {
+      pending: 'pending (no account)',
+      member: 'member',
+      professional: 'professional',
+      'professional-pending': 'professional (no login yet)'
+    };
+
+    function networkAllEntries() {
+      var all = networkAllMembers.map(function (m) { return networkEntryFor('member', m.id); });
+      networkAllProfessionals.forEach(function (p) { all.push(networkEntryFor('professional', p.id)); });
+      return all.filter(Boolean);
+    }
+
+    function openNetworkDialog(innerHtml, extraClass) {
+      var previouslyFocused = document.activeElement;
+      var backdrop = document.createElement('div');
+      backdrop.className = 'guide-backdrop';
+      var dialog = document.createElement('div');
+      dialog.className = 'guide-dialog network-admin-dialog' + (extraClass ? ' ' + extraClass : '');
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      dialog.innerHTML = innerHtml;
+      backdrop.appendChild(dialog);
+      document.body.appendChild(backdrop);
+      document.body.classList.add('guide-open');
+      requestAnimationFrame(function () {
+        backdrop.classList.add('is-in');
+        var first = dialog.querySelector('[data-autofocus]') || dialog.querySelector('input, select, button');
+        if (first) first.focus();
+      });
+
+      var api = { dialog: dialog, onClose: null };
+      function close() {
+        document.removeEventListener('keydown', onKey, true);
+        backdrop.classList.remove('is-in');
+        document.body.classList.remove('guide-open');
+        setTimeout(function () { backdrop.remove(); }, 200);
+        if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus();
+        if (api.onClose) api.onClose();
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
+        if (e.key !== 'Tab') return;
+        var focusable = dialog.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea, a[href]');
+        if (!focusable.length) return;
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+      document.addEventListener('keydown', onKey, true);
+      dialog.addEventListener('click', function (e) { if (e.target.closest('[data-dialog-close]')) close(); });
+      api.close = close;
+      return api;
+    }
+
+    // ---- Selection ------------------------------------------------------
+    function networkSelectedEntries() {
+      return Object.keys(networkSelected).map(function (key) {
+        var parts = key.split(':');
+        return networkEntryFor(parts[0], parts.slice(1).join(':'));
+      }).filter(Boolean);
+    }
+
+    function toggleNetworkSelection(card) {
+      var entry = networkEntryFor(card.getAttribute('data-network-type'), card.getAttribute('data-network-id'));
+      if (!entry) return;
+      if (entry.protectedSelf) { announceNetworkAdmin("That's your own account - it can't be removed from here."); return; }
+      if (networkSelected[entry.key]) delete networkSelected[entry.key];
+      else networkSelected[entry.key] = true;
+      applyNetworkSelection();
+    }
+
+    function applyNetworkSelection() {
+      // Drop anything that's since disappeared (removed, reloaded).
+      Object.keys(networkSelected).forEach(function (key) {
+        var parts = key.split(':');
+        if (!networkEntryFor(parts[0], parts.slice(1).join(':'))) delete networkSelected[key];
+      });
+
+      networkContent.classList.toggle('is-managing', networkManageMode);
+      document.querySelectorAll('.network-card').forEach(function (card) {
+        var key = card.getAttribute('data-network-type') + ':' + card.getAttribute('data-network-id');
+        var entry = networkEntryFor(card.getAttribute('data-network-type'), card.getAttribute('data-network-id'));
+        var selected = !!networkSelected[key];
+        card.classList.toggle('is-selected', networkManageMode && selected);
+        card.classList.toggle('is-protected', networkManageMode && !!(entry && entry.protectedSelf));
+        if (networkManageMode) card.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        else card.removeAttribute('aria-pressed');
+      });
+
+      var entries = networkSelectedEntries();
+      var bar = document.getElementById('network-selection-bar');
+      if (bar) {
+        bar.hidden = !(networkManageMode && entries.length);
+        var counts = {};
+        entries.forEach(function (en) { counts[en.kind] = (counts[en.kind] || 0) + 1; });
+        var detail = Object.keys(counts).map(function (k) { return counts[k] + ' ' + NETWORK_KIND_LABEL[k]; }).join(', ');
+        bar.querySelector('[data-sel-text]').textContent = entries.length + ' selected' + (detail ? ' (' + detail + ')' : '');
+      }
+      var pendingCount = networkAllEntries().filter(function (en) { return en.kind === 'pending'; }).length;
+      var selectPending = document.getElementById('network-select-pending');
+      if (selectPending) {
+        selectPending.hidden = !networkManageMode || !pendingCount;
+        selectPending.textContent = 'Select all ' + pendingCount + ' pending';
+      }
+    }
+
+    function announceNetworkAdmin(message) {
+      var live = document.getElementById('network-admin-live');
+      if (live) { live.textContent = ''; setTimeout(function () { live.textContent = message; }, 30); }
+      var toast = document.getElementById('network-admin-toast');
+      if (toast) {
+        toast.textContent = message;
+        toast.hidden = false;
+        clearTimeout(announceNetworkAdmin.timer);
+        announceNetworkAdmin.timer = setTimeout(function () { toast.hidden = true; }, 6000);
+      }
+    }
+
+    function setNetworkManageMode(on) {
+      networkManageMode = on;
+      if (!on) networkSelected = {};
+      var btn = document.getElementById('network-manage-toggle');
+      if (btn) {
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.textContent = on ? 'Done managing' : 'Manage people';
+      }
+      applyNetworkSelection();
+    }
+
+    // ---- Reload after a change ---------------------------------------------
+    function refreshNetwork() {
+      return Promise.all([
+        supabaseClient.rpc('get_network_members'),
+        supabaseClient.from('network_professionals').select('*').order('sort_order', { ascending: true })
+      ]).then(function (results) {
+        if (results[0].error) {
+          announceNetworkAdmin("Couldn't refresh the Network: " + results[0].error.message);
+          return;
+        }
+        networkAllMembers = results[0].data || [];
+        networkAllProfessionals = (results[1] && results[1].data) || [];
+        renderNetworkMembers(networkAllMembers);
+        renderNetworkProfessionals(networkAllProfessionals);
+        updateNetworkCount(networkAllMembers.length + networkAllProfessionals.length);
+        var searchInput = document.getElementById('network-search-input');
+        if (searchInput && searchInput.value.trim()) searchInput.dispatchEvent(new Event('input'));
+        applyNetworkSelection();
+      });
+    }
+
+    // ---- Removing -----------------------------------------------------------
+    function openNetworkRemoveDialog(entries) {
+      entries = entries.filter(function (en) { return !en.protectedSelf; });
+      if (!entries.length) return;
+      var accounts = entries.filter(function (en) { return en.kind === 'member' || en.kind === 'professional'; });
+      var pendings = entries.length - accounts.length;
+      var shown = entries.slice(0, 12).map(function (en) {
+        return '<li>' + escapeHtml(en.name) + ' <span class="network-admin-kind">' + escapeHtml(NETWORK_KIND_LABEL[en.kind]) + '</span></li>';
+      }).join('') + (entries.length > 12 ? '<li class="network-admin-more">…and ' + (entries.length - 12) + ' more</li>' : '');
+
+      var warn = '';
+      if (pendings) warn += '<p class="guide-text">' + pendings + (pendings === 1 ? ' person has' : ' people have') + ' no account yet - they\'ll just be taken off the Network and the pending list.</p>';
+      if (accounts.length) {
+        warn += '<p class="guide-text"><strong>' + accounts.length + (accounts.length === 1 ? ' has a full account' : ' have full accounts') + '.</strong> Removing them permanently deletes their membership/profile record (and what hangs off it, like Sankofa applications and event registrations). <strong>This can\'t be undone.</strong> Their login itself isn\'t deleted - only Supabase\'s Authentication &rarr; Users page can do that.</p>' +
+          '<label class="checkbox-option network-admin-confirm"><input type="checkbox" data-confirm-accounts> I understand this permanently deletes ' + (accounts.length === 1 ? 'that account\'s record' : 'those accounts\' records') + '</label>';
+      }
+
+      var dlg = openNetworkDialog(
+        '<button type="button" class="guide-close" data-dialog-close aria-label="Cancel">&times;</button>' +
+        '<span class="guide-eyebrow">Remove from the Network</span>' +
+        '<h2 class="guide-title">Remove ' + entries.length + (entries.length === 1 ? ' person' : ' people') + '?</h2>' +
+        '<ul class="network-admin-list">' + shown + '</ul>' + warn +
+        '<p class="guide-error" id="network-remove-error" role="alert" hidden></p>' +
+        '<div class="guide-actions"><button type="button" class="btn btn-primary network-admin-danger" data-do-remove' + (accounts.length ? ' disabled' : '') + '>Remove ' + entries.length + (entries.length === 1 ? ' person' : ' people') + '</button>' +
+        '<button type="button" class="btn btn-outline" data-dialog-close data-autofocus>Cancel</button></div>'
+      );
+      var doBtn = dlg.dialog.querySelector('[data-do-remove]');
+      var confirmBox = dlg.dialog.querySelector('[data-confirm-accounts]');
+      if (confirmBox) confirmBox.addEventListener('change', function () { doBtn.disabled = !confirmBox.checked; });
+      doBtn.addEventListener('click', function () {
+        doBtn.disabled = true;
+        doBtn.textContent = 'Removing…';
+        performNetworkRemoval(entries).then(function (summary) {
+          if (summary.failed.length) {
+            var err = dlg.dialog.querySelector('#network-remove-error');
+            err.textContent = 'Removed ' + summary.removed + '. Couldn\'t remove ' + summary.failed.map(function (f) { return f.name + ' (' + f.message + ')'; }).join('; ');
+            err.hidden = false;
+            doBtn.hidden = true;
+          } else {
+            dlg.close();
+          }
+          announceNetworkAdmin('Removed ' + summary.removed + (summary.removed === 1 ? ' person' : ' people') + ' from the Network' + (summary.failed.length ? ' - ' + summary.failed.length + ' failed.' : '.'));
+        });
+      });
+    }
+
+    // Groups by what has to be deleted and how, then reloads from the
+    // server so what's on screen is exactly what's left.
+    function performNetworkRemoval(entries) {
+      var failed = [];
+      var removed = 0;
+      var jobs = [];
+
+      entries.filter(function (en) { return en.kind === 'pending'; }).forEach(function (en) {
+        jobs.push(supabaseClient.rpc('president_delete_pending_member', { p_id: en.id }).then(function (r) {
+          if (r.error) failed.push({ name: en.name, message: r.error.message }); else removed++;
+        }));
+      });
+      [['member', 'members'], ['professional', 'network_professionals'], ['professional-pending', 'network_professionals']].forEach(function (pair) {
+        var group = entries.filter(function (en) { return en.kind === pair[0]; });
+        group.forEach(function (en) {
+          // One by one so a single failure names exactly who it was.
+          jobs.push(supabaseClient.from(pair[1]).delete().eq('id', en.id).then(function (r) {
+            if (r.error) failed.push({ name: en.name, message: r.error.message }); else removed++;
+          }));
+        });
+      });
+
+      return Promise.all(jobs).then(function () {
+        entries.forEach(function (en) { delete networkSelected[en.key]; });
+        return refreshNetwork();
+      }).then(function () { return { removed: removed, failed: failed }; });
+    }
+
+    // ---- Adding ----------------------------------------------------------------
+    function openNetworkAddDialog() {
+      var courseOptions = LACMS_COURSES.map(function (c) { return '<option value="' + escapeHtml(c) + '"></option>'; }).join('');
+      var yearOptions = LACMS_YEARS.map(function (y) { return '<option>' + escapeHtml(y) + '</option>'; }).join('');
+      var typeOptions = Object.keys(MEMBER_TYPE_LABELS).map(function (k) { return '<option value="' + k + '">' + escapeHtml(MEMBER_TYPE_LABELS[k]) + '</option>'; }).join('');
+      var catOptions = Object.keys(PROFESSIONAL_CATEGORY_LABELS).map(function (k) { return '<option value="' + k + '">' + escapeHtml(PROFESSIONAL_CATEGORY_LABELS[k]) + '</option>'; }).join('');
+
+      var dlg = openNetworkDialog(
+        '<button type="button" class="guide-close" data-dialog-close aria-label="Cancel">&times;</button>' +
+        '<span class="guide-eyebrow">Add to the Network</span>' +
+        '<h2 class="guide-title">Add a person</h2>' +
+        '<form class="guide-form" id="network-add-form" novalidate>' +
+        '<fieldset class="network-admin-fieldset"><legend>Who</legend>' +
+        '<label class="checkbox-option"><input type="radio" name="na-kind" value="member" checked> Member</label>' +
+        '<label class="checkbox-option"><input type="radio" name="na-kind" value="professional"> Healthcare professional</label></fieldset>' +
+        '<fieldset class="network-admin-fieldset"><legend>Account</legend>' +
+        '<label class="checkbox-option"><input type="radio" name="na-account" value="pending" checked> <span><strong>Pending</strong> - no login yet. Shows as "Pending" and is linked automatically when they sign in with this email.</span></label>' +
+        '<label class="checkbox-option"><input type="radio" name="na-account" value="full"> <span><strong>Create their login now</strong> - they\'re emailed a link to set their password.</span></label></fieldset>' +
+        '<div class="field"><label for="na-name">Full name</label><input type="text" id="na-name" autocomplete="off" data-autofocus></div>' +
+        '<div class="field"><label for="na-email">Email</label><input type="email" id="na-email" autocomplete="off"></div>' +
+        '<div data-na-fields="member">' +
+        '<div class="field"><label for="na-course">Course</label><input type="text" id="na-course" list="na-course-list" autocomplete="off"><datalist id="na-course-list">' + courseOptions + '</datalist></div>' +
+        '<div class="field"><label for="na-year">Year of study</label><select id="na-year"><option value="">Select…</option>' + yearOptions + '</select></div>' +
+        '<div class="field"><label for="na-type">Member type</label><select id="na-type">' + typeOptions + '</select></div></div>' +
+        '<div data-na-fields="professional" hidden>' +
+        '<div class="field"><label for="na-title">Job title</label><input type="text" id="na-title" placeholder="e.g. Consultant Cardiologist" autocomplete="off"></div>' +
+        '<div class="field"><label for="na-org">Organisation <span class="guide-optional">(optional)</span></label><input type="text" id="na-org" autocomplete="off"></div>' +
+        '<div class="field"><label for="na-cat">Category</label><select id="na-cat">' + catOptions + '</select></div></div>' +
+        '<p class="guide-error" id="na-error" role="alert" hidden></p>' +
+        '<div class="guide-actions"><button type="submit" class="btn btn-primary" id="na-submit">Add to the Network</button>' +
+        '<button type="button" class="btn btn-outline" data-dialog-close>Cancel</button></div>' +
+        '</form>'
+      );
+
+      var form = dlg.dialog.querySelector('#network-add-form');
+      var errorEl = dlg.dialog.querySelector('#na-error');
+      var submit = dlg.dialog.querySelector('#na-submit');
+      var warnedFor = null;
+      function val(id) { return dlg.dialog.querySelector('#' + id).value.trim(); }
+      function kind() { return form.querySelector('input[name="na-kind"]:checked').value; }
+      function account() { return form.querySelector('input[name="na-account"]:checked').value; }
+      function showError(message) { errorEl.textContent = message; errorEl.hidden = false; }
+
+      form.addEventListener('change', function () {
+        dlg.dialog.querySelectorAll('[data-na-fields]').forEach(function (g) { g.hidden = g.getAttribute('data-na-fields') !== kind(); });
+        // Pending professionals have no "member type" etc - nothing else to adjust.
+        submit.textContent = account() === 'full' ? 'Create login & add' : 'Add to the Network';
+        warnedFor = null;
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        errorEl.hidden = true;
+        var name = val('na-name');
+        var email = val('na-email').toLowerCase();
+        if (!name) { showError('Enter their full name.'); return; }
+        if (!email || email.indexOf('@') === -1) { showError('Enter a valid email address.'); return; }
+        if (kind() === 'professional' && !val('na-title')) { showError('Enter their job title.'); return; }
+
+        // Catch the duplicate before it happens: same name already listed.
+        var sameName = networkAllEntries().filter(function (en) { return en.name.trim().toLowerCase() === name.toLowerCase(); })[0];
+        if (sameName && warnedFor !== name.toLowerCase()) {
+          warnedFor = name.toLowerCase();
+          showError(name + ' is already on the Network (' + NETWORK_KIND_LABEL[sameName.kind] + '). Press the button again if this is a different person.');
+          submit.textContent = 'Add anyway';
+          return;
+        }
+
+        submit.disabled = true;
+        var done;
+        if (account() === 'pending' && kind() === 'member') {
+          done = supabaseClient.rpc('president_add_pending_member', {
+            p_email: email, p_full_name: name, p_course: val('na-course'), p_year_of_study: dlg.dialog.querySelector('#na-year').value, p_member_type: dlg.dialog.querySelector('#na-type').value
+          }).then(function (r) { return { error: r.error && r.error.message }; });
+        } else if (account() === 'pending') {
+          // A professional with no login yet is just a profile row with no
+          // user_id; it's linked by email when they sign in.
+          done = supabaseClient.from('network_professionals').insert({
+            email: email, full_name: name, title: val('na-title'), organisation: val('na-org') || null, category: dlg.dialog.querySelector('#na-cat').value
+          }).then(function (r) { return { error: r.error && (r.error.code === '23505' ? 'That email is already on the Network.' : r.error.message) }; });
+        } else if (kind() === 'member') {
+          done = createLoginAndProfile({ kind: 'member', name: name, email: email, profile: {
+            course: val('na-course') || null, year_of_study: dlg.dialog.querySelector('#na-year').value || null,
+            member_type: dlg.dialog.querySelector('#na-type').value, membership_status: 'active'
+          } });
+        } else {
+          done = createLoginAndProfile({ kind: 'professional', name: name, email: email, profile: {
+            title: val('na-title'), organisation: val('na-org') || null, category: dlg.dialog.querySelector('#na-cat').value
+          } });
+        }
+
+        done.then(function (res) {
+          submit.disabled = false;
+          if (res.error) { showError(res.error); return; }
+          dlg.close();
+          refreshNetwork().then(function () {
+            announceNetworkAdmin(name + (account() === 'full' ? ' was added and emailed to set their password.' : ' was added as pending.'));
+          });
+        });
+      });
+    }
+
+    // ---- The controls themselves ---------------------------------------------
+    function initNetworkAdmin() {
+      if (networkAdminReady) return;
+      networkAdminReady = true;
+
+      var row = networkContent.querySelector('.network-search-row');
+      var bar = document.createElement('div');
+      bar.className = 'network-admin-bar';
+      bar.innerHTML =
+        '<span class="network-admin-label">President tools</span>' +
+        '<button type="button" class="btn btn-outline" id="network-manage-toggle" aria-pressed="false">Manage people</button>' +
+        '<button type="button" class="btn btn-outline" id="network-select-pending" hidden>Select all pending</button>' +
+        '<button type="button" class="btn btn-primary" id="network-add-btn">Add person</button>' +
+        '<span class="network-admin-hint" id="network-admin-hint" hidden>Click people to select them, then remove.</span>';
+      row.parentNode.insertBefore(bar, row);
+
+      var selBar = document.createElement('div');
+      selBar.className = 'network-selection-bar';
+      selBar.id = 'network-selection-bar';
+      selBar.hidden = true;
+      selBar.innerHTML = '<span data-sel-text></span><button type="button" class="btn btn-outline" data-sel-clear>Clear</button><button type="button" class="btn btn-primary network-admin-danger" data-sel-remove>Remove selected</button>';
+      document.body.appendChild(selBar);
+
+      var toast = document.createElement('div');
+      toast.className = 'network-admin-toast';
+      toast.id = 'network-admin-toast';
+      toast.hidden = true;
+      toast.setAttribute('role', 'status');
+      document.body.appendChild(toast);
+      var live = document.createElement('div');
+      live.className = 'visually-hidden';
+      live.id = 'network-admin-live';
+      live.setAttribute('aria-live', 'polite');
+      document.body.appendChild(live);
+
+      document.getElementById('network-manage-toggle').addEventListener('click', function () {
+        setNetworkManageMode(!networkManageMode);
+        document.getElementById('network-admin-hint').hidden = !networkManageMode;
+      });
+      document.getElementById('network-add-btn').addEventListener('click', openNetworkAddDialog);
+      document.getElementById('network-select-pending').addEventListener('click', function () {
+        networkAllEntries().forEach(function (en) { if (en.kind === 'pending') networkSelected[en.key] = true; });
+        applyNetworkSelection();
+      });
+      selBar.querySelector('[data-sel-clear]').addEventListener('click', function () { networkSelected = {}; applyNetworkSelection(); });
+      selBar.querySelector('[data-sel-remove]').addEventListener('click', function () { openNetworkRemoveDialog(networkSelectedEntries()); });
+      toast.addEventListener('click', function () { toast.hidden = true; });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && networkManageMode && !document.querySelector('.guide-backdrop') && document.getElementById('network-modal').style.display !== 'flex') {
+          setNetworkManageMode(false);
+          document.getElementById('network-admin-hint').hidden = true;
+        }
+      });
+      applyNetworkSelection();
+    }
+
     function wireNetworkInteractions() {
       networkContent.addEventListener('click', function (e) {
         var card = e.target.closest('.network-card');
         if (!card) return;
+        if (networkManageMode) {
+          toggleNetworkSelection(card);
+          return;
+        }
         openNetworkModal(card.getAttribute('data-network-id'), card.getAttribute('data-network-type'));
       });
 
@@ -4238,6 +4721,17 @@
           (record.organisation ? '<p class="network-modal-meta">' + escapeHtml(record.organisation) + '</p>' : '') +
           (record.bio ? '<p class="network-modal-bio">' + escapeHtml(record.bio) + '</p>' : '') +
           linkedinBtn(record.linkedin_url);
+      }
+
+      if (networkIsPresident) {
+        var entry = networkEntryFor(type, id);
+        if (entry && !entry.protectedSelf) {
+          body.insertAdjacentHTML('beforeend', '<div class="network-modal-admin"><button type="button" class="btn btn-outline network-modal-remove" data-nm-remove>Remove from the Network…</button></div>');
+          body.querySelector('[data-nm-remove]').addEventListener('click', function () {
+            closeNetworkModal();
+            openNetworkRemoveDialog([entry]);
+          });
+        }
       }
 
       modal.style.display = 'flex';
@@ -6564,8 +7058,6 @@
     if (createAccountForm) {
       var createAccountTypeTabs = document.getElementById('create-account-type-tabs');
       var currentAccountType = 'member';
-      var createAccountClient = createImplicitFlowClient();
-
       function showAccountTypeFields(type) {
         currentAccountType = type;
         document.querySelectorAll('[data-account-type-fields]').forEach(function (el) {
@@ -6581,15 +7073,6 @@
           tab.classList.add('is-active');
           showAccountTypeFields(tab.getAttribute('data-account-type'));
         });
-      }
-
-      // Never shown to anyone, never communicated — the very next step
-      // sends a password-reset email so the new person sets their own.
-      // This only exists because signUp() requires some password.
-      function randomPassword() {
-        var bytes = new Uint8Array(24);
-        window.crypto.getRandomValues(bytes);
-        return Array.from(bytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
       }
 
       createAccountForm.addEventListener('submit', function (e) {
@@ -6609,110 +7092,44 @@
         statusEl.style.color = 'var(--color-text-muted)';
         showMessage(statusEl, 'Creating account…');
 
-        // Passed into signUp() itself, not just the later resetPasswordForEmail
-        // call - if this Supabase project has "Confirm email" turned on,
-        // signUp() sends its own confirmation email immediately, using
-        // whatever redirect this call gives it. Leaving it unset meant that
-        // email fell back to the project's generic Site URL instead of a
-        // page that actually knows how to show a "set your password" form -
-        // so clicking it just confirmed the address and stranded them on
-        // member-login.html with no way to ever choose a password.
-        var loginPage = currentAccountType === 'mmg' ? 'mmg-login.html' : 'member-login.html';
-        var loginPageUrl = window.location.origin + '/' + loginPage;
+        var profile;
+        if (currentAccountType === 'member') {
+          profile = {
+            course: document.getElementById('create-member-course').value.trim() || null,
+            year_of_study: normalizeYearOfStudy(document.getElementById('create-member-year').value) || null,
+            student_number: document.getElementById('create-member-student-number').value.trim() || null,
+            member_type: document.getElementById('create-member-type').value,
+            committee_role: document.getElementById('create-member-role').value.trim() || null,
+            sankofa_eligible: document.getElementById('create-member-sankofa').checked,
+            mmg_attendee: document.getElementById('create-member-mmg-attendee').checked,
+            mmg_committee: document.getElementById('create-member-mmg-committee').checked
+          };
+        } else if (currentAccountType === 'professional') {
+          profile = {
+            title: document.getElementById('create-pro-title').value.trim() || 'Professional',
+            organisation: document.getElementById('create-pro-organisation').value.trim() || null,
+            category: document.getElementById('create-pro-category').value,
+            linkedin_url: document.getElementById('create-pro-linkedin').value.trim() || null
+          };
+        } else {
+          profile = {
+            university: document.getElementById('create-mmg-university').value.trim() || 'Not set',
+            access_level: document.getElementById('create-mmg-access').value
+          };
+        }
 
-        createAccountClient.auth.signUp({
-          email: email,
-          password: randomPassword(),
-          options: { emailRedirectTo: loginPageUrl }
-        }).then(function (signUpResult) {
-          if (signUpResult.error || !signUpResult.data || !signUpResult.data.user) {
-            btn.disabled = false;
+        createLoginAndProfile({ kind: currentAccountType, name: name, email: email, profile: profile }).then(function (res) {
+          btn.disabled = false;
+          if (res.error) {
             statusEl.style.color = '#ef8b8f';
-            showMessage(statusEl, (signUpResult.error && signUpResult.error.message) || "Couldn't create the account - the email may already be in use.");
+            showMessage(statusEl, res.error);
             return;
           }
-          var newUserId = signUpResult.data.user.id;
-          // If "Confirm email" is on, signUp() above just sent its own
-          // confirmation email already (now correctly routed to
-          // loginPageUrl, in a self-contained format any device can
-          // redeem) and data.session comes back null — sending a second,
-          // separate password-reset email on top of that would leave
-          // them with two emails and no clear reason to pick one over
-          // the other. So a session existing is exactly the condition
-          // for needing one: it means "Confirm email" is off and
-          // signUp() above sent nothing of its own, making the reset
-          // email below the only way they'd ever get a working link at
-          // all. (This was previously inverted — !session instead of
-          // !!session — which is exactly why two emails went out and
-          // one of them never worked: the reset email fired in the one
-          // case it shouldn't have, and skipped the one case it should.)
-          var needsPasswordEmail = !!signUpResult.data.session;
-
-          var profileInsertFn;
-          if (currentAccountType === 'member') {
-            profileInsertFn = function () {
-              return supabaseClient.from('members').insert({
-                id: newUserId,
-                full_name: name,
-                course: document.getElementById('create-member-course').value.trim() || null,
-                year_of_study: normalizeYearOfStudy(document.getElementById('create-member-year').value) || null,
-                student_number: document.getElementById('create-member-student-number').value.trim() || null,
-                member_type: document.getElementById('create-member-type').value,
-                committee_role: document.getElementById('create-member-role').value.trim() || null,
-                sankofa_eligible: document.getElementById('create-member-sankofa').checked,
-                mmg_attendee: document.getElementById('create-member-mmg-attendee').checked,
-                mmg_committee: document.getElementById('create-member-mmg-committee').checked
-              });
-            };
-          } else if (currentAccountType === 'professional') {
-            profileInsertFn = function () {
-              return supabaseClient.from('network_professionals').insert({
-                user_id: newUserId,
-                email: email,
-                full_name: name,
-                title: document.getElementById('create-pro-title').value.trim() || 'Professional',
-                organisation: document.getElementById('create-pro-organisation').value.trim() || null,
-                category: document.getElementById('create-pro-category').value,
-                linkedin_url: document.getElementById('create-pro-linkedin').value.trim() || null
-              });
-            };
-          } else {
-            profileInsertFn = function () {
-              return supabaseClient.from('mmg_guests').insert({
-                id: newUserId,
-                full_name: name,
-                university: document.getElementById('create-mmg-university').value.trim() || 'Not set',
-                access_level: document.getElementById('create-mmg-access').value
-              });
-            };
-          }
-
-          insertWithFkRetry(profileInsertFn).then(function (profileResult) {
-            if (profileResult.error) {
-              btn.disabled = false;
-              statusEl.style.color = '#ef8b8f';
-              showMessage(statusEl, "The login was created, but saving their profile failed (" + profileResult.error.message + "). Finish it from Table Editor using this account id: " + newUserId);
-              return;
-            }
-
-            function finish() {
-              btn.disabled = false;
-              statusEl.style.color = '#6fcf97';
-              showMessage(statusEl, name + "'s account is live - they've been emailed to set their password.");
-              createAccountForm.reset();
-              showAccountTypeFields(currentAccountType);
-              loadPresidentDashboard();
-            }
-
-            if (needsPasswordEmail) {
-              createAccountClient.auth.resetPasswordForEmail(email, { redirectTo: loginPageUrl }).then(finish);
-            } else {
-              // signUp() already sent its own confirmation email above,
-              // correctly redirecting to loginPageUrl - sending a second
-              // one here would just be a confusing duplicate.
-              finish();
-            }
-          });
+          statusEl.style.color = '#6fcf97';
+          showMessage(statusEl, name + "'s account is live - they've been emailed to set their password.");
+          createAccountForm.reset();
+          showAccountTypeFields(currentAccountType);
+          loadPresidentDashboard();
         });
       });
     }
