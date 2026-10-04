@@ -547,6 +547,11 @@
       allItems = r.data || [];
       loadedAll = true;
       renderBrowse();
+      // Counts for every resource (not just the visible page) so "Most
+      // popular" can rank the whole list; re-sort once they arrive.
+      loadEngagement(allItems).then(function () {
+        if ($('res-sort').value === 'pop' && !$('res-view-home').hidden) renderBrowse();
+      });
     });
   }
 
@@ -571,6 +576,10 @@
       if (sort === 'az') return a.title.localeCompare(b.title);
       var da = new Date(a.approved_at || a.created_at).getTime();
       var db = new Date(b.approved_at || b.created_at).getTime();
+      if (sort === 'pop') {
+        var diff = popularity(b) - popularity(a);
+        return diff !== 0 ? diff : db - da; // ties: newest first
+      }
       return sort === 'old' ? da - db : db - da;
     });
 
@@ -777,15 +786,21 @@
 
   function loadEngagement(rows) {
     var ids = rows.filter(function (r) { return r.status === 'approved'; }).map(function (r) { return r.id; });
-    if (!ids.length) return;
-    supabaseClient.rpc('get_resource_engagement', { p_ids: ids }).then(function (res) {
-      if (res.error) { console.warn('Likes/comments unavailable (has migration 066 been run?):', res.error.message); return; }
-      (res.data || []).forEach(function (row) {
-        engagement[row.resource_id] = { likes: row.like_count, comments: row.comment_count, liked: !!row.liked_by_me };
-        paintSocial(row.resource_id, false);
-      });
-    }, function () { /* engagement is a nicety */ });
+    if (!ids.length) return Promise.resolve();
+    var chunks = [];
+    for (var i = 0; i < ids.length; i += 150) chunks.push(ids.slice(i, i + 150));
+    return Promise.all(chunks.map(function (chunk) {
+      return supabaseClient.rpc('get_resource_engagement', { p_ids: chunk }).then(function (res) {
+        if (res.error) { console.warn('Likes/comments unavailable (has migration 066 been run?):', res.error.message); return; }
+        (res.data || []).forEach(function (row) {
+          engagement[row.resource_id] = { likes: row.like_count, comments: row.comment_count, liked: !!row.liked_by_me };
+          paintSocial(row.resource_id, false);
+        });
+      }, function () { /* engagement is a nicety */ });
+    }));
   }
+  // "Popular" = likes + comments (a comment is a stronger signal than a like).
+  function popularity(r) { var e = engOf(r.id); return e.likes + e.comments * 2; }
 
   function toggleLike(id) {
     var e = engOf(id);

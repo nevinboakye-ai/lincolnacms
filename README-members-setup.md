@@ -1249,3 +1249,7 @@ Front-end only. The card's squash-on-press and gold ripple used to fire on every
 ## 115. Resources: "Read more" opens the preview
 
 Front-end only. On a resource card with a long description, "Read more" no longer expands the card in place - it opens the full preview popup (which shows the whole description, the file/link preview, likes and comments), growing out of the card like a click on the card itself.
+
+## 116. Resources: sort by most popular
+
+Front-end only (uses the likes/comments from migration 066). The sort dropdown on the Resources page has a new **Most popular** option: resources are ranked by likes plus comments (a comment counts double, since it's a stronger signal than a like), with ties broken newest-first. It ranks the whole list, not just the page of cards currently showing, and works together with the course chips and the other filters.
