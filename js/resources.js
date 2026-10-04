@@ -8,6 +8,10 @@
 // enforced in Postgres and Storage (migration 065) - this file is the
 // interface to them. Who can use the page at all is the "resources" Hub
 // Access rule; everyone else gets "Coming soon".
+//
+// "New" markers use the same idea as the notification bell: anything
+// approved since the user last opened this page is flagged, with the
+// previous visit time supplied by js/notifications.js (lacmsPreviousSeen).
 (function () {
   'use strict';
 
@@ -18,7 +22,20 @@
   var BUCKET = 'lacms-resources';
   var MAX_FILE_BYTES = 25 * 1024 * 1024;
   var MAX_PREVIEW_BYTES = 2 * 1024 * 1024;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // One simple line icon per course (24px, stroke).
+  var ICONS = {
+    Medicine: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/><path d="M6.5 12.5h3l1.5-3 2.5 5 1.5-2h2.5"/>',
+    Pharmacy: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>',
+    'Dental Hygiene and Therapy': '<path d="M7 3c-2 0-4 1.5-4 4.5 0 4 2 5.5 2.5 9.5.2 1.5.8 4 2 4 1.5 0 1.5-4 4.5-4s3 4 4.5 4c1.2 0 1.8-2.5 2-4 .5-4 2.5-5.5 2.5-9.5C21 4.5 19 3 17 3c-2 0-3 1-5 1S9 3 7 3z"/>',
+    'Diagnostic Radiography': '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>',
+    Nursing: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/>',
+    Midwifery: '<path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/>',
+    'Biomedical Science': '<path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.52 16h12.96"/>',
+    'Occupational Therapy': '<path d="M18 11V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+    General: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'
+  };
   var COURSES = [
     { name: 'Medicine', accent: 'gold' },
     { name: 'Pharmacy', accent: 'green' },
@@ -55,6 +72,9 @@
   var userId = null;
   var isAdmin = false;
   var counts = {};
+  var newByCourse = {};
+  var newTotal = 0;
+  var prevSeen = null;
   var currentCourse = null;
   var courseItems = [];
   var urlCache = {}; // storage path -> { url, at }
@@ -121,9 +141,23 @@
     var t = $('res-toast');
     t.textContent = message;
     t.hidden = false;
+    t.classList.remove('is-in');
+    void t.offsetWidth;
+    t.classList.add('is-in');
     t.classList.toggle('is-error', !!isError);
     clearTimeout(showToast.timer);
-    showToast.timer = setTimeout(function () { t.hidden = true; }, 7000);
+    showToast.timer = setTimeout(function () { t.hidden = true; t.classList.remove('is-in'); }, 7000);
+  }
+  // Number that eases up to its value (skipped for reduced motion).
+  function countUp(node, to) {
+    if (reduceMotion || to === 0) { node.textContent = to; return; }
+    var start = performance.now();
+    var dur = 500;
+    (function frame(now) {
+      var p = Math.min(1, (now - start) / dur);
+      node.textContent = Math.round(to * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(frame);
+    })(start);
   }
 
   // Short-lived signed link for a private file (cached for a few minutes).
@@ -147,6 +181,180 @@
     }, function () { /* thumbnails are optional */ });
   }
   function cachedUrl(path) { var h = urlCache[path + '|']; return h ? h.url : null; }
+
+  // =======================================================================
+  // Custom dropdown: replaces a native <select> with a styled button + a
+  // listbox popover. The native element stays in the DOM (hidden) and
+  // keeps the real value, so forms and change listeners work unchanged.
+  // Full keyboard support (arrows, Home/End, type-ahead, Enter/Space, Esc)
+  // and ARIA (button aria-haspopup=listbox, options role=option).
+  // =======================================================================
+  var CHEVRON = '<svg class="icon ui-select-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+  var openSelect = null; // the one open instance
+
+  function closeOpenSelect(returnFocus) {
+    if (openSelect) openSelect.close(returnFocus);
+  }
+
+  function enhanceSelect(select) {
+    if (select._ui) return select._ui;
+    var wrap = document.createElement('div');
+    wrap.className = 'ui-select';
+    select.parentNode.insertBefore(wrap, select);
+    wrap.appendChild(select);
+    select.classList.add('ui-select-native');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ui-select-btn';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-expanded', 'false');
+    var labelEl = select.id ? document.querySelector('label[for="' + select.id + '"]') : null;
+    var labelText = select.getAttribute('aria-label') || (labelEl ? labelEl.textContent.replace(/\s*\(.*?\)\s*$/, '').trim() : 'Choose');
+    btn.setAttribute('aria-label', labelText);
+    btn.innerHTML = '<span class="ui-select-value"></span>' + CHEVRON;
+    wrap.insertBefore(btn, select);
+    var valueEl = btn.querySelector('.ui-select-value');
+
+    var menu = null;
+    var active = -1;
+    var typed = '';
+    var typedTimer = null;
+    var instance = { sync: sync, close: close, destroy: destroy };
+
+    function opts() { return Array.prototype.slice.call(select.options); }
+    function sync() {
+      var o = select.options[select.selectedIndex];
+      valueEl.textContent = o ? o.textContent : '';
+      btn.classList.toggle('is-placeholder', !select.value);
+      wrap.classList.toggle('is-active', !!select.value);
+    }
+
+    function position() {
+      if (!menu) return;
+      var r = btn.getBoundingClientRect();
+      var vh = window.innerHeight;
+      var width = Math.max(r.width, 200);
+      menu.style.minWidth = width + 'px';
+      menu.style.maxHeight = Math.min(300, vh - 24) + 'px';
+      var h = menu.offsetHeight;
+      var below = vh - r.bottom - 8;
+      var top = below >= Math.min(h, 220) || below >= r.top ? r.bottom + 6 : r.top - h - 6;
+      menu.classList.toggle('is-above', top < r.top);
+      menu.style.top = Math.max(8, Math.round(top)) + 'px';
+      menu.style.left = Math.max(8, Math.min(window.innerWidth - width - 8, Math.round(r.left))) + 'px';
+    }
+
+    function setActive(i, scroll) {
+      var items = menu.querySelectorAll('.ui-select-opt');
+      if (!items.length) return;
+      active = Math.max(0, Math.min(items.length - 1, i));
+      items.forEach(function (it, idx) { it.classList.toggle('is-active', idx === active); });
+      menu.setAttribute('aria-activedescendant', items[active].id);
+      if (scroll !== false) items[active].scrollIntoView({ block: 'nearest' });
+    }
+
+    function choose(i) {
+      select.selectedIndex = i;
+      sync();
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      close(true);
+    }
+
+    function open() {
+      if (openSelect && openSelect !== instance) openSelect.close(false);
+      if (menu) return;
+      menu = document.createElement('div');
+      menu.className = 'ui-select-menu';
+      menu.setAttribute('role', 'listbox');
+      menu.tabIndex = -1;
+      menu.setAttribute('aria-label', labelText);
+      var uid = 'uso-' + Math.random().toString(36).slice(2, 8);
+      menu.innerHTML = opts().map(function (o, i) {
+        var sel = i === select.selectedIndex;
+        return '<div class="ui-select-opt' + (sel ? ' is-selected' : '') + (o.value === '' ? ' is-placeholder' : '') + '" role="option" id="' + uid + '-' + i + '" aria-selected="' + sel + '" data-i="' + i + '">' +
+          '<span class="ui-select-opt-text">' + escapeHtml(o.textContent) + '</span>' +
+          '<svg class="icon ui-select-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div>';
+      }).join('');
+      document.body.appendChild(menu);
+      btn.setAttribute('aria-expanded', 'true');
+      wrap.classList.add('is-open');
+      position();
+      requestAnimationFrame(function () { if (menu) menu.classList.add('is-in'); });
+      setActive(select.selectedIndex, true);
+      menu.focus({ preventScroll: true });
+      openSelect = instance;
+
+      menu.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      menu.addEventListener('click', function (e) {
+        var item = e.target.closest('.ui-select-opt');
+        if (item) choose(parseInt(item.getAttribute('data-i'), 10));
+      });
+      menu.addEventListener('mousemove', function (e) {
+        var item = e.target.closest('.ui-select-opt');
+        if (item) setActive(parseInt(item.getAttribute('data-i'), 10), false);
+      });
+      menu.addEventListener('keydown', onMenuKey);
+    }
+
+    function close(returnFocus) {
+      if (!menu) return;
+      var m = menu;
+      menu = null;
+      m.classList.remove('is-in');
+      setTimeout(function () { m.remove(); }, reduceMotion ? 0 : 140);
+      btn.setAttribute('aria-expanded', 'false');
+      wrap.classList.remove('is-open');
+      if (openSelect === instance) openSelect = null;
+      if (returnFocus) btn.focus();
+    }
+
+    function onMenuKey(e) {
+      var n = menu.querySelectorAll('.ui-select-opt').length;
+      if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(active - 1); }
+      else if (e.key === 'Home') { e.preventDefault(); setActive(0); }
+      else if (e.key === 'End') { e.preventDefault(); setActive(n - 1); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(active); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); }
+      else if (e.key === 'Tab') { close(false); }
+      else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        typed += e.key.toLowerCase();
+        clearTimeout(typedTimer);
+        typedTimer = setTimeout(function () { typed = ''; }, 600);
+        var list = opts();
+        for (var k = 0; k < list.length; k++) {
+          var idx = (active + 1 + k) % list.length;
+          if (list[idx].textContent.toLowerCase().indexOf(typed) === 0) { setActive(idx); break; }
+        }
+      }
+    }
+
+    btn.addEventListener('click', function () { menu ? close(false) : open(); });
+    btn.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!menu) open(); }
+    });
+    // Clicking the field's <label> focuses the native select - hand that to the button.
+    select.addEventListener('focus', function () { btn.focus(); });
+
+    function destroy() { close(false); }
+    select._ui = instance;
+    sync();
+    return instance;
+  }
+
+  function syncSelects() {
+    Array.prototype.forEach.call(document.querySelectorAll('select.ui-select-native'), function (s) { if (s._ui) s._ui.sync(); });
+  }
+  document.addEventListener('mousedown', function (e) {
+    if (openSelect && !e.target.closest('.ui-select-menu') && !e.target.closest('.ui-select')) closeOpenSelect(false);
+  });
+  window.addEventListener('resize', function () { closeOpenSelect(false); });
+  window.addEventListener('scroll', function (e) {
+    if (openSelect && !(e.target && e.target.closest && e.target.closest('.ui-select-menu'))) closeOpenSelect(false);
+  }, true);
 
   // ---- Boot -------------------------------------------------------------------
   var gate = $('auth-gate');
@@ -178,12 +386,29 @@
     }, showLocked);
   });
 
+  function skeletonTiles() {
+    var out = '';
+    for (var i = 0; i < 9; i++) out += '<div class="res-skel res-skel-tile" style="--i:' + i + '"></div>';
+    return out;
+  }
+  function skeletonCards(n) {
+    var out = '';
+    for (var i = 0; i < n; i++) out += '<div class="res-skel res-skel-card" style="--i:' + i + '"></div>';
+    return out;
+  }
+
   function start() {
     if (gate) gate.style.display = 'none';
     appEl.style.display = '';
+    $('res-course-grid').innerHTML = skeletonTiles();
     buildFilterOptions();
+    ['res-filter-type', 'res-filter-source', 'res-filter-year', 'res-sort'].forEach(function (id) { enhanceSelect($(id)); });
     wireEvents();
-    loadCounts().then(function () {
+
+    var prev = window.lacmsPreviousSeen || Promise.resolve(null);
+    prev.then(function (ts) { prevSeen = ts; }).then(function () {
+      return Promise.all([loadCounts(), loadNewCounts()]);
+    }).then(function () {
       renderHome();
       route();
     });
@@ -213,31 +438,76 @@
     });
   }
 
+  // Approved since the previous visit (not counting your own).
+  function loadNewCounts() {
+    newByCourse = {};
+    newTotal = 0;
+    if (!prevSeen) return Promise.resolve();
+    return supabaseClient.from('resources').select('course, approved_at, uploader_id').eq('status', 'approved').gt('approved_at', prevSeen).then(function (r) {
+      (r.data || []).forEach(function (row) {
+        if (row.uploader_id === userId) return;
+        newByCourse[row.course] = (newByCourse[row.course] || 0) + 1;
+        newTotal++;
+      });
+    }, function () { /* markers are a nicety */ });
+  }
+  function isNew(r) {
+    return !!(prevSeen && r.status === 'approved' && r.approved_at && r.uploader_id !== userId && new Date(r.approved_at) > new Date(prevSeen));
+  }
+
   // ---- Routing: #c=<course>, #review, #mine ------------------------------------
+  function showView(view) {
+    ['res-view-home', 'res-view-list'].forEach(function (id) {
+      var node = $(id);
+      var show = id === view;
+      node.hidden = !show;
+      if (show) { node.classList.remove('res-view-in'); void node.offsetWidth; node.classList.add('res-view-in'); }
+    });
+  }
   function route() {
+    closeOpenSelect(false);
     var hash = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
-    $('res-view-home').hidden = true;
-    $('res-view-list').hidden = true;
-    if (hash.indexOf('c=') === 0) openCourse(hash.slice(2));
-    else if (hash === 'review' && isAdmin) openSpecial('review');
-    else if (hash === 'mine') openSpecial('mine');
-    else { currentCourse = null; $('res-view-home').hidden = false; renderHome(); }
+    if (hash.indexOf('c=') === 0) { showView('res-view-list'); openCourse(hash.slice(2)); }
+    else if (hash === 'review' && isAdmin) { showView('res-view-list'); openSpecial('review'); }
+    else if (hash === 'mine') { showView('res-view-list'); openSpecial('mine'); }
+    else { currentCourse = null; showView('res-view-home'); renderHome(); }
     if (hash) window.scrollTo({ top: 0 });
   }
   function go(hash) { window.location.hash = hash; if (!hash) route(); }
 
-  // ---- Home: course tiles -------------------------------------------------------
-  var ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>';
+  // ---- Home: course tiles + what's new --------------------------------------------
   function renderHome() {
-    $('res-course-grid').innerHTML = COURSES.map(function (c) {
+    var grid = $('res-course-grid');
+    grid.setAttribute('aria-busy', 'false');
+    grid.innerHTML = COURSES.map(function (c, i) {
       var n = counts[c.name] || { approved: 0, pending: 0 };
-      return '<button type="button" class="res-course-tile res-accent-' + c.accent + '" data-course="' + escapeHtml(c.name) + '">' +
-        '<span class="res-course-icon">' + ICON + '</span>' +
+      var fresh = newByCourse[c.name] || 0;
+      return '<button type="button" class="res-course-tile res-accent-' + c.accent + ' res-anim-in" style="--i:' + i + '" data-course="' + escapeHtml(c.name) + '">' +
+        '<span class="res-course-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[c.name] || ICONS.General) + '</svg></span>' +
         '<span class="res-course-name">' + escapeHtml(c.label || c.name) + '</span>' +
-        '<span class="res-course-count">' + n.approved + (n.approved === 1 ? ' resource' : ' resources') + '</span>' +
+        '<span class="res-course-count"><span data-countup="' + n.approved + '">' + n.approved + '</span> ' + (n.approved === 1 ? 'resource' : 'resources') + '</span>' +
+        (fresh ? '<span class="res-new-pill"><span class="res-new-dot" aria-hidden="true"></span>' + fresh + ' new</span>' : '') +
         (isAdmin && n.pending ? '<span class="res-count-pill res-count-pill--alert res-course-pending">' + n.pending + ' to review</span>' : '') +
+        '<svg class="icon res-course-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>' +
         '</button>';
     }).join('');
+    Array.prototype.forEach.call(grid.querySelectorAll('[data-countup]'), function (node) { countUp(node, parseInt(node.getAttribute('data-countup'), 10)); });
+
+    var banner = $('res-whatsnew');
+    if (newTotal > 0) {
+      banner.hidden = false;
+      $('res-whatsnew-text').textContent = newTotal + (newTotal === 1 ? ' new resource' : ' new resources') + ' since your last visit.';
+      $('res-whatsnew-jump').textContent = 'See what\'s new';
+    } else banner.hidden = true;
+    loadRecent();
+  }
+
+  function loadRecent() {
+    supabaseClient.from('resources').select('*').eq('status', 'approved').order('approved_at', { ascending: false }).limit(4).then(function (r) {
+      var rows = (r && r.data) || [];
+      $('res-recent-wrap').hidden = !rows.length;
+      if (rows.length) renderCards($('res-recent'), rows, { mode: 'recent' });
+    }, function () { /* optional section */ });
   }
 
   // ---- Filters ------------------------------------------------------------------
@@ -245,23 +515,31 @@
     $('res-filter-type').innerHTML = '<option value="">All types</option>' + Object.keys(TYPES).map(function (k) { return '<option value="' + k + '">' + TYPES[k] + '</option>'; }).join('');
     $('res-filter-year').innerHTML = '<option value="">All years</option>' + YEARS.map(function (y) { return '<option>' + y + '</option>'; }).join('');
   }
+  function resetFilters() {
+    $('res-search').value = '';
+    $('res-filter-type').value = '';
+    $('res-filter-source').value = '';
+    $('res-filter-year').value = '';
+    $('res-sort').value = 'new';
+    syncSelects();
+  }
 
   // ---- Lists --------------------------------------------------------------------
-  function selectCols() { return '*'; }
-
   function openCourse(name) {
     if (!COURSES.some(function (c) { return c.name === name; })) { go(''); return; }
     currentCourse = name;
-    $('res-view-list').hidden = false;
     $('res-filters').hidden = false;
+    $('res-active-filters').hidden = true;
+    $('res-crumb-current').textContent = courseLabel(name);
     $('res-list-title').textContent = courseLabel(name);
     $('res-list-sub').textContent = 'Loading…';
-    $('res-list').innerHTML = '';
+    $('res-list').innerHTML = skeletonCards(3);
     $('res-empty').hidden = true;
-    ['res-search', 'res-filter-type', 'res-filter-source', 'res-filter-year'].forEach(function (id) { $(id).value = ''; });
+    resetFilters();
 
-    supabaseClient.from('resources').select(selectCols()).eq('course', name).eq('status', 'approved').order('approved_at', { ascending: false }).then(function (r) {
-      if (r.error) { $('res-list-sub').textContent = "Couldn't load these resources: " + r.error.message; return; }
+    supabaseClient.from('resources').select('*').eq('course', name).eq('status', 'approved').order('approved_at', { ascending: false }).then(function (r) {
+      if (currentCourse !== name) return;
+      if (r.error) { $('res-list-sub').textContent = "Couldn't load these resources: " + r.error.message; $('res-list').innerHTML = ''; return; }
       courseItems = r.data || [];
       renderCourseList();
     });
@@ -272,6 +550,9 @@
     var type = $('res-filter-type').value;
     var source = $('res-filter-source').value;
     var year = $('res-filter-year').value;
+    var sort = $('res-sort').value;
+    $('res-search-clear').hidden = !q;
+
     var rows = courseItems.filter(function (r) {
       if (type && r.resource_type !== type) return false;
       if (source && r.source_type !== source) return false;
@@ -279,26 +560,51 @@
       if (q && [r.title, r.topic, r.uploader_name, r.description].join(' ').toLowerCase().indexOf(q) === -1) return false;
       return true;
     });
-    $('res-list-sub').textContent = courseItems.length + (courseItems.length === 1 ? ' resource' : ' resources') + (rows.length !== courseItems.length ? ' · showing ' + rows.length : '');
+    rows.sort(function (a, b) {
+      if (sort === 'az') return a.title.localeCompare(b.title);
+      var da = new Date(a.approved_at || a.created_at).getTime();
+      var db = new Date(b.approved_at || b.created_at).getTime();
+      return sort === 'old' ? da - db : db - da;
+    });
+
+    var filtered = !!(q || type || source || year);
+    var af = $('res-active-filters');
+    af.hidden = !filtered;
+    if (filtered) $('res-active-text').textContent = 'Showing ' + rows.length + ' of ' + courseItems.length;
+
+    var freshHere = courseItems.filter(isNew).length;
+    $('res-list-sub').textContent = courseItems.length + (courseItems.length === 1 ? ' resource' : ' resources') + (freshHere ? ' · ' + freshHere + ' new since your last visit' : '');
     renderCards($('res-list'), rows, { mode: 'browse' });
+
     var empty = $('res-empty');
-    empty.hidden = rows.length > 0;
-    empty.textContent = courseItems.length ? 'Nothing matches those filters.' : 'No resources here yet - be the first to share one!';
+    if (rows.length) { empty.hidden = true; return; }
+    empty.hidden = false;
+    empty.innerHTML = emptyState(
+      courseItems.length ? 'No matches' : 'No resources here yet',
+      courseItems.length ? 'Nothing fits those filters - try loosening them.' : 'Be the first to share one for ' + courseLabel(currentCourse) + '.',
+      courseItems.length ? '<button type="button" class="btn btn-outline" data-res-clear>Clear filters</button>' : '<button type="button" class="btn btn-primary" data-res-share>Share a resource</button>'
+    );
+  }
+
+  function emptyState(title, text, action) {
+    return '<div class="res-empty-card"><span class="res-empty-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>' +
+      '<strong>' + escapeHtml(title) + '</strong><span>' + escapeHtml(text) + '</span>' + (action || '') + '</div>';
   }
 
   function openSpecial(kind) {
     currentCourse = null;
-    $('res-view-list').hidden = false;
-    $('res-filters').hidden = true;
-    $('res-list').innerHTML = '';
-    $('res-empty').hidden = true;
     var isReview = kind === 'review';
+    $('res-filters').hidden = true;
+    $('res-active-filters').hidden = true;
+    $('res-crumb-current').textContent = isReview ? 'Review queue' : 'My submissions';
     $('res-list-title').textContent = isReview ? 'Review queue' : 'My submissions';
     $('res-list-sub').textContent = 'Loading…';
-    var q = supabaseClient.from('resources').select(selectCols());
+    $('res-list').innerHTML = skeletonCards(2);
+    $('res-empty').hidden = true;
+    var q = supabaseClient.from('resources').select('*');
     q = isReview ? q.eq('status', 'pending').order('created_at', { ascending: true }) : q.eq('uploader_id', userId).order('created_at', { ascending: false });
     q.then(function (r) {
-      if (r.error) { $('res-list-sub').textContent = "Couldn't load: " + r.error.message; return; }
+      if (r.error) { $('res-list-sub').textContent = "Couldn't load: " + r.error.message; $('res-list').innerHTML = ''; return; }
       var rows = r.data || [];
       $('res-list-sub').textContent = isReview
         ? (rows.length ? rows.length + ' waiting for review. Nothing here is visible to members until you approve it.' : '')
@@ -306,7 +612,11 @@
       renderCards($('res-list'), rows, { mode: isReview ? 'review' : 'mine' });
       var empty = $('res-empty');
       empty.hidden = rows.length > 0;
-      empty.textContent = isReview ? 'Nothing waiting - you\'re all caught up.' : 'You haven\'t shared anything yet.';
+      if (!rows.length) {
+        empty.innerHTML = isReview
+          ? emptyState('All caught up', 'Nothing is waiting for review right now.', '')
+          : emptyState('Nothing shared yet', 'Share a note, past paper or useful link and it will show up here.', '<button type="button" class="btn btn-primary" data-res-share>Share a resource</button>');
+      }
       var mc = $('res-mine-count');
       if (!isReview) { mc.hidden = !rows.length; mc.textContent = rows.length; }
     });
@@ -323,7 +633,7 @@
     if (r.kind === 'link') {
       var u = parseHttpUrl(r.url);
       var yt = youtubeId(u);
-      if (yt) return '<img src="https://i.ytimg.com/vi/' + yt + '/hqdefault.jpg" alt="" loading="lazy" referrerpolicy="no-referrer">';
+      if (yt) return '<img src="https://i.ytimg.com/vi/' + yt + '/hqdefault.jpg" alt="" loading="lazy" referrerpolicy="no-referrer"><span class="res-thumb-play" aria-hidden="true"></span>';
       if (u) return '<span class="res-thumb-fav"><img src="https://www.google.com/s2/favicons?domain=' + encodeURIComponent(u.hostname) + '&sz=64" alt="" width="32" height="32" loading="lazy" referrerpolicy="no-referrer"><span>' + escapeHtml(u.hostname.replace(/^www\./, '')) + '</span></span>';
       return '<span class="res-thumb-icon">' + LINK_ICON + '</span>';
     }
@@ -336,7 +646,7 @@
     return '';
   }
 
-  function cardHtml(r, mode) {
+  function cardHtml(r, mode, index) {
     var domain = '';
     if (r.kind === 'link') { var u = parseHttpUrl(r.url); domain = u ? u.hostname.replace(/^www\./, '') : ''; }
     var metaBits = ['Shared by <strong>' + escapeHtml(r.uploader_name) + '</strong>'];
@@ -364,17 +674,20 @@
 
     var reject = mode === 'mine' && r.status === 'rejected' && r.reject_reason
       ? '<p class="res-reject">Reason: ' + escapeHtml(r.reject_reason) + '</p>' : '';
+    var long = (r.description || '').length > 170;
 
-    return '<article class="res-card" data-id="' + escapeHtml(r.id) + '">' +
-      '<div class="res-thumb">' + thumbHtml(r) + '</div>' +
+    return '<article class="res-card res-anim-in' + (isNew(r) ? ' is-new' : '') + '" style="--i:' + Math.min(index, 10) + '" data-id="' + escapeHtml(r.id) + '">' +
+      '<div class="res-thumb is-loading">' + thumbHtml(r) + '</div>' +
       '<div class="res-body">' +
-      '<div class="res-tags"><span class="res-badge">' + escapeHtml(TYPES[r.resource_type] || 'Other') + '</span>' +
+      '<div class="res-tags">' + (isNew(r) ? '<span class="res-new-pill"><span class="res-new-dot" aria-hidden="true"></span>New</span>' : '') +
+      '<span class="res-badge">' + escapeHtml(TYPES[r.resource_type] || 'Other') + '</span>' +
       '<span class="res-badge res-badge--' + r.source_type + '">' + (r.source_type === 'personal' ? 'Personal' : 'External') + '</span>' +
       (r.year_of_study ? '<span class="res-badge">' + escapeHtml(r.year_of_study) + '</span>' : '') +
       (mode !== 'browse' ? '<span class="res-badge res-badge--course">' + escapeHtml(courseLabel(r.course)) + '</span>' : '') +
       statusBadge(r) + '</div>' +
       '<h3 class="res-title">' + escapeHtml(r.title) + '</h3>' +
       '<p class="res-desc">' + escapeHtml(r.description) + '</p>' +
+      (long ? '<button type="button" class="res-more" data-res-more aria-expanded="false">Read more</button>' : '') +
       '<p class="res-meta">' + metaBits.join(' · ') + '</p>' +
       (details.length ? '<p class="res-meta res-meta--faint">' + details.join(' · ') + '</p>' : '') +
       reject +
@@ -384,7 +697,6 @@
 
   var rendered = {};
   function renderCards(container, rows, opts) {
-    rendered = {};
     rows.forEach(function (r) { rendered[r.id] = r; });
     var paths = [];
     rows.forEach(function (r) {
@@ -393,10 +705,23 @@
     });
     // Signed thumbnails first so images are in the first paint.
     signedUrls(paths).then(function () {
-      container.innerHTML = rows.map(function (r) { return cardHtml(r, opts.mode); }).join('');
+      container.innerHTML = rows.map(function (r, i) { return cardHtml(r, opts.mode, i); }).join('');
       container.setAttribute('data-mode', opts.mode);
+      // Thumbnails that never need a network fetch are done immediately.
+      Array.prototype.forEach.call(container.querySelectorAll('.res-thumb'), function (t) {
+        if (!t.querySelector('img')) t.classList.remove('is-loading');
+      });
     });
   }
+  // Fade thumbnails in as they load (load/error don't bubble, so capture).
+  document.addEventListener('load', function (e) {
+    var t = e.target && e.target.closest && e.target.closest('.res-thumb');
+    if (t) t.classList.remove('is-loading');
+  }, true);
+  document.addEventListener('error', function (e) {
+    var t = e.target && e.target.closest && e.target.closest('.res-thumb');
+    if (t) { t.classList.remove('is-loading'); if (e.target.tagName === 'IMG') e.target.style.display = 'none'; }
+  }, true);
 
   // ---- Dialog plumbing -----------------------------------------------------------
   function openDialog(innerHtml, extraClass) {
@@ -413,11 +738,12 @@
     document.body.classList.add('guide-open');
     requestAnimationFrame(function () {
       backdrop.classList.add('is-in');
-      var first = dialog.querySelector('[data-autofocus]') || dialog.querySelector('input, select, textarea, button');
+      var first = dialog.querySelector('[data-autofocus]') || dialog.querySelector('input, textarea, .ui-select-btn, button');
       if (first) first.focus();
     });
     var api = { dialog: dialog };
     function close() {
+      closeOpenSelect(false);
       document.removeEventListener('keydown', onKey, true);
       backdrop.classList.remove('is-in');
       document.body.classList.remove('guide-open');
@@ -425,9 +751,11 @@
       if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus();
     }
     function onKey(e) {
+      // An open dropdown handles its own Escape/Tab first.
+      if (openSelect) return;
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
       if (e.key !== 'Tab') return;
-      var focusable = dialog.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], iframe');
+      var focusable = dialog.querySelectorAll('button:not([disabled]), input:not([disabled]):not([aria-hidden="true"]), select:not([disabled]):not([aria-hidden="true"]), textarea:not([disabled]), a[href], iframe');
       if (!focusable.length) return;
       var first = focusable[0];
       var last = focusable[focusable.length - 1];
@@ -469,7 +797,7 @@
       var yt = youtubeId(u);
       var body = yt
         ? '<div class="res-embed"><iframe src="https://www.youtube-nocookie.com/embed/' + yt + '" title="' + escapeHtml(r.title) + '" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation" referrerpolicy="no-referrer"></iframe></div>'
-        : '<div class="res-link-card">' + thumbHtml(r) + '<div><strong>' + escapeHtml(u ? u.hostname.replace(/^www\./, '') : '') + '</strong><span>Opens in a new tab - a website outside LACMS.</span></div></div>';
+        : '<div class="res-embed res-embed--card"><div class="res-link-card">' + thumbHtml(r) + '<div><strong>' + escapeHtml(u ? u.hostname.replace(/^www\./, '') : '') + '</strong><span>Opens in a new tab - a website outside LACMS.</span></div></div></div>';
       dlg = openDialog(head + body + foot);
       wirePreviewOpen(dlg, r);
       return;
@@ -481,14 +809,16 @@
       var slot = dlg.dialog.querySelector('#pv-slot');
       if (!slot) return;
       slot.classList.remove('res-embed--loading');
-      if (!url) { slot.innerHTML = '<p class="res-meta">Couldn\'t load the preview - you can still download it.</p>'; return; }
+      var noPreview = '<div class="res-link-card">' + thumbHtml(r) + '<div><strong>' + escapeHtml(r.file_name || '') + (r.file_size ? ' (' + formatBytes(r.file_size) + ')' : '') + '</strong><span>No inline preview for this file type - download to view.</span></div></div>';
+      if (!url) { slot.classList.add('res-embed--card'); slot.innerHTML = '<p class="res-meta">Couldn\'t load the preview - you can still download it.</p>'; return; }
       if (ext === 'pdf') slot.innerHTML = '<iframe src="' + escapeHtml(url) + '" title="' + escapeHtml(r.title) + '" loading="lazy"></iframe>';
       else if (IMAGE_EXTS.indexOf(ext) !== -1) slot.innerHTML = '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(r.title) + '">';
       else if (r.preview_path) {
         signedUrl(r.preview_path).then(function (pu) {
-          slot.innerHTML = pu ? '<img src="' + escapeHtml(pu) + '" alt="">' : '<div class="res-link-card">' + thumbHtml(r) + '<div><strong>' + escapeHtml(r.file_name || '') + '</strong><span>No inline preview for this file type - download to view.</span></div></div>';
+          if (pu) slot.innerHTML = '<img src="' + escapeHtml(pu) + '" alt="">';
+          else { slot.classList.add('res-embed--card'); slot.innerHTML = noPreview; }
         });
-      } else slot.innerHTML = '<div class="res-link-card">' + thumbHtml(r) + '<div><strong>' + escapeHtml(r.file_name || '') + (r.file_size ? ' (' + formatBytes(r.file_size) + ')' : '') + '</strong><span>No inline preview for this file type - download to view.</span></div></div>';
+      } else { slot.classList.add('res-embed--card'); slot.innerHTML = noPreview; }
     });
   }
   function wirePreviewOpen(dlg, r) {
@@ -496,6 +826,14 @@
   }
 
   // ---- Delete / approve / reject ----------------------------------------------------
+  // The card slides away first, then the lists reload from the server.
+  function withLeave(id, fn) {
+    var card = document.querySelector('.res-card[data-id="' + id + '"]');
+    if (!card || reduceMotion) { fn(); return; }
+    card.classList.add('is-leaving');
+    setTimeout(fn, 260);
+  }
+
   function deleteResource(r) {
     var own = r.uploader_id === userId;
     var msg = 'Delete "' + r.title + '"' + (own ? '' : ' (shared by ' + r.uploader_name + ')') + '? This can\'t be undone.';
@@ -505,7 +843,7 @@
       var paths = [r.file_path, r.preview_path].filter(Boolean);
       if (paths.length) supabaseClient.storage.from(BUCKET).remove(paths);
       showToast('Deleted.');
-      refreshCurrent();
+      withLeave(r.id, refreshCurrent);
     });
   }
 
@@ -513,7 +851,7 @@
     supabaseClient.from('resources').update({ status: status, reject_reason: status === 'rejected' ? (reason || null) : null }).eq('id', r.id).then(function (res) {
       if (res.error) { showToast("Couldn't update it: " + res.error.message, true); return; }
       showToast(status === 'approved' ? '"' + r.title + '" is approved and now visible to members.' : '"' + r.title + '" was not approved.');
-      refreshCurrent();
+      withLeave(r.id, refreshCurrent);
     });
   }
 
@@ -535,25 +873,31 @@
   }
 
   function refreshCurrent() {
-    loadCounts().then(function () {
-      renderHome();
+    Promise.all([loadCounts(), loadNewCounts()]).then(function () {
       var hash = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
       if (hash.indexOf('c=') === 0) openCourse(hash.slice(2));
       else if (hash === 'review' && isAdmin) openSpecial('review');
       else if (hash === 'mine') openSpecial('mine');
+      else renderHome();
     });
   }
 
   // ---- Share / edit dialog ------------------------------------------------------------
+  function seg(name, options, current) {
+    return '<div class="ui-seg" role="radiogroup">' + options.map(function (o) {
+      return '<label class="ui-seg-opt"><input type="radio" name="' + name + '" value="' + o.value + '"' + (o.value === current ? ' checked' : '') + '><span>' + o.label + '</span></label>';
+    }).join('') + '</div>';
+  }
+
   function openShareDialog(existing) {
     var editing = !!existing;
+    var ex = existing || {};
     var courseOptions = COURSES.map(function (c) {
       var sel = existing ? existing.course === c.name : (currentCourse === c.name);
       return '<option value="' + escapeHtml(c.name) + '"' + (sel ? ' selected' : '') + '>' + escapeHtml(c.label || c.name) + '</option>';
     }).join('');
-    var typeOptions = Object.keys(TYPES).map(function (k) { return '<option value="' + k + '"' + (existing && existing.resource_type === k ? ' selected' : '') + '>' + TYPES[k] + '</option>'; }).join('');
-    var yearOptions = '<option value="">Any / not specific</option>' + YEARS.map(function (y) { return '<option' + (existing && existing.year_of_study === y ? ' selected' : '') + '>' + y + '</option>'; }).join('');
-    var ex = existing || {};
+    var typeOptions = Object.keys(TYPES).map(function (k) { return '<option value="' + k + '"' + (ex.resource_type === k ? ' selected' : '') + '>' + TYPES[k] + '</option>'; }).join('');
+    var yearOptions = '<option value="">Any / not specific</option>' + YEARS.map(function (y) { return '<option' + (ex.year_of_study === y ? ' selected' : '') + '>' + y + '</option>'; }).join('');
 
     var dlg = openDialog(
       '<button type="button" class="guide-close" data-dialog-close aria-label="Cancel">&times;</button>' +
@@ -566,24 +910,23 @@
       '<div class="field"><label for="rs-course">Course</label><select id="rs-course">' + courseOptions + '</select></div>' +
       '<div class="field"><label for="rs-title">Title</label><input type="text" id="rs-title" maxlength="140" value="' + escapeHtml(ex.title || '') + '" placeholder="e.g. Cardiovascular physiology - summary notes" data-autofocus></div>' +
       (editing ? '' :
-        '<fieldset class="network-admin-fieldset"><legend>What are you sharing?</legend>' +
-        '<label class="checkbox-option"><input type="radio" name="rs-kind" value="file" checked> A file I\'m uploading (PDF, Word, PowerPoint, image...)</label>' +
-        '<label class="checkbox-option"><input type="radio" name="rs-kind" value="link"> A link to a website, video or tool</label></fieldset>' +
-        '<div class="field" data-rs-kind="file"><label for="rs-file">File <span class="guide-optional">(max 25 MB)</span></label>' +
-        '<div class="res-drop" id="rs-drop"><input type="file" id="rs-file" accept="' + Object.keys(FILE_TYPES).map(function (e) { return '.' + e; }).join(',') + '"><span id="rs-file-label">Choose a file, or drop it here</span></div></div>' +
+        '<div class="field"><span class="res-label">What are you sharing?</span>' + seg('rs-kind', [{ value: 'file', label: 'Upload a file' }, { value: 'link', label: 'Add a link' }], 'file') + '</div>' +
+        '<div class="field" data-rs-kind="file"><label for="rs-file">File <span class="guide-optional">(PDF, Word, PowerPoint, Excel, text or image - max 25 MB)</span></label>' +
+        '<div class="res-drop" id="rs-drop"><input type="file" id="rs-file" accept="' + Object.keys(FILE_TYPES).map(function (e) { return '.' + e; }).join(',') + '">' +
+        '<svg class="icon res-drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+        '<span id="rs-file-label">Choose a file, or drop it here</span></div></div>' +
         '<div class="field" data-rs-kind="link" hidden><label for="rs-url">Link</label><input type="text" id="rs-url" inputmode="url" placeholder="https://..." autocomplete="off"><div class="res-linkpreview" id="rs-linkpreview" hidden></div></div>') +
       (editing && ex.kind === 'link' ? '<div class="field"><label for="rs-url">Link</label><input type="text" id="rs-url" inputmode="url" value="' + escapeHtml(ex.url || '') + '" autocomplete="off"></div>' : '') +
       '<div class="field"><label for="rs-desc">Description</label><textarea id="rs-desc" maxlength="1500" rows="4" placeholder="What is it, who is it useful for, and how should people use it?">' + escapeHtml(ex.description || '') + '</textarea><span class="guide-count" id="rs-count" aria-live="polite">0 / 1500</span></div>' +
       '<div class="res-form-row"><div class="field"><label for="rs-type">Type</label><select id="rs-type">' + typeOptions + '</select></div>' +
       '<div class="field"><label for="rs-year">Year of study <span class="guide-optional">(optional)</span></label><select id="rs-year">' + yearOptions + '</select></div></div>' +
       '<div class="field"><label for="rs-topic">Topic / module <span class="guide-optional">(optional)</span></label><input type="text" id="rs-topic" maxlength="120" value="' + escapeHtml(ex.topic || '') + '" placeholder="e.g. Cardiology, Pharmacokinetics"></div>' +
-      '<fieldset class="network-admin-fieldset"><legend>Where is it from?</legend>' +
-      '<label class="checkbox-option"><input type="radio" name="rs-source" value="personal"' + (ex.source_type !== 'external' ? ' checked' : '') + '> My own work</label>' +
-      '<label class="checkbox-option"><input type="radio" name="rs-source" value="external"' + (ex.source_type === 'external' ? ' checked' : '') + '> From somewhere else</label></fieldset>' +
+      '<div class="field"><span class="res-label">Where is it from?</span>' + seg('rs-source', [{ value: 'personal', label: 'My own work' }, { value: 'external', label: 'From somewhere else' }], ex.source_type === 'external' ? 'external' : 'personal') + '</div>' +
       '<div class="field" id="rs-credit-field" hidden><label for="rs-credit">Source / author</label><input type="text" id="rs-credit" maxlength="200" value="' + escapeHtml(ex.source_credit || '') + '" placeholder="Who made it or where it\'s from - e.g. Osmosis, BMJ, Prof. Smith (Lincoln)"></div>' +
       (editing ? '' :
         '<div class="field"><label for="rs-preview">Preview image <span class="guide-optional">(optional, max 2 MB)</span></label><input type="file" id="rs-preview" accept="image/png,image/jpeg,image/webp,image/gif"><span class="guide-count">Shown on the card. Videos and images get a preview automatically.</span></div>') +
       '<p class="guide-error" id="rs-error" role="alert" hidden></p>' +
+      '<div class="res-progress" id="rs-progress" hidden><span></span></div>' +
       '<div class="guide-actions"><button type="submit" class="btn btn-primary" id="rs-submit">' + (editing ? 'Save changes' : (isAdmin ? 'Publish' : 'Submit for review')) + '</button>' +
       '<button type="button" class="btn btn-outline" data-dialog-close>Cancel</button></div>' +
       '</form>', 'res-dialog--wide'
@@ -592,20 +935,30 @@
     var d = dlg.dialog;
     var form = d.querySelector('#res-form');
     var errorEl = d.querySelector('#rs-error');
+    var progress = d.querySelector('#rs-progress');
+    ['rs-course', 'rs-type', 'rs-year'].forEach(function (id) { enhanceSelect(d.querySelector('#' + id)); });
+
     function val(id) { return d.querySelector('#' + id).value.trim(); }
     function kindVal() { return editing ? ex.kind : form.querySelector('input[name="rs-kind"]:checked').value; }
     function sourceVal() { return form.querySelector('input[name="rs-source"]:checked').value; }
-    function showError(m) { errorEl.textContent = m; errorEl.hidden = false; errorEl.scrollIntoView({ block: 'nearest' }); }
+    function showError(m) {
+      errorEl.textContent = m;
+      errorEl.hidden = false;
+      errorEl.classList.remove('is-shake'); void errorEl.offsetWidth; errorEl.classList.add('is-shake');
+      errorEl.scrollIntoView({ block: 'nearest' });
+    }
 
     var descEl = d.querySelector('#rs-desc');
     var countEl = d.querySelector('#rs-count');
-    function updateCount() { countEl.textContent = descEl.value.length + ' / 1500'; }
+    function updateCount() {
+      countEl.textContent = descEl.value.length + ' / 1500';
+      countEl.classList.toggle('is-low', descEl.value.trim().length > 0 && descEl.value.trim().length < 10);
+    }
     updateCount();
     descEl.addEventListener('input', updateCount);
 
     function syncSource() { d.querySelector('#rs-credit-field').hidden = sourceVal() !== 'external'; }
     syncSource();
-
     function syncKind() {
       d.querySelectorAll('[data-rs-kind]').forEach(function (g) { g.hidden = g.getAttribute('data-rs-kind') !== kindVal(); });
     }
@@ -619,6 +972,7 @@
       fileInput.addEventListener('change', function () {
         var f = fileInput.files[0];
         fileLabel.textContent = f ? f.name + ' (' + formatBytes(f.size) + ')' : 'Choose a file, or drop it here';
+        drop.classList.toggle('has-file', !!f);
       });
       ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('is-over'); }); });
       ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function () { drop.classList.remove('is-over'); }); });
@@ -647,7 +1001,6 @@
       });
     }
     if (!editing) syncKind();
-    if (editing && urlInput) { /* existing link: no live preview needed */ }
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -684,7 +1037,9 @@
 
       var submit = d.querySelector('#rs-submit');
       submit.disabled = true;
+      submit.classList.add('is-busy');
       submit.textContent = editing ? 'Saving…' : (file ? 'Uploading…' : 'Submitting…');
+      progress.hidden = false;
 
       var fields = {
         course: val('rs-course'),
@@ -698,6 +1053,8 @@
       };
       function fail(message) {
         submit.disabled = false;
+        submit.classList.remove('is-busy');
+        progress.hidden = true;
         submit.textContent = editing ? 'Save changes' : (isAdmin ? 'Publish' : 'Submit for review');
         showError(message);
       }
@@ -761,27 +1118,56 @@
     return card ? rendered[card.getAttribute('data-id')] : null;
   }
 
+  function onListClick(e) {
+    var more = e.target.closest('[data-res-more]');
+    if (more) {
+      var card = more.closest('.res-card');
+      var open = card.classList.toggle('is-open');
+      more.textContent = open ? 'Show less' : 'Read more';
+      more.setAttribute('aria-expanded', open ? 'true' : 'false');
+      return;
+    }
+    var r = cardFromEvent(e);
+    if (!r) return;
+    if (e.target.closest('[data-res-preview]')) previewResource(r);
+    else if (e.target.closest('[data-res-open]')) openResource(r);
+    else if (e.target.closest('[data-res-approve]')) reviewResource(r, 'approved');
+    else if (e.target.closest('[data-res-reject]')) openRejectDialog(r);
+    else if (e.target.closest('[data-res-edit]')) openShareDialog(r);
+    else if (e.target.closest('[data-res-delete]')) deleteResource(r);
+  }
+
   function wireEvents() {
     $('res-share-btn').addEventListener('click', function () { openShareDialog(null); });
     $('res-mine-link').addEventListener('click', function () { go('mine'); });
     $('res-review-link').addEventListener('click', function () { go('review'); });
     $('res-back-btn').addEventListener('click', function () { go(''); });
+    $('res-whatsnew-jump').addEventListener('click', function () {
+      var recent = $('res-recent-wrap');
+      if (!recent.hidden) recent.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    });
     $('res-course-grid').addEventListener('click', function (e) {
       var tile = e.target.closest('[data-course]');
       if (tile) go('c=' + encodeURIComponent(tile.getAttribute('data-course')));
     });
-    ['res-search', 'res-filter-type', 'res-filter-source', 'res-filter-year'].forEach(function (id) {
+    ['res-search', 'res-filter-type', 'res-filter-source', 'res-filter-year', 'res-sort'].forEach(function (id) {
       $(id).addEventListener(id === 'res-search' ? 'input' : 'change', renderCourseList);
     });
-    $('res-list').addEventListener('click', function (e) {
-      var r = cardFromEvent(e);
-      if (!r) return;
-      if (e.target.closest('[data-res-preview]')) previewResource(r);
-      else if (e.target.closest('[data-res-open]')) openResource(r);
-      else if (e.target.closest('[data-res-approve]')) reviewResource(r, 'approved');
-      else if (e.target.closest('[data-res-reject]')) openRejectDialog(r);
-      else if (e.target.closest('[data-res-edit]')) openShareDialog(r);
-      else if (e.target.closest('[data-res-delete]')) deleteResource(r);
+    $('res-search-clear').addEventListener('click', function () { $('res-search').value = ''; renderCourseList(); $('res-search').focus(); });
+    $('res-clear-filters').addEventListener('click', function () { resetFilters(); renderCourseList(); });
+    $('res-list').addEventListener('click', onListClick);
+    $('res-recent').addEventListener('click', onListClick);
+    $('res-empty').addEventListener('click', function (e) {
+      if (e.target.closest('[data-res-share]')) openShareDialog(null);
+      else if (e.target.closest('[data-res-clear]')) { resetFilters(); renderCourseList(); }
+    });
+    // "/" jumps to search while browsing a course (like most docs sites).
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      var tag = (document.activeElement && document.activeElement.tagName) || '';
+      if (/INPUT|TEXTAREA|SELECT/.test(tag) || document.querySelector('.guide-backdrop') || $('res-filters').hidden || $('res-view-list').hidden) return;
+      e.preventDefault();
+      $('res-search').focus();
     });
   }
 })();

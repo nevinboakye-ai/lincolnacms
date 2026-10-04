@@ -1201,3 +1201,13 @@ Run [`db/migrations/064-sixth-form-executive-only.sql`](db/migrations/064-sixth-
 - **Who can see it:** a new Hub Access rule, **LACMS Resources**, set to **Executive Committee members only** with a locked "Coming soon" card for everyone else. When you're ready to launch, open Hub Access on the dashboard and widen the rule - no code change. New approved resources also feed the notification bell.
 
 Moderation rights are "president or Executive Committee member" (not tied to the Hub Access rule). If you re-run 065 it's safe: existing tables, policies and rows are left alone.
+
+## 109. LACMS Resources polish: custom dropdowns, "new" markers and motion
+
+No migration - front-end only.
+
+**Dropdowns redesigned.** On the Resources pages the native browser dropdowns are replaced with a custom control: a rounded button that glows gold when a filter is active, a chevron that flips, and a floating menu that fades in with a tick on the chosen option. It's fully keyboard-accessible (arrows, Home/End, type-a-letter, Enter/Space, Esc - which closes only the dropdown, not the dialog behind it) and screen-reader labelled; the real `<select>` stays underneath so nothing else changes. The File/Link and Own work/From elsewhere choices in the Share dialog are now pill-style segmented toggles. Dropdowns elsewhere on the site (Sankofa form, etc.) also lose the default OS look - custom chevron, gold hover.
+
+**Notifications adopted on the Resources pages.** Anything approved since you last opened the page is flagged: a gold "N new" pill on each course tile, a "New" tag and gold outline on the cards, a "N new resources since your last visit" banner on the home view, and a "new since your last visit" count on each course page. A **Recently added** strip shows the latest four across all courses. The hub's LACMS Resources card now carries the bell's new-count pill too. (js/notifications.js exposes the previous-visit time as `window.lacmsPreviousSeen` for any page that wants it; your own submissions never count as new.)
+
+**More polish:** shimmering skeleton placeholders while loading; tiles and cards rise in with a stagger; smooth transitions between the home and course views; an icon per course; the tile arrow and icon animate on hover; counts ease up; thumbnails fade in (with a play badge on videos); Read more / Show less on long descriptions; a breadcrumb; sort (newest / oldest / A-Z), a clear-search button, "Showing X of Y" with Clear filters, and "/" to jump to search; friendly empty states with a Share button; the Share dialog gets a live character counter, a shake on errors and a progress bar while uploading; approved/rejected/deleted cards slide away. Everything respects "reduce motion".

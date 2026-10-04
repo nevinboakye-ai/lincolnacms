@@ -25,17 +25,26 @@
   // gets a count pill (if any).
   var SECTIONS = [
     { key: 'announcements', label: 'Announcements', singular: 'announcement', plural: 'announcements', href: 'member-hub.html', page: 'member-hub.html' },
-    { key: 'perks', label: 'Discounts & opportunities', singular: 'new perk', plural: 'new perks', href: 'member-perks.html', page: 'member-perks.html' },
+    { key: 'perks', label: 'Discounts & opportunities', singular: 'new perk', plural: 'new perks', href: 'member-perks.html', page: 'member-perks.html', cardId: 'perks-card' },
     { key: 'events', label: 'Events', singular: 'new event', plural: 'new events', href: 'events.html', page: 'events.html', navHref: 'events.html' },
     { key: 'news', label: 'News', singular: 'new post', plural: 'new posts', href: 'news.html', page: 'news.html', navHref: 'news.html' },
     { key: 'motm', label: 'Member of the Month', singular: 'new honouree', plural: 'new honourees', href: 'motm.html', page: 'motm.html', navHref: 'motm.html' },
     { key: 'gallery', label: 'Gallery', singular: 'new photo', plural: 'new photos', href: 'gallery.html', page: 'gallery.html', navHref: 'gallery.html' },
     { key: 'mmg', label: 'Midlands Medics Gala', singular: 'new update', plural: 'new updates', href: 'mmg-hub.html', page: 'mmg-hub.html' },
-    { key: 'resources', label: 'LACMS Resources', singular: 'new resource', plural: 'new resources', href: 'member-resources.html', page: 'member-resources.html' }
+    { key: 'resources', label: 'LACMS Resources', singular: 'new resource', plural: 'new resources', href: 'member-resources.html', page: 'member-resources.html', cardId: 'resources-card' }
   ];
   var POLL_MS = 60 * 1000;
 
   var currentPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+
+  // Pages that show their own "new" markers (e.g. LACMS Resources) need to
+  // know when the user LAST looked at this section - which is exactly what
+  // gets overwritten the moment this page marks it as seen. This promise
+  // resolves (once) to that previous timestamp (ISO string), or to the
+  // account's creation time if they've never visited, or null when there's
+  // no session / this page isn't a tracked section.
+  var resolvePreviousSeen;
+  window.lacmsPreviousSeen = new Promise(function (resolve) { resolvePreviousSeen = resolve; });
   var userId = null;
   var counts = null; // { sectionKey: { count, title, at } } - null until first successful load
   var announcedTotal = null;
@@ -266,9 +275,9 @@
       if (s.navHref) {
         document.querySelectorAll('.nav-links a[href="' + s.navHref + '"]').forEach(function (a) { targets.push(a); });
       }
-      if (s.key === 'perks') {
-        var perksCard = document.getElementById('perks-card');
-        if (perksCard) targets.push(perksCard);
+      if (s.cardId) {
+        var hubCard = document.getElementById(s.cardId);
+        if (hubCard) targets.push(hubCard);
       }
       targets.forEach(function (a) {
         var pill = document.createElement('span');
@@ -328,7 +337,15 @@
     }
 
     var here2 = sectionForPage();
-    var ready = here2 ? markSeen([here2.key]) : Promise.resolve(true);
+    var ready;
+    if (here2) {
+      ready = supabaseClient.from('notification_seen').select('last_seen_at').eq('section', here2.key).maybeSingle().then(function (r) {
+        resolvePreviousSeen((r.data && r.data.last_seen_at) || (session.user && session.user.created_at) || null);
+      }, function () { resolvePreviousSeen(null); }).then(function () { return markSeen([here2.key]); });
+    } else {
+      resolvePreviousSeen(null);
+      ready = Promise.resolve(true);
+    }
     ready.then(function () { return refresh(); });
     startPolling();
   }
@@ -336,6 +353,7 @@
   supabaseClient.auth.getSession().then(function (result) {
     var session = result.data && result.data.session;
     if (session) start(session);
+    else resolvePreviousSeen(null);
   });
 
   supabaseClient.auth.onAuthStateChange(function (event, session) {

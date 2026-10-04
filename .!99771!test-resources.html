@@ -239,6 +239,37 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/main.js?v=20260824-77"></script>
+<script>
+var ADMIN=/admin=1/.test(location.search); var ACCESS=!/noaccess=1/.test(location.search);
+var ME='u-me'; window.__ops=[];
+var __res=[
+ {id:'r1',course:'Medicine',title:'Cardiology summary notes',description:'My summary of the cardiovascular block with diagrams. It covers the conduction system, the cardiac cycle, pressure-volume loops, heart sounds and the common murmurs you are expected to recognise, with worked examples at the end of every chapter and a one page cheat sheet.',resource_type:'notes',source_type:'personal',source_credit:null,year_of_study:'Year 2',topic:'Cardiology',kind:'file',url:null,file_path:'u-x/r1/notes.pdf',file_name:'notes.pdf',file_size:2400000,preview_path:null,uploader_id:'u-x',uploader_name:'Amara Okafor',uploader_detail:'Medicine · Year 2',status:'approved',approved_at:'2026-10-01T10:00:00Z',created_at:'2026-10-01T09:00:00Z'},
+ {id:'r2',course:'Medicine',title:'Osmosis: heart failure',description:'Great animated explainer on heart failure pathophysiology.',resource_type:'video',source_type:'external',source_credit:'Osmosis',year_of_study:null,topic:null,kind:'link',url:'https://www.youtube.com/watch?v=dQw4w9WgXcQ',file_path:null,uploader_id:'u-y',uploader_name:'Kofi Mensah',uploader_detail:'Medicine · Year 3',status:'approved',approved_at:'2026-10-02T10:00:00Z',created_at:'2026-10-02T09:00:00Z'},
+ {id:'r3',course:'Pharmacy',title:'BNF online',description:'The British National Formulary - essential drug reference.',resource_type:'website',source_type:'external',source_credit:'NICE',year_of_study:null,topic:null,kind:'link',url:'https://bnf.nice.org.uk',file_path:null,uploader_id:'u-z',uploader_name:'Zainab Ali',uploader_detail:'Pharmacy · Year 1',status:'pending',approved_at:null,created_at:'2026-10-03T09:00:00Z'}];
+function visible(r){ return r.status==='approved' || r.uploader_id===ME || ADMIN; }
+function __q(table){ var st={op:'select',f:{},gt:null,limit:null}; var p=new Proxy(function(){}, {get:function(_,k){
+  if(k==='then') return function(res,rej){ var data=[],err=null;
+    if(table==='notification_seen') data={last_seen_at:'2026-10-01T12:00:00Z'};
+    if(table==='resources'){
+      if(st.op==='select'){ data=__res.filter(visible).filter(function(r){ return Object.keys(st.f).every(function(c){return r[c]===st.f[c];}); }); if(st.gt) data=data.filter(function(r){return r.approved_at && r.approved_at>st.gt;}); data=data.slice().sort(function(a,b){return (b.approved_at||'')>(a.approved_at||'')?1:-1;}); if(st.limit) data=data.slice(0,st.limit); }
+      else if(st.op==='insert'){ window.__ops.push(['insert',st.row]); var row=Object.assign({},st.row,{uploader_id:ME,uploader_name:'Test User',uploader_detail:'Medicine · Year 1',status:ADMIN?'approved':'pending',approved_at:ADMIN?new Date().toISOString():null,created_at:new Date().toISOString()}); __res.push(row); }
+      else if(st.op==='update'){ window.__ops.push(['update',st.row,st.f]); __res.forEach(function(r){ if(r.id===st.f.id) Object.assign(r,st.row,st.row.status==='approved'?{approved_at:new Date().toISOString()}:{}); }); }
+      else if(st.op==='delete'){ window.__ops.push(['delete',st.f]); __res=__res.filter(function(r){return r.id!==st.f.id;}); }
+    }
+    return Promise.resolve({data:data,error:err}).then(res,rej); };
+  if(k==='insert') return function(row){ st.op='insert'; st.row=row; return p; };
+  if(k==='update') return function(row){ st.op='update'; st.row=row; return p; };
+  if(k==='delete') return function(){ st.op='delete'; return p; };
+  if(k==='eq') return function(c,v){ st.f[c]=v; return p; };
+  if(k==='gt') return function(c,v){ st.gt=v; return p; };
+  if(k==='limit') return function(n){ st.limit=n; return p; };
+  return function(){ return p; }; }}); return p; }
+supabaseClient = { from:__q,
+  storage:{ from:function(){ return { upload:function(path,file,opts){ window.__ops.push(['upload',path,file.name,opts.contentType]); return Promise.resolve({data:{path:path},error:null}); }, remove:function(p){ window.__ops.push(['remove',p]); return Promise.resolve({}); }, createSignedUrl:function(p){ return Promise.resolve({data:{signedUrl:'http://localhost:8747/Media/ACMS%20Branding/logo.png?x='+encodeURIComponent(p)},error:null}); }, createSignedUrls:function(ps){ return Promise.resolve({data:ps.map(function(p){return {path:p,signedUrl:'http://localhost:8747/Media/ACMS%20Branding/logo.png?x='+encodeURIComponent(p)};}),error:null}); } }; } },
+  rpc:function(name){ if(name==='is_dashboard_admin') return Promise.resolve({data:ADMIN,error:null}); if(name==='get_my_hub_access') return Promise.resolve({data:[{feature:'resources',allowed:ACCESS,blocked_display:'locked'}],error:null}); if(name==='get_resource_counts'){ var c={}; __res.forEach(function(r){ var o=c[r.course]||(c[r.course]={course:r.course,approved_count:0,pending_count:0}); if(r.status==='approved') o.approved_count++; if(r.status==='pending'&&ADMIN) o.pending_count++; }); return Promise.resolve({data:Object.keys(c).map(function(k){return c[k];}),error:null}); } return Promise.resolve({data:[],error:null}); },
+  auth:{ getSession:function(){return Promise.resolve({data:{session:{user:{id:ME,email:'a@b.c',created_at:'2026-09-01T00:00:00Z'}}}});}, onAuthStateChange:function(){}, getUser:function(){return Promise.resolve({data:{user:{id:ME}}});} }, channel:function(){return {on:function(){return this;},subscribe:function(){}};} };
+window.confirm=function(){return true;};
+</script>
 <script src="js/members.js?v=20260824-77"></script>
 <script src="js/notifications.js?v=20260824-77"></script>
 <script src="js/guidance.js?v=20260824-77"></script>
