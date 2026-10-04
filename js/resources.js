@@ -649,9 +649,6 @@
   function cardHtml(r, mode, index) {
     var domain = '';
     if (r.kind === 'link') { var u = parseHttpUrl(r.url); domain = u ? u.hostname.replace(/^www\./, '') : ''; }
-    var metaBits = ['Shared by <strong>' + escapeHtml(r.uploader_name) + '</strong>'];
-    if (r.uploader_detail) metaBits.push(escapeHtml(r.uploader_detail));
-    metaBits.push(escapeHtml(timeAgo(r.status === 'approved' && r.approved_at ? r.approved_at : r.created_at)));
     var details = [];
     if (r.source_type === 'external') details.push('Source: ' + escapeHtml(r.source_credit || (domain || 'external')));
     if (r.topic) details.push('Topic: ' + escapeHtml(r.topic));
@@ -676,7 +673,7 @@
       ? '<p class="res-reject">Reason: ' + escapeHtml(r.reject_reason) + '</p>' : '';
     var long = (r.description || '').length > 170;
 
-    return '<article class="res-card res-anim-in' + (isNew(r) ? ' is-new' : '') + '" style="--i:' + Math.min(index, 10) + '" data-id="' + escapeHtml(r.id) + '">' +
+    return '<article class="res-card res-card--open res-anim-in' + (isNew(r) ? ' is-new' : '') + '" style="--i:' + Math.min(index, 10) + '" data-id="' + escapeHtml(r.id) + '">' +
       '<div class="res-thumb is-loading">' + thumbHtml(r) + '</div>' +
       '<div class="res-body">' +
       '<div class="res-tags">' + (isNew(r) ? '<span class="res-new-pill"><span class="res-new-dot" aria-hidden="true"></span>New</span>' : '') +
@@ -685,14 +682,170 @@
       (r.year_of_study ? '<span class="res-badge">' + escapeHtml(r.year_of_study) + '</span>' : '') +
       (mode !== 'browse' ? '<span class="res-badge res-badge--course">' + escapeHtml(courseLabel(r.course)) + '</span>' : '') +
       statusBadge(r) + '</div>' +
-      '<h3 class="res-title">' + escapeHtml(r.title) + '</h3>' +
+      '<h3 class="res-title"><button type="button" class="res-title-btn" data-res-preview>' + escapeHtml(r.title) + '</button></h3>' +
+      bylineHtml(r, 'md') +
       '<p class="res-desc">' + escapeHtml(r.description) + '</p>' +
       (long ? '<button type="button" class="res-more" data-res-more aria-expanded="false">Read more</button>' : '') +
-      '<p class="res-meta">' + metaBits.join(' · ') + '</p>' +
       (details.length ? '<p class="res-meta res-meta--faint">' + details.join(' · ') + '</p>' : '') +
       reject +
-      '<div class="res-actions">' + actions + '</div>' +
-      '</div></article>';
+      '<div class="res-card-foot">' + (r.status === 'approved' ? socialHtml(r.id) : '<span></span>') +
+      '<div class="res-actions">' + actions + '</div></div>' +
+      '</div>' +
+      '<svg class="icon res-card-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>' +
+      '</article>';
+  }
+
+
+  // ---- Who shared it: an avatar with their initial + a prominent name ----
+  function initialOf(name) { return (String(name || '?').trim().charAt(0) || '?').toUpperCase(); }
+  function avClass(name) {
+    var h = 0;
+    var str = String(name || '');
+    for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return 'res-av-' + (h % 6);
+  }
+  function avatarHtml(name, size) {
+    return '<span class="res-av res-av--' + (size || 'md') + ' ' + avClass(name) + '" aria-hidden="true">' + escapeHtml(initialOf(name)) + '</span>';
+  }
+  function bylineHtml(r, size) {
+    var when = timeAgo(r.status === 'approved' && r.approved_at ? r.approved_at : r.created_at);
+    var detail = [r.uploader_detail, when].filter(Boolean).join(' · ');
+    return '<div class="res-by res-by--' + (size || 'md') + '">' + avatarHtml(r.uploader_name, size) +
+      '<span class="res-by-text"><strong class="res-by-name">' + escapeHtml(r.uploader_name) + '</strong>' +
+      '<span class="res-by-detail">' + escapeHtml(detail) + '</span></span></div>';
+  }
+
+  // ---- Likes / comments: counts live here and are painted into every
+  // place that shows them (the card and, if open, its preview). ----------
+  var engagement = {}; // resource id -> { likes, comments, liked }
+  var HEART = '<svg class="icon res-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>';
+  var BUBBLE = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+  function engOf(id) { return engagement[id] || { likes: 0, comments: 0, liked: false }; }
+
+  function socialHtml(id) {
+    var e = engOf(id);
+    return '<div class="res-social" data-social="' + escapeHtml(id) + '">' +
+      '<button type="button" class="res-like' + (e.liked ? ' is-liked' : '') + '" data-res-like aria-pressed="' + (e.liked ? 'true' : 'false') + '" aria-label="Like this resource">' +
+      '<span class="res-like-icon">' + HEART + '<span class="res-burst" aria-hidden="true"></span></span><span class="res-like-count" data-like-count>' + e.likes + '</span></button>' +
+      '<button type="button" class="res-comment-btn" data-res-comments aria-label="View and add comments">' + BUBBLE + '<span data-comment-count>' + e.comments + '</span></button></div>';
+  }
+
+  function paintSocial(id, animateLike) {
+    var e = engOf(id);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-social="' + id + '"]'), function (box) {
+      var like = box.querySelector('[data-res-like]');
+      var wasLiked = like.classList.contains('is-liked');
+      like.classList.toggle('is-liked', e.liked);
+      like.setAttribute('aria-pressed', e.liked ? 'true' : 'false');
+      box.querySelector('[data-like-count]').textContent = e.likes;
+      box.querySelector('[data-comment-count]').textContent = e.comments;
+      if (animateLike && e.liked && !wasLiked && !reduceMotion) {
+        like.classList.remove('is-popping'); void like.offsetWidth; like.classList.add('is-popping');
+      }
+    });
+  }
+
+  function loadEngagement(rows) {
+    var ids = rows.filter(function (r) { return r.status === 'approved'; }).map(function (r) { return r.id; });
+    if (!ids.length) return;
+    supabaseClient.rpc('get_resource_engagement', { p_ids: ids }).then(function (res) {
+      if (res.error) { console.warn('Likes/comments unavailable (has migration 066 been run?):', res.error.message); return; }
+      (res.data || []).forEach(function (row) {
+        engagement[row.resource_id] = { likes: row.like_count, comments: row.comment_count, liked: !!row.liked_by_me };
+        paintSocial(row.resource_id, false);
+      });
+    }, function () { /* engagement is a nicety */ });
+  }
+
+  function toggleLike(id) {
+    var e = engOf(id);
+    var liked = !e.liked;
+    engagement[id] = { likes: Math.max(0, e.likes + (liked ? 1 : -1)), comments: e.comments, liked: liked };
+    paintSocial(id, true);
+    var req = liked
+      ? supabaseClient.from('resource_likes').insert({ resource_id: id })
+      : supabaseClient.from('resource_likes').delete().eq('resource_id', id).eq('user_id', userId);
+    req.then(function (res) {
+      // 23505 = already liked in another tab; the end state is what we wanted.
+      if (res.error && res.error.code !== '23505') {
+        engagement[id] = e;
+        paintSocial(id, false);
+        showToast("Couldn't update your like: " + res.error.message, true);
+      }
+    });
+  }
+
+  // ---- Comments (inside the preview dialog) ----
+  function commentHtml(c) {
+    var mine = c.author_id === userId;
+    return '<li class="res-comment" data-comment="' + escapeHtml(c.id) + '">' + avatarHtml(c.author_name, 'sm') +
+      '<div class="res-comment-body"><div class="res-comment-head"><strong>' + escapeHtml(c.author_name) + '</strong>' +
+      '<span>' + escapeHtml(timeAgo(c.created_at)) + '</span>' +
+      ((mine || isAdmin) ? '<button type="button" class="res-comment-del" data-comment-del aria-label="Delete comment">Delete</button>' : '') + '</div>' +
+      '<p>' + escapeHtml(c.body) + '</p></div></li>';
+  }
+
+  function wireComments(dlg, r, focusComments) {
+    var d = dlg.dialog;
+    var list = d.querySelector('#pv-comments');
+    var form = d.querySelector('#pv-comment-form');
+    var input = d.querySelector('#pv-comment-input');
+    var count = d.querySelector('#pv-comments-title');
+    var comments = [];
+
+    function paint() {
+      list.innerHTML = comments.length ? comments.map(commentHtml).join('') : '<li class="res-comments-empty">No comments yet - start the conversation.</li>';
+      count.textContent = 'Comments' + (comments.length ? ' (' + comments.length + ')' : '');
+      var e = engOf(r.id);
+      engagement[r.id] = { likes: e.likes, comments: comments.length, liked: e.liked };
+      paintSocial(r.id, false);
+    }
+
+    supabaseClient.from('resource_comments').select('*').eq('resource_id', r.id).order('created_at', { ascending: true }).then(function (res) {
+      if (res.error) { list.innerHTML = '<li class="res-comments-empty">Couldn\'t load comments - they may not be switched on yet.</li>'; form.hidden = true; return; }
+      comments = res.data || [];
+      paint();
+      if (focusComments) {
+        d.querySelector('.res-comments').scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' });
+        input.focus({ preventScroll: true });
+      }
+    });
+
+    input.addEventListener('input', function () {
+      d.querySelector('#pv-comment-count').textContent = input.value.length + ' / 1000';
+    });
+    input.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); }
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var body = input.value.trim();
+      if (!body) { input.focus(); return; }
+      var btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      supabaseClient.from('resource_comments').insert({ resource_id: r.id, body: body }).select().single().then(function (res) {
+        btn.disabled = false;
+        if (res.error || !res.data) { showToast("Couldn't post your comment: " + ((res.error && res.error.message) || 'try again'), true); return; }
+        comments.push(res.data);
+        input.value = '';
+        d.querySelector('#pv-comment-count').textContent = '0 / 1000';
+        paint();
+        var item = list.lastElementChild;
+        if (item) { item.classList.add('is-fresh'); item.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' }); }
+      });
+    });
+    list.addEventListener('click', function (e) {
+      var del = e.target.closest('[data-comment-del]');
+      if (!del) return;
+      var item = del.closest('[data-comment]');
+      var cid = item.getAttribute('data-comment');
+      if (!window.confirm('Delete this comment?')) return;
+      supabaseClient.from('resource_comments').delete().eq('id', cid).then(function (res) {
+        if (res.error) { showToast("Couldn't delete that: " + res.error.message, true); return; }
+        item.classList.add('is-leaving');
+        setTimeout(function () { comments = comments.filter(function (c) { return c.id !== cid; }); paint(); }, reduceMotion ? 0 : 220);
+      });
+    });
   }
 
   var rendered = {};
@@ -711,6 +864,7 @@
       Array.prototype.forEach.call(container.querySelectorAll('.res-thumb'), function (t) {
         if (!t.querySelector('img')) t.classList.remove('is-loading');
       });
+      loadEngagement(rows);
     });
   }
   // Fade thumbnails in as they load (load/error don't bubble, so capture).
@@ -724,7 +878,7 @@
   }, true);
 
   // ---- Dialog plumbing -----------------------------------------------------------
-  function openDialog(innerHtml, extraClass) {
+  function openDialog(innerHtml, extraClass, fromEl) {
     var previouslyFocused = document.activeElement;
     var backdrop = document.createElement('div');
     backdrop.className = 'guide-backdrop';
@@ -736,10 +890,22 @@
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
     document.body.classList.add('guide-open');
+    // Grow out of the card that was clicked: aim the scale-in at it.
+    if (fromEl && !reduceMotion) {
+      var fr = fromEl.getBoundingClientRect();
+      requestAnimationFrame(function () {
+        var dr = dialog.getBoundingClientRect();
+        var ox = Math.max(0, Math.min(100, ((fr.left + fr.width / 2 - dr.left) / dr.width) * 100));
+        var oy = Math.max(0, Math.min(100, ((fr.top + fr.height / 2 - dr.top) / dr.height) * 100));
+        dialog.style.transformOrigin = ox + '% ' + oy + '%';
+        dialog.classList.add('is-grow');
+      });
+    }
     requestAnimationFrame(function () {
       backdrop.classList.add('is-in');
-      var first = dialog.querySelector('[data-autofocus]') || dialog.querySelector('input, textarea, .ui-select-btn, button');
-      if (first) first.focus();
+      var first = dialog.querySelector('[data-autofocus]') || dialog.querySelector('input, textarea, .ui-select-btn, .res-like, button');
+      if (first && !(extraClass || '').match(/preview/)) first.focus();
+      else dialog.querySelector('.guide-close').focus();
     });
     var api = { dialog: dialog };
     function close() {
@@ -782,14 +948,22 @@
     });
   }
 
-  function previewResource(r) {
+  function previewResource(r, opts) {
+    opts = opts || {};
     var head = '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
       '<span class="guide-eyebrow">' + escapeHtml(TYPES[r.resource_type] || 'Resource') + ' · ' + escapeHtml(courseLabel(r.course)) + '</span>' +
-      '<h2 class="guide-title">' + escapeHtml(r.title) + '</h2>';
+      '<h2 class="guide-title">' + escapeHtml(r.title) + '</h2>' + bylineHtml(r, 'lg');
+    var social = r.status === 'approved'
+      ? '<div class="res-pv-social">' + socialHtml(r.id) + '</div>' +
+        '<section class="res-comments" aria-labelledby="pv-comments-title"><h3 id="pv-comments-title" class="res-comments-title">Comments</h3>' +
+        '<ul class="res-comment-list" id="pv-comments" aria-live="polite"><li class="res-comments-empty">Loading comments…</li></ul>' +
+        '<form id="pv-comment-form" class="res-comment-form" novalidate><label class="visually-hidden" for="pv-comment-input">Add a comment</label>' +
+        '<textarea id="pv-comment-input" maxlength="1000" rows="2" placeholder="Add a comment… (Ctrl+Enter to post)"></textarea>' +
+        '<div class="res-comment-actions"><span class="guide-count" id="pv-comment-count">0 / 1000</span><button type="submit" class="btn btn-primary res-btn">Post comment</button></div></form></section>'
+      : '<p class="res-meta res-meta--faint">Likes and comments open once this resource is approved.</p>';
     var foot = '<p class="res-desc res-desc--full">' + escapeHtml(r.description) + '</p>' +
-      '<p class="res-meta">Shared by <strong>' + escapeHtml(r.uploader_name) + '</strong>' + (r.uploader_detail ? ' · ' + escapeHtml(r.uploader_detail) : '') + '</p>' +
       (r.source_type === 'external' ? '<p class="res-meta res-meta--faint">External resource' + (r.source_credit ? ' - source: ' + escapeHtml(r.source_credit) : '') + '. Not created by LACMS - check it before relying on it.</p>' : '<p class="res-meta res-meta--faint">Created by the member who shared it.</p>') +
-      '<div class="guide-actions"><button type="button" class="btn btn-primary" data-pv-open>' + (r.kind === 'link' ? 'Open link' : 'Download') + '</button><button type="button" class="btn btn-outline" data-dialog-close>Close</button></div>';
+      '<div class="guide-actions"><button type="button" class="btn btn-primary" data-pv-open>' + (r.kind === 'link' ? 'Open link' : 'Download') + '</button><button type="button" class="btn btn-outline" data-dialog-close>Close</button></div>' + social;
 
     var dlg;
     if (r.kind === 'link') {
@@ -798,12 +972,12 @@
       var body = yt
         ? '<div class="res-embed"><iframe src="https://www.youtube-nocookie.com/embed/' + yt + '" title="' + escapeHtml(r.title) + '" loading="lazy" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen sandbox="allow-scripts allow-same-origin allow-presentation" referrerpolicy="no-referrer"></iframe></div>'
         : '<div class="res-embed res-embed--card"><div class="res-link-card">' + thumbHtml(r) + '<div><strong>' + escapeHtml(u ? u.hostname.replace(/^www\./, '') : '') + '</strong><span>Opens in a new tab - a website outside LACMS.</span></div></div></div>';
-      dlg = openDialog(head + body + foot);
-      wirePreviewOpen(dlg, r);
+      dlg = openDialog(head + body + foot, 'res-dialog--preview', opts.from);
+      wirePreviewOpen(dlg, r, opts);
       return;
     }
-    dlg = openDialog(head + '<div class="res-embed res-embed--loading" id="pv-slot"><span class="auth-gate-spinner" aria-hidden="true"></span></div>' + foot);
-    wirePreviewOpen(dlg, r);
+    dlg = openDialog(head + '<div class="res-embed res-embed--loading" id="pv-slot"><span class="auth-gate-spinner" aria-hidden="true"></span></div>' + foot, 'res-dialog--preview', opts.from);
+    wirePreviewOpen(dlg, r, opts);
     var ext = extOf(r.file_name);
     signedUrl(r.file_path).then(function (url) {
       var slot = dlg.dialog.querySelector('#pv-slot');
@@ -821,8 +995,13 @@
       } else { slot.classList.add('res-embed--card'); slot.innerHTML = noPreview; }
     });
   }
-  function wirePreviewOpen(dlg, r) {
+  function wirePreviewOpen(dlg, r, opts) {
     dlg.dialog.querySelector('[data-pv-open]').addEventListener('click', function () { openResource(r); });
+    if (r.status === 'approved') {
+      wireComments(dlg, r, !!(opts && opts.focusComments));
+      var likeBtn = dlg.dialog.querySelector('[data-res-like]');
+      if (likeBtn) likeBtn.addEventListener('click', function () { toggleLike(r.id); });
+    }
   }
 
   // ---- Delete / approve / reject ----------------------------------------------------
@@ -1127,10 +1306,16 @@
       more.setAttribute('aria-expanded', open ? 'true' : 'false');
       return;
     }
+    var like = e.target.closest('[data-res-like]');
+    if (like) { var lr = cardFromEvent(e); if (lr) toggleLike(lr.id); return; }
     var r = cardFromEvent(e);
     if (!r) return;
-    if (e.target.closest('[data-res-preview]')) previewResource(r);
-    else if (e.target.closest('[data-res-open]')) openResource(r);
+    var cardEl = e.target.closest('.res-card');
+    if (e.target.closest('[data-res-comments]')) { previewResource(r, { from: cardEl, focusComments: true }); return; }
+    if (e.target.closest('[data-res-preview]')) { previewResource(r, { from: cardEl }); return; }
+    // Anywhere else on the card (not a control / link) opens the full preview.
+    if (!e.target.closest('button, a, input, select, textarea, .ui-select, .res-more') && window.getSelection().toString() === '') { previewResource(r, { from: cardEl }); return; }
+    if (e.target.closest('[data-res-open]')) openResource(r);
     else if (e.target.closest('[data-res-approve]')) reviewResource(r, 'approved');
     else if (e.target.closest('[data-res-reject]')) openRejectDialog(r);
     else if (e.target.closest('[data-res-edit]')) openShareDialog(r);
@@ -1157,6 +1342,19 @@
     $('res-clear-filters').addEventListener('click', function () { resetFilters(); renderCourseList(); });
     $('res-list').addEventListener('click', onListClick);
     $('res-recent').addEventListener('click', onListClick);
+    [$('res-list'), $('res-recent')].forEach(function (box) {
+      box.addEventListener('pointerdown', function (e) {
+        var card = e.target.closest('.res-card');
+        if (!card || e.target.closest('button, a, input, select, textarea') || reduceMotion) return;
+        var rect = card.getBoundingClientRect();
+        var rip = document.createElement('span');
+        rip.className = 'res-ripple';
+        rip.style.left = (e.clientX - rect.left) + 'px';
+        rip.style.top = (e.clientY - rect.top) + 'px';
+        card.appendChild(rip);
+        setTimeout(function () { rip.remove(); }, 650);
+      });
+    });
     $('res-empty').addEventListener('click', function (e) {
       if (e.target.closest('[data-res-share]')) openShareDialog(null);
       else if (e.target.closest('[data-res-clear]')) { resetFilters(); renderCourseList(); }
