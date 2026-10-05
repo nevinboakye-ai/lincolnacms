@@ -8,11 +8,10 @@
 //     (7 / 30 / 90 days), who liked it, who unlocked it (PIN-protected ones),
 //     the audience by course, a recent-activity timeline, and a CSV export.
 //
-// Only the uploader can read any of it - the database checks (see 074).
-// Views, downloads and clicks are counts only (nobody is named); names appear
-// for likes and unlocks, which people did to their resource on purpose.
-// Sixth-form students are shown as "Sixth form student" unless the viewer is
-// an executive.
+// Only the uploader can read any of it - the database checks (see 074/075).
+// Likes, downloads, link clicks and unlocks name the person (members are told
+// in the resource preview); views are counts only. Sixth-form students are
+// shown as "Sixth form student" unless the viewer is an executive.
 //
 // Everything degrades quietly: if migration 074 hasn't been run, nothing is
 // recorded and no insights UI appears. This file talks to js/resources.js
@@ -216,7 +215,7 @@
       '<div data-ins-body><div class="res-ins-loading"><span class="auth-gate-spinner" aria-hidden="true"></span><span>Loading insights…</span></div></div>',
       'res-dialog--insights');
     var body = dlg.dialog.querySelector('[data-ins-body]');
-    var state = { range: 30, metric: 'views', data: null, showAllLikes: false };
+    var state = { range: 30, metric: 'views', data: null, showAllLikes: false, showAllOpeners: false };
 
     function load() {
       return supabaseClient.rpc('get_resource_insight_detail', { p_id: r.id, p_days: 90 }).then(function (res) {
@@ -276,15 +275,19 @@
 
         '<div class="res-ins-cols">' +
           '<section class="res-ins-card" aria-labelledby="ins-likes-title"><div class="res-ins-card-head"><h3 id="ins-likes-title">Who liked it</h3><span class="res-ins-count">' + fmt(n(t.likes)) + '</span></div>' + likersHtml(d.likers) + '</section>' +
-          '<section class="res-ins-card" aria-labelledby="ins-aud-title"><div class="res-ins-card-head"><h3 id="ins-aud-title">Who it reached</h3></div>' + audienceHtml(d.audience) + '</section>' +
+          '<section class="res-ins-card" aria-labelledby="ins-open-title"><div class="res-ins-card-head"><h3 id="ins-open-title">' + (isLink ? 'Who clicked the link' : 'Who downloaded it') + '</h3><span class="res-ins-count">' + fmt(opens) + '</span></div>' +
+            peopleList(d.openers || [], isLink ? 'Nobody has clicked your link yet.' : 'Nobody has downloaded it yet.', true) + '</section>' +
         '</div>' +
 
-        (locked
-          ? '<section class="res-ins-card" aria-labelledby="ins-unl-title"><div class="res-ins-card-head"><h3 id="ins-unl-title">Who unlocked it</h3><span class="res-ins-count">' + fmt(n(t.unlocks)) + '</span></div>' +
-            peopleList(d.unlockers, 'Nobody has entered your PIN yet.') +
-            (n(t.failed_pins) ? '<p class="res-ins-note">' + esc(plural(n(t.failed_pins), 'wrong PIN try', 'wrong PIN tries')) + ' recorded.</p>' : '') +
-            '<p class="res-ins-note">Changing the PIN signs everyone out of it until they get the new one.</p></section>'
-          : '') +
+        '<div class="res-ins-cols">' +
+          '<section class="res-ins-card" aria-labelledby="ins-aud-title"><div class="res-ins-card-head"><h3 id="ins-aud-title">Who it reached</h3><span class="res-ins-count">' + fmt(n(t.unique_viewers)) + '</span></div>' + audienceHtml(d.audience) + '<p class="res-ins-note">Views are counts only - viewers aren\'t named.</p></section>' +
+          (locked
+            ? '<section class="res-ins-card" aria-labelledby="ins-unl-title"><div class="res-ins-card-head"><h3 id="ins-unl-title">Who unlocked it</h3><span class="res-ins-count">' + fmt(n(t.unlocks)) + '</span></div>' +
+              peopleList(d.unlockers, 'Nobody has entered your PIN yet.') +
+              (n(t.failed_pins) ? '<p class="res-ins-note">' + esc(plural(n(t.failed_pins), 'wrong PIN try', 'wrong PIN tries')) + ' recorded.</p>' : '') +
+              '<p class="res-ins-note">Changing the PIN signs everyone out of it until they get the new one.</p></section>'
+            : '') +
+        '</div>' +
 
         '<section class="res-ins-card" aria-labelledby="ins-act-title"><div class="res-ins-card-head"><h3 id="ins-act-title">Recent activity</h3></div>' + activityHtml(d.activity, isLink) + '</section>' +
 
@@ -292,7 +295,7 @@
           '<button type="button" class="btn btn-outline" data-ins-csv>Download CSV</button>' +
           '<button type="button" class="btn btn-outline" data-ins-refresh>' + icon('refresh') + 'Refresh</button>' +
           '<button type="button" class="btn btn-primary" data-dialog-close>Close</button></div>' +
-        '<p class="res-ins-fine">Views, downloads and clicks are counts only - nobody is named. Your own activity isn\'t counted. Likes show who liked it; sixth-form students appear anonymously.</p>';
+        '<p class="res-ins-fine">You can see who liked, downloaded or clicked your resource (members are told this on the resource). Views are counts only. Your own activity isn\'t counted, and sixth-form students appear anonymously.</p>';
 
       Array.prototype.forEach.call(body.querySelectorAll('[data-count-to]'), function (el) {
         var to = n(el.getAttribute('data-count-to'));
@@ -305,11 +308,15 @@
       var shown = state.showAllLikes ? list : list.slice(0, 6);
       return peopleList(shown, '') + (list.length > 6 ? '<button type="button" class="res-ins-more" data-ins-morelikes>' + (state.showAllLikes ? 'Show fewer' : 'Show all ' + list.length) + '</button>' : '');
     }
-    function peopleList(list, emptyText) {
+    function peopleList(list, emptyText, withCount) {
       if (!list.length) return '<p class="res-ins-empty">' + esc(emptyText) + '</p>';
-      return '<ul class="res-ins-people">' + list.map(function (p) {
-        return '<li>' + a.avatarHtml(p.name, 'sm') + '<span class="res-ins-person"><strong>' + esc(p.name) + '</strong>' + (p.detail ? '<small>' + esc(p.detail) + '</small>' : '') + '</span><time datetime="' + esc(p.at) + '">' + esc(a.timeAgo(p.at)) + '</time></li>';
-      }).join('') + '</ul>';
+      var shown = withCount && !state.showAllOpeners ? list.slice(0, 6) : list;
+      return '<ul class="res-ins-people">' + shown.map(function (p) {
+        return '<li>' + a.avatarHtml(p.name, 'sm') + '<span class="res-ins-person"><strong>' + esc(p.name) + '</strong>' + (p.detail ? '<small>' + esc(p.detail) + '</small>' : '') + '</span>' +
+          (withCount && n(p.count) > 1 ? '<span class="res-ins-times" title="' + esc(plural(n(p.count), 'time', 'times')) + '">' + n(p.count) + '&times;</span>' : '') +
+          '<time datetime="' + esc(p.at) + '">' + esc(a.timeAgo(p.at)) + '</time></li>';
+      }).join('') + '</ul>' +
+        (withCount && list.length > 6 ? '<button type="button" class="res-ins-more" data-ins-moreopeners>' + (state.showAllOpeners ? 'Show fewer' : 'Show all ' + list.length) + '</button>' : '');
     }
     function audienceHtml(list) {
       if (!list.length) return '<p class="res-ins-empty">Nobody has viewed it yet.</p>';
@@ -340,6 +347,8 @@
       d.daily.forEach(function (x) { lines.push([x.day, x.views, x.opens, x.likes, x.comments].join(',')); });
       lines.push('', ['Who liked it', 'Detail', 'When'].join(','));
       d.likers.forEach(function (p) { lines.push([p.name, p.detail, p.at].map(cell).join(',')); });
+      lines.push('', [d.resource.kind === 'link' ? 'Who clicked the link' : 'Who downloaded it', 'Detail', 'Times', 'Last'].join(','));
+      (d.openers || []).forEach(function (p) { lines.push([p.name, p.detail, p.count, p.at].map(cell).join(',')); });
       var blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
       var url = URL.createObjectURL(blob);
       var link = document.createElement('a');
@@ -374,6 +383,7 @@
       var tab = e.target.closest('[data-ins-metric]');
       if (tab) { state.metric = tab.getAttribute('data-ins-metric'); render(); return; }
       if (e.target.closest('[data-ins-morelikes]')) { state.showAllLikes = !state.showAllLikes; render(); return; }
+      if (e.target.closest('[data-ins-moreopeners]')) { state.showAllOpeners = !state.showAllOpeners; render(); return; }
       if (e.target.closest('[data-ins-csv]')) { csv(); return; }
       if (e.target.closest('[data-ins-refresh]')) {
         body.querySelector('[data-ins-refresh]').disabled = true;

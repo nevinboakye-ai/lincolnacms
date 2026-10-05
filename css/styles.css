@@ -8973,3 +8973,4 @@ body.has-chat-dock .back-to-top { right: calc(var(--space-4) + 68px + env(safe-a
   .chat-dock { transition: opacity 0.1s linear; transform: none; }
   .chat-launcher.is-ping { animation: none; }
 }
+.res-ins-times { flex: 0 0 auto; padding: 1px 8px; border-radius: 999px; background: rgba(var(--gold-rgb), 0.16); color: var(--color-gold-light); font-size: 0.7rem; font-weight: 700; }

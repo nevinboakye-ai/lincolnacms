@@ -844,7 +844,7 @@
   function socialHtml(id) {
     var e = engOf(id);
     return '<div class="res-social" data-social="' + escapeHtml(id) + '">' +
-      '<button type="button" class="res-like' + (e.liked ? ' is-liked' : '') + '" data-res-like aria-pressed="' + (e.liked ? 'true' : 'false') + '" aria-label="Like this resource" title="Like - the person who shared it can see who liked it">' +
+      '<button type="button" class="res-like' + (e.liked ? ' is-liked' : '') + '" data-res-like aria-pressed="' + (e.liked ? 'true' : 'false') + '" aria-label="Like this resource" title="Like - the person who shared it can see who liked it, downloaded it or opened it">' +
       '<span class="res-like-icon">' + HEART + '<span class="res-burst" aria-hidden="true"></span></span><span class="res-like-count" data-like-count>' + e.likes + '</span></button>' +
       '<button type="button" class="res-comment-btn" data-res-comments aria-label="View and add comments">' + BUBBLE + '<span data-comment-count>' + e.comments + '</span></button></div>';
   }
@@ -1391,6 +1391,7 @@
       : '<p class="res-meta res-meta--faint">Likes and comments open once this resource is approved.</p>';
     var foot = '<p class="res-desc res-desc--full">' + escapeHtml(r.description) + '</p>' +
       (r.source_type === 'external' ? '<p class="res-meta res-meta--faint">External resource' + (r.source_credit ? ' - source: ' + escapeHtml(r.source_credit) : '') + '. Not created by LACMS - check it before relying on it.</p>' : '<p class="res-meta res-meta--faint">Created by the member who shared it.</p>') +
+      (r.status === 'approved' && r.uploader_id !== userId ? '<p class="res-meta res-meta--faint res-privacy-note">The person who shared this can see who likes, downloads or opens it.</p>' : '') +
       '<div class="guide-actions">' + (isLockedOut(r) ? '' : '<button type="button" class="btn btn-primary" data-pv-open>' + (r.kind === 'link' ? 'Open link' : 'Download') + '</button>') + '<button type="button" class="btn btn-outline" data-dialog-close>Close</button></div>' + social;
 
     var dlg;

@@ -1331,6 +1331,8 @@ Run [`db/migrations/072-sixth-form-blurred-and-no-messaging.sql`](db/migrations/
 - A metrics row on each card (views, downloads or clicks, likes, comments, and unlocks for PIN-protected ones).
 - An **Insights** window per resource: headline numbers (views, people reached, downloads/clicks, likes, comments, unlocks and wrong PIN tries), a day-by-day chart for 7, 30 or 90 days (views / downloads & clicks / likes, hover or tab to a day for the exact figure), **who liked it**, **who unlocked it** (PIN-protected only), the audience by course, recent activity, and **Download CSV**.
 
+**Update (section 126): the person who shared a resource can now also see who downloaded it or clicked its link.** The paragraph below describes the original counts-only design.
+
 **Privacy:** only the person who shared a resource can read its insights - the database checks, so not even executives or the president can read someone else's. Views, downloads and clicks are counts only (the audience is aggregated by course and the activity timeline doesn't name anyone for those). Names appear only for likes, comments and unlocks - things people did to that resource on purpose. Sixth-form students always appear as "Sixth form student" unless the person looking is an executive. **Likes used to be anonymous; now the person who shared a resource can see who liked it** - the like button's tooltip says so. Event rows are never readable from the browser, and there's no pruning, so the table simply grows (an index keeps it fast; ask if you ever want old events trimmed).
 
 ## 125. Messages anywhere: the floating chat dock
@@ -1340,3 +1342,9 @@ Needs migration 070 (and nothing new). On every page except the Network page and
 It remembers: if it was open (and on which conversation) it comes back after moving to another page. Everything else on the site that used to send people to the Network page now opens the dock in place: the chat icon beside the bell, a message pop-up ("Amara: ..." - and there's no pop-up for the conversation you're already looking at), and "Message them for the PIN" on a PIN-protected resource (which pre-fills the request but never sends it). On the Network page itself nothing changes - it stays the Messages tab.
 
 To keep every page light, the dock fetches only the unread count until it's opened (or a message arrives); the conversation list loads the first time it's opened. The back-to-top button shifts left to make room for the launcher.
+
+## 126. Insights: who liked, downloaded or clicked
+
+Run [`db/migrations/075-resource-insights-who.sql`](db/migrations/075-resource-insights-who.sql) (needs 074). In a resource's Insights window the person who shared it now sees **who** downloaded it (or clicked its link) as well as who liked it: name and course/year or title, how many times each person did it (shown as a gold "3x" tag), and when they last did, newest first, with Show all for long lists. Names also appear on download and click entries in the Recent activity timeline, and the CSV export has a "Who downloaded it" / "Who clicked the link" section. Views stay counts only, and the "Who it reached" breakdown stays an anonymous count by course. As before, only the person who shared a resource can see any of this, their own activity isn't counted, and sixth-form students appear as "Sixth form student" unless the viewer is an executive.
+
+Members are told: the preview of anyone else's approved resource now says "The person who shared this can see who likes, downloads or opens it", and the like button's tooltip says the same.
