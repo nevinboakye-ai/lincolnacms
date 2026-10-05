@@ -7,7 +7,7 @@
 <title>LACMS Resources - LACMS</title>
 <meta name="description" content="Study resources shared by LACMS members - notes, past papers, websites and more, organised by course.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-89">
+<link rel="stylesheet" href="css/styles.css?v=20260824-90">
 </head>
 <body>
 
@@ -116,9 +116,17 @@
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Share a resource
           </button>
-          <div class="res-toolbar-links">
-            <button type="button" class="link-button" id="res-mine-link">My submissions <span class="res-count-pill" id="res-mine-count" hidden></span></button>
-            <button type="button" class="link-button" id="res-review-link" hidden>Review queue <span class="res-count-pill res-count-pill--alert" id="res-review-count" hidden></span></button>
+          <div class="res-toolbar-links" role="group" aria-label="Your resources">
+            <button type="button" class="res-nav-btn" id="res-mine-link">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+              <span>My submissions</span>
+              <span class="res-count-pill" id="res-mine-count" hidden></span>
+            </button>
+            <button type="button" class="res-nav-btn res-nav-btn--review" id="res-review-link" hidden>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+              <span>Review queue</span>
+              <span class="res-count-pill res-count-pill--alert" id="res-review-count" hidden></span>
+            </button>
           </div>
         </div>
 
@@ -238,10 +246,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-89"></script>
-<script src="js/members.js?v=20260824-89"></script>
-<script src="js/notifications.js?v=20260824-89"></script>
-<script src="js/guidance.js?v=20260824-89"></script>
-<script src="js/resources.js?v=20260824-89"></script>
+<script src="js/main.js?v=20260824-90"></script>
+<script src="js/members.js?v=20260824-90"></script>
+<script src="js/notifications.js?v=20260824-90"></script>
+<script src="js/guidance.js?v=20260824-90"></script>
+<script src="js/resources.js?v=20260824-90"></script>
 </body>
 </html>

@@ -140,6 +140,7 @@
       // The section being viewed right now is by definition seen.
       var here = sectionForPage();
       if (here) delete next[here.key];
+      toastForIncreases(next);
       counts = next;
       writeCache();
       return true;
@@ -225,6 +226,7 @@
     els.markAll.addEventListener('click', function () {
       epoch++;
       counts = {};
+      liveSeen = {};
       writeCache();
       render();
       markSeen(null);
@@ -305,6 +307,163 @@
     renderPills();
   }
 
+  // ---- Live pop-ups ---------------------------------------------------
+  // Anything new that arrives while someone is on the site slides up from
+  // the bottom of the screen, whatever page they're on: direct messages
+  // (Realtime, migration 070), and new content in any bell section (counted
+  // by get_my_notifications - Realtime nudges it to check straight away when
+  // migration 071 is run, otherwise the regular poll picks it up). The
+  // Network page's own chat shows message pop-ups itself, so those are
+  // skipped there to avoid doubling up.
+  var TOAST_ICONS = {
+    message: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.3A8.4 8.4 0 1 1 21 11.5z"/>',
+    bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'
+  };
+  var MAX_TOASTS = 3;
+  var TOAST_MS = 8000;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var toastHost = null;
+  var toastsByKey = {};
+  var liveSeen = null;          // section -> count at the previous check (null until the first one)
+  var liveChannels = [];
+  var convInfo = {};            // conversation id -> { name, muted }
+  var ownsMessageToasts = !!document.getElementById('network-messages');
+
+  function toastContainer() {
+    if (toastHost && document.body.contains(toastHost)) return toastHost;
+    toastHost = document.createElement('div');
+    toastHost.className = 'live-toasts';
+    toastHost.setAttribute('role', 'region');
+    toastHost.setAttribute('aria-label', 'Live notifications');
+    toastHost.setAttribute('aria-live', 'polite');
+    document.body.appendChild(toastHost);
+    return toastHost;
+  }
+
+  function dismissToast(node) {
+    if (!node || node.getAttribute('data-leaving')) return;
+    node.setAttribute('data-leaving', '1');
+    if (node.getAttribute('data-key')) delete toastsByKey[node.getAttribute('data-key')];
+    node.classList.remove('is-in');
+    setTimeout(function () { node.remove(); }, reduceMotion ? 0 : 260);
+  }
+
+  // opts: { key, kind: 'message'|'bell', title, body, href, count }
+  function showLiveToast(opts) {
+    var host = toastContainer();
+    var existing = opts.key && toastsByKey[opts.key];
+    var count = opts.count || 1;
+    var node = existing;
+    if (existing) {
+      count = (parseInt(existing.getAttribute('data-count'), 10) || 1) + 1;
+    } else {
+      node = document.createElement('div');
+      node.className = 'live-toast live-toast--' + opts.kind;
+      if (opts.key) { node.setAttribute('data-key', opts.key); toastsByKey[opts.key] = node; }
+      host.appendChild(node);
+      requestAnimationFrame(function () { requestAnimationFrame(function () { node.classList.add('is-in'); }); });
+      while (host.children.length > MAX_TOASTS) dismissToast(host.firstElementChild);
+    }
+    node.setAttribute('data-count', count);
+    node.innerHTML =
+      '<a class="live-toast-link" href="' + escapeHtml(opts.href) + '">' +
+        '<span class="live-toast-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (TOAST_ICONS[opts.kind] || TOAST_ICONS.bell) + '</svg></span>' +
+        '<span class="live-toast-main"><span class="live-toast-title">' + escapeHtml(opts.title) +
+          (count > 1 && opts.kind === 'message' ? '<span class="live-toast-count">' + count + ' new</span>' : '') + '</span>' +
+        '<span class="live-toast-body">' + escapeHtml(opts.body) + '</span></span>' +
+      '</a>' +
+      '<button type="button" class="live-toast-close" aria-label="Dismiss notification"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>' +
+      '<span class="live-toast-bar" aria-hidden="true"></span>';
+    node.querySelector('.live-toast-close').addEventListener('click', function () { dismissToast(node); });
+    node.querySelector('.live-toast-link').addEventListener('click', function () { dismissToast(node); });
+    var bar = node.querySelector('.live-toast-bar');
+    if (reduceMotion) {
+      clearTimeout(node._timer);
+      node._timer = setTimeout(function () { dismissToast(node); }, TOAST_MS);
+    } else {
+      // The bar's CSS animation is the timer: it pauses on hover/focus and
+      // dismisses when it finishes.
+      bar.style.animationDuration = TOAST_MS + 'ms';
+      bar.addEventListener('animationend', function () { dismissToast(node); });
+    }
+  }
+
+  // New content in a bell section (called with the previous and new counts).
+  function toastForIncreases(next) {
+    var prev = liveSeen;
+    liveSeen = {};
+    SECTIONS.forEach(function (s) { liveSeen[s.key] = next[s.key] ? next[s.key].count : 0; });
+    if (prev === null) return; // first check on this page: just the baseline
+    SECTIONS.forEach(function (s) {
+      var now = liveSeen[s.key];
+      var before = prev[s.key] || 0;
+      if (now <= before) return;
+      var added = now - before;
+      var latest = next[s.key] && next[s.key].title;
+      showLiveToast({
+        key: 'section:' + s.key, kind: 'bell', title: s.label,
+        body: added === 1 ? (s.singular.charAt(0).toUpperCase() + s.singular.slice(1)) + (latest ? ': ' + latest : '') : added + ' ' + s.plural + (latest ? ' - latest: ' + latest : ''),
+        href: s.href
+      });
+    });
+  }
+
+  function loadConvInfo() {
+    return supabaseClient.rpc('chat_get_conversations').then(function (res) {
+      if (res.error) return;
+      (res.data || []).forEach(function (r) { convInfo[r.conversation_id] = { name: r.other_name, muted: !!r.muted }; });
+    }, function () {});
+  }
+
+  function onLiveMessage(payload) {
+    var r = payload && payload.new;
+    if (!r || !userId || r.sender_id === userId) return;
+    fetchChat();
+    if (ownsMessageToasts) return; // the Network page's chat handles its own
+    var show = function () {
+      var info = convInfo[r.conversation_id];
+      if (info && info.muted) return;
+      showLiveToast({
+        key: 'conv:' + r.conversation_id, kind: 'message', title: info ? info.name : 'New message',
+        body: String(r.body || '').replace(/\s+/g, ' ').slice(0, 110),
+        href: 'member-network.html#messages/' + r.conversation_id
+      });
+    };
+    if (convInfo[r.conversation_id]) show();
+    else loadConvInfo().then(show);
+  }
+
+  var contentTables = ['announcements', 'discounts', 'member_opportunities', 'site_events', 'news_posts', 'motm_winners', 'gallery_photos', 'mmg_updates', 'mmg_attendee_updates', 'mmg_perks', 'resources'];
+  var liveNudgeTimer = null;
+  function nudgeRefresh() {
+    clearTimeout(liveNudgeTimer);
+    liveNudgeTimer = setTimeout(refresh, 900);
+  }
+
+  function startLive() {
+    if (!supabaseClient.channel || liveChannels.length) return;
+    try {
+      liveChannels.push(supabaseClient.channel('live-msgs-' + userId)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, onLiveMessage)
+        .subscribe());
+    } catch (e) { /* polling still covers content */ }
+    try {
+      var ch = supabaseClient.channel('live-content-' + userId);
+      contentTables.forEach(function (t) {
+        ch = ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: t }, nudgeRefresh);
+      });
+      ch = ch.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'resources' }, nudgeRefresh);
+      liveChannels.push(ch.subscribe());
+    } catch (e) { /* ignore */ }
+  }
+  function stopLive() {
+    liveChannels.forEach(function (c) { try { supabaseClient.removeChannel(c); } catch (e) { /* ignore */ } });
+    liveChannels = [];
+    liveSeen = null;
+    toastsByKey = {};
+    if (toastHost) { toastHost.remove(); toastHost = null; }
+  }
+
   // ---- Direct messages ------------------------------------------------
   var chatState = { can: false, unread: 0 };
   function renderChat() {
@@ -381,6 +540,7 @@
     userId = null;
     counts = null;
     chatState = { can: false, unread: 0 };
+    stopLive();
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     if (els) {
       els.button.remove();
@@ -423,6 +583,7 @@
     }
     ready.then(function () { return refresh(); });
     startPolling();
+    startLive();
   }
 
   supabaseClient.auth.getSession().then(function (result) {
