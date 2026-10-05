@@ -1257,3 +1257,11 @@ Front-end only (uses the likes/comments from migration 066). The sort dropdown o
 ## 117. Resources: PDF preview fits the full page width (mobile fix)
 
 Front-end only. On phones the browser's built-in PDF viewer inside the preview popup opened heavily zoomed in. PDFs are now drawn with PDF.js (loaded on demand from cdnjs) onto canvases sized to the popup's full width, so each page is visible edge to edge from the start, in a tall scrolling area with a "Page X of N" indicator and **-** / **Fit** / **+** zoom buttons (zoomed pages scroll sideways). Pages render lazily as they scroll into view and re-fit if the phone is rotated. If PDF.js can't load (offline, blocked), it falls back to the browser's own viewer. The popup itself is also roomier on phones (smaller padding, near-edge-to-edge), image previews size to the width instead of being letterboxed, and video embeds use 16:9.
+
+## 118. "New" tag on pages someone has recently been given access to
+
+Optionally run [`db/migrations/068-user-ui-state-access-seen.sql`](db/migrations/068-user-ui-state-access-seen.sql) (needs 062) so this follows people across devices; without it, it works per browser.
+
+When a person is given access to something - by widening a Hub Access rule, or by a per-person override - a gold pulsing **New** tag appears on that card on their Members Hub: Discounts & opportunities, Sankofa, the Network, Member of the Month nominations, LACMS Resources, and (on the hub's dashboard card, and on the individual section cards inside the dashboard) any dashboard section they've been given. The tag clears when they open that page (clicking its card, or arriving at the page by any route) or after 14 days, whichever comes first.
+
+How it works: there's no per-person "granted on" date in the database (access comes from rules that look at someone's role, course and so on), so the site remembers, per person, when each feature *first showed up as allowed* for them. The first time it runs for someone it records everything they already have as a baseline - so nobody sees a wall of "New" tags when this ships, and brand-new accounts start clean - and from then on anything that becomes allowed is tagged. If access is removed and later given back, it counts as new again.

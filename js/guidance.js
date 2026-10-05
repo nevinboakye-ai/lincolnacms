@@ -720,6 +720,120 @@
     });
   }
 
+
+  // =======================================================================
+  // 4. "New" tags on pages someone has recently been given access to.
+  // =======================================================================
+  // Access is decided by the Hub Access rules (and per-person overrides), so
+  // there's no per-user "granted on" date in the database. Instead this
+  // remembers, per person (user_ui_state key hub_access_seen), when each
+  // feature FIRST showed up as allowed for them. The first time it runs it
+  // records everything they already have as "baseline" (not new); after
+  // that, any feature that becomes allowed is tagged "New" until they open
+  // it or 14 days pass. Losing access and getting it back counts as new.
+  var NEW_ACCESS_DAYS = 14;
+  var ACCESS_PAGES = { 'member-perks.html': 'perks', 'member-sankofa.html': 'sankofa', 'member-network.html': 'network', 'member-resources.html': 'resources' };
+  var HUB_ACCESS_CARDS = { perks: 'perks-card', sankofa: 'sankofa-apply-card', network: 'network-card', resources: 'resources-card', motm_nominate: 'motm-nominate-card' };
+  var DASH_SECTION_FOR = { dash_mmg: 'mmg', dash_sankofa: 'sankofa', dash_motm: 'motm', dash_events: 'events', dash_gallery: 'gallery' };
+  var accessSeen = null;
+
+  function saveAccessSeen() { return setState('hub_access_seen', accessSeen); }
+
+  function trackAccess(ctx) {
+    var st = getState('hub_access_seen') || {};
+    accessSeen = { baselined: !!st.baselined, first: st.first || {}, opened: st.opened || {} };
+    if (!ctx.access) return;
+    var now = new Date().toISOString();
+    var changed = false;
+    Object.keys(ctx.access).forEach(function (f) {
+      if (ctx.access[f]) {
+        if (!accessSeen.first[f]) { accessSeen.first[f] = accessSeen.baselined ? now : 'baseline'; changed = true; }
+      } else if (accessSeen.first[f]) {
+        delete accessSeen.first[f];
+        delete accessSeen.opened[f];
+        changed = true;
+      }
+    });
+    if (!accessSeen.baselined) { accessSeen.baselined = true; changed = true; }
+    // Landing on the feature's own page counts as opening it.
+    var here = ACCESS_PAGES[page];
+    if (here && accessSeen.first[here] && accessSeen.first[here] !== 'baseline' && !accessSeen.opened[here]) {
+      accessSeen.opened[here] = now;
+      changed = true;
+    }
+    if (changed) saveAccessSeen();
+  }
+
+  function isNewAccess(f) {
+    var t = accessSeen && accessSeen.first[f];
+    if (!t || t === 'baseline' || accessSeen.opened[f]) return false;
+    return Date.now() - new Date(t).getTime() < NEW_ACCESS_DAYS * 86400000;
+  }
+  function anyNewDash() {
+    return Object.keys(DASH_SECTION_FOR).some(isNewAccess) && !(accessSeen.opened.dash_card);
+  }
+
+  function waitFor(test, then) {
+    var tries = 0;
+    (function attempt() {
+      var ok = false;
+      try { ok = test(); } catch (e) { ok = false; }
+      if (ok) { then(); return; }
+      if (++tries < 80) setTimeout(attempt, 250);
+    })();
+  }
+
+  function addNewTag(host, key, where) {
+    if (!host || host.querySelector('.new-access-tag')) return;
+    var tag = el('span', 'new-access-tag', '<span class="new-access-dot" aria-hidden="true"></span>New');
+    tag.setAttribute('title', 'You were recently given access to this');
+    host.setAttribute('data-new-feature', key);
+    if (where) where(tag); else host.insertBefore(tag, host.firstChild);
+  }
+
+  function tagNewAccess() {
+    if (!accessSeen) return;
+    if (page === HUB) {
+      waitFor(function () { var l = document.getElementById('member-hub-content-links'); return l && l.style.display !== 'none'; }, function () {
+        Object.keys(HUB_ACCESS_CARDS).forEach(function (f) {
+          if (!isNewAccess(f)) return;
+          var card = document.getElementById(HUB_ACCESS_CARDS[f]);
+          if (!card || card.style.display === 'none') return;
+          var firstTag = card.querySelector('.card-tag');
+          addNewTag(card, f, function (tag) { if (firstTag) firstTag.parentNode.insertBefore(tag, firstTag.nextSibling); else card.insertBefore(tag, card.firstChild); });
+        });
+        var dashCard = document.getElementById('president-dashboard-card');
+        if (dashCard && dashCard.style.display !== 'none' && anyNewDash()) {
+          var dTag = dashCard.querySelector('.card-tag');
+          addNewTag(dashCard, 'dash_card', function (tag) { if (dTag) dTag.parentNode.insertBefore(tag, dTag.nextSibling); else dashCard.insertBefore(tag, dashCard.firstChild); });
+        }
+      });
+    } else if (page === 'president-dashboard.html') {
+      waitFor(function () { var c = document.getElementById('president-content'); return c && c.style.display !== 'none'; }, function () {
+        Object.keys(DASH_SECTION_FOR).forEach(function (f) {
+          if (!isNewAccess(f)) return;
+          var card = document.querySelector('[data-dash-section="' + DASH_SECTION_FOR[f] + '"]');
+          if (!card || card.style.display === 'none') return;
+          var title = card.querySelector('.dash-nav-card-title');
+          addNewTag(card, f, function (tag) { if (title) title.appendChild(tag); else card.insertBefore(tag, card.firstChild); });
+        });
+      });
+    }
+  }
+
+  // Clicking a tagged card counts as opening it (saved locally straight
+  // away, since the page is about to navigate).
+  document.addEventListener('click', function (e) {
+    var host = e.target.closest && e.target.closest('[data-new-feature]');
+    if (!host || !accessSeen) return;
+    var key = host.getAttribute('data-new-feature');
+    accessSeen.opened[key] = new Date().toISOString();
+    var tag = host.querySelector('.new-access-tag');
+    if (tag) tag.remove();
+    host.removeAttribute('data-new-feature');
+    saveAccessSeen();
+  }, true);
+
   // ---- Wiring -------------------------------------------------------------
   function revealTourLinks() {
     document.querySelectorAll('[data-start-tour]').forEach(function (b) { b.hidden = false; });
@@ -738,6 +852,7 @@
     revealTourLinks();
 
     loadState().then(function () {
+      getContext().then(function (ctx) { trackAccess(ctx); tagNewAccess(); });
       // Resume a tour that's mid-way (we navigated here as part of it).
       var saved = tourSaved();
       var navFlag = sget('lacms-tour-nav');

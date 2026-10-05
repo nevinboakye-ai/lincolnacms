@@ -7739,6 +7739,13 @@ body.guide-open { overflow: hidden; }
   .res-pdf { max-height: 68vh; padding: 6px; }
 }
 
+/* "New" tag on pages someone has recently been given access to */
+.new-access-tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; margin-left: 6px; border-radius: 999px; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; vertical-align: middle; background: var(--color-gold-fill, #d4a62b); color: var(--color-on-gold, #1a1500); box-shadow: 0 0 0 0 rgba(var(--gold-rgb), 0.5); animation: new-access-glow 2.4s ease-in-out infinite; }
+.new-access-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: nudge-dot 1.4s ease-in-out infinite; }
+@keyframes new-access-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(var(--gold-rgb), 0); } 50% { box-shadow: 0 0 0 4px rgba(var(--gold-rgb), 0.28); } }
+.quick-link-card > .new-access-tag:first-child { margin: 0 0 var(--space-2); align-self: flex-start; }
+@media (prefers-reduced-motion: reduce) { .new-access-tag, .new-access-dot { animation: none; } }
+
 /* =========================================================
    Notifications - header bell + dropdown panel + nav count pills
    (js/notifications.js; counts come from get_my_notifications()).
