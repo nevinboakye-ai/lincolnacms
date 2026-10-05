@@ -1319,3 +1319,16 @@ Run [`db/migrations/072-sixth-form-blurred-and-no-messaging.sql`](db/migrations/
 **Who can open without a PIN:** the person who shared it, and executives (they have to review and moderate everything). Executives can take a PIN off someone else's resource but can never see or set one.
 
 **How it's enforced:** in the database, not the page. The link / file path / preview image columns can no longer be read from the resources table (the page asks `get_resource_locations`, which only answers for resources you may open), the private storage bucket's read policy checks the same rule, and PINs sit in a table nobody can read directly. Good to know: PINs are stored as typed so the sharer can see them again (guarded by the above), and the title and description stay visible to everyone - don't put anything secret in them.
+
+## 124. Insights for people who share resources
+
+**Run [`db/migrations/074-resource-insights.sql`](db/migrations/074-resource-insights.sql)** (needs 064, 065, 066 and 073). Until it's run nothing is recorded and no insights appear; everything else works as before.
+
+**What's recorded:** a *view* when someone opens a resource's preview, a *download* when they download a file, a *click* when they open a link. The database ignores your own activity, only counts approved resources the person can really see, only counts downloads/clicks they're allowed to make (a PIN-locked resource can't be "downloaded" without its PIN), and de-duplicates (one view per person per resource per 30 minutes; downloads/clicks at most once every 10 seconds).
+
+**What the person who shared it sees** (My submissions, and the Insights button on their own cards):
+- *Your impact* at the top: total views, downloads & clicks, likes and comments across everything approved, plus the most popular resource.
+- A metrics row on each card (views, downloads or clicks, likes, comments, and unlocks for PIN-protected ones).
+- An **Insights** window per resource: headline numbers (views, people reached, downloads/clicks, likes, comments, unlocks and wrong PIN tries), a day-by-day chart for 7, 30 or 90 days (views / downloads & clicks / likes, hover or tab to a day for the exact figure), **who liked it**, **who unlocked it** (PIN-protected only), the audience by course, recent activity, and **Download CSV**.
+
+**Privacy:** only the person who shared a resource can read its insights - the database checks, so not even executives or the president can read someone else's. Views, downloads and clicks are counts only (the audience is aggregated by course and the activity timeline doesn't name anyone for those). Names appear only for likes, comments and unlocks - things people did to that resource on purpose. Sixth-form students always appear as "Sixth form student" unless the person looking is an executive. **Likes used to be anonymous; now the person who shared a resource can see who liked it** - the like button's tooltip says so. Event rows are never readable from the browser, and there's no pruning, so the table simply grows (an index keeps it fast; ask if you ever want old events trimmed).

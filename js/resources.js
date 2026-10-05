@@ -415,6 +415,16 @@
     if (openSelect && !(e.target && e.target.closest && e.target.closest('.ui-select-menu'))) closeOpenSelect(false);
   }, true);
 
+  // What js/resource-insights.js (views, downloads, likes for the person who
+  // shared a resource) needs from this file.
+  window.lacmsResourcesApi = {
+    openDialog: openDialog, escapeHtml: escapeHtml, countUp: countUp, avatarHtml: avatarHtml, timeAgo: timeAgo,
+    courses: COURSES,
+    userId: function () { return userId; },
+    getResource: function (id) { return rendered[id] || null; }
+  };
+  function insights() { return window.lacmsResourceInsights || null; }
+
   // ---- Boot -------------------------------------------------------------------
   var gate = $('auth-gate');
   function showLocked() {
@@ -682,6 +692,8 @@
     $('res-crumb-current').textContent = isReview ? 'Review queue' : 'My submissions';
     $('res-list-title').textContent = isReview ? 'Review queue' : 'My submissions';
     $('res-list-sub').textContent = 'Loading…';
+    var impact = $('res-insights-summary');
+    if (impact) { impact.hidden = true; impact.innerHTML = ''; }
     $('res-list').innerHTML = skeletonCards(2);
     $('res-empty').hidden = true;
     selectResources(function (q) {
@@ -693,6 +705,7 @@
         ? (rows.length ? rows.length + ' waiting for review. Nothing here is visible to members until you approve it.' : '')
         : 'Everything you\'ve shared. New or edited resources are reviewed by the executive committee before they appear.';
       renderCards($('res-list'), rows, { mode: isReview ? 'review' : 'mine' });
+      if (!isReview && insights()) insights().loadMine(rows);
       var empty = $('res-empty');
       empty.hidden = rows.length > 0;
       if (!rows.length) {
@@ -765,9 +778,11 @@
         '<button type="button" class="btn btn-primary res-btn" data-res-approve>Approve</button>' +
         '<button type="button" class="btn btn-outline res-btn res-btn--danger" data-res-reject>Reject…</button>';
     } else if (mode === 'mine') {
+      if (r.status === 'approved') actions += '<button type="button" class="btn btn-outline res-btn res-btn--insights" data-ins-open="' + escapeHtml(r.id) + '">Insights</button>';
       actions += '<button type="button" class="btn btn-outline res-btn" data-res-edit>Edit</button>' +
         '<button type="button" class="btn btn-outline res-btn res-btn--danger" data-res-delete>Delete</button>';
     } else if (isAdmin || r.uploader_id === userId) {
+      if (r.uploader_id === userId && r.status === 'approved') actions += '<button type="button" class="btn btn-outline res-btn res-btn--insights" data-ins-open="' + escapeHtml(r.id) + '">Insights</button>';
       actions += '<button type="button" class="btn btn-outline res-btn res-btn--danger" data-res-delete>Remove</button>';
     }
 
@@ -790,6 +805,7 @@
       '<p class="res-desc" id="rd-' + escapeHtml(r.id) + '">' + escapeHtml(r.description) + '</p>' +
       (long ? '<button type="button" class="res-more" data-res-more aria-expanded="false" aria-controls="rd-' + escapeHtml(r.id) + '">Read more</button>' : '') +
       (details.length ? '<p class="res-meta res-meta--faint">' + details.join(' · ') + '</p>' : '') +
+      (mode === 'mine' && r.status === 'approved' ? '<div class="res-metrics" data-metrics="' + escapeHtml(r.id) + '" aria-label="How it\'s doing"></div>' : '') +
       reject +
       '<div class="res-card-foot">' + (r.status === 'approved' ? socialHtml(r.id) : '<span></span>') +
       '<div class="res-actions">' + actions + '</div></div>' +
@@ -828,7 +844,7 @@
   function socialHtml(id) {
     var e = engOf(id);
     return '<div class="res-social" data-social="' + escapeHtml(id) + '">' +
-      '<button type="button" class="res-like' + (e.liked ? ' is-liked' : '') + '" data-res-like aria-pressed="' + (e.liked ? 'true' : 'false') + '" aria-label="Like this resource">' +
+      '<button type="button" class="res-like' + (e.liked ? ' is-liked' : '') + '" data-res-like aria-pressed="' + (e.liked ? 'true' : 'false') + '" aria-label="Like this resource" title="Like - the person who shared it can see who liked it">' +
       '<span class="res-like-icon">' + HEART + '<span class="res-burst" aria-hidden="true"></span></span><span class="res-like-count" data-like-count>' + e.likes + '</span></button>' +
       '<button type="button" class="res-comment-btn" data-res-comments aria-label="View and add comments">' + BUBBLE + '<span data-comment-count>' + e.comments + '</span></button></div>';
   }
@@ -971,6 +987,7 @@
     signedUrls(paths).then(function () {
       container.innerHTML = rows.map(function (r, i) { return cardHtml(r, opts.mode, i); }).join('');
       container.setAttribute('data-mode', opts.mode);
+      if (opts.mode === 'mine' && insights()) insights().paint();
       // Thumbnails that never need a network fetch are done immediately.
       Array.prototype.forEach.call(container.querySelectorAll('.res-thumb'), function (t) {
         if (!t.querySelector('img')) t.classList.remove('is-loading');
@@ -1338,6 +1355,7 @@
   // ---- Preview / open ---------------------------------------------------------------
   function openResource(r) {
     if (isLockedOut(r)) { openUnlockDialog(r, function () { openResource(r); }); return; }
+    if (insights()) insights().record(r, r.kind === 'link' ? 'click' : 'download');
     if (r.kind === 'link') {
       var u = parseHttpUrl(r.url);
       if (u) window.open(u.href, '_blank', 'noopener,noreferrer');
@@ -1351,6 +1369,7 @@
 
   function previewResource(r, opts) {
     opts = opts || {};
+    if (insights()) insights().record(r, 'view');
     var head = '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
       '<span class="guide-eyebrow">' + escapeHtml(TYPES[r.resource_type] || 'Resource') + ' · ' + escapeHtml(coursesLabel(r)) + (yearsOf(r).length ? ' · ' + escapeHtml(yearsLabel(yearsOf(r))) : '') + '</span>' +
       '<h2 class="guide-title">' + escapeHtml(r.title) + '</h2>' + bylineHtml(r, 'lg');
