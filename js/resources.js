@@ -39,11 +39,11 @@
   var COURSES = [
     { name: 'Medicine', accent: 'gold' },
     { name: 'Pharmacy', accent: 'green' },
-    { name: 'Dental Hygiene and Therapy', accent: 'red' },
-    { name: 'Diagnostic Radiography', accent: 'purple' },
-    { name: 'Nursing', accent: 'gold' },
-    { name: 'Midwifery', accent: 'green' },
     { name: 'Biomedical Science', accent: 'red' },
+    { name: 'Dental Hygiene and Therapy', accent: 'purple' },
+    { name: 'Diagnostic Radiography', accent: 'gold' },
+    { name: 'Nursing', accent: 'green' },
+    { name: 'Midwifery', accent: 'red' },
     { name: 'Occupational Therapy', accent: 'purple' },
     { name: 'General', accent: 'gold', label: 'Other (All courses)' }
   ];
