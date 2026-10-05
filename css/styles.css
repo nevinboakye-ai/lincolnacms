@@ -8928,3 +8928,48 @@ body.guide-open { overflow: hidden; }
   .res-insights-summary, .res-ins-bar, .res-ins-aud-bar i { animation: none; }
   .res-metrics { transition: none; }
 }
+
+/* =====================================================================
+   Floating chat dock (every page except the Network page) - js/chat.js
+   ===================================================================== */
+.chat-launcher { position: fixed; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 340; display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border: none; border-radius: 50%; background: var(--color-gold-fill, #d4a62b); color: var(--color-on-gold, #17130a); cursor: pointer; box-shadow: 0 16px 34px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(var(--gold-rgb), 0.3); transition: transform 0.2s var(--ease-standard), background 0.2s var(--ease-standard); }
+.chat-launcher .icon { width: 25px; height: 25px; }
+.chat-launcher:hover { background: var(--color-gold-fill-hover, #e8c767); transform: scale(1.07); }
+.chat-launcher:active { transform: scale(0.94); }
+.chat-launcher:focus-visible { outline: 3px solid var(--color-gold-light); outline-offset: 3px; }
+.chat-launcher-badge { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #c1272d; color: #fff; border: 2px solid var(--color-bg); font-size: 0.72rem; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; box-sizing: border-box; }
+.chat-launcher-badge[hidden] { display: none; }
+.chat-launcher.is-ping { animation: chat-launcher-ping 0.9s var(--ease-standard); }
+@keyframes chat-launcher-ping { 0% { transform: scale(1); } 15% { transform: scale(1.22) rotate(-10deg); } 30% { transform: scale(1.12) rotate(8deg); } 45% { transform: scale(1.18) rotate(-5deg); } 60%, 100% { transform: scale(1) rotate(0); } }
+/* Make room for the launcher beside the back-to-top button. */
+body.has-chat-dock .back-to-top { right: calc(var(--space-4) + 68px + env(safe-area-inset-right, 0px)); }
+
+.chat-dock { position: fixed; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); z-index: 345; display: flex; flex-direction: column; width: min(400px, calc(100vw - 24px)); height: min(620px, calc(100vh - 120px)); background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border-strong); border-radius: var(--radius-lg); box-shadow: 0 30px 70px -18px rgba(0, 0, 0, 0.75); overflow: hidden; opacity: 0; transform: translateY(18px) scale(0.97); transform-origin: bottom right; transition: opacity 0.2s var(--ease-standard), transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
+.chat-dock.is-open { opacity: 1; transform: none; }
+.chat-dock[hidden] { display: none; }
+.chat-dock-bar { display: flex; align-items: center; gap: 4px; padding: 8px 8px 8px 16px; border-bottom: 1px solid var(--color-border); background: linear-gradient(180deg, rgba(var(--gold-rgb), 0.1), transparent), var(--color-surface); }
+.chat-dock-bar strong { flex: 1 1 auto; font-family: var(--font-display); font-size: 1.05rem; }
+.chat-dock-bar a.chat-icon-btn { text-decoration: none; }
+.chat--dock { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.chat--dock .chat-shell { flex: 1 1 auto; height: auto; min-height: 0; grid-template-columns: minmax(0, 1fr); border: none; border-radius: 0; box-shadow: none; }
+.chat--dock .chat-shell[data-view="list"] .chat-main { display: none; }
+.chat--dock .chat-shell[data-view="thread"] .chat-side { display: none; }
+.chat--dock .chat-side { border-right: none; }
+.chat--dock .chat-back { display: inline-flex; }
+.chat--dock .chat-side-title { display: none; }
+.chat--dock .chat-side-head { justify-content: flex-end; padding-bottom: var(--space-2); }
+.chat--dock .chat-msg { max-width: 88%; }
+.chat--dock .chat-log { padding-left: var(--space-3); padding-right: var(--space-3); }
+.chat--dock .chat-menu { right: 0; }
+@media (max-width: 640px) {
+  .chat-dock { inset: 0; width: auto; height: 100vh; height: 100dvh; border: none; border-radius: 0; transform: translateY(100%); transform-origin: bottom center; padding-top: env(safe-area-inset-top, 0px); }
+  .chat-dock.is-open { transform: none; }
+  body.chat-dock-open .chat-launcher { display: none; }
+  body.chat-dock-open { overflow: hidden; }
+  .chat--dock .chat-input { font-size: 16px; }
+  body.has-chat-dock .back-to-top { right: calc(var(--space-4) + 66px + env(safe-area-inset-right, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-dock { transition: opacity 0.1s linear; transform: none; }
+  .chat-launcher.is-ping { animation: none; }
+}

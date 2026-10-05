@@ -20,15 +20,25 @@
 //     message icon (js/notifications.js) and the sign-in summary
 //     (js/guidance.js) via the "lacms:chat-unread" event.
 //
-// Only runs on the Network page (needs #network-messages), only for signed-in
-// people the server says can message, and does nothing if migration 070
-// hasn't been run yet.
+// Two ways to show it, one engine:
+//   * On the Network page it's the Messages tab (#network-messages).
+//   * On every other page it's a floating dock: a round Messages button in
+//     the corner (with the unread count) that opens a small chat panel over
+//     the page - a full-screen sheet on phones - so people can read and reply
+//     without leaving what they're doing. It stays open as they move between
+//     pages, and the header icon, live pop-ups and "Message them" buttons
+//     elsewhere on the site open it.
+// Only runs for signed-in people the server says can message, and does
+// nothing if migration 070 hasn't been run yet.
 (function () {
   'use strict';
 
   if (typeof supabaseIsConfigured === 'undefined' || !supabaseIsConfigured || typeof supabaseClient === 'undefined' || !supabaseClient) return;
-  var root = document.getElementById('network-messages');
-  if (!root) return;
+  var pageRoot = document.getElementById('network-messages');
+  var DOCK = !pageRoot;
+  var thisPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  if (DOCK && ['member-login.html', 'login.html', 'request-account.html', 'join.html', 'mmg-login.html'].indexOf(thisPage) !== -1) return;
+  var root = pageRoot;       // in dock mode: the panel's inner element, created by buildDock()
 
   var PAGE_SIZE = 40;
   var MAX_LEN = 2000;
@@ -50,6 +60,10 @@
   var pendingOpen = null;    // a lacms:chat-open that arrived before we were ready
   var pendingDraft = null;   // text to pre-fill (not send) in the next conversation opened
   var ready = false;
+  var dockOpen = false;
+  var dock = null;           // { launcher, badge, panel }
+  var convsLoaded = false;
+  var statusUnread = 0;      // unread count from chat_status, until the conversations are loaded
   var els = {};
   var rt = { channel: null, typing: null, status: '' };
   var pollTicks = 0;
@@ -213,9 +227,11 @@
     th.items.sort(function (a, b) { return a.at - b.at || (a.id < b.id ? -1 : 1); });
   }
   function totalUnread() {
+    if (DOCK && !convsLoaded) return statusUnread;
     return convs.reduce(function (n, c) { return n + (c.muted ? 0 : c.unread); }, 0);
   }
   function viewing() {
+    if (DOCK) return dockOpen && !document.hidden;
     return !root.hidden && !document.hidden;
   }
 
@@ -304,6 +320,7 @@
   function renderList() {
     if (!els.list) return;
     if (pickerOpen) { renderPicker(); return; }
+    if (DOCK && !convsLoaded) { els.list.innerHTML = '<p class="chat-empty-note">Loading your messages…</p>'; return; }
     var q = (els.search.value || '').trim().toLowerCase();
     var visible = convs.filter(function (c) {
       if (c.draft && c.id !== activeId) return false;
@@ -551,6 +568,7 @@
       syncActive();
     }
     if (!coarsePointer && !c.iBlocked) setTimeout(function () { els.input.focus(); }, 0);
+    persistDock();
     return true;
   }
 
@@ -560,6 +578,7 @@
     els.thread.hidden = true;
     els.placeholder.hidden = false;
     renderList();
+    persistDock();
   }
 
   function loadMessages(id, older) {
@@ -641,6 +660,17 @@
     var n = totalUnread();
     var badge = document.querySelector('[data-chat-tab-badge]');
     if (badge) { badge.hidden = n === 0; badge.textContent = n > 99 ? '99+' : n; }
+    if (dock) {
+      var had = !dock.badge.hidden;
+      dock.badge.hidden = n === 0;
+      dock.badge.textContent = n > 99 ? '99+' : n;
+      dock.launcher.setAttribute('aria-label', n ? 'Messages, ' + n + ' unread' : 'Messages');
+      dock.launcher.classList.toggle('has-new', n > 0);
+      if (n > 0 && !dockOpen && !reduceMotion && (!had || dock.lastCount < n)) {
+        dock.launcher.classList.remove('is-ping'); void dock.launcher.offsetWidth; dock.launcher.classList.add('is-ping');
+      }
+      dock.lastCount = n;
+    }
     document.title = (n > 0 ? '(' + n + ') ' : '') + baseTitle;
     document.dispatchEvent(new CustomEvent('lacms:chat-unread', { detail: { count: n } }));
   }
@@ -655,6 +685,8 @@
     els.count.classList.toggle('is-over', len > MAX_LEN);
   }
   function autosize() {
+    // Not laid out yet (hidden, or mid-animation)? Leave it to CSS and retry later.
+    if (els.input.clientWidth < 80) { els.input.style.height = ''; return; }
     els.input.style.height = 'auto';
     els.input.style.height = Math.min(els.input.scrollHeight, 168) + 'px';
   }
@@ -771,7 +803,15 @@
     window.addEventListener('focus', maybeMarkRead);
   }
 
+  function refreshStatus() {
+    return supabaseClient.rpc('chat_status').then(function (res) {
+      var row = !res.error && (Array.isArray(res.data) ? res.data[0] : res.data);
+      if (row) { statusUnread = row.unread || 0; if (!convsLoaded) emitUnread(); }
+    }, function () {});
+  }
   function sync() {
+    // A closed dock that hasn't loaded anything just keeps its count fresh.
+    if (DOCK && !dockOpen && !convsLoaded) return refreshStatus();
     return refreshConversations().then(syncActive);
   }
 
@@ -842,7 +882,8 @@
 
   function notifyIncoming(c, body) {
     var visibleHere = viewing() && c.id === activeId;
-    if (!visibleHere) {
+    // In dock mode the site-wide pop-ups (js/notifications.js) announce it.
+    if (!visibleHere && !DOCK) {
       toast('<strong>' + esc(c.name) + '</strong><span>' + esc(String(body || '').replace(/\s+/g, ' ').slice(0, 80)) + '</span>', 'message', c.id);
     }
     els.live.textContent = 'New message from ' + c.name;
@@ -853,6 +894,7 @@
     refreshing = supabaseClient.rpc('chat_get_conversations').then(function (res) {
       refreshing = null;
       if (res.error) return;
+      convsLoaded = true;
       var fresh = (res.data || []).map(normalizeConv);
       var byId = {};
       convs.forEach(function (c) { byId[c.id] = c; });
@@ -921,7 +963,7 @@
       delete threads[c.id];
       writeDraft(c.id, '');
       closeConversation();
-      goHash('#messages');
+      navList();
       emitUnread();
       toast('Conversation cleared. ' + firstName(c.name) + ' still has their copy.');
     });
@@ -1055,7 +1097,7 @@
     requestAnimationFrame(function () { t.classList.add('is-in'); });
     var timer = setTimeout(remove, kind === 'error' ? 7000 : 5000);
     function remove() { clearTimeout(timer); t.classList.remove('is-in'); setTimeout(function () { t.remove(); }, 200); }
-    t.addEventListener('click', function () { remove(); if (convId) goHash('#messages/' + convId); });
+    t.addEventListener('click', function () { remove(); if (convId) navConv(convId); });
   }
 
   // ---- Tabs + routing ----------------------------------------------------
@@ -1075,6 +1117,25 @@
 
   function goHash(hash) {
     if (window.location.hash === hash) route(); else window.location.hash = hash;
+  }
+
+  // Where "open this conversation / go back to the list" lead: the URL on the
+  // Network page, the dock panel everywhere else.
+  function navConv(id) {
+    if (!DOCK) { goHash('#messages/' + id); return; }
+    openDock();
+    if (!openConversation(id)) {
+      refreshConversations().then(function () {
+        if (!openConversation(id)) toast('That conversation isn\'t available.', 'error');
+      });
+    }
+  }
+  function navList() {
+    if (!DOCK) { goHash('#messages'); return; }
+    closeConversation();
+  }
+  function showMessages() {
+    if (DOCK) openDock(); else showTab('messages');
   }
 
   function route() {
@@ -1103,12 +1164,13 @@
   function openWith(userId, info) {
     if (!ready) { pendingOpen = { userId: userId, info: info }; return; }
     if (!userId || userId === SELF) return;
+    if (info && info.draft) pendingDraft = String(info.draft).slice(0, MAX_LEN);
     var existing = convByUser(userId);
-    if (existing) { goHash('#messages/' + existing.id); return; }
+    if (existing) { navConv(existing.id); return; }
     supabaseClient.rpc('chat_start_conversation', { p_other: userId }).then(function (res) {
       if (res.error || !res.data) {
         pendingDraft = null;
-        showTab('messages');
+        showMessages();
         toast(friendly(res.error), 'error');
         return;
       }
@@ -1128,28 +1190,30 @@
         // Fill in the rest (bio, LinkedIn...) quietly once we have it.
         refreshConversations();
       }
-      goHash('#messages/' + id);
+      navConv(id);
     }, function (err) { toast(friendly(err), 'error'); });
   }
 
   // ---- Wiring ------------------------------------------------------------
   function wire() {
-    document.addEventListener('click', function (e) {
-      var tab = e.target.closest('[data-net-tab]');
-      if (tab) {
-        if (tab.getAttribute('data-net-tab') === 'messages') goHash('#messages');
-        else { if (window.location.hash) window.history.pushState(null, '', window.location.pathname + window.location.search); route(); }
-      }
-    });
-    document.querySelector('.network-tabs').addEventListener('keydown', function (e) {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-      var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-net-tab]'));
-      var i = tabs.indexOf(document.activeElement);
-      if (i === -1) return;
-      var next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
-      next.focus(); next.click();
-    });
-    window.addEventListener('hashchange', route);
+    if (!DOCK) {
+      document.addEventListener('click', function (e) {
+        var tab = e.target.closest('[data-net-tab]');
+        if (tab) {
+          if (tab.getAttribute('data-net-tab') === 'messages') goHash('#messages');
+          else { if (window.location.hash) window.history.pushState(null, '', window.location.pathname + window.location.search); route(); }
+        }
+      });
+      document.querySelector('.network-tabs').addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        var tabs = Array.prototype.slice.call(document.querySelectorAll('[data-net-tab]'));
+        var i = tabs.indexOf(document.activeElement);
+        if (i === -1) return;
+        var next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+        next.focus(); next.click();
+      });
+      window.addEventListener('hashchange', route);
+    }
 
     root.addEventListener('click', function (e) {
       var t = e.target;
@@ -1164,10 +1228,10 @@
         return;
       }
       var item = t.closest('[data-conv]');
-      if (item && item.classList.contains('chat-item')) { goHash('#messages/' + item.getAttribute('data-conv')); return; }
+      if (item && item.classList.contains('chat-item')) { navConv(item.getAttribute('data-conv')); return; }
       var toastEl = t.closest('.chat-toast');
       if (toastEl) return;
-      if (t.closest('[data-chat-back]')) { goHash('#messages'); return; }
+      if (t.closest('[data-chat-back]')) { navList(); return; }
       if (t.closest('[data-chat-who]')) {
         var open = els.profile.hidden;
         els.profile.hidden = !open;
@@ -1249,6 +1313,80 @@
     }
   }
 
+  // ---- The floating dock ---------------------------------------------------
+  var DOCK_KEY = 'lacms-chat-dock';
+  function persistDock() {
+    if (!DOCK) return;
+    try { window.sessionStorage.setItem(DOCK_KEY, JSON.stringify({ open: dockOpen, conv: dockOpen ? activeId : null })); } catch (e) { /* ignore */ }
+  }
+
+  function buildDock() {
+    var launcher = document.createElement('button');
+    launcher.type = 'button';
+    launcher.className = 'chat-launcher';
+    launcher.setAttribute('aria-label', 'Messages');
+    launcher.setAttribute('aria-expanded', 'false');
+    launcher.setAttribute('aria-controls', 'chat-dock');
+    launcher.innerHTML = svg('chat') + '<span class="chat-launcher-badge" aria-hidden="true" hidden></span>';
+
+    var panel = document.createElement('section');
+    panel.className = 'chat-dock';
+    panel.id = 'chat-dock';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Messages');
+    panel.hidden = true;
+    panel.innerHTML =
+      '<div class="chat-dock-bar"><strong>Messages</strong>' +
+      '<a class="chat-icon-btn" href="member-network.html#messages" title="Open the full Messages page" aria-label="Open the full Messages page">' +
+        '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></a>' +
+      '<button type="button" class="chat-icon-btn" data-dock-close aria-label="Close messages">' + svg('close') + '</button></div>' +
+      '<div class="chat chat--dock" data-dock-root></div>';
+    document.body.appendChild(panel);
+    document.body.appendChild(launcher);
+    document.body.classList.add('has-chat-dock');
+    root = panel.querySelector('[data-dock-root]');
+    dock = { launcher: launcher, badge: launcher.querySelector('.chat-launcher-badge'), panel: panel, lastCount: 0 };
+
+    launcher.addEventListener('click', function () { if (dockOpen) closeDock(); else openDock(); });
+    panel.querySelector('[data-dock-close]').addEventListener('click', closeDock);
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !dockOpen) return;
+      if (document.querySelector('.guide-backdrop') || (els.menu && !els.menu.hidden)) return;
+      closeDock();
+    });
+  }
+
+  function openDock() {
+    if (!DOCK || !dock) return;
+    if (!dockOpen) {
+      dockOpen = true;
+      dock.panel.hidden = false;
+      // (rAF alone never fires in a background tab, so a timer backs it up.)
+      var show = function () { dock.panel.classList.add('is-open'); };
+      requestAnimationFrame(show);
+      setTimeout(show, 30);
+      setTimeout(autosize, 300);
+      dock.launcher.setAttribute('aria-expanded', 'true');
+      dock.launcher.classList.remove('is-ping');
+      document.body.classList.add('chat-dock-open');
+      if (!convsLoaded) { renderList(); refreshConversations().then(function () { if (activeId) renderList(); }); }
+      else { renderList(); refreshConversations(); }
+      maybeMarkRead();
+    }
+    persistDock();
+  }
+
+  function closeDock() {
+    if (!dockOpen) return;
+    dockOpen = false;
+    dock.panel.classList.remove('is-open');
+    setTimeout(function () { if (!dockOpen) dock.panel.hidden = true; }, reduceMotion ? 0 : 220);
+    dock.launcher.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('chat-dock-open');
+    persistDock();
+    dock.launcher.focus();
+  }
+
   // ---- Start -------------------------------------------------------------
   function init(session) {
     SELF = session.user.id;
@@ -1257,13 +1395,31 @@
       var row = Array.isArray(res.data) ? res.data[0] : res.data;
       if (!row || !row.can_message) return;
 
+      statusUnread = row.unread || 0;
+      if (DOCK) buildDock();
       buildShell();
       wire();
-      var tabs = document.getElementById('network-tabs');
-      if (tabs) tabs.hidden = false;
-      var people = document.getElementById('network-content');
-      if (people) people.classList.add('chat-on');
+      if (!DOCK) {
+        var tabs = document.getElementById('network-tabs');
+        if (tabs) tabs.hidden = false;
+        var people = document.getElementById('network-content');
+        if (people) people.classList.add('chat-on');
+      }
       ready = true;
+      if (DOCK) {
+        // Nothing but the unread count is fetched until the dock is opened
+        // (or a message arrives), so every other page stays light.
+        emitUnread();
+        var saved = null;
+        try { saved = JSON.parse(window.sessionStorage.getItem(DOCK_KEY) || 'null'); } catch (e) { saved = null; }
+        if (pendingOpen) { var po = pendingOpen; pendingOpen = null; openWith(po.userId, po.info); }
+        else if (saved && saved.open) {
+          openDock();
+          if (saved.conv) refreshConversations().then(function () { openConversation(saved.conv); });
+        }
+        startRealtime();
+        return;
+      }
       refreshConversations().then(function () {
         // member-network.html?message=<user id>&draft=<text> opens a chat with
         // that person (e.g. from a PIN-protected resource asking for its PIN).
@@ -1286,10 +1442,18 @@
   // Message buttons on the People tab / profile pop-up (js/members.js).
   document.addEventListener('lacms:chat-open', function (e) {
     var d = (e && e.detail) || {};
-    if (d.userId) openWith(d.userId, { name: d.name, detail: d.detail });
+    if (d.userId) openWith(d.userId, { name: d.name, detail: d.detail, draft: d.draft });
   });
 
-  window.lacmsChat = { open: function (userId, info) { openWith(userId, info); } };
+  window.lacmsChat = {
+    open: function (userId, info) { openWith(userId, info); },
+    openConversation: function (id) { if (ready) navConv(id); },
+    toggle: function () { if (!DOCK || !ready) return; if (dockOpen) closeDock(); else openDock(); },
+    isDock: function () { return DOCK; },
+    isReady: function () { return ready; },
+    // True while that conversation is on screen, so pop-ups stay quiet for it.
+    isViewing: function (id) { return !!(ready && viewing() && activeId === id); }
+  };
 
   supabaseClient.auth.getSession().then(function (result) {
     var session = result.data && result.data.session;

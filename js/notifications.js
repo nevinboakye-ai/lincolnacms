@@ -179,6 +179,12 @@
     chatLink.className = 'notif-bell chat-nav-btn';
     chatLink.href = 'member-network.html#messages';
     chatLink.hidden = true;
+    // Where the floating chat dock exists, the icon opens it instead of
+    // leaving the page.
+    chatLink.addEventListener('click', function (e) {
+      var c = window.lacmsChat;
+      if (c && c.isDock && c.isDock() && c.isReady && c.isReady()) { e.preventDefault(); c.toggle(); }
+    });
     chatLink.innerHTML = CHAT_SVG + '<span class="notif-badge" aria-hidden="true" hidden></span>';
     anchor.parentNode.insertBefore(chatLink, button);
 
@@ -375,7 +381,12 @@
       '<button type="button" class="live-toast-close" aria-label="Dismiss notification"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>' +
       '<span class="live-toast-bar" aria-hidden="true"></span>';
     node.querySelector('.live-toast-close').addEventListener('click', function () { dismissToast(node); });
-    node.querySelector('.live-toast-link').addEventListener('click', function () { dismissToast(node); });
+    node.querySelector('.live-toast-link').addEventListener('click', function (e) {
+      dismissToast(node);
+      // A message pop-up opens the chat dock in place when there is one.
+      var c = window.lacmsChat;
+      if (opts.convId && c && c.isDock && c.isDock() && c.isReady && c.isReady()) { e.preventDefault(); c.openConversation(opts.convId); }
+    });
     var bar = node.querySelector('.live-toast-bar');
     if (reduceMotion) {
       clearTimeout(node._timer);
@@ -420,12 +431,14 @@
     if (!r || !userId || r.sender_id === userId) return;
     fetchChat();
     if (ownsMessageToasts) return; // the Network page's chat handles its own
+    // Already looking at that conversation in the dock: no pop-up.
+    if (window.lacmsChat && window.lacmsChat.isViewing && window.lacmsChat.isViewing(r.conversation_id)) return;
     var show = function () {
       var info = convInfo[r.conversation_id];
       // Not in the inbox (e.g. a conversation the person isn't allowed to see): say nothing.
       if (!info || info.muted) return;
       showLiveToast({
-        key: 'conv:' + r.conversation_id, kind: 'message', title: info.name,
+        key: 'conv:' + r.conversation_id, kind: 'message', title: info.name, convId: r.conversation_id,
         body: String(r.body || '').replace(/\s+/g, ' ').slice(0, 110),
         href: 'member-network.html#messages/' + r.conversation_id
       });

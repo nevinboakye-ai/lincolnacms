@@ -1288,6 +1288,14 @@
     if (ask) {
       ask.addEventListener('click', function () {
         var draft = 'Hi ' + uploaderFirst(r) + ', could I please have the PIN for your resource "' + r.title + '" on LACMS Resources? Thank you!';
+        // With the chat dock on this page: close this pop-up and open the chat right here.
+        if (window.lacmsChat && window.lacmsChat.isDock && window.lacmsChat.isDock() && window.lacmsChat.isReady()) {
+          var dlgEl = panel.closest('.guide-dialog');
+          var closeBtn = dlgEl && dlgEl.querySelector('[data-dialog-close]');
+          if (closeBtn) closeBtn.click();
+          window.lacmsChat.open(r.uploader_id, { name: r.uploader_name, detail: r.uploader_detail, draft: draft });
+          return;
+        }
         window.location.href = 'member-network.html?message=' + encodeURIComponent(r.uploader_id) + '&draft=' + encodeURIComponent(draft) + '#messages';
       });
     }
