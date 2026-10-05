@@ -926,6 +926,12 @@
       return (r.data || []).reduce(function (sum, row) { return sum + (row.pending_count || 0); }, 0);
     }, function () { return 0; });
   }
+  function loadUnreadMessages() {
+    return supabaseClient.rpc('chat_status').then(function (r) {
+      var row = !r.error && (Array.isArray(r.data) ? r.data[0] : r.data);
+      return row && row.can_message ? (row.unread || 0) : 0;
+    }, function () { return 0; });
+  }
   function loadPendingRequests() {
     return supabaseClient.rpc('is_president').then(function (r) {
       if (r.error || r.data !== true) return 0;
@@ -945,12 +951,14 @@
       withTimeout(window.lacmsNotifSnapshot || Promise.resolve(null), 6000, null),
       withTimeout(loadReviewedResources(sinceMs), 6000, []),
       withTimeout(loadReviewQueue(), 6000, 0),
-      withTimeout(loadPendingRequests(), 6000, 0)
+      withTimeout(loadPendingRequests(), 6000, 0),
+      withTimeout(loadUnreadMessages(), 6000, 0)
     ]).then(function (res) {
       var snapshot = res[0] || [];
       var reviewed = res[1];
       var queue = res[2];
       var requests = res[3];
+      var unreadMessages = res[4];
       var groups = [];
       var announce = [];
 
@@ -976,6 +984,7 @@
 
       // -- Waiting for you
       var waiting = [];
+      if (unreadMessages > 0) waiting.push({ icon: 'bell', title: plural(unreadMessages, 'unread message', 'unread messages'), sub: 'From people in the Network', href: 'member-network.html#messages', count: unreadMessages });
       if (requests > 0) waiting.push({ icon: 'todo', title: plural(requests, 'account request', 'account requests') + ' waiting', sub: 'Review and approve new members', href: 'president-dashboard.html#requests', count: requests });
       if (queue > 0) waiting.push({ icon: 'todo', title: plural(queue, 'resource', 'resources') + ' waiting for review', sub: 'Shared by members, hidden until you approve them', href: 'member-resources.html', count: queue });
       reviewed.slice(0, 3).forEach(function (x) {

@@ -154,6 +154,7 @@
   }
 
   // ---- DOM ------------------------------------------------------------
+  var CHAT_SVG = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.3A8.4 8.4 0 1 1 21 11.5z"/></svg>';
   var BELL_SVG = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
 
   function build() {
@@ -170,6 +171,15 @@
     button.hidden = true;
     button.innerHTML = BELL_SVG + '<span class="notif-badge" aria-hidden="true" hidden></span>';
     anchor.parentNode.insertBefore(button, anchor);
+
+    // Direct messages (migration 070, js/chat.js): a chat icon beside the
+    // bell with the unread count. Only shown to people who can message.
+    var chatLink = document.createElement('a');
+    chatLink.className = 'notif-bell chat-nav-btn';
+    chatLink.href = 'member-network.html#messages';
+    chatLink.hidden = true;
+    chatLink.innerHTML = CHAT_SVG + '<span class="notif-badge" aria-hidden="true" hidden></span>';
+    anchor.parentNode.insertBefore(chatLink, button);
 
     // Lives on <body>, not inside the header: the header has a
     // backdrop-filter, which would turn position:fixed into
@@ -194,6 +204,8 @@
     document.body.appendChild(live);
 
     els = {
+      chat: chatLink,
+      chatBadge: chatLink.querySelector('.notif-badge'),
       button: button,
       badge: button.querySelector('.notif-badge'),
       panel: panel,
@@ -293,6 +305,32 @@
     renderPills();
   }
 
+  // ---- Direct messages ------------------------------------------------
+  var chatState = { can: false, unread: 0 };
+  function renderChat() {
+    if (!els || !els.chat) return;
+    els.chat.hidden = !chatState.can;
+    els.chatBadge.hidden = chatState.unread === 0;
+    els.chatBadge.textContent = formatCount(chatState.unread);
+    els.chat.classList.toggle('has-new', chatState.unread > 0);
+    els.chat.setAttribute('aria-label', chatState.unread ? 'Messages, ' + chatState.unread + ' unread' : 'Messages');
+    els.chat.setAttribute('title', 'Messages');
+  }
+  function fetchChat() {
+    return supabaseClient.rpc('chat_status').then(function (result) {
+      if (result.error) return; // migration 070 not run yet - no icon
+      var row = Array.isArray(result.data) ? result.data[0] : result.data;
+      chatState = { can: !!(row && row.can_message), unread: (row && row.unread) || 0 };
+      renderChat();
+    }, function () { /* keep what we had */ });
+  }
+  // The Network page's chat tells us the moment its count changes.
+  document.addEventListener('lacms:chat-unread', function (e) {
+    chatState.unread = (e.detail && e.detail.count) || 0;
+    chatState.can = true;
+    renderChat();
+  });
+
   // Small count pills on the matching nav links (desktop nav, mobile
   // drawer) and the member hub's perks card.
   function renderPills() {
@@ -325,6 +363,7 @@
   function refresh() {
     if (refreshing || !userId) return Promise.resolve();
     refreshing = true;
+    fetchChat();
     return fetchCounts().then(function (ok) {
       refreshing = false;
       if (ok) render();
@@ -341,9 +380,11 @@
   function teardown() {
     userId = null;
     counts = null;
+    chatState = { can: false, unread: 0 };
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
     if (els) {
       els.button.remove();
+      if (els.chat) els.chat.remove();
       els.panel.remove();
       els.live.remove();
       els = null;

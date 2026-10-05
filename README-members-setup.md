@@ -1279,3 +1279,19 @@ When someone signs in, a "Hi <first name>, here's what's new" window opens with 
 Rules: it appears every time they sign in, and otherwise at most once per browser session and not within 3 hours of the last time. It waits for the terms gate, the welcome tour offer and any other dialog to clear, and a brand-new member gets the welcome tour first (the summary starts from their next sign-in). Each row links to the page; following a "given access" row counts as opening it, which clears its "New" tag. "Don't show this when I sign in" in the window switches it off (the same link switches it back on), and the bell's new "What's new for you" link reopens it any time, even when it's switched off.
 
 Nothing here changes what anyone is allowed to see: every figure comes from queries that run as the signed-in person, so row-level security decides what each person is told about.
+
+## 120. Direct messages on the Network page
+
+**Run [`db/migrations/070-chat.sql`](db/migrations/070-chat.sql) in Supabase** (needs 060/061 for Hub Access, 025, and 063). Until it's run nothing changes on the site - no Messages tab, no message icons.
+
+Anyone who can use the Network (the Hub Access rule "network") can message anyone else who can. Open the Network page and you'll see **People | Messages** tabs:
+
+- **Starting a chat:** the message icon that appears on a person's card (on hover on a computer, always on a phone), "Send a message" in their profile pop-up, or "New message" in the Messages tab (search by name or course). People who haven't signed up yet (pending) can't be messaged.
+- **Messages tab:** conversation list (newest first, unread counts, search, "typing…"), and the thread: day separators, grouped bubbles, links clickable, "Sending… / Sent / Seen", "Not sent - Retry" if it fails (a retry can never double-send), older messages load as you scroll up, a "New messages" jump button, drafts remembered per conversation, Enter to send (Shift+Enter for a new line; on phones Enter is a new line). Up to 2,000 characters.
+- **Live:** messages arrive instantly (Supabase Realtime). If Realtime is off or drops, the page polls every few seconds instead. Typing indicators use Realtime broadcast and aren't stored.
+- **Unread everywhere:** a chat icon with a count sits beside the bell in the header, the Messages tab and page title show it too, a toast appears when something arrives while you're on the People tab, and the sign-in summary (section 119) lists unread messages.
+- **Each person's controls** (the ⋯ menu in a conversation): mute, block/unblock, report, clear conversation (from their side only). On their own messages: delete (removes the text for both people) and copy. On someone else's: copy and report.
+
+**Privacy and safety.** Only the two people in a conversation can read it - the president included. The only way anyone else sees a message is a **report**: it sends the reported message and the nine before it to the president, who reviews it in the dashboard's new **Message Reports** section (president only): mark resolved/dismissed with a note, reopen, or **pause that person's messaging** (they keep the rest of the site). Blocking works both ways and the blocked person isn't told. Server-side limits: 20 messages a minute per person, 10 reports a day. All of this is enforced in the database (row-level security plus functions that check who's calling) - the browser can't write to the chat tables directly.
+
+Good to know: deleting a message removes its text, so a harasser can't be reported for something they've already deleted - but a report's snapshot is taken at the moment it's made, so reporting early matters. There are no attachments or email notifications (both would be natural next steps). If someone loses Network access (a Hub Access change, or removal from the Network), they can no longer send or receive; existing conversations stay in the database.

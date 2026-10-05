@@ -3834,6 +3834,16 @@
       junior_sankofa_mentor: 'Junior Sankofa Mentor'
     };
 
+    var NETWORK_CHAT_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.3A8.4 8.4 0 1 1 21 11.5z"/></svg>';
+
+    // The id messages are addressed to: a member's id is their login id; a
+    // professional only has one once they've signed in (user_id).
+    function networkChatTarget(type, record) {
+      if (!record) return null;
+      var uid = type === 'member' ? (record.is_pending ? null : record.id) : record.user_id;
+      return uid && uid !== networkSelfId ? uid : null;
+    }
+
     supabaseClient.auth.getSession().then(function (result) {
       var session = result.data && result.data.session;
       if (!session) {
@@ -4203,8 +4213,10 @@
       var linkedinHtml = safeUrl(m.linkedin_url) ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
       var isCommittee = !m.is_pending && (m.member_type === 'executive_committee' || m.member_type === 'supporting_committee');
       var cardClass = 'network-card' + (isCommittee ? ' network-card--committee' : '') + (m.is_pending ? ' network-card--pending' : '');
+      var chatTarget = networkChatTarget('member', m);
+      var chatHtml = chatTarget ? '<span class="network-card-msg" data-chat-user="' + escapeHtml(chatTarget) + '" title="Message ' + escapeHtml(m.full_name) + '" aria-hidden="true">' + NETWORK_CHAT_ICON + '</span>' : '';
       return '<button type="button" class="' + cardClass + '" data-network-type="member" data-network-id="' + m.id + '">' +
-        linkedinHtml +
+        linkedinHtml + chatHtml +
         '<span class="network-card-avatar">' + escapeHtml(networkInitials(m.full_name)) + '</span>' +
         '<span class="network-card-name">' + escapeHtml(m.full_name) + '</span>' +
         '<span class="network-card-meta">' + escapeHtml([networkCourseLabel(m.course), m.year_of_study ? yearGroupLabel(m.year_of_study) : ''].filter(Boolean).join(' · ') || '-') + '</span>' +
@@ -4233,8 +4245,10 @@
       var avatarHtml = proSafePhoto
         ? '<img src="' + proSafePhoto + '" alt="">'
         : escapeHtml(networkInitials(p.full_name));
+      var proChatTarget = networkChatTarget('professional', p);
+      var proChatHtml = proChatTarget ? '<span class="network-card-msg" data-chat-user="' + escapeHtml(proChatTarget) + '" title="Message ' + escapeHtml(p.full_name) + '" aria-hidden="true">' + NETWORK_CHAT_ICON + '</span>' : '';
       return '<button type="button" class="network-card network-card--professional" data-network-type="professional" data-network-id="' + p.id + '">' +
-        linkedinHtml +
+        linkedinHtml + proChatHtml +
         '<span class="network-card-avatar">' + avatarHtml + '</span>' +
         '<span class="network-card-name">' + escapeHtml(p.full_name) + '</span>' +
         '<span class="network-card-meta">' + escapeHtml(p.title) + '</span>' +
@@ -4660,6 +4674,14 @@
           toggleNetworkSelection(card);
           return;
         }
+        // The little message icon on a card goes straight to the chat.
+        var msgIcon = e.target.closest('[data-chat-user]');
+        if (msgIcon) {
+          e.stopPropagation();
+          var cardName = card.querySelector('.network-card-name');
+          document.dispatchEvent(new CustomEvent('lacms:chat-open', { detail: { userId: msgIcon.getAttribute('data-chat-user'), name: cardName ? cardName.textContent : '' } }));
+          return;
+        }
         openNetworkModal(card.getAttribute('data-network-id'), card.getAttribute('data-network-type'));
       });
 
@@ -4740,6 +4762,15 @@
           linkedinBtn(record.linkedin_url);
       }
 
+      var modalChatTarget = networkContent.classList.contains('chat-on') ? networkChatTarget(type, record) : null;
+      if (modalChatTarget) {
+        body.insertAdjacentHTML('beforeend', '<div class="network-modal-chat"><button type="button" class="btn btn-primary" data-nm-message>' + NETWORK_CHAT_ICON + 'Send a message</button></div>');
+        body.querySelector('[data-nm-message]').addEventListener('click', function () {
+          closeNetworkModal();
+          document.dispatchEvent(new CustomEvent('lacms:chat-open', { detail: { userId: modalChatTarget, name: record.full_name, detail: type === 'member' ? [networkCourseLabel(record.course), record.year_of_study ? yearGroupLabel(record.year_of_study) : ''].filter(Boolean).join(' · ') : record.title } }));
+        });
+      }
+
       if (networkIsPresident) {
         var entry = networkEntryFor(type, id);
         if (entry && !entry.protectedSelf) {
@@ -4798,7 +4829,7 @@
       if (dashboardRole === 'president') return true;
       return DASH_SHARED_SECTIONS.indexOf(section) !== -1 && !!dashAllowed[section];
     }
-    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'pending', 'create', 'manage'];
+    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'pending', 'chatreports', 'create', 'manage'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
@@ -4873,7 +4904,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'create', 'manage'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'chatreports', 'create', 'manage'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {

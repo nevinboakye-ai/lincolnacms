@@ -7,7 +7,7 @@
 <title>Network - LACMS</title>
 <meta name="description" content="The LACMS Network - every member and the healthcare professionals supporting Sankofa mentorship.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-88">
+<link rel="stylesheet" href="css/styles.css?v=20260824-89">
 </head>
 <body>
 
@@ -109,6 +109,19 @@
         <span><strong>Coming soon</strong> - the Network isn't live yet. Check back soon.</span>
       </div>
 
+      <div id="network-tabs" class="network-tabs" role="tablist" aria-label="Network" hidden>
+        <button type="button" role="tab" id="net-tab-people" class="network-tab is-active" data-net-tab="people" aria-selected="true" aria-controls="network-people-panel">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22.5 20v-1a4 4 0 0 0-3-3.87"/><path d="M16.5 3.13a4 4 0 0 1 0 7.75"/></svg>
+          People
+        </button>
+        <button type="button" role="tab" id="net-tab-messages" class="network-tab" data-net-tab="messages" aria-selected="false" aria-controls="network-messages" tabindex="-1">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.6-.8L3 21l1.9-5.3A8.4 8.4 0 1 1 21 11.5z"/></svg>
+          Messages
+          <span class="network-tab-badge" data-chat-tab-badge hidden></span>
+        </button>
+      </div>
+
+      <div id="network-people-panel" role="tabpanel" aria-labelledby="net-tab-people">
       <div id="network-content" style="display:none;">
 
         <div id="network-ticker" class="network-ticker" style="display:none;">
@@ -154,6 +167,9 @@
         <p id="network-empty" style="display:none; color: var(--color-text-faint);">No one's listed yet - check back soon.</p>
 
       </div>
+      </div>
+
+      <div id="network-messages" class="chat" role="tabpanel" aria-labelledby="net-tab-messages" hidden></div>
     </div>
   </section>
 
@@ -235,9 +251,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-88"></script>
-<script src="js/members.js?v=20260824-88"></script>
-<script src="js/notifications.js?v=20260824-88"></script>
-<script src="js/guidance.js?v=20260824-88"></script>
+<script src="js/main.js?v=20260824-89"></script>
+<script src="js/members.js?v=20260824-89"></script>
+<script src="js/notifications.js?v=20260824-89"></script>
+<script src="js/guidance.js?v=20260824-89"></script>
+<script src="js/chat.js?v=20260824-89"></script>
 </body>
 </html>
