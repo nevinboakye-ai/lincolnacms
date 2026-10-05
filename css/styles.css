@@ -7743,11 +7743,17 @@ body.guide-open { overflow: hidden; }
 .res-embed--img { aspect-ratio: auto; background: transparent; }
 .res-embed--img img { width: 100%; height: auto; max-height: 72vh; object-fit: contain; }
 @media (max-width: 640px) {
-  .res-dialog--preview { padding: var(--space-3); max-height: calc(100vh - 16px); }
-  .guide-backdrop:has(.res-dialog--preview) { padding: 8px; }
+  .res-dialog { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
+  .res-dialog--preview { padding: var(--space-3); }
+  .guide-backdrop:has(.res-dialog) { padding: 8px; }
   .res-embed { aspect-ratio: 16 / 9; }
   .res-embed.res-embed--pdf, .res-embed.res-embed--img, .res-embed.res-embed--card { aspect-ratio: auto; }
-  .res-pdf { max-height: 68vh; padding: 6px; }
+  /* The PDF used to be its own tall scroll box covering most of the pop-up,
+     so a swipe on it scrolled the PDF and the pop-up itself felt stuck.
+     Now the pages simply flow inside the pop-up, which scrolls as one; only
+     sideways panning (when zoomed in) stays inside the PDF area. */
+  .res-pdf { max-height: none; overflow-y: visible; overflow-x: auto; padding: 6px; touch-action: pan-x pan-y; overscroll-behavior-y: auto; }
+  .res-embed--img img { max-height: none; }
 }
 
 /* "New" tag on pages someone has recently been given access to */

@@ -1065,22 +1065,24 @@
       }).catch(function () { wr._busy = false; });
     }
 
+    // Which pages are on screen is worked out from where they are in the
+    // window, so it works whether the PDF area scrolls itself (desktop) or
+    // just flows inside the pop-up, which scrolls as a whole (phones).
+    var dlgEl = slot.closest('.guide-dialog');
     function renderVisible() {
-      var top = box.scrollTop;
-      var bottom = top + box.clientHeight;
+      var vh = window.innerHeight || 800;
       wrappers.forEach(function (wr) {
-        var t = wr.offsetTop;
-        var b = t + wr.offsetHeight;
-        if (b > top - 400 && t < bottom + 400) renderPage(wr);
+        var rect = wr.getBoundingClientRect();
+        if (rect.bottom > -400 && rect.top < vh + 400) renderPage(wr);
       });
     }
 
     function updateLabel() {
       var current = 1;
-      var probe = box.scrollTop + 40;
+      var probe = Math.max(box.getBoundingClientRect().top, dlgEl ? dlgEl.getBoundingClientRect().top : 0) + 40;
       for (var i = 0; i < wrappers.length; i++) {
-        if (wrappers[i].offsetTop + wrappers[i].offsetHeight > probe) { current = i + 1; break; }
         current = i + 1;
+        if (wrappers[i].getBoundingClientRect().bottom > probe) break;
       }
       pagesLabel.textContent = 'Page ' + current + ' of ' + wrappers.length;
     }
@@ -1101,6 +1103,7 @@
     slot.querySelector('[data-pdf-out]').addEventListener('click', function () { setZoom(zoom - 0.25); });
     slot.querySelector('[data-pdf-fit]').addEventListener('click', function () { setZoom(1); });
     box.addEventListener('scroll', function () { renderVisible(); updateLabel(); }, { passive: true });
+    if (dlgEl) dlgEl.addEventListener('scroll', function () { renderVisible(); updateLabel(); }, { passive: true });
     var resizeTimer = null;
     window.addEventListener('resize', function onResize() {
       if (!document.body.contains(box)) { window.removeEventListener('resize', onResize); return; }
