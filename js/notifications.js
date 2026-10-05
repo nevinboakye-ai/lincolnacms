@@ -422,9 +422,10 @@
     if (ownsMessageToasts) return; // the Network page's chat handles its own
     var show = function () {
       var info = convInfo[r.conversation_id];
-      if (info && info.muted) return;
+      // Not in the inbox (e.g. a conversation the person isn't allowed to see): say nothing.
+      if (!info || info.muted) return;
       showLiveToast({
-        key: 'conv:' + r.conversation_id, kind: 'message', title: info ? info.name : 'New message',
+        key: 'conv:' + r.conversation_id, kind: 'message', title: info.name,
         body: String(r.body || '').replace(/\s+/g, ' ').slice(0, 110),
         href: 'member-network.html#messages/' + r.conversation_id
       });

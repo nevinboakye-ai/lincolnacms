@@ -3840,6 +3840,7 @@
     // professional only has one once they've signed in (user_id).
     function networkChatTarget(type, record) {
       if (!record) return null;
+      if (record.is_restricted) return null;
       var uid = type === 'member' ? (record.is_pending ? null : record.id) : record.user_id;
       return uid && uid !== networkSelfId ? uid : null;
     }
@@ -4203,7 +4204,23 @@
       }).join('');
     }
 
+    // Sixth-form students are visible to the Executive Committee only. For
+    // everyone else the database sends a redacted row (placeholder name, no
+    // course, bio or link - see migration 072) and this draws it blurred and
+    // inert, so there is nothing real behind the blur.
+    var NETWORK_LOCK_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+    function renderRestrictedNetworkCard() {
+      return '<div class="network-card network-card--restricted" role="group" aria-label="Sixth-form student - only the Executive Committee can view or contact them">' +
+        '<span class="network-card-lock">' + NETWORK_LOCK_ICON + 'Executive Committee only</span>' +
+        '<span class="network-card-avatar" aria-hidden="true">AB</span>' +
+        '<span class="network-card-name" aria-hidden="true">Sixth form student</span>' +
+        '<span class="network-card-meta" aria-hidden="true">Sixth form · Name hidden</span>' +
+        '<span class="network-card-badge" aria-hidden="true">Restricted</span>' +
+        '</div>';
+    }
+
     function renderNetworkMemberCard(m) {
+      if (m.is_restricted) return renderRestrictedNetworkCard();
       // A pending row (added before they've signed up) always shows a
       // plain "Pending" badge — even if they're destined to be
       // committee once they join, they aren't yet, so the committee
@@ -4669,7 +4686,7 @@
     function wireNetworkInteractions() {
       networkContent.addEventListener('click', function (e) {
         var card = e.target.closest('.network-card');
-        if (!card) return;
+        if (!card || card.classList.contains('network-card--restricted')) return;
         if (networkManageMode) {
           toggleNetworkSelection(card);
           return;
@@ -4700,7 +4717,8 @@
 
           document.querySelectorAll('.network-card').forEach(function (card) {
             var name = card.querySelector('.network-card-name').textContent.toLowerCase();
-            var match = !query || name.indexOf(query) !== -1;
+            // Restricted placeholders never match a search - nothing to find.
+            var match = !query || (!card.classList.contains('network-card--restricted') && name.indexOf(query) !== -1);
             card.classList.toggle('is-hidden-by-search', !match);
             if (match) anyVisible = true;
           });

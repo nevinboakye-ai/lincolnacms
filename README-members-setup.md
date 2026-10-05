@@ -1303,3 +1303,7 @@ Good to know: deleting a message removes its text, so a harasser can't be report
 Messages arrive instantly once migration 070 is run. For content, optionally run [`db/migrations/071-live-notifications.sql`](db/migrations/071-live-notifications.sql) so new content is pushed instantly too; without it the pop-ups still appear, within about a minute.
 
 **Resources toolbar.** "My submissions" and "Review queue" are now a single pill-shaped control with icons and count badges (stacked evenly across the width on phones) instead of plain text links.
+
+## 122. Sixth-form students: blurred, and no messaging (except for the Executive Committee)
+
+Run [`db/migrations/072-sixth-form-blurred-and-no-messaging.sql`](db/migrations/072-sixth-form-blurred-and-no-messaging.sql) (needs 064 and 070). Everyone except the Executive Committee and the president now sees sixth-form students on the Network as blurred "Executive Committee only" cards: no name, course, bio or link, not clickable, not searchable, no message icon. The redaction is done in the database (placeholder name and a meaningless id are sent), so there's nothing to uncover in the page. Messaging is blocked in both directions between a sixth-form student and anyone who isn't an executive, and such conversations drop out of inboxes and unread counts. The "just joined" ticker and banner still hide them entirely. Until 072 is run they stay hidden completely (as in 064).

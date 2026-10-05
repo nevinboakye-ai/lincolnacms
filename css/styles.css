@@ -8734,3 +8734,14 @@ body.guide-open { overflow: hidden; }
   .live-toast { transition: opacity 0.1s linear; transform: none; }
   .live-toast-bar { animation: none; transform: none; opacity: 0.4; }
 }
+
+/* Sixth-form students, for everyone except the Executive Committee: blurred and inert (migration 072) */
+.network-card--restricted { position: relative; overflow: hidden; cursor: not-allowed; user-select: none; -webkit-user-select: none; border-left-color: var(--color-border-strong); }
+.network-card--restricted:hover, .network-card--restricted:active { transform: none; box-shadow: none; border-left-color: var(--color-border-strong); }
+.network-card--restricted .network-card-avatar,
+.network-card--restricted .network-card-name,
+.network-card--restricted .network-card-meta,
+.network-card--restricted .network-card-badge { filter: blur(7px); opacity: 0.8; pointer-events: none; }
+.network-card--restricted::after { content: ""; position: absolute; inset: 0; background: rgba(var(--gold-rgb), 0.04); pointer-events: none; }
+.network-card-lock { position: absolute; z-index: 2; top: 50%; left: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--color-surface-raised); border: 1px solid var(--color-border-strong); color: var(--color-text-muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; white-space: nowrap; box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.6); }
+.network-card-lock .icon { width: 13px; height: 13px; color: var(--color-gold-light); }
