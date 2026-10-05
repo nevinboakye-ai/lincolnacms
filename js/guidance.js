@@ -741,7 +741,7 @@
 
   function trackAccess(ctx) {
     var st = getState('hub_access_seen') || {};
-    accessSeen = { baselined: !!st.baselined, first: st.first || {}, opened: st.opened || {} };
+    accessSeen = { baselined: !!st.baselined, first: st.first || {}, opened: st.opened || {}, announced: st.announced || {} };
     if (!ctx.access) return;
     var now = new Date().toISOString();
     var changed = false;
@@ -751,6 +751,7 @@
       } else if (accessSeen.first[f]) {
         delete accessSeen.first[f];
         delete accessSeen.opened[f];
+        delete accessSeen.announced[f];
         changed = true;
       }
     });
@@ -834,6 +835,338 @@
     saveAccessSeen();
   }, true);
 
+
+  // =======================================================================
+  // 5. "What's new for you" - a short summary when someone signs in.
+  // =======================================================================
+  // Pulls three things together: pages they've just been given access to
+  // (section 4), things waiting on them (a nomination or application they
+  // haven't made, a resource they shared that's been reviewed, and for
+  // reviewers the queue of resources / account requests), and content
+  // published since they were last here (the bell's counts, snapshotted by
+  // js/notifications.js before the page marks its own section as seen).
+  //
+  // It appears once per sign-in (or once per browser session when they
+  // return to a still-signed-in browser, and not within 3 hours of the last
+  // time), only when there's something to say, never over the welcome
+  // tour, the terms gate or another dialog, and can be switched off from the
+  // dialog itself. The bell's "What's new for you" link reopens it any time.
+  // What's remembered: user_ui_state key welcome_seen (migration 069) =
+  // { at: when it last appeared, off: they asked not to see it }.
+  var DIGEST_GAP_MS = 3 * 3600 * 1000;
+  var DIGEST_SKIP_PAGES = ['member-login.html', 'login.html', 'request-account.html', 'join.html', 'mmg-login.html'];
+  var ACCESS_COPY = {
+    perks: { title: 'Discounts & opportunities', sub: 'Member discounts, offers and opportunities', href: 'member-perks.html' },
+    sankofa: { title: 'Sankofa', sub: 'Apply to join a Sankofa Circle', href: 'member-sankofa.html' },
+    network: { title: 'The Network', sub: 'Connect with LACMS members and professionals', href: 'member-network.html' },
+    motm_nominate: { title: 'Member of the Month nominations', sub: 'Nominate someone - the winner and runners-up win prizes', href: 'motm.html#nominate' },
+    resources: { title: 'LACMS Resources', sub: 'Study resources shared by LACMS members', href: 'member-resources.html' }
+  };
+  var DASH_LABELS = { dash_mmg: 'Midlands Medics Gala', dash_sankofa: 'Sankofa', dash_motm: 'Member of the Month', dash_events: 'Events', dash_gallery: 'Gallery' };
+  var ICONS = {
+    spark: '<path d="M12 3l2.1 5.4L20 10l-5.9 1.6L12 17l-2.1-5.4L4 10l5.9-1.6z"/><path d="M19 17v4M17 19h4"/>',
+    todo: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+    check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/>',
+    alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/>',
+    inbox: '<path d="M3 13l2.5-7.5A2 2 0 0 1 7.4 4h9.2a2 2 0 0 1 1.9 1.5L21 13"/><path d="M3 13v5a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5h-5l-1.5 2h-5L8 13z"/>'
+  };
+  var digestBusy = false;
+
+  // A fresh sign-in always gets its summary, even in a browser that's
+  // shown one recently - flagged here, then picked up on the page they land on.
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (f && (f.id === 'login-form' || f.id === 'mmg-signin-form')) sset('lacms-signed-in-now', '1');
+  }, true);
+
+  function iconSvg(name) {
+    return '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || ICONS.bell) + '</svg>';
+  }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+  function agoText(ms) {
+    var mins = Math.floor((Date.now() - ms) / 60000);
+    if (mins < 60) return 'less than an hour ago';
+    var hrs = Math.floor(mins / 60);
+    if (hrs < 24) return plural(hrs, 'hour', 'hours') + ' ago';
+    var days = Math.floor(hrs / 24);
+    if (days === 1) return 'yesterday';
+    if (days < 14) return days + ' days ago';
+    return plural(Math.floor(days / 7), 'week', 'weeks') + ' ago';
+  }
+  function withTimeout(promise, ms, fallback) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var timer = setTimeout(function () { if (!done) { done = true; resolve(fallback); } }, ms);
+      promise.then(function (v) { if (!done) { done = true; clearTimeout(timer); resolve(v); } },
+        function () { if (!done) { done = true; clearTimeout(timer); resolve(fallback); } });
+    });
+  }
+  function termsGateOpen() {
+    var terms = document.getElementById('terms-gate-modal');
+    return !!(terms && window.getComputedStyle(terms).display !== 'none');
+  }
+
+  // Each loader answers "nothing" rather than throwing, so one missing
+  // table or a failed request never blocks the rest of the summary.
+  function loadReviewedResources(sinceMs) {
+    return supabaseClient.from('resources')
+      .select('id, title, status, reviewed_by, reviewed_at, reject_reason')
+      .eq('uploader_id', userId).in('status', ['approved', 'rejected'])
+      .gt('reviewed_at', new Date(sinceMs).toISOString())
+      .order('reviewed_at', { ascending: false }).limit(20)
+      .then(function (r) {
+        // Executives' own uploads are approved on the spot - not news.
+        return r.error ? [] : (r.data || []).filter(function (x) { return x.reviewed_by !== userId; });
+      }, function () { return []; });
+  }
+  function loadReviewQueue() {
+    return supabaseClient.rpc('get_resource_counts').then(function (r) {
+      if (r.error) return 0;
+      return (r.data || []).reduce(function (sum, row) { return sum + (row.pending_count || 0); }, 0);
+    }, function () { return 0; });
+  }
+  function loadPendingRequests() {
+    return supabaseClient.rpc('is_president').then(function (r) {
+      if (r.error || r.data !== true) return 0;
+      return supabaseClient.rpc('president_get_account_requests').then(function (rows) {
+        if (rows.error) return 0;
+        return (rows.data || []).filter(function (x) { return x.status === 'pending'; }).length;
+      });
+    }, function () { return 0; });
+  }
+
+  // Returns { groups: [{ title, items: [...] }], total, newAccess: [features] }.
+  function buildDigest(ctx, manual) {
+    var st = getState('welcome_seen') || {};
+    var sinceMs = st.at ? Math.max(new Date(st.at).getTime(), Date.now() - 30 * 86400000) : Date.now() - 14 * 86400000;
+
+    return Promise.all([
+      withTimeout(window.lacmsNotifSnapshot || Promise.resolve(null), 6000, null),
+      withTimeout(loadReviewedResources(sinceMs), 6000, []),
+      withTimeout(loadReviewQueue(), 6000, 0),
+      withTimeout(loadPendingRequests(), 6000, 0)
+    ]).then(function (res) {
+      var snapshot = res[0] || [];
+      var reviewed = res[1];
+      var queue = res[2];
+      var requests = res[3];
+      var groups = [];
+      var announce = [];
+
+      // -- New access
+      var access = [];
+      Object.keys(ACCESS_COPY).forEach(function (f) {
+        if (!isNewAccess(f) || (!manual && accessSeen.announced[f])) return;
+        var c = ACCESS_COPY[f];
+        access.push({ icon: 'spark', title: c.title, sub: c.sub, href: c.href, tag: 'New', features: [f] });
+        announce.push(f);
+      });
+      var dash = Object.keys(DASH_LABELS).filter(function (f) { return isNewAccess(f) && (manual || !accessSeen.announced[f]); });
+      if (dash.length) {
+        access.push({
+          icon: 'spark', title: 'Dashboard access',
+          sub: 'You can now manage: ' + dash.map(function (f) { return DASH_LABELS[f]; }).join(', '),
+          href: 'president-dashboard.html' + (dash.length === 1 ? '#' + DASH_SECTION_FOR[dash[0]] : ''),
+          tag: 'New', features: dash.concat(['dash_card'])
+        });
+        announce = announce.concat(dash);
+      }
+      if (access.length) groups.push({ title: 'You\'ve been given access', items: access });
+
+      // -- Waiting for you
+      var waiting = [];
+      if (requests > 0) waiting.push({ icon: 'todo', title: plural(requests, 'account request', 'account requests') + ' waiting', sub: 'Review and approve new members', href: 'president-dashboard.html#requests', count: requests });
+      if (queue > 0) waiting.push({ icon: 'todo', title: plural(queue, 'resource', 'resources') + ' waiting for review', sub: 'Shared by members, hidden until you approve them', href: 'member-resources.html', count: queue });
+      reviewed.slice(0, 3).forEach(function (x) {
+        var ok = x.status === 'approved';
+        waiting.push({
+          icon: ok ? 'check' : 'alert',
+          title: ok ? 'Your resource was approved' : 'Your resource wasn\'t approved',
+          sub: ok ? '"' + x.title + '" is now live for everyone' : (x.reject_reason ? '"' + x.title + '" - ' + x.reject_reason : '"' + x.title + '" - see the reviewer\'s note'),
+          href: 'member-resources.html'
+        });
+      });
+      if (reviewed.length > 3) waiting.push({ icon: 'bell', title: 'And ' + (reviewed.length - 3) + ' more of your resources were reviewed', sub: 'See them in "My submissions"', href: 'member-resources.html' });
+      if (ctx.nudges.sankofa) {
+        var left = Math.ceil((SANKOFA_DEADLINE - Date.now()) / 86400000);
+        waiting.push({
+          icon: 'todo',
+          title: left <= 1 ? 'Sankofa applications close today' : 'Sankofa applications close in ' + left + ' days',
+          sub: 'You haven\'t applied yet - don\'t miss out', href: 'member-sankofa.html'
+        });
+      }
+      if (ctx.nudges.motm) waiting.push({ icon: 'todo', title: 'Nominate someone for Member of the Month', sub: 'You haven\'t nominated this month - the winner and runners-up win prizes', href: 'motm.html#nominate' });
+      if (waiting.length) groups.push({ title: 'Waiting for you', items: waiting });
+
+      // -- Since you were last here
+      var content = snapshot.filter(function (row) { return row.page !== page; }).map(function (row) {
+        return {
+          icon: 'bell', title: row.label,
+          sub: plural(row.count, row.singular, row.plural) + (row.title ? ' · Latest: ' + row.title : ''),
+          href: row.href, count: row.count
+        };
+      });
+      if (content.length) groups.push({ title: 'New since you last looked', items: content });
+
+      var total = groups.reduce(function (n, g) { return n + g.items.length; }, 0);
+      return { groups: groups, total: total, announce: announce, lastAt: st.at || null, off: !!st.off };
+    });
+  }
+
+  function firstNameFor(ctx) {
+    var nameEl = document.querySelector('[data-member-name-inline]');
+    var name = (nameEl && nameEl.textContent && nameEl.textContent !== 'member' ? nameEl.textContent : (ctx.member && ctx.member.full_name) || '').trim();
+    return name.split(/\s+/)[0] || '';
+  }
+
+  function openDigest(ctx, model, manual) {
+    overlayOpen = true;
+    digestBusy = true;
+    var previouslyFocused = document.activeElement;
+    var first = firstNameFor(ctx);
+    var off = model.off;
+
+    var itemIndex = 0;
+    var body = model.groups.map(function (g) {
+      return '<section class="digest-group"><h3 class="digest-group-title">' + escapeHtml(g.title) + '</h3><div class="digest-list">' +
+        g.items.map(function (it) {
+          var attrs = it.features ? ' data-digest-open="' + escapeHtml(it.features.join(',')) + '"' : '';
+          return '<a class="digest-item digest-item--' + it.icon + '" href="' + escapeHtml(it.href) + '"' + attrs + ' style="--i:' + (itemIndex++) + '">' +
+            '<span class="digest-icon">' + iconSvg(it.icon) + '</span>' +
+            '<span class="digest-item-main"><span class="digest-item-title">' + escapeHtml(it.title) +
+            (it.tag ? ' <span class="new-access-tag"><span class="new-access-dot" aria-hidden="true"></span>' + escapeHtml(it.tag) + '</span>' : '') +
+            '</span><span class="digest-item-sub">' + escapeHtml(it.sub) + '</span></span>' +
+            '<span class="digest-item-end">' + (it.count ? '<span class="digest-count">' + (it.count > 99 ? '99+' : it.count) + '</span>' : '') +
+            '<svg class="digest-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>' +
+            '</a>';
+        }).join('') + '</div></section>';
+    }).join('');
+    if (!model.total) {
+      body = '<div class="digest-empty"><span class="digest-icon digest-icon--lg">' + iconSvg('inbox') + '</span>' +
+        '<strong>You\'re all caught up</strong><span>Nothing new right now - new content and anything waiting on you will show up here.</span></div>';
+    }
+
+    var intro = model.total
+      ? (model.lastAt ? 'You were last here ' + agoText(new Date(model.lastAt).getTime()) + '. Here\'s what\'s new for you.' : 'Here\'s what\'s new for you.')
+      : 'Here\'s where things stand.';
+
+    var backdrop = el('div', 'guide-backdrop');
+    var dialog = el('div', 'guide-dialog guide-dialog--digest');
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'digest-title');
+    dialog.innerHTML =
+      '<div class="digest-head"><span class="guide-eyebrow">' + (manual ? 'What\'s new' : 'Welcome back') + '</span>' +
+      '<h2 class="guide-title" id="digest-title">' + (first && !manual ? 'Hi ' + escapeHtml(first) + ', here\'s what\'s new' : (model.total ? 'What\'s new for you' : 'What\'s new for you')) + '</h2>' +
+      '<p class="guide-text">' + escapeHtml(intro) + '</p>' +
+      '<button type="button" class="guide-close" data-digest-close aria-label="Close">&times;</button></div>' +
+      '<div class="digest-body">' + body + '</div>' +
+      '<div class="digest-foot"><button type="button" class="btn btn-primary" data-digest-close>' + (model.total ? 'Got it' : 'Close') + '</button>' +
+      '<button type="button" class="guide-linkbtn" data-digest-off aria-pressed="' + (off ? 'true' : 'false') + '">' + (off ? 'Show this when I sign in' : 'Don\'t show this when I sign in') + '</button></div>';
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+    document.body.classList.add('guide-open');
+    requestAnimationFrame(function () { backdrop.classList.add('is-in'); var b = dialog.querySelector('.digest-foot .btn'); if (b) b.focus(); });
+
+    if (!manual) {
+      // Count it as shown now (not on close), so a refresh doesn't repeat it.
+      var st = getState('welcome_seen') || {};
+      setState('welcome_seen', { at: new Date().toISOString(), off: !!st.off });
+      if (model.announce.length) {
+        var nowIso = new Date().toISOString();
+        model.announce.forEach(function (f) { accessSeen.announced[f] = nowIso; });
+        saveAccessSeen();
+      }
+    }
+
+    function close() {
+      document.removeEventListener('keydown', onKey, true);
+      backdrop.classList.remove('is-in');
+      document.body.classList.remove('guide-open');
+      overlayOpen = false;
+      digestBusy = false;
+      setTimeout(function () { backdrop.remove(); }, reduceMotion ? 0 : 200);
+      if (previouslyFocused && previouslyFocused.focus && document.body.contains(previouslyFocused)) previouslyFocused.focus();
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(); }
+      else if (e.key === 'Tab') trapFocus(e, dialog);
+    }
+    document.addEventListener('keydown', onKey, true);
+    backdrop.addEventListener('click', function (e) { if (e.target === backdrop) close(); });
+    dialog.addEventListener('click', function (e) {
+      if (e.target.closest('[data-digest-close]')) { close(); return; }
+      var offBtn = e.target.closest('[data-digest-off]');
+      if (offBtn) {
+        off = !off;
+        var cur = getState('welcome_seen') || {};
+        setState('welcome_seen', { at: cur.at || new Date().toISOString(), off: off });
+        offBtn.setAttribute('aria-pressed', off ? 'true' : 'false');
+        offBtn.textContent = off ? 'Show this when I sign in' : 'Don\'t show this when I sign in';
+        return;
+      }
+      var link = e.target.closest('a.digest-item');
+      if (link) {
+        // Following a "new access" row counts as opening that page.
+        var keys = (link.getAttribute('data-digest-open') || '').split(',').filter(Boolean);
+        if (keys.length && accessSeen) {
+          var t = new Date().toISOString();
+          keys.forEach(function (f) { if (accessSeen.first[f] || f === 'dash_card') accessSeen.opened[f] = t; });
+          saveAccessSeen();
+        }
+        // Same page (e.g. #nominate on the page they're already on)? Just close.
+        var url = new URL(link.href, window.location.href);
+        if (url.pathname === window.location.pathname) close();
+      }
+    });
+  }
+
+  // Waits until nothing else is asking for their attention.
+  function whenQuiet(then) {
+    var tries = 0;
+    (function attempt() {
+      var content = page === HUB ? document.getElementById('member-hub-content') : null;
+      var hubReady = page !== HUB || (content && content.style.display !== 'none');
+      if (!overlayOpen && !tourRunning && !digestBusy && !termsGateOpen() && hubReady && !sget('lacms-tour')) { then(); return; }
+      if (++tries < 75) setTimeout(attempt, 400);
+    })();
+  }
+
+  function maybeShowDigest(ctx) {
+    if (DIGEST_SKIP_PAGES.indexOf(page) !== -1) return;
+    var forced = sget('lacms-signed-in-now') === '1';
+    var shownKey = 'lacms-digest-shown:' + userId;
+    var st = getState('welcome_seen') || {};
+    sdel('lacms-signed-in-now');
+    if (st.off) return;
+    if (!forced) {
+      if (sget(shownKey) === '1') return;
+      if (st.at && Date.now() - new Date(st.at).getTime() < DIGEST_GAP_MS) { sset(shownKey, '1'); return; }
+    }
+    // A brand-new member gets the welcome tour offer first; this starts from their next visit.
+    if (ctx.member && !getState('tour')) return;
+    if (/[?&]tour=1\b/.test(window.location.search)) return;
+    sset(shownKey, '1');
+
+    buildDigest(ctx, false).then(function (model) {
+      if (!model.total) return;
+      whenQuiet(function () { openDigest(ctx, model, false); });
+    }, function () { /* never block the page over a summary */ });
+  }
+
+  // The bell's "What's new for you" link.
+  document.addEventListener('lacms:open-digest', function () {
+    if (!userId || !accessSeen || overlayOpen || tourRunning || digestBusy) return;
+    digestBusy = true;
+    getContext().then(function (ctx) {
+      return buildDigest(ctx, true).then(function (model) {
+        digestBusy = false;
+        openDigest(ctx, model, true);
+      });
+    }).then(null, function () { digestBusy = false; });
+  });
+
   // ---- Wiring -------------------------------------------------------------
   function revealTourLinks() {
     document.querySelectorAll('[data-start-tour]').forEach(function (b) { b.hidden = false; });
@@ -852,7 +1185,7 @@
     revealTourLinks();
 
     loadState().then(function () {
-      getContext().then(function (ctx) { trackAccess(ctx); tagNewAccess(); });
+      getContext().then(function (ctx) { trackAccess(ctx); tagNewAccess(); maybeShowDigest(ctx); });
       // Resume a tour that's mid-way (we navigated here as part of it).
       var saved = tourSaved();
       var navFlag = sget('lacms-tour-nav');

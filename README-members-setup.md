@@ -1265,3 +1265,17 @@ Optionally run [`db/migrations/068-user-ui-state-access-seen.sql`](db/migrations
 When a person is given access to something - by widening a Hub Access rule, or by a per-person override - a gold pulsing **New** tag appears on that card on their Members Hub: Discounts & opportunities, Sankofa, the Network, Member of the Month nominations, LACMS Resources, and (on the hub's dashboard card, and on the individual section cards inside the dashboard) any dashboard section they've been given. The tag clears when they open that page (clicking its card, or arriving at the page by any route) or after 14 days, whichever comes first.
 
 How it works: there's no per-person "granted on" date in the database (access comes from rules that look at someone's role, course and so on), so the site remembers, per person, when each feature *first showed up as allowed* for them. The first time it runs for someone it records everything they already have as a baseline - so nobody sees a wall of "New" tags when this ships, and brand-new accounts start clean - and from then on anything that becomes allowed is tagged. If access is removed and later given back, it counts as new again.
+
+## 119. "What's new for you" summary when people sign in
+
+Optionally run [`db/migrations/069-user-ui-state-welcome-seen.sql`](db/migrations/069-user-ui-state-welcome-seen.sql) (needs 062 and 068) so "when did they last see it / did they switch it off" follows people across devices; without it, this is remembered per browser.
+
+When someone signs in, a "Hi <first name>, here's what's new" window opens with up to three groups - only the ones that have something in them, and nothing at all if there's nothing to say:
+
+- **You've been given access** - pages newly opened to them by Hub Access (the same "New" detection as section 118), announced once. Dashboard sections are grouped into one "Dashboard access" row.
+- **Waiting for you** - a Member of the Month nomination they haven't made this month, a Sankofa application they haven't sent (with days left until the deadline), resources they shared that have been approved or not approved since they last saw this window, and for reviewers: the number of resources awaiting review (executive committee / president) and account requests awaiting approval (president only).
+- **New since you last looked** - the bell's counts (announcements, perks, events, news, Member of the Month, gallery, MMG, resources) taken *before* the page they land on marks its own section as seen, with the latest title for each. The section of the page they're on isn't repeated.
+
+Rules: it appears every time they sign in, and otherwise at most once per browser session and not within 3 hours of the last time. It waits for the terms gate, the welcome tour offer and any other dialog to clear, and a brand-new member gets the welcome tour first (the summary starts from their next sign-in). Each row links to the page; following a "given access" row counts as opening it, which clears its "New" tag. "Don't show this when I sign in" in the window switches it off (the same link switches it back on), and the bell's new "What's new for you" link reopens it any time, even when it's switched off.
+
+Nothing here changes what anyone is allowed to see: every figure comes from queries that run as the signed-in person, so row-level security decides what each person is told about.

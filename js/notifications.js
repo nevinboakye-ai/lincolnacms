@@ -45,6 +45,14 @@
   // no session / this page isn't a tracked section.
   var resolvePreviousSeen;
   window.lacmsPreviousSeen = new Promise(function (resolve) { resolvePreviousSeen = resolve; });
+
+  // The "What's new for you" summary shown at sign-in (js/guidance.js)
+  // needs what was new BEFORE this page marked its own section as seen, so
+  // this resolves (once) to a snapshot of get_my_notifications taken first:
+  // an array of { key, label, singular, plural, href, page, count, title, at },
+  // or null if there's no session / it couldn't be read.
+  var resolveSnapshot;
+  window.lacmsNotifSnapshot = new Promise(function (resolve) { resolveSnapshot = resolve; });
   var userId = null;
   var counts = null; // { sectionKey: { count, title, at } } - null until first successful load
   var announcedTotal = null;
@@ -97,6 +105,24 @@
       if (result.error) console.error('Could not mark notifications as seen:', result.error.message);
       return !result.error;
     });
+  }
+
+  function takeSnapshot() {
+    return supabaseClient.rpc('get_my_notifications').then(function (result) {
+      if (result.error) return null;
+      var rows = [];
+      (result.data || []).forEach(function (row) {
+        for (var i = 0; i < SECTIONS.length; i++) {
+          if (SECTIONS[i].key === row.section && row.new_count > 0) {
+            rows.push({
+              key: row.section, label: SECTIONS[i].label, singular: SECTIONS[i].singular, plural: SECTIONS[i].plural,
+              href: SECTIONS[i].href, page: SECTIONS[i].page, count: row.new_count, title: row.latest_title, at: row.latest_at
+            });
+          }
+        }
+      });
+      return rows;
+    }, function () { return null; });
   }
 
   function fetchCounts() {
@@ -157,7 +183,8 @@
     panel.innerHTML =
       '<div class="notif-panel-head"><h2 class="notif-panel-title">Notifications</h2>' +
       '<button type="button" class="notif-markall" data-notif-markall>Mark all as read</button></div>' +
-      '<div class="notif-panel-body" data-notif-body></div>';
+      '<div class="notif-panel-body" data-notif-body></div>' +
+      '<div class="notif-panel-foot"><button type="button" class="notif-digest-link" data-notif-digest>What\'s new for you</button></div>';
     document.body.appendChild(panel);
 
     var live = document.createElement('div');
@@ -178,6 +205,10 @@
     button.addEventListener('click', function (e) {
       e.stopPropagation();
       setPanelOpen(!panelOpen);
+    });
+    panel.querySelector('[data-notif-digest]').addEventListener('click', function () {
+      setPanelOpen(false);
+      document.dispatchEvent(new CustomEvent('lacms:open-digest'));
     });
     els.markAll.addEventListener('click', function () {
       epoch++;
@@ -324,7 +355,7 @@
   function start(session) {
     userId = session.user.id;
     build();
-    if (!els) return;
+    if (!els) { resolveSnapshot(null); return; }
 
     // Paint straight away from this session's last known counts so the
     // badge doesn't pop in late on every page navigation.
@@ -338,13 +369,16 @@
 
     var here2 = sectionForPage();
     var ready;
+    // Snapshot first, THEN mark this page's section as seen.
+    var snap = takeSnapshot();
+    snap.then(resolveSnapshot);
     if (here2) {
-      ready = supabaseClient.from('notification_seen').select('last_seen_at').eq('section', here2.key).maybeSingle().then(function (r) {
+      ready = snap.then(function () { return supabaseClient.from('notification_seen').select('last_seen_at').eq('section', here2.key).maybeSingle().then(function (r) {
         resolvePreviousSeen((r.data && r.data.last_seen_at) || (session.user && session.user.created_at) || null);
-      }, function () { resolvePreviousSeen(null); }).then(function () { return markSeen([here2.key]); });
+      }, function () { resolvePreviousSeen(null); }).then(function () { return markSeen([here2.key]); }); });
     } else {
       resolvePreviousSeen(null);
-      ready = Promise.resolve(true);
+      ready = snap;
     }
     ready.then(function () { return refresh(); });
     startPolling();
@@ -353,7 +387,7 @@
   supabaseClient.auth.getSession().then(function (result) {
     var session = result.data && result.data.session;
     if (session) start(session);
-    else resolvePreviousSeen(null);
+    else { resolvePreviousSeen(null); resolveSnapshot(null); }
   });
 
   supabaseClient.auth.onAuthStateChange(function (event, session) {
