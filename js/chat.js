@@ -48,6 +48,7 @@
   var lastTypingSent = 0;
   var openActionsId = null;  // message whose action row is open (touch)
   var pendingOpen = null;    // a lacms:chat-open that arrived before we were ready
+  var pendingDraft = null;   // text to pre-fill (not send) in the next conversation opened
   var ready = false;
   var els = {};
   var rt = { channel: null, typing: null, status: '' };
@@ -524,6 +525,14 @@
       autosize();
       updateSendState();
       els.jump.hidden = true;
+    }
+    if (pendingDraft && !c.iBlocked) {
+      // Arrived from a link such as "Message them for the PIN": pre-filled, never auto-sent.
+      els.input.value = pendingDraft;
+      writeDraft(id, pendingDraft);
+      pendingDraft = null;
+      autosize();
+      updateSendState();
     }
     renderList();
     renderTyping();
@@ -1098,6 +1107,7 @@
     if (existing) { goHash('#messages/' + existing.id); return; }
     supabaseClient.rpc('chat_start_conversation', { p_other: userId }).then(function (res) {
       if (res.error || !res.data) {
+        pendingDraft = null;
         showTab('messages');
         toast(friendly(res.error), 'error');
         return;
@@ -1255,6 +1265,17 @@
       if (people) people.classList.add('chat-on');
       ready = true;
       refreshConversations().then(function () {
+        // member-network.html?message=<user id>&draft=<text> opens a chat with
+        // that person (e.g. from a PIN-protected resource asking for its PIN).
+        var params = new URLSearchParams(window.location.search);
+        var target = params.get('message');
+        if (target && /^[0-9a-f-]{36}$/i.test(target)) {
+          pendingDraft = (params.get('draft') || '').slice(0, MAX_LEN) || null;
+          window.history.replaceState(null, '', window.location.pathname + '#messages');
+          route();
+          openWith(target, null);
+          return;
+        }
         route();
         if (pendingOpen) { var p = pendingOpen; pendingOpen = null; openWith(p.userId, p.info); }
       });

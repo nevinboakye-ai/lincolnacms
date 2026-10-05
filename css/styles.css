@@ -8754,3 +8754,71 @@ body.guide-open { overflow: hidden; }
 .network-card--restricted::after { content: ""; position: absolute; inset: 0; background: rgba(var(--gold-rgb), 0.04); pointer-events: none; }
 .network-card-lock { position: absolute; z-index: 2; top: 50%; left: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--color-surface-raised); border: 1px solid var(--color-border-strong); color: var(--color-text-muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; white-space: nowrap; box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.6); }
 .network-card-lock .icon { width: 13px; height: 13px; color: var(--color-gold-light); }
+
+/* =====================================================================
+   PIN-protected resources (js/resources.js, migration 073)
+   ===================================================================== */
+.res-thumb-lock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 100%; height: 100%; color: var(--color-gold-light); background: repeating-linear-gradient(135deg, rgba(var(--gold-rgb), 0.06) 0 10px, transparent 10px 20px); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.res-thumb-lock .icon { width: 34px; height: 34px; }
+.res-badge--locked { display: inline-flex; align-items: center; gap: 5px; background: rgba(var(--gold-rgb), 0.18); color: var(--color-gold-light); }
+.res-badge--locked .icon { width: 11px; height: 11px; }
+.res-badge--locked.is-open { background: rgba(30, 122, 70, 0.2); color: #6fcf97; }
+.res-btn--unlock { display: inline-flex; align-items: center; gap: 6px; }
+.res-btn--unlock .icon { width: 14px; height: 14px; }
+
+/* The PIN form: in its own dialog, or in place of the preview */
+.res-embed--lock { display: block; aspect-ratio: auto; background: var(--color-bg-alt); }
+.res-dialog--pin { max-width: 420px; }
+.res-pin { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: var(--space-4) var(--space-3); text-align: center; }
+.res-pin.is-shake { animation: res-shake 0.4s var(--ease-standard); }
+.res-pin-icon { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; background: rgba(var(--gold-rgb), 0.16); color: var(--color-gold-light); transition: background 0.3s var(--ease-standard), color 0.3s var(--ease-standard), transform 0.3s var(--ease-standard); }
+.res-pin-icon .icon { width: 28px; height: 28px; transition: opacity 0.2s var(--ease-standard), transform 0.3s var(--ease-standard); }
+.res-pin-tick { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; font-weight: 700; opacity: 0; transform: scale(0.4); transition: opacity 0.25s var(--ease-standard), transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+.res-pin.is-unlocked .res-pin-icon { background: rgba(30, 122, 70, 0.22); color: #6fcf97; transform: scale(1.06); }
+.res-pin.is-unlocked .res-pin-icon .icon { opacity: 0; transform: scale(0.5); }
+.res-pin.is-unlocked .res-pin-tick { opacity: 1; transform: scale(1); }
+.res-pin-title { margin: var(--space-2) 0 0; font-family: var(--font-display); font-size: 1.2rem; }
+.res-pin-text { margin: 0 0 var(--space-2); color: var(--color-text-muted); font-size: 0.9rem; max-width: 34ch; }
+.res-pin-form { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 10px; }
+.res-pin-field { position: relative; }
+.res-pin-input { width: 100%; padding: 13px 46px 13px 16px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); background: var(--color-surface-raised); color: var(--color-text); font: inherit; font-size: 1.35rem; font-weight: 700; letter-spacing: 0.4em; text-align: center; }
+.res-pin-input::placeholder { letter-spacing: 0.02em; font-size: 0.95rem; font-weight: 500; color: var(--color-text-faint); }
+.res-pin-input:focus { outline: none; border-color: var(--color-gold); box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.2); }
+.res-pin-input:disabled { opacity: 0.6; }
+.res-pin-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: none; border-radius: 50%; background: transparent; color: var(--color-text-faint); cursor: pointer; }
+.res-pin-eye:hover, .res-pin-eye:focus-visible { background: rgba(128, 128, 128, 0.16); color: var(--color-text); }
+.res-pin-eye[aria-pressed="true"] { color: var(--color-gold-light); }
+.res-pin-eye .icon { width: 18px; height: 18px; }
+.res-pin-error { margin: 0; padding: 8px 12px; border-radius: var(--radius-sm); background: rgba(var(--red-rgb), 0.12); border: 1px solid rgba(var(--red-rgb), 0.4); color: var(--accent-red); font-size: 0.84rem; text-align: left; }
+.res-pin-error[hidden] { display: none; }
+.res-pin-submit.is-busy { opacity: 0.8; cursor: progress; }
+.res-pin-ask { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.res-pin-or { display: flex; align-items: center; gap: 10px; color: var(--color-text-faint); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.res-pin-or::before, .res-pin-or::after { content: ""; flex: 1; height: 1px; background: var(--color-border); }
+.res-pin-fine { margin: var(--space-2) 0 0; color: var(--color-text-faint); font-size: 0.82rem; max-width: 34ch; }
+.res-pin-fine a { color: var(--color-gold-light); }
+
+/* Share / edit form: the PIN switch */
+.res-lockfield { padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-alt, transparent); }
+.guide-form .res-switch, .res-switch { display: flex; align-items: flex-start; gap: 12px; margin: 0; cursor: pointer; }
+.res-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.res-switch-track { display: block; flex: 0 0 auto; position: relative; width: 44px; height: 26px; margin-top: 2px; border-radius: 999px; background: var(--color-border-strong); transition: background 0.2s var(--ease-standard); }
+.res-switch-thumb { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.res-switch input:checked + .res-switch-track { background: var(--color-gold-fill, #d4a62b); }
+.res-switch input:checked + .res-switch-track .res-switch-thumb { transform: translateX(18px); }
+.res-switch input:focus-visible + .res-switch-track { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+.res-switch-text { display: flex; flex: 1 1 auto; flex-direction: column; gap: 3px; min-width: 0; }
+.res-switch-text strong { display: inline-flex; align-items: center; gap: 7px; font-size: 0.95rem; }
+.res-switch-text strong .icon { width: 15px; height: 15px; color: var(--color-gold-light); }
+.res-switch-text small { color: var(--color-text-muted); font-size: 0.8rem; line-height: 1.45; }
+.res-lock-body { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--color-border); animation: res-desc-open 0.22s var(--ease-standard); }
+.res-lock-body[hidden] { display: none; }
+.res-pin-row { display: flex; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
+.res-pin-row input { flex: 1 1 140px; min-width: 0; padding: 10px 14px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-surface-raised); color: var(--color-text); font: inherit; font-size: 1.05rem; font-weight: 700; letter-spacing: 0.25em; }
+.res-pin-row input:focus { outline: none; border-color: var(--color-gold); box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.2); }
+@media (prefers-reduced-motion: reduce) {
+  .res-pin.is-shake { animation: none; }
+  .res-pin-icon, .res-pin-icon .icon, .res-pin-tick, .res-switch-track, .res-switch-thumb { transition: none; }
+  .res-lock-body { animation: none; }
+}
+.res-lock-body .guide-count { display: block; text-align: left; }

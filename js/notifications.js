@@ -434,7 +434,7 @@
     else loadConvInfo().then(show);
   }
 
-  var contentTables = ['announcements', 'discounts', 'member_opportunities', 'site_events', 'news_posts', 'motm_winners', 'gallery_photos', 'mmg_updates', 'mmg_attendee_updates', 'mmg_perks', 'resources'];
+  var contentTables = ['announcements', 'discounts', 'member_opportunities', 'site_events', 'news_posts', 'motm_winners', 'gallery_photos', 'mmg_updates', 'mmg_attendee_updates', 'mmg_perks'];
   var liveNudgeTimer = null;
   function nudgeRefresh() {
     clearTimeout(liveNudgeTimer);
@@ -453,8 +453,16 @@
       contentTables.forEach(function (t) {
         ch = ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: t }, nudgeRefresh);
       });
-      ch = ch.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'resources' }, nudgeRefresh);
       liveChannels.push(ch.subscribe());
+    } catch (e) { /* ignore */ }
+    // Resources on a channel of its own: its link/file columns are
+    // restricted (migration 073), and a hiccup there shouldn't take the
+    // other content nudges down with it.
+    try {
+      liveChannels.push(supabaseClient.channel('live-resources-' + userId)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'resources' }, nudgeRefresh)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'resources' }, nudgeRefresh)
+        .subscribe());
     } catch (e) { /* ignore */ }
   }
   function stopLive() {

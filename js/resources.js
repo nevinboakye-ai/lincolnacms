@@ -195,6 +195,53 @@
   function cachedUrl(path) { var h = urlCache[path + '|']; return h ? h.url : null; }
 
   // =======================================================================
+  // PIN-protected resources (migration 073). The link / file path / preview
+  // columns can't be read from the table any more: they come from
+  // get_resource_locations(), which only returns them for resources the
+  // caller may open (not locked, theirs, an executive, or already unlocked).
+  // If the migration hasn't been run, everything falls back to the old
+  // behaviour and the lock option simply isn't offered.
+  // =======================================================================
+  var RES_COLS = 'id, title, description, resource_type, source_type, source_credit, topic, kind, file_name, file_size, file_mime, uploader_id, uploader_name, uploader_detail, status, reviewed_by, reviewed_at, approved_at, reject_reason, created_at, updated_at, courses, years, is_locked';
+  var pinsReady = true;
+  var chatAvailable = false;
+  var LOCK_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+  var UNLOCK_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/></svg>';
+  function isLockedOut(r) { return !!(r && r.is_locked && !r.can_open); }
+
+  // Attach url / file_path / preview_path and can_open to each row, in place.
+  function hydrateLocations(rows) {
+    if (!rows.length) return Promise.resolve(rows);
+    return supabaseClient.rpc('get_resource_locations', { p_ids: rows.map(function (r) { return r.id; }) }).then(function (res) {
+      var map = {};
+      (res.data || []).forEach(function (l) { map[l.resource_id] = l; });
+      rows.forEach(function (r) {
+        var l = map[r.id];
+        r.can_open = l ? !!l.can_open : !r.is_locked;
+        r.url = l && l.can_open ? l.url : null;
+        r.file_path = l && l.can_open ? l.file_path : null;
+        r.preview_path = l && l.can_open ? l.preview_path : null;
+      });
+      return rows;
+    }, function () {
+      rows.forEach(function (r) { r.can_open = !r.is_locked; });
+      return rows;
+    });
+  }
+
+  // Read resources (apply() adds the filters/ordering) with their locations.
+  function selectResources(apply) {
+    return apply(supabaseClient.from('resources').select(pinsReady ? RES_COLS : '*')).then(function (r) {
+      if (r.error && pinsReady && /is_locked|column|permission denied/i.test(r.error.message || '')) {
+        pinsReady = false; // migration 073 isn't there yet - the old way still works
+        return selectResources(apply);
+      }
+      if (r.error || !pinsReady) return r;
+      return hydrateLocations(r.data || []).then(function (rows) { r.data = rows; return r; });
+    });
+  }
+
+  // =======================================================================
   // Custom dropdown: replaces a native <select> with a styled button + a
   // listbox popover. The native element stays in the DOM (hidden) and
   // keeps the real value, so forms and change listeners work unchanged.
@@ -411,6 +458,11 @@
     buildFilterOptions();
     ['res-filter-type', 'res-filter-source', 'res-filter-year', 'res-sort'].forEach(function (id) { enhanceSelect($(id)); });
     wireEvents();
+    // Whether to offer "Message them for the PIN" (needs the chat, migration 070).
+    supabaseClient.rpc('chat_status').then(function (r) {
+      var row = !r.error && (Array.isArray(r.data) ? r.data[0] : r.data);
+      chatAvailable = !!(row && row.can_message);
+    }, function () {});
 
     var prev = window.lacmsPreviousSeen || Promise.resolve(null);
     prev.then(function (ts) { prevSeen = ts; }).then(function () {
@@ -538,7 +590,7 @@
     $('res-browse-list').innerHTML = skeletonCards(3);
     $('res-browse-empty').hidden = true;
     $('res-more-wrap').hidden = true;
-    supabaseClient.from('resources').select('*').eq('status', 'approved').order('approved_at', { ascending: false }).limit(500).then(function (r) {
+    selectResources(function (q) { return q.eq('status', 'approved').order('approved_at', { ascending: false }).limit(500); }).then(function (r) {
       if (r.error) {
         $('res-all-sub').textContent = "Couldn't load the resources: " + r.error.message;
         $('res-browse-list').innerHTML = '';
@@ -632,9 +684,9 @@
     $('res-list-sub').textContent = 'Loading…';
     $('res-list').innerHTML = skeletonCards(2);
     $('res-empty').hidden = true;
-    var q = supabaseClient.from('resources').select('*');
-    q = isReview ? q.eq('status', 'pending').order('created_at', { ascending: true }) : q.eq('uploader_id', userId).order('created_at', { ascending: false });
-    q.then(function (r) {
+    selectResources(function (q) {
+      return isReview ? q.eq('status', 'pending').order('created_at', { ascending: true }) : q.eq('uploader_id', userId).order('created_at', { ascending: false });
+    }).then(function (r) {
       if (r.error) { $('res-list-sub').textContent = "Couldn't load: " + r.error.message; $('res-list').innerHTML = ''; return; }
       var rows = r.data || [];
       $('res-list-sub').textContent = isReview
@@ -658,6 +710,7 @@
   var LINK_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
 
   function thumbHtml(r) {
+    if (isLockedOut(r)) return '<span class="res-thumb-lock">' + LOCK_ICON + '<span>PIN protected</span></span>';
     var ext = extOf(r.file_name);
     if (r.preview_path && cachedUrl(r.preview_path)) return '<img src="' + escapeHtml(cachedUrl(r.preview_path)) + '" alt="" loading="lazy">';
     if (r.kind === 'file' && IMAGE_EXTS.indexOf(ext) !== -1 && cachedUrl(r.file_path)) return '<img src="' + escapeHtml(cachedUrl(r.file_path)) + '" alt="" loading="lazy">';
@@ -679,6 +732,13 @@
     return shown;
   }
 
+  function lockBadge(r) {
+    if (!r.is_locked) return '';
+    return isLockedOut(r)
+      ? '<span class="res-badge res-badge--locked" title="Needs a PIN to open">' + LOCK_ICON + 'PIN protected</span>'
+      : '<span class="res-badge res-badge--locked is-open" title="PIN protected - you have access">' + UNLOCK_ICON + 'PIN protected</span>';
+  }
+
   function statusBadge(r) {
     if (r.status === 'pending') return '<span class="res-badge res-badge--pending">Pending review</span>';
     if (r.status === 'rejected') return '<span class="res-badge res-badge--rejected">Not approved</span>';
@@ -688,15 +748,18 @@
   function cardHtml(r, mode, index) {
     var domain = '';
     if (r.kind === 'link') { var u = parseHttpUrl(r.url); domain = u ? u.hostname.replace(/^www\./, '') : ''; }
+    var locked = isLockedOut(r);
     var details = [];
     if (r.source_type === 'external') details.push('Source: ' + escapeHtml(r.source_credit || (domain || 'external')));
     if (r.topic) details.push('Topic: ' + escapeHtml(r.topic));
-    if (r.kind === 'file' && r.file_name) details.push(escapeHtml(r.file_name) + (r.file_size ? ' (' + formatBytes(r.file_size) + ')' : ''));
+    if (r.kind === 'file' && r.file_name && !locked) details.push(escapeHtml(r.file_name) + (r.file_size ? ' (' + formatBytes(r.file_size) + ')' : ''));
     else if (domain) details.push(escapeHtml(domain));
 
     var openLabel = r.kind === 'link' ? 'Open link' : 'Download';
     var actions = '<button type="button" class="btn btn-outline res-btn" data-res-preview>Preview</button>' +
-      '<button type="button" class="btn btn-primary res-btn" data-res-open>' + openLabel + '</button>';
+      (locked
+        ? '<button type="button" class="btn btn-primary res-btn res-btn--unlock" data-res-unlock>' + LOCK_ICON + 'Unlock</button>'
+        : '<button type="button" class="btn btn-primary res-btn" data-res-open>' + openLabel + '</button>');
     if (mode === 'review') {
       actions = '<button type="button" class="btn btn-outline res-btn" data-res-preview>Preview</button>' +
         '<button type="button" class="btn btn-primary res-btn" data-res-approve>Approve</button>' +
@@ -720,6 +783,7 @@
       '<span class="res-badge res-badge--' + r.source_type + '">' + (r.source_type === 'personal' ? 'Personal' : 'External') + '</span>' +
       (yearsOf(r).length ? '<span class="res-badge" title="' + escapeHtml(yearsOf(r).join(', ')) + '">' + escapeHtml(yearsLabel(yearsOf(r))) + '</span>' : '') +
       courseBadges(r) +
+      lockBadge(r) +
       statusBadge(r) + '</div>' +
       '<h3 class="res-title"><button type="button" class="res-title-btn" data-res-preview>' + escapeHtml(r.title) + '</button></h3>' +
       bylineHtml(r, 'md') +
@@ -899,6 +963,7 @@
     rows.forEach(function (r) { rendered[r.id] = r; });
     var paths = [];
     rows.forEach(function (r) {
+      if (isLockedOut(r)) return;
       if (r.preview_path) paths.push(r.preview_path);
       else if (r.kind === 'file' && IMAGE_EXTS.indexOf(extOf(r.file_name)) !== -1) paths.push(r.file_path);
     });
@@ -1134,8 +1199,145 @@
     }).catch(fallback);
   }
 
+  // ---- Unlocking with a PIN ---------------------------------------------------------
+  function uploaderFirst(r) { return String(r.uploader_name || 'the person who shared it').trim().split(/\s+/)[0]; }
+
+  function pinPanelHtml(r) {
+    var who = escapeHtml(r.uploader_name || 'the person who shared it');
+    var canAsk = chatAvailable && r.uploader_id && r.uploader_id !== userId;
+    return '<div class="res-pin">' +
+      '<span class="res-pin-icon" aria-hidden="true">' + LOCK_ICON + '<span class="res-pin-tick">&#10003;</span></span>' +
+      '<h3 class="res-pin-title">Enter the PIN</h3>' +
+      '<p class="res-pin-text">' + who + ' locked this resource. Ask them for the PIN if you don\'t have it yet.</p>' +
+      '<form class="res-pin-form" novalidate>' +
+        '<label class="visually-hidden" for="pin-input-' + escapeHtml(r.id) + '">PIN</label>' +
+        '<div class="res-pin-field"><input type="password" id="pin-input-' + escapeHtml(r.id) + '" class="res-pin-input" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="8" placeholder="Enter PIN" data-autofocus>' +
+        '<button type="button" class="res-pin-eye" aria-label="Show PIN" aria-pressed="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>' +
+        '<p class="res-pin-error" role="alert" hidden></p>' +
+        '<button type="submit" class="btn btn-primary btn-block res-pin-submit">Unlock</button>' +
+      '</form>' +
+      (canAsk
+        ? '<div class="res-pin-ask"><span class="res-pin-or"><span>or</span></span><button type="button" class="btn btn-outline btn-block" data-pin-ask>Message ' + escapeHtml(uploaderFirst(r)) + ' for the PIN</button></div>'
+        : '<p class="res-pin-fine">Find ' + who + (r.uploader_detail ? ' (' + escapeHtml(r.uploader_detail) + ')' : '') + ' in the <a href="member-network.html">Network</a> to ask for it.</p>') +
+      '</div>';
+  }
+
+  function wirePinPanel(panel, r, done) {
+    var form = panel.querySelector('.res-pin-form');
+    var input = panel.querySelector('.res-pin-input');
+    var err = panel.querySelector('.res-pin-error');
+    var submit = panel.querySelector('.res-pin-submit');
+    var eye = panel.querySelector('.res-pin-eye');
+    var ask = panel.querySelector('[data-pin-ask]');
+    var timer = null;
+
+    function setError(message, shake) {
+      err.textContent = message || '';
+      err.hidden = !message;
+      if (shake && !reduceMotion) { panel.classList.remove('is-shake'); void panel.offsetWidth; panel.classList.add('is-shake'); }
+    }
+    function lockout(seconds) {
+      clearInterval(timer);
+      var until = Date.now() + seconds * 1000;
+      input.disabled = true; submit.disabled = true;
+      function tick() {
+        if (!document.body.contains(panel)) { clearInterval(timer); return; }
+        var left = Math.ceil((until - Date.now()) / 1000);
+        if (left <= 0) {
+          clearInterval(timer);
+          input.disabled = false; submit.disabled = false;
+          setError('');
+          input.focus();
+          return;
+        }
+        setError('Too many wrong tries. You can try again in ' + Math.floor(left / 60) + ':' + ('0' + (left % 60)).slice(-2) + '.');
+      }
+      tick();
+      timer = setInterval(tick, 1000);
+    }
+
+    input.addEventListener('input', function () {
+      var clean = input.value.replace(/\D/g, '').slice(0, 8);
+      if (clean !== input.value) input.value = clean;
+      setError('');
+    });
+    eye.addEventListener('click', function () {
+      var show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      eye.setAttribute('aria-pressed', show ? 'true' : 'false');
+      eye.setAttribute('aria-label', show ? 'Hide PIN' : 'Show PIN');
+      input.focus();
+    });
+    if (ask) {
+      ask.addEventListener('click', function () {
+        var draft = 'Hi ' + uploaderFirst(r) + ', could I please have the PIN for your resource "' + r.title + '" on LACMS Resources? Thank you!';
+        window.location.href = 'member-network.html?message=' + encodeURIComponent(r.uploader_id) + '&draft=' + encodeURIComponent(draft) + '#messages';
+      });
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var pin = input.value.trim();
+      if (pin.length < 4) { setError('Enter the PIN - it\'s 4 to 8 digits.', true); input.focus(); return; }
+      submit.disabled = true; submit.classList.add('is-busy');
+      supabaseClient.rpc('resource_unlock', { p_id: r.id, p_pin: pin }).then(function (res) {
+        submit.classList.remove('is-busy');
+        if (res.error) { submit.disabled = false; setError(res.error.message || 'Something went wrong - try again.', true); return; }
+        var row = Array.isArray(res.data) ? res.data[0] : res.data;
+        if (row && row.unlocked) {
+          panel.classList.add('is-unlocked');
+          input.disabled = true;
+          setError('');
+          submit.textContent = 'Unlocked';
+          setTimeout(done, reduceMotion ? 0 : 750);
+          return;
+        }
+        input.value = '';
+        if (row && row.retry_after_seconds > 0) { lockout(row.retry_after_seconds); setError(err.textContent, true); return; }
+        submit.disabled = false;
+        var left = row ? row.attempts_left : 0;
+        setError('That PIN isn\'t right. ' + left + (left === 1 ? ' try' : ' tries') + ' left before a 15 minute pause.', true);
+        input.focus();
+      }, function () {
+        submit.classList.remove('is-busy'); submit.disabled = false;
+        setError('Couldn\'t reach the server - check your connection and try again.', true);
+      });
+    });
+  }
+
+  // After a successful unlock: fetch where it lives, then refresh its card.
+  function afterUnlock(r) {
+    return hydrateLocations([r]).then(function () { rerenderCard(r); });
+  }
+  function rerenderCard(r) {
+    var card = document.querySelector('.res-card[data-id="' + r.id + '"]');
+    if (!card) return;
+    var container = card.parentNode;
+    var mode = (container && container.getAttribute('data-mode')) || 'browse';
+    signedUrls([r.preview_path].filter(Boolean)).then(function () {
+      var tmp = document.createElement('div');
+      tmp.innerHTML = cardHtml(r, mode, 0);
+      var fresh = tmp.firstElementChild;
+      fresh.classList.remove('res-anim-in');
+      card.replaceWith(fresh);
+      loadEngagement([r]);
+    });
+  }
+
+  function openUnlockDialog(r, then) {
+    var dlg = openDialog(
+      '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
+      '<span class="guide-eyebrow">PIN protected</span><h2 class="guide-title">' + escapeHtml(r.title) + '</h2>' +
+      pinPanelHtml(r), 'res-dialog--pin');
+    wirePinPanel(dlg.dialog.querySelector('.res-pin'), r, function () {
+      dlg.close();
+      afterUnlock(r).then(function () { if (then) then(); });
+    });
+  }
+
   // ---- Preview / open ---------------------------------------------------------------
   function openResource(r) {
+    if (isLockedOut(r)) { openUnlockDialog(r, function () { openResource(r); }); return; }
     if (r.kind === 'link') {
       var u = parseHttpUrl(r.url);
       if (u) window.open(u.href, '_blank', 'noopener,noreferrer');
@@ -1162,9 +1364,19 @@
       : '<p class="res-meta res-meta--faint">Likes and comments open once this resource is approved.</p>';
     var foot = '<p class="res-desc res-desc--full">' + escapeHtml(r.description) + '</p>' +
       (r.source_type === 'external' ? '<p class="res-meta res-meta--faint">External resource' + (r.source_credit ? ' - source: ' + escapeHtml(r.source_credit) : '') + '. Not created by LACMS - check it before relying on it.</p>' : '<p class="res-meta res-meta--faint">Created by the member who shared it.</p>') +
-      '<div class="guide-actions"><button type="button" class="btn btn-primary" data-pv-open>' + (r.kind === 'link' ? 'Open link' : 'Download') + '</button><button type="button" class="btn btn-outline" data-dialog-close>Close</button></div>' + social;
+      '<div class="guide-actions">' + (isLockedOut(r) ? '' : '<button type="button" class="btn btn-primary" data-pv-open>' + (r.kind === 'link' ? 'Open link' : 'Download') + '</button>') + '<button type="button" class="btn btn-outline" data-dialog-close>Close</button></div>' + social;
 
     var dlg;
+    if (isLockedOut(r)) {
+      // The PIN form sits where the preview would be.
+      dlg = openDialog(head + '<div class="res-embed res-embed--lock">' + pinPanelHtml(r) + '</div>' + foot, 'res-dialog--preview', opts.from);
+      wirePinPanel(dlg.dialog.querySelector('.res-pin'), r, function () {
+        dlg.close();
+        afterUnlock(r).then(function () { previewResource(r, {}); });
+      });
+      wirePreviewOpen(dlg, r, opts);
+      return;
+    }
     if (r.kind === 'link') {
       var u = parseHttpUrl(r.url);
       var yt = youtubeId(u);
@@ -1195,7 +1407,8 @@
     });
   }
   function wirePreviewOpen(dlg, r, opts) {
-    dlg.dialog.querySelector('[data-pv-open]').addEventListener('click', function () { openResource(r); });
+    var openBtn = dlg.dialog.querySelector('[data-pv-open]');
+    if (openBtn) openBtn.addEventListener('click', function () { openResource(r); });
     if (r.status === 'approved') {
       wireComments(dlg, r, !!(opts && opts.focusComments));
       var likeBtn = dlg.dialog.querySelector('[data-res-like]');
@@ -1289,6 +1502,30 @@
     var courseItems = COURSES.map(function (c) { return { value: c.name, label: c.label || c.name }; });
     var yearItems = YEARS.map(function (y) { return { value: y, label: y }; });
     var typeOptions = Object.keys(TYPES).map(function (k) { return '<option value="' + k + '"' + (ex.resource_type === k ? ' selected' : '') + '>' + TYPES[k] + '</option>'; }).join('');
+    // PIN protection: the person who shared it sets / changes it; an executive
+    // can only take a PIN off someone else's resource.
+    var canSetLock = pinsReady && (!editing || ex.uploader_id === userId);
+    var canRemoveLock = pinsReady && editing && !canSetLock && isAdmin && !!ex.is_locked;
+    var lockHtml = '';
+    if (canSetLock || canRemoveLock) {
+      lockHtml =
+        '<div class="field res-lockfield">' +
+        '<label class="res-switch"><input type="checkbox" id="rs-lock" role="switch"' + (ex.is_locked ? ' checked' : '') + '>' +
+        '<span class="res-switch-track" aria-hidden="true"><span class="res-switch-thumb"></span></span>' +
+        '<span class="res-switch-text"><strong>' + LOCK_ICON + (canRemoveLock ? 'PIN protected' : 'Protect with a PIN') + '</strong>' +
+        '<small>' + (canRemoveLock
+          ? 'Set by ' + escapeHtml(ex.uploader_name || 'the person who shared it') + '. Turn this off to remove the PIN for everyone.'
+          : 'Everyone can see the title and description, but must enter your PIN to open the file or link. They can message you to ask for it. For more protected material.') + '</small></span></label>' +
+        (canSetLock
+          ? '<div class="res-lock-body" id="rs-lock-body"' + (ex.is_locked ? '' : ' hidden') + '>' +
+            '<label for="rs-pin">PIN <span class="guide-optional">(4 to 8 digits)</span></label>' +
+            '<div class="res-pin-row"><input type="text" id="rs-pin" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" placeholder="e.g. 482915">' +
+            '<button type="button" class="btn btn-outline res-btn" id="rs-pin-gen">Generate</button>' +
+            '<button type="button" class="btn btn-outline res-btn" id="rs-pin-copy">Copy</button></div>' +
+            '<span class="guide-count" id="rs-pin-note">Only you can see this PIN (it\'s here whenever you edit). Anyone who has it can open the resource, so share it with people you trust. Changing it locks everyone out until they get the new one.</span></div>'
+          : '') +
+        '</div>';
+    }
 
     var dlg = openDialog(
       '<button type="button" class="guide-close" data-dialog-close aria-label="Cancel">&times;</button>' +
@@ -1316,6 +1553,7 @@
       '<div class="field" id="rs-credit-field" hidden><label for="rs-credit">Source / author</label><input type="text" id="rs-credit" maxlength="200" value="' + escapeHtml(ex.source_credit || '') + '" placeholder="Who made it or where it\'s from - e.g. Osmosis, BMJ, Prof. Smith (Lincoln)"></div>' +
       (editing ? '' :
         '<div class="field"><label for="rs-preview">Preview image <span class="guide-optional">(optional, max 2 MB)</span></label><input type="file" id="rs-preview" accept="image/png,image/jpeg,image/webp,image/gif"><span class="guide-count">Shown on the card. Videos and images get a preview automatically.</span></div>') +
+      lockHtml +
       '<p class="guide-error" id="rs-error" role="alert" hidden></p>' +
       '<div class="res-progress" id="rs-progress" hidden><span></span></div>' +
       '<div class="guide-actions"><button type="submit" class="btn btn-primary" id="rs-submit">' + (editing ? 'Save changes' : (isAdmin ? 'Publish' : 'Submit for review')) + '</button>' +
@@ -1404,6 +1642,46 @@
     }
     if (!editing) syncKind();
 
+    // PIN protection controls
+    var lockToggle = d.querySelector('#rs-lock');
+    var pinInput = d.querySelector('#rs-pin');
+    var lockBody = d.querySelector('#rs-lock-body');
+    var originalPin = '';
+    if (lockToggle) {
+      lockToggle.addEventListener('change', function () {
+        if (lockBody) {
+          lockBody.hidden = !lockToggle.checked;
+          if (lockToggle.checked && pinInput && !pinInput.value) pinInput.focus();
+        }
+      });
+    }
+    if (pinInput) {
+      pinInput.addEventListener('input', function () {
+        var clean = pinInput.value.replace(/\D/g, '').slice(0, 8);
+        if (clean !== pinInput.value) pinInput.value = clean;
+      });
+      d.querySelector('#rs-pin-gen').addEventListener('click', function () {
+        var n = new Uint32Array(1);
+        (window.crypto || window.msCrypto).getRandomValues(n);
+        pinInput.value = String(100000 + (n[0] % 900000));
+        pinInput.focus();
+      });
+      d.querySelector('#rs-pin-copy').addEventListener('click', function () {
+        if (!pinInput.value) return;
+        var btn = d.querySelector('#rs-pin-copy');
+        var ok = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1500); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(pinInput.value).then(ok, function () {});
+        else { pinInput.select(); try { document.execCommand('copy'); ok(); } catch (e) { /* ignore */ } }
+      });
+      if (editing && ex.is_locked) {
+        pinInput.placeholder = 'Loading…';
+        supabaseClient.rpc('get_resource_pin', { p_id: ex.id }).then(function (res) {
+          pinInput.placeholder = 'e.g. 482915';
+          if (!res.error && res.data) { originalPin = String(res.data); if (!pinInput.value) pinInput.value = originalPin; }
+        }, function () { pinInput.placeholder = 'e.g. 482915'; });
+      }
+    }
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       errorEl.hidden = true;
@@ -1416,6 +1694,10 @@
       if (title.length < 3) { showError('Give it a title (at least 3 characters).'); return; }
       if (desc.length < 10) { showError('Add a short description (at least 10 characters) so people know what it is.'); return; }
       if (sourceVal() === 'external' && !val('rs-credit')) { showError('Say where it\'s from (the author or website) so it\'s credited properly.'); return; }
+
+      var lockOn = lockToggle ? lockToggle.checked : !!ex.is_locked;
+      var pinVal = pinInput ? pinInput.value.trim() : '';
+      if (canSetLock && lockOn && !/^[0-9]{4,8}$/.test(pinVal)) { showError('Choose a PIN of 4 to 8 digits (or tap Generate), or turn PIN protection off.'); if (pinInput) pinInput.focus(); return; }
 
       var url = null;
       if (kind === 'link') {
@@ -1468,9 +1750,17 @@
         if (kind === 'link') fields.url = url;
         supabaseClient.from('resources').update(fields).eq('id', ex.id).then(function (res) {
           if (res.error) { fail("Couldn't save: " + res.error.message); return; }
-          dlg.close();
-          showToast(isAdmin ? 'Saved.' : 'Saved - it will be reviewed again before it appears.');
-          refreshCurrent();
+          var pinCall = null;
+          if (lockToggle) {
+            if (canSetLock && lockOn && (!ex.is_locked || pinVal !== originalPin)) pinCall = { p_id: ex.id, p_pin: pinVal };
+            else if ((canSetLock || canRemoveLock) && !lockOn && ex.is_locked) pinCall = { p_id: ex.id, p_pin: null };
+          }
+          return (pinCall ? supabaseClient.rpc('set_resource_pin', pinCall) : Promise.resolve({})).then(function (pr) {
+            dlg.close();
+            if (pr && pr.error) showToast('Saved, but the PIN change didn\'t go through: ' + pr.error.message, true);
+            else showToast(isAdmin ? 'Saved.' : 'Saved - if you changed anything besides the PIN, it will be reviewed again before it appears.');
+            refreshCurrent();
+          });
         });
         return;
       }
@@ -1482,6 +1772,9 @@
 
       var steps = Promise.resolve();
       var row = Object.assign({ id: id, kind: kind }, fields);
+      // Locked from the moment it exists: until the PIN is saved only the
+      // person who shared it (and executives) can open it.
+      if (canSetLock && lockOn) row.is_locked = true;
       if (kind === 'link') row.url = url;
       if (file) {
         var path = userId + '/' + id + '/' + safeFileName(file.name);
@@ -1507,9 +1800,12 @@
         return supabaseClient.from('resources').insert(row);
       }).then(function (res) {
         if (res.error) throw new Error(res.error.message);
-        dlg.close();
-        showToast(isAdmin ? '"' + title + '" is published.' : 'Thanks! "' + title + '" has been submitted - an executive committee member will review it before it appears.');
-        refreshCurrent();
+        return (canSetLock && lockOn ? supabaseClient.rpc('set_resource_pin', { p_id: id, p_pin: pinVal }) : Promise.resolve({})).then(function (pr) {
+          dlg.close();
+          if (pr && pr.error) showToast('Shared, but the PIN wasn\'t saved (' + pr.error.message + '). It stays locked - open Edit in My submissions to set it.', true);
+          else showToast(isAdmin ? '"' + title + '" is published' + (lockOn ? ' and PIN protected.' : '.') : 'Thanks! "' + title + '" has been submitted' + (lockOn ? ' with its PIN' : '') + ' - an executive committee member will review it before it appears.');
+          refreshCurrent();
+        });
       }).catch(function (err) {
         cleanup();
         fail("Couldn't share that: " + (err && err.message ? err.message : err));
@@ -1543,6 +1839,7 @@
     var r = cardFromEvent(e);
     if (!r) return;
     var cardEl = e.target.closest('.res-card');
+    if (e.target.closest('[data-res-unlock]')) { openUnlockDialog(r); return; }
     if (e.target.closest('[data-res-comments]')) { previewResource(r, { from: cardEl, focusComments: true }); return; }
     if (e.target.closest('[data-res-preview]')) { previewResource(r, { from: cardEl }); return; }
     // Anywhere else on the card (not a control / link) opens the full preview.
