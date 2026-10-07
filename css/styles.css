@@ -8982,3 +8982,11 @@ body.has-chat-dock .back-to-top { right: calc(var(--space-4) + 68px + env(safe-a
 .quick-link-flow li span { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(var(--green-rgb), calc(0.28 * var(--tint-boost, 1))); color: var(--accent-green); font-size: 0.7rem; font-weight: 700; }
 .quick-link-note { margin-top: 0 !important; font-size: 0.8rem !important; opacity: 0.85; }
 :root:not([data-theme="dark"]) .quick-link-card .quick-link-flow li { color: var(--on-deep) !important; }
+
+/* View-only resources (js/resources.js, migration 076) */
+.res-badge--viewonly { display: inline-flex; align-items: center; gap: 5px; background: rgba(107, 70, 193, 0.22); color: #b28ff0; }
+.res-badge--viewonly .icon { width: 11px; height: 11px; }
+.res-viewonly-note { display: flex; align-items: center; gap: 8px; }
+.res-viewonly-note .icon { width: 14px; height: 14px; flex: 0 0 auto; color: #b28ff0; }
+.res-embed--protect img, .res-embed--protect canvas { pointer-events: none; -webkit-user-drag: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.res-embed--protect { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }

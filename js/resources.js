@@ -202,11 +202,20 @@
   // If the migration hasn't been run, everything falls back to the old
   // behaviour and the lock option simply isn't offered.
   // =======================================================================
-  var RES_COLS = 'id, title, description, resource_type, source_type, source_credit, topic, kind, file_name, file_size, file_mime, uploader_id, uploader_name, uploader_detail, status, reviewed_by, reviewed_at, approved_at, reject_reason, created_at, updated_at, courses, years, is_locked';
+  var RES_COLS_BASE = 'id, title, description, resource_type, source_type, source_credit, topic, kind, file_name, file_size, file_mime, uploader_id, uploader_name, uploader_detail, status, reviewed_by, reviewed_at, approved_at, reject_reason, created_at, updated_at, courses, years, is_locked';
+  var RES_COLS = RES_COLS_BASE + ', allow_download';
+  // 2 = with allow_download (migration 076), 1 = with is_locked (073), 0 = the old '*'.
+  var colsLevel = 2;
   var pinsReady = true;
   var chatAvailable = false;
   var LOCK_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+  var EYE_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
   var UNLOCK_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 7.5-2"/></svg>';
+  // View-only files: the person who shared it turned downloads off (076). They
+  // and executives (who moderate) can still download; everyone else views.
+  function hasViewOnlyFlag(r) { return !!(r && r.kind === 'file' && r.allow_download === false); }
+  function isViewOnly(r) { return hasViewOnlyFlag(r) && r.uploader_id !== userId && !isAdmin; }
+  var VIEWABLE_EXTS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'];
   function isLockedOut(r) { return !!(r && r.is_locked && !r.can_open); }
 
   // Attach url / file_path / preview_path and can_open to each row, in place.
@@ -231,9 +240,11 @@
 
   // Read resources (apply() adds the filters/ordering) with their locations.
   function selectResources(apply) {
-    return apply(supabaseClient.from('resources').select(pinsReady ? RES_COLS : '*')).then(function (r) {
-      if (r.error && pinsReady && /is_locked|column|permission denied/i.test(r.error.message || '')) {
-        pinsReady = false; // migration 073 isn't there yet - the old way still works
+    return apply(supabaseClient.from('resources').select(colsLevel === 2 ? RES_COLS : colsLevel === 1 ? RES_COLS_BASE : '*')).then(function (r) {
+      if (r.error && colsLevel > 0 && /is_locked|allow_download|column|permission denied/i.test(r.error.message || '')) {
+        // A newer migration isn't there yet - step down to what the database has.
+        colsLevel -= 1;
+        pinsReady = colsLevel > 0;
         return selectResources(apply);
       }
       if (r.error || !pinsReady) return r;
@@ -745,6 +756,11 @@
     return shown;
   }
 
+  function viewOnlyBadge(r) {
+    return hasViewOnlyFlag(r)
+      ? '<span class="res-badge res-badge--viewonly" title="You can view this here but not download it">' + EYE_ICON + 'View only</span>'
+      : '';
+  }
   function lockBadge(r) {
     if (!r.is_locked) return '';
     return isLockedOut(r)
@@ -772,7 +788,9 @@
     var actions = '<button type="button" class="btn btn-outline res-btn" data-res-preview>Preview</button>' +
       (locked
         ? '<button type="button" class="btn btn-primary res-btn res-btn--unlock" data-res-unlock>' + LOCK_ICON + 'Unlock</button>'
-        : '<button type="button" class="btn btn-primary res-btn" data-res-open>' + openLabel + '</button>');
+        : isViewOnly(r)
+          ? '<button type="button" class="btn btn-primary res-btn" data-res-preview>' + EYE_ICON + 'View</button>'
+          : '<button type="button" class="btn btn-primary res-btn" data-res-open>' + openLabel + '</button>');
     if (mode === 'review') {
       actions = '<button type="button" class="btn btn-outline res-btn" data-res-preview>Preview</button>' +
         '<button type="button" class="btn btn-primary res-btn" data-res-approve>Approve</button>' +
@@ -799,6 +817,7 @@
       (yearsOf(r).length ? '<span class="res-badge" title="' + escapeHtml(yearsOf(r).join(', ')) + '">' + escapeHtml(yearsLabel(yearsOf(r))) + '</span>' : '') +
       courseBadges(r) +
       lockBadge(r) +
+      viewOnlyBadge(r) +
       statusBadge(r) + '</div>' +
       '<h3 class="res-title"><button type="button" class="res-title-btn" data-res-preview>' + escapeHtml(r.title) + '</button></h3>' +
       bylineHtml(r, 'md') +
@@ -1106,6 +1125,9 @@
 
     function fallback() {
       slot.classList.remove('res-embed--pdf');
+      // The browser's own PDF viewer has a download button, so a view-only
+      // file never falls back to it.
+      if (isViewOnly(r)) { slot.classList.add('res-embed--card'); slot.innerHTML = '<p class="res-meta">Couldn\'t show this one right now - try again in a moment.</p>'; return; }
       slot.innerHTML = '<iframe src="' + escapeHtml(url) + '" title="' + escapeHtml(r.title) + '" loading="lazy"></iframe>';
     }
 
@@ -1363,6 +1385,8 @@
   // ---- Preview / open ---------------------------------------------------------------
   function openResource(r) {
     if (isLockedOut(r)) { openUnlockDialog(r, function () { openResource(r); }); return; }
+    // View-only: "open" means look at it here, there's no file to hand over.
+    if (isViewOnly(r)) { previewResource(r, {}); return; }
     if (insights()) insights().record(r, r.kind === 'link' ? 'click' : 'download');
     if (r.kind === 'link') {
       var u = parseHttpUrl(r.url);
@@ -1392,7 +1416,8 @@
     var foot = '<p class="res-desc res-desc--full">' + escapeHtml(r.description) + '</p>' +
       (r.source_type === 'external' ? '<p class="res-meta res-meta--faint">External resource' + (r.source_credit ? ' - source: ' + escapeHtml(r.source_credit) : '') + '. Not created by LACMS - check it before relying on it.</p>' : '<p class="res-meta res-meta--faint">Created by the member who shared it.</p>') +
       (r.status === 'approved' && r.uploader_id !== userId ? '<p class="res-meta res-meta--faint res-privacy-note">The person who shared this can see who likes, downloads or opens it.</p>' : '') +
-      '<div class="guide-actions">' + (isLockedOut(r) ? '' : '<button type="button" class="btn btn-primary" data-pv-open>' + (r.kind === 'link' ? 'Open link' : 'Download') + '</button>') + '<button type="button" class="btn btn-outline" data-dialog-close>Close</button></div>' + social;
+      (isViewOnly(r) && !isLockedOut(r) ? '<p class="res-meta res-meta--faint res-viewonly-note">' + EYE_ICON + 'View only - the person who shared this has turned downloads off.</p>' : '') +
+      '<div class="guide-actions">' + (isLockedOut(r) || isViewOnly(r) ? '' : '<button type="button" class="btn btn-primary" data-pv-open>' + (r.kind === 'link' ? 'Open link' : 'Download') + '</button>') + '<button type="button" class="btn btn-outline" data-dialog-close>Close</button></div>' + social;
 
     var dlg;
     if (isLockedOut(r)) {
@@ -1423,9 +1448,15 @@
       if (!slot) return;
       slot.classList.remove('res-embed--loading');
       var noPreview = '<div class="res-link-card">' + thumbHtml(r) + '<div><strong>' + escapeHtml(r.file_name || '') + (r.file_size ? ' (' + formatBytes(r.file_size) + ')' : '') + '</strong><span>No inline preview for this file type - download to view.</span></div></div>';
-      if (!url) { slot.classList.add('res-embed--card'); slot.innerHTML = '<p class="res-meta">Couldn\'t load the preview - you can still download it.</p>'; return; }
+      var viewOnly = isViewOnly(r);
+      if (viewOnly) {
+        // No save-image menu or dragging it out of the page (a courtesy, not DRM - see 076).
+        slot.classList.add('res-embed--protect');
+        slot.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+      }
+      if (!url) { slot.classList.add('res-embed--card'); slot.innerHTML = viewOnly ? '<p class="res-meta">Couldn\'t load the preview right now - try again in a moment.</p>' : '<p class="res-meta">Couldn\'t load the preview - you can still download it.</p>'; return; }
       if (ext === 'pdf') renderPdf(slot, url, r);
-      else if (IMAGE_EXTS.indexOf(ext) !== -1) { slot.classList.add('res-embed--img'); slot.innerHTML = '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(r.title) + '">'; }
+      else if (IMAGE_EXTS.indexOf(ext) !== -1) { slot.classList.add('res-embed--img'); slot.innerHTML = '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(r.title) + '"' + (viewOnly ? ' draggable="false"' : '') + '>'; }
       else if (r.preview_path) {
         signedUrl(r.preview_path).then(function (pu) {
           if (pu) slot.innerHTML = '<img src="' + escapeHtml(pu) + '" alt="">';
@@ -1534,6 +1565,19 @@
     // can only take a PIN off someone else's resource.
     var canSetLock = pinsReady && (!editing || ex.uploader_id === userId);
     var canRemoveLock = pinsReady && editing && !canSetLock && isAdmin && !!ex.is_locked;
+    // Allow downloads: on by default; switch it off for a PDF or image to make it
+    // view-only (076). Only PDFs/images can be - other types can't be shown in
+    // the browser, so there'd be nothing to view.
+    var canSetDl = colsLevel === 2 && (!editing || (ex.uploader_id === userId && ex.kind === 'file' && VIEWABLE_EXTS.indexOf(extOf(ex.file_name)) !== -1));
+    var dlHtml = '';
+    if (canSetDl) {
+      dlHtml =
+        '<div class="field res-lockfield" id="rs-dl-field"' + (editing ? '' : ' hidden') + '>' +
+        '<label class="res-switch"><input type="checkbox" id="rs-dl" role="switch"' + (ex.allow_download === false ? '' : ' checked') + '>' +
+        '<span class="res-switch-track" aria-hidden="true"><span class="res-switch-thumb"></span></span>' +
+        '<span class="res-switch-text"><strong>' + EYE_ICON + 'Allow downloads</strong>' +
+        '<small id="rs-dl-hint">Turn this off to make it view-only: members can read it here but won\'t get a Download button. It can\'t stop screenshots, so for anything sensitive add a PIN too.</small></span></label></div>';
+    }
     var lockHtml = '';
     if (canSetLock || canRemoveLock) {
       lockHtml =
@@ -1581,6 +1625,7 @@
       '<div class="field" id="rs-credit-field" hidden><label for="rs-credit">Source / author</label><input type="text" id="rs-credit" maxlength="200" value="' + escapeHtml(ex.source_credit || '') + '" placeholder="Who made it or where it\'s from - e.g. Osmosis, BMJ, Prof. Smith (Lincoln)"></div>' +
       (editing ? '' :
         '<div class="field"><label for="rs-preview">Preview image <span class="guide-optional">(optional, max 2 MB)</span></label><input type="file" id="rs-preview" accept="image/png,image/jpeg,image/webp,image/gif"><span class="guide-count">Shown on the card. Videos and images get a preview automatically.</span></div>') +
+      dlHtml +
       lockHtml +
       '<p class="guide-error" id="rs-error" role="alert" hidden></p>' +
       '<div class="res-progress" id="rs-progress" hidden><span></span></div>' +
@@ -1670,6 +1715,25 @@
     }
     if (!editing) syncKind();
 
+    // Allow-downloads switch: only offered for files that can be viewed in the page.
+    var dlToggle = d.querySelector('#rs-dl');
+    var dlField = d.querySelector('#rs-dl-field');
+    function syncDl() {
+      if (!dlToggle || editing) return;
+      var f = fileInput && fileInput.files[0];
+      var viewable = kindVal() === 'file' && !!f && VIEWABLE_EXTS.indexOf(extOf(f.name)) !== -1;
+      dlField.hidden = !(kindVal() === 'file' && f);
+      dlToggle.disabled = !viewable;
+      if (!viewable) dlToggle.checked = true;
+      d.querySelector('#rs-dl-hint').textContent = viewable || !f
+        ? 'Turn this off to make it view-only: members can read it here but won\'t get a Download button. It can\'t stop screenshots, so for anything sensitive add a PIN too.'
+        : 'Only PDFs and images can be view-only - this file type can\'t be shown in the page, so it has to be downloadable.';
+    }
+    if (dlToggle && !editing) {
+      form.addEventListener('change', syncDl);
+      if (fileInput) fileInput.addEventListener('change', syncDl);
+    }
+
     // PIN protection controls
     var lockToggle = d.querySelector('#rs-lock');
     var pinInput = d.querySelector('#rs-pin');
@@ -1723,6 +1787,7 @@
       if (desc.length < 10) { showError('Add a short description (at least 10 characters) so people know what it is.'); return; }
       if (sourceVal() === 'external' && !val('rs-credit')) { showError('Say where it\'s from (the author or website) so it\'s credited properly.'); return; }
 
+      var allowDl = dlToggle ? dlToggle.checked : true;
       var lockOn = lockToggle ? lockToggle.checked : !!ex.is_locked;
       var pinVal = pinInput ? pinInput.value.trim() : '';
       if (canSetLock && lockOn && !/^[0-9]{4,8}$/.test(pinVal)) { showError('Choose a PIN of 4 to 8 digits (or tap Generate), or turn PIN protection off.'); if (pinInput) pinInput.focus(); return; }
@@ -1774,6 +1839,7 @@
         showError(message);
       }
 
+      if (dlToggle) fields.allow_download = allowDl;
       if (editing) {
         if (kind === 'link') fields.url = url;
         supabaseClient.from('resources').update(fields).eq('id', ex.id).then(function (res) {
