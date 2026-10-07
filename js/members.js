@@ -13,49 +13,17 @@
   }
   notConfiguredEls.forEach(function (el) { el.style.display = 'none'; });
 
-  // ---- Site-wide: cap "stay signed in" at about a month -----------------
-  // persistSession + autoRefreshToken (js/supabase-client.js) already keep
-  // someone signed in across page loads and browser restarts — Supabase's
-  // refresh tokens don't expire on a fixed schedule by default, which on
-  // its own means "indefinitely", not "about a month". This adds an
-  // explicit, enforced cap on top: the moment of an actual sign-in gets
-  // stamped locally, and once that stamp is more than 30 days old the
-  // session is ended automatically next time they're back on the site —
-  // the same effect as logging out themselves, just on a timer.
-  (function () {
-    var STAMP_KEY = 'lacmsSessionStartedAt';
-    var MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-
-    supabaseClient.auth.onAuthStateChange(function (event) {
-      if (event === 'SIGNED_IN') {
-        try {
-          if (!localStorage.getItem(STAMP_KEY)) {
-            localStorage.setItem(STAMP_KEY, String(Date.now()));
-          }
-        } catch (e) {}
-      } else if (event === 'SIGNED_OUT') {
-        try { localStorage.removeItem(STAMP_KEY); } catch (e) {}
-      }
-    });
-
-    supabaseClient.auth.getSession().then(function (result) {
-      var session = result.data && result.data.session;
-      if (!session) return;
-      var stamp;
-      try { stamp = localStorage.getItem(STAMP_KEY); } catch (e) { stamp = null; }
-      if (!stamp) {
-        // First time this code has seen this session on this device
-        // (e.g. someone already signed in from before this existed) —
-        // start the clock now rather than treating it as already stale.
-        try { localStorage.setItem(STAMP_KEY, String(Date.now())); } catch (e) {}
-        return;
-      }
-      if (Date.now() - parseInt(stamp, 10) > MAX_AGE_MS) {
-        try { localStorage.removeItem(STAMP_KEY); } catch (e) {}
-        supabaseClient.auth.signOut();
-      }
-    });
-  })();
+  // ---- Site-wide: stay signed in until they sign out ----------------------
+  // persistSession + autoRefreshToken (js/supabase-client.js) keep someone
+  // signed in across page loads and browser restarts: the short-lived access
+  // token is renewed in the background with a refresh token that doesn't
+  // expire on a schedule. Nothing here ends a session - only the "Log out"
+  // buttons do (or the person clearing their browser data). An earlier
+  // version force-signed everyone out 30 days after sign-in; that's gone, and
+  // this tidies away the timestamp it left behind.
+  // (For this to hold, Supabase's own "Time-box user sessions" and
+  // "Inactivity timeout" must be off - Authentication -> Sessions.)
+  try { localStorage.removeItem('lacmsSessionStartedAt'); } catch (e) { /* ignore */ }
 
   // The one account allowed onto the president-only activity dashboard —
   // client-side use of this is purely a UX shortcut (hiding the card/

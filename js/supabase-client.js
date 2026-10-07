@@ -20,7 +20,10 @@ var supabaseIsConfigured =
 
 // Explicit (these are also the library defaults, but spelled out here so
 // it's clear the session is meant to survive page navigations and browser
-// restarts, not just last for the current tab).
+// restarts, not just last for the current tab). Together they keep people
+// signed in indefinitely - the access token is silently renewed with a
+// refresh token that doesn't expire on a schedule - until they press "Log
+// out". Nothing in this site ends a session on a timer.
 var supabaseClient = supabaseIsConfigured
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
