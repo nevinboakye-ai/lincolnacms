@@ -8975,11 +8975,10 @@ body.has-chat-dock .back-to-top { right: calc(var(--space-4) + 68px + env(safe-a
 }
 .res-ins-times { flex: 0 0 auto; padding: 1px 8px; border-radius: 999px; background: rgba(var(--gold-rgb), 0.16); color: var(--color-gold-light); font-size: 0.7rem; font-weight: 700; }
 
-/* Sankofa tile on the Members Hub: programme explainer + how it links to the application */
-.quick-link-steps { list-style: none; margin: var(--space-2) 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.quick-link-steps li { display: flex; align-items: flex-start; gap: 10px; font-size: 0.86rem; line-height: 1.5; color: var(--color-text-muted); }
-.quick-link-steps strong { color: var(--color-text); }
-.quick-link-step-num { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: rgba(var(--green-rgb), calc(0.28 * var(--tint-boost, 1))); color: var(--accent-green); font-size: 0.74rem; font-weight: 700; }
+/* Sankofa tile on the Members Hub: short explainer + a one-line 1-2-3 */
+.quick-link-flow { list-style: none; margin: var(--space-1) 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.quick-link-flow li { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: var(--color-text); }
+.quick-link-flow li + li::before { content: "\2192"; margin-right: 2px; color: var(--color-text-faint); font-weight: 400; }
+.quick-link-flow li span { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: rgba(var(--green-rgb), calc(0.28 * var(--tint-boost, 1))); color: var(--accent-green); font-size: 0.7rem; font-weight: 700; }
 .quick-link-note { margin-top: 0 !important; font-size: 0.8rem !important; opacity: 0.85; }
-:root:not([data-theme="dark"]) .quick-link-card .quick-link-steps li { color: var(--on-deep-muted) !important; }
-:root:not([data-theme="dark"]) .quick-link-card .quick-link-steps strong { color: var(--on-deep) !important; }
+:root:not([data-theme="dark"]) .quick-link-card .quick-link-flow li { color: var(--on-deep) !important; }
