@@ -8,7 +8,7 @@
 <meta name="description" content="For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-102">
+<link rel="stylesheet" href="css/styles.css?v=20260824-103">
 </head>
 <body>
 
@@ -174,6 +174,12 @@
               <span class="dash-nav-card-title">Message Reports</span>
               <span class="dash-nav-card-desc">Review messages members have reported, and pause someone's messaging</span>
               <span class="dash-nav-card-count" id="dash-count-chatreports">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="sitestats">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+              <span class="dash-nav-card-title">Site Numbers</span>
+              <span class="dash-nav-card-desc">Edit the member count and other headline numbers on the home and About pages</span>
+              <span class="dash-nav-card-count" id="dash-count-sitestats">&nbsp;</span>
             </button>
             <button type="button" class="dash-nav-card" data-dash-section="create">
               <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg></span>
@@ -457,6 +463,27 @@
             <p id="chatreports-empty" style="display:none; color: var(--color-text-faint);"></p>
           </div>
 
+          <div class="dash-panel" id="dash-panel-sitestats" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Site numbers</span>
+              <h2>The numbers on the website</h2>
+              <p>Change any of these and the website updates straight away - no code, nothing to redeploy. You can type a plain number (<code>63</code>) or anything with a plus (<code>100+</code>). Clear a box and press Save to put it back to its original wording (for the active member count, that hides it).</p>
+            </div>
+            <p id="sitestats-status" class="auth-error" role="status" style="display:none;"></p>
+            <form id="sitestats-form" class="sitestats-form" novalidate>
+              <div id="sitestats-fields"></div>
+              <div class="sitestats-actions">
+                <button type="submit" class="btn btn-primary" id="sitestats-save" disabled>Save changes</button>
+                <a class="btn btn-outline" href="index.html" target="_blank" rel="noopener">View the home page</a>
+                <span class="sitestats-saved" id="sitestats-saved" role="status" hidden></span>
+              </div>
+            </form>
+          </div>
+
           <div class="dash-panel" id="dash-panel-pending" style="display:none;">
             <button type="button" class="dash-panel-back" data-dash-back>
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -714,11 +741,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-102"></script>
-<script src="js/members.js?v=20260824-102"></script>
-<script src="js/notifications.js?v=20260824-102"></script>
-<script src="js/guidance.js?v=20260824-102"></script>
-<script src="js/chat.js?v=20260824-102"></script>
-<script src="js/chat-admin.js?v=20260824-102"></script>
+<script src="js/main.js?v=20260824-103"></script>
+<script src="js/members.js?v=20260824-103"></script>
+<script src="js/notifications.js?v=20260824-103"></script>
+<script src="js/guidance.js?v=20260824-103"></script>
+<script src="js/chat.js?v=20260824-103"></script>
+<script src="js/chat-admin.js?v=20260824-103"></script>
+<script src="js/site-stats-admin.js?v=20260824-103"></script>
 </body>
 </html>

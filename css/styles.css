@@ -9010,3 +9010,19 @@ body.has-chat-dock .back-to-top { right: calc(var(--space-4) + 68px + env(safe-a
 .ce-save input { flex: 1 1 auto; min-width: 0; padding: 9px 12px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-surface-raised); color: var(--color-text); font: inherit; }
 .ce-delete { color: #ef8b8f; border-color: #ef8b8f; }
 .ce-delete[hidden] { display: none; }
+
+/* Site Numbers (dashboard) - js/site-stats-admin.js */
+.sitestats-form { max-width: 720px; }
+.sitestats-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-3); align-items: center; padding: var(--space-3); margin-bottom: var(--space-2); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.sitestats-label { display: flex; flex-direction: column; gap: 2px; }
+.sitestats-label label { font-weight: 600; }
+.sitestats-label small, .sitestats-meta { color: var(--color-text-faint); font-size: 0.78rem; }
+.sitestats-input { display: flex; flex-direction: column; gap: 4px; }
+.sitestats-input input { padding: 10px 14px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-surface-raised); color: var(--color-text); font: inherit; font-size: 1.15rem; font-weight: 700; }
+.sitestats-input input:focus { outline: none; border-color: var(--color-gold); box-shadow: 0 0 0 3px rgba(var(--gold-rgb), 0.2); }
+.sitestats-input input::placeholder { font-size: 0.9rem; font-weight: 400; color: var(--color-text-faint); }
+.sitestats-toggle { grid-column: 1 / -1; padding-top: var(--space-2); border-top: 1px solid var(--color-border); }
+.sitestats-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+.sitestats-saved { color: #6fcf97; font-size: 0.88rem; font-weight: 600; }
+.sitestats-saved[hidden] { display: none; }
+@media (max-width: 640px) { .sitestats-row { grid-template-columns: minmax(0, 1fr); } }

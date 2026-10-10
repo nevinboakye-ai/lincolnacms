@@ -442,30 +442,45 @@
     return access && access[feature] ? access[feature].allowed : fallbackAllowed;
   }
 
-  // ---- Site-wide: "Active members" stat (index.html, about.html) —
-  // hidden until 30 September 2026 (launch), then reads live from
-  // site_settings.active_member_count instead of a hardcoded number —
-  // editable straight from Supabase's Table Editor, no code change or
-  // redeploy needed to update it. Public data, no session required;
-  // stays hidden (not "0" or a stale number) if the reveal date hasn't
-  // passed, the fetch fails, or the row doesn't exist yet. ----
-  var activeMemberCountEls = document.querySelectorAll('[data-active-member-count]');
-  if (activeMemberCountEls.length) {
-    var ACTIVE_MEMBER_COUNT_REVEAL = new Date('2026-09-30T00:00:00+01:00').getTime();
-    if (Date.now() >= ACTIVE_MEMBER_COUNT_REVEAL) {
-      supabaseClient
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'active_member_count')
-        .maybeSingle()
-        .then(function (result) {
-          if (result.error || !result.data) return;
-          activeMemberCountEls.forEach(function (el) { el.textContent = result.data.value; });
-          document.querySelectorAll('[data-active-member-count-item]').forEach(function (el) {
-            el.style.display = '';
-          });
-        });
-    }
+  // ---- Site-wide: headline numbers (index.html, about.html) ---------------
+  // The "Active members" figure and the other stat numbers (mentors, events a
+  // year, founded, the impact card) read live from site_settings, which the
+  // president edits in the dashboard's "Site numbers" section (no code change
+  // or redeploy). Elements marked data-site-stat="<key>" get that setting's
+  // text; if there isn't one the number written in the page stays. The active
+  // member count (data-active-member-count) stays hidden until it has a value,
+  // and can be switched off with the setting show_active_member_count =
+  // 'false'. The last values are cached in this browser so a returning
+  // visitor sees the right numbers straight away rather than a flash of the
+  // old ones. Public data, no session needed. ----
+  var siteStatEls = document.querySelectorAll('[data-site-stat], [data-active-member-count]');
+  if (siteStatEls.length) {
+    var STAT_CACHE_KEY = 'lacms-site-stats';
+    var applySiteStats = function (map) {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-site-stat]'), function (el) {
+        // Remember the wording written in the page, so a number the president
+        // has since cleared goes back to it rather than sticking from the cache.
+        if (!el.hasAttribute('data-site-default')) el.setAttribute('data-site-default', el.textContent);
+        var v = map[el.getAttribute('data-site-stat')];
+        el.textContent = v != null && String(v).trim() !== '' ? String(v).trim() : el.getAttribute('data-site-default');
+      });
+      var count = map.active_member_count;
+      var show = count != null && String(count).trim() !== '' && String(map.show_active_member_count).toLowerCase() !== 'false';
+      Array.prototype.forEach.call(document.querySelectorAll('[data-active-member-count]'), function (el) { if (show) el.textContent = String(count).trim(); });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-active-member-count-item]'), function (el) { el.style.display = show ? '' : 'none'; });
+    };
+    try { var cachedStats = JSON.parse(localStorage.getItem(STAT_CACHE_KEY) || 'null'); if (cachedStats) applySiteStats(cachedStats); } catch (e) { /* ignore */ }
+    supabaseClient
+      .from('site_settings')
+      .select('key, value')
+      .in('key', ['active_member_count', 'show_active_member_count', 'stat_mentors', 'stat_events_per_year', 'stat_founded', 'impact_students', 'impact_disciplines', 'impact_professionals'])
+      .then(function (result) {
+        if (result.error || !result.data) return;
+        var map = {};
+        result.data.forEach(function (row) { map[row.key] = row.value; });
+        applySiteStats(map);
+        try { localStorage.setItem(STAT_CACHE_KEY, JSON.stringify(map)); } catch (e) { /* ignore */ }
+      });
   }
 
   // ---- Site-wide presence heartbeat: powers the president's "currently
@@ -4815,7 +4830,7 @@
       if (dashboardRole === 'president') return true;
       return DASH_SHARED_SECTIONS.indexOf(section) !== -1 && !!dashAllowed[section];
     }
-    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'pending', 'chatreports', 'create', 'manage'];
+    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
@@ -4890,7 +4905,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'chatreports', 'create', 'manage'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {
