@@ -6062,6 +6062,261 @@
       return Promise.resolve((error && error.message) || 'Failed to send the email');
     }
 
+
+    // ---- Custom emails to requesters ------------------------------------------
+    // The president writes their own message to anyone who's requested an
+    // account (e.g. "please sign up with your University of Lincoln email"),
+    // from a built-in or saved template, with {first_name} / {name} / {email}
+    // filled in for that person. It goes out through the same Edge Function as
+    // the other two emails (type 'custom', see supabase/functions/
+    // send-account-email/index.ts), is logged with its subject and message
+    // (migration 077), and replies come back to the committee address.
+    var BUILT_IN_EMAIL_TEMPLATES = [
+      {
+        id: 'uni-email', name: 'Sign up with your university email',
+        subject: 'Please request your LACMS account with your University of Lincoln email',
+        message: 'Hi {first_name},\n\nThanks for requesting a LACMS account! We can only approve members who sign up with their University of Lincoln email address (it ends in lincoln.ac.uk), but your request came from {email}.\n\nCould you please submit a new request using your university email? You can do that here:\nhttps://lincolnacms.uk/request-account.html\n\nOnce it\'s in, we\'ll get you approved as quickly as we can.\n\nThanks,\nThe LACMS Committee'
+      },
+      {
+        id: 'student-number', name: 'Check your student number',
+        subject: 'A quick check on your LACMS account request',
+        message: 'Hi {first_name},\n\nThanks for requesting a LACMS account. We couldn\'t match the student number on your request to a University of Lincoln student, so we haven\'t been able to approve it yet.\n\nCould you reply to this email with your correct student number (the one on your student card)? As soon as we have it, we\'ll get your account approved.\n\nThanks,\nThe LACMS Committee'
+      },
+      {
+        id: 'course-year', name: 'Confirm your course and year',
+        subject: 'Can you confirm your course and year of study?',
+        message: 'Hi {first_name},\n\nThanks for requesting a LACMS account! Before we approve it, could you reply to this email and confirm which course you\'re studying and what year you\'re in? That\'s how we place you in the right part of the Network.\n\nThanks,\nThe LACMS Committee'
+      },
+      {
+        id: 'blank', name: 'Blank message', subject: '', message: 'Hi {first_name},\n\n\n\nThanks,\nThe LACMS Committee'
+      }
+    ];
+    var savedEmailTemplates = null; // null = not loaded yet; [] once loaded
+    var emailTemplatesAvailable = true; // false if migration 077 hasn't been run
+
+    function fillEmailPlaceholders(text, r) {
+      var first = String(r.full_name || '').trim().split(/\s+/)[0] || r.full_name || '';
+      return String(text || '')
+        .replace(/\{first_name\}/gi, first)
+        .replace(/\{name\}/gi, r.full_name || '')
+        .replace(/\{email\}/gi, r.email || '');
+    }
+    // Same rules as the Edge Function's textToHtml, so the preview matches what's sent.
+    function emailPreviewHtml(text) {
+      return String(text || '').replace(/\r\n/g, '\n').split(/\n{2,}/).filter(function (para) { return para.trim(); }).map(function (para) {
+        var html = escapeHtml(para.trim()).replace(/https?:\/\/[^\s<]+/g, function (m) {
+          var trail = (/[.,;:!?)\]]+$/.exec(m) || [''])[0];
+          var url = trail ? m.slice(0, m.length - trail.length) : m;
+          return '<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>' + trail;
+        });
+        return '<p>' + html.replace(/\n/g, '<br>') + '</p>';
+      }).join('');
+    }
+
+    function loadSavedEmailTemplates() {
+      if (savedEmailTemplates !== null) return Promise.resolve();
+      return supabaseClient.from('account_email_templates').select('*').order('name').then(function (res) {
+        if (res.error) { emailTemplatesAvailable = false; savedEmailTemplates = []; console.warn('Saved email templates unavailable (has migration 077 been run?):', res.error.message); return; }
+        savedEmailTemplates = res.data || [];
+      }, function () { emailTemplatesAvailable = false; savedEmailTemplates = []; });
+    }
+
+    function openEmailComposer(r) {
+      var previouslyFocused = document.activeElement;
+      var backdrop = document.createElement('div');
+      backdrop.className = 'guide-backdrop';
+      var dialog = document.createElement('div');
+      dialog.className = 'guide-dialog email-composer';
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+      dialog.setAttribute('aria-labelledby', 'ce-title');
+      dialog.innerHTML =
+        '<button type="button" class="guide-close" data-ce-close aria-label="Close">&times;</button>' +
+        '<span class="guide-eyebrow">Account request</span>' +
+        '<h2 class="guide-title" id="ce-title">Email ' + escapeHtml(r.full_name) + '</h2>' +
+        '<p class="guide-text">To <strong>' + escapeHtml(r.email) + '</strong>. Replies go to acms@lincolnsu.com.</p>' +
+        '<form class="guide-form" id="ce-form" novalidate>' +
+        '<div class="field"><label for="ce-template">Start from</label><select id="ce-template"></select></div>' +
+        '<div class="field"><label for="ce-subject">Subject</label><input type="text" id="ce-subject" maxlength="150" autocomplete="off" data-autofocus></div>' +
+        '<div class="field"><label for="ce-message">Message</label><textarea id="ce-message" rows="9" maxlength="5000"></textarea>' +
+        '<div class="ce-tools"><span class="ce-insert">Insert: ' +
+        '<button type="button" data-ce-insert="{first_name}">first name</button>' +
+        '<button type="button" data-ce-insert="{name}">full name</button>' +
+        '<button type="button" data-ce-insert="{email}">their email</button></span>' +
+        '<span class="guide-count" id="ce-count">0 / 5000</span></div></div>' +
+        '<details class="ce-preview" open><summary>Preview for ' + escapeHtml(r.full_name.split(/\s+/)[0] || r.full_name) + '</summary>' +
+        '<div class="ce-preview-box"><strong id="ce-preview-subject"></strong><div id="ce-preview-body"></div></div></details>' +
+        '<div class="ce-save" id="ce-save-row" hidden><input type="text" id="ce-save-name" maxlength="80" placeholder="Template name, e.g. Use your uni email" aria-label="Template name"><button type="button" class="btn btn-outline" data-ce-save-confirm>Save</button></div>' +
+        '<p class="guide-error" id="ce-error" role="alert" hidden></p>' +
+        '<div class="guide-actions"><button type="submit" class="btn btn-primary" id="ce-send">Send email</button>' +
+        '<button type="button" class="btn btn-outline" data-ce-save>Save as template…</button>' +
+        '<button type="button" class="btn btn-outline ce-delete" data-ce-delete hidden>Delete template</button>' +
+        '<button type="button" class="btn btn-outline" data-ce-close>Cancel</button></div>' +
+        '</form>';
+      backdrop.appendChild(dialog);
+      document.body.appendChild(backdrop);
+      document.body.classList.add('guide-open');
+      requestAnimationFrame(function () { backdrop.classList.add('is-in'); dialog.querySelector('#ce-subject').focus(); });
+
+      var form = dialog.querySelector('#ce-form');
+      var tplSel = dialog.querySelector('#ce-template');
+      var subjectEl = dialog.querySelector('#ce-subject');
+      var messageEl = dialog.querySelector('#ce-message');
+      var errorEl = dialog.querySelector('#ce-error');
+      var sendBtn = dialog.querySelector('#ce-send');
+      var saveRow = dialog.querySelector('#ce-save-row');
+      var deleteBtn = dialog.querySelector('[data-ce-delete]');
+      var currentSaved = null;
+
+      function showError(m) { errorEl.textContent = m; errorEl.hidden = !m; }
+      function close() {
+        document.removeEventListener('keydown', onKey, true);
+        backdrop.classList.remove('is-in');
+        document.body.classList.remove('guide-open');
+        setTimeout(function () { backdrop.remove(); }, 200);
+        if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus();
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
+        if (e.key !== 'Tab') return;
+        var f = dialog.querySelectorAll('button:not([disabled]):not([hidden]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary');
+        if (!f.length) return;
+        var first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+      document.addEventListener('keydown', onKey, true);
+
+      function updatePreview() {
+        dialog.querySelector('#ce-preview-subject').textContent = fillEmailPlaceholders(subjectEl.value, r) || '(no subject yet)';
+        dialog.querySelector('#ce-preview-body').innerHTML = messageEl.value.trim() ? emailPreviewHtml(fillEmailPlaceholders(messageEl.value, r)) : '<p class="ce-empty">Your message appears here.</p>';
+        dialog.querySelector('#ce-count').textContent = messageEl.value.length + ' / 5000';
+      }
+      function fillTemplates() {
+        var html = '<option value="">Start from scratch</option><optgroup label="Built in">' +
+          BUILT_IN_EMAIL_TEMPLATES.map(function (t) { return '<option value="b:' + t.id + '">' + escapeHtml(t.name) + '</option>'; }).join('') + '</optgroup>';
+        if (savedEmailTemplates && savedEmailTemplates.length) {
+          html += '<optgroup label="Your saved templates">' + savedEmailTemplates.map(function (t) { return '<option value="s:' + escapeHtml(t.id) + '">' + escapeHtml(t.name) + '</option>'; }).join('') + '</optgroup>';
+        }
+        var keep = tplSel.value;
+        tplSel.innerHTML = html;
+        if (keep) tplSel.value = keep;
+        if (tplSel.value !== keep) tplSel.value = '';
+      }
+      function applyTemplate() {
+        var v = tplSel.value;
+        currentSaved = null;
+        var t = null;
+        if (v.indexOf('b:') === 0) t = BUILT_IN_EMAIL_TEMPLATES.filter(function (x) { return x.id === v.slice(2); })[0];
+        else if (v.indexOf('s:') === 0) { t = (savedEmailTemplates || []).filter(function (x) { return x.id === v.slice(2); })[0]; currentSaved = t || null; }
+        if (t) { subjectEl.value = t.subject; messageEl.value = t.message; }
+        deleteBtn.hidden = !currentSaved;
+        updatePreview();
+      }
+      fillTemplates();
+      loadSavedEmailTemplates().then(function () { fillTemplates(); });
+      applyTemplate();
+      tplSel.addEventListener('change', function () { applyTemplate(); showError(''); });
+      subjectEl.addEventListener('input', updatePreview);
+      messageEl.addEventListener('input', updatePreview);
+
+      dialog.addEventListener('click', function (e) {
+        if (e.target.closest('[data-ce-close]')) { close(); return; }
+        var ins = e.target.closest('[data-ce-insert]');
+        if (ins) {
+          var token = ins.getAttribute('data-ce-insert');
+          var start = messageEl.selectionStart, end = messageEl.selectionEnd;
+          messageEl.value = messageEl.value.slice(0, start) + token + messageEl.value.slice(end);
+          messageEl.focus();
+          messageEl.setSelectionRange(start + token.length, start + token.length);
+          updatePreview();
+          return;
+        }
+        if (e.target.closest('[data-ce-save]')) {
+          if (!emailTemplatesAvailable) { showError('Saving templates needs migration 077 to be run in Supabase first (see README-members-setup.md, section 129).'); return; }
+          saveRow.hidden = false;
+          var nameEl = dialog.querySelector('#ce-save-name');
+          if (!nameEl.value) nameEl.value = currentSaved ? currentSaved.name : '';
+          nameEl.focus();
+          return;
+        }
+        if (e.target.closest('[data-ce-save-confirm]')) { saveTemplate(); return; }
+        if (e.target.closest('[data-ce-delete]')) {
+          if (!currentSaved || !window.confirm('Delete the template "' + currentSaved.name + '"?')) return;
+          var delId = currentSaved.id;
+          supabaseClient.from('account_email_templates').delete().eq('id', delId).then(function (res) {
+            if (res.error) { showError("Couldn't delete it: " + res.error.message); return; }
+            savedEmailTemplates = savedEmailTemplates.filter(function (t) { return t.id !== delId; });
+            tplSel.value = '';
+            fillTemplates();
+            applyTemplate();
+          });
+        }
+      });
+
+      function saveTemplate() {
+        var name = dialog.querySelector('#ce-save-name').value.trim();
+        var subject = subjectEl.value.trim();
+        var message = messageEl.value.trim();
+        if (!name) { showError('Give the template a name.'); return; }
+        if (!subject || !message) { showError('Write a subject and message first, then save it.'); return; }
+        var existing = (savedEmailTemplates || []).filter(function (t) { return t.name.toLowerCase() === name.toLowerCase(); })[0];
+        var q = existing
+          ? supabaseClient.from('account_email_templates').update({ name: name, subject: subject, message: message, updated_at: new Date().toISOString() }).eq('id', existing.id).select().single()
+          : supabaseClient.from('account_email_templates').insert({ name: name, subject: subject, message: message }).select().single();
+        q.then(function (res) {
+          if (res.error) { showError("Couldn't save the template: " + res.error.message); return; }
+          showError('');
+          savedEmailTemplates = (savedEmailTemplates || []).filter(function (t) { return t.id !== res.data.id; }).concat([res.data]).sort(function (a, b) { return a.name.localeCompare(b.name); });
+          saveRow.hidden = true;
+          tplSel.value = 's:' + res.data.id;
+          fillTemplates();
+          tplSel.value = 's:' + res.data.id;
+          applyTemplate();
+        });
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var subject = subjectEl.value.trim();
+        var message = messageEl.value.trim();
+        if (!subject) { showError('Add a subject.'); subjectEl.focus(); return; }
+        if (!message) { showError('Write a message first.'); messageEl.focus(); return; }
+        showError('');
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending…';
+        supabaseClient.functions.invoke('send-account-email', {
+          body: { type: 'custom', email: r.email, full_name: r.full_name, subject: subject, message: message }
+        }).then(function (result) {
+          return result.error ? describeEmailError(result.error) : null;
+        }).then(function (errorMessage) {
+          var row = {
+            request_id: r.id, email_type: 'custom', recipient: r.email,
+            status: errorMessage ? 'failed' : 'sent',
+            error: errorMessage ? String(errorMessage).slice(0, 1000) : null,
+            subject: fillEmailPlaceholders(subject, r).slice(0, 150), message: message.slice(0, 5000)
+          };
+          supabaseClient.from('account_request_emails').insert(row).select().single().then(function (logResult) {
+            if (logResult.error) console.error('Logging the email failed (has migration 077 been run?):', logResult.error.message);
+            else accountRequestEmailsAll.unshift(logResult.data);
+            refreshRequestEmails(r.id);
+          });
+          if (errorMessage) {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Send email';
+            showError(/Invalid request|known type/i.test(errorMessage)
+              ? "The email function needs updating before it can send custom emails - redeploy supabase/functions/send-account-email/index.ts (README-members-setup.md, section 129)."
+              : "Couldn't send it: " + errorMessage);
+            return;
+          }
+          dialog.innerHTML = '<div class="guide-done"><span class="guide-done-tick">&#10003;</span><h2 class="guide-title">Email sent</h2>' +
+            '<p class="guide-text">Sent to ' + escapeHtml(r.email) + '. It\'s logged under this request\'s Emails.</p>' +
+            '<div class="guide-actions guide-actions--stack"><button type="button" class="btn btn-primary btn-block" data-ce-close>Done</button></div></div>';
+          var done = dialog.querySelector('[data-ce-close]'); if (done) done.focus();
+        });
+      });
+    }
+
     var REQUEST_EMAIL_CATEGORIES = [
       { type: 'approved', label: 'Approval email', eligibleStatus: 'approved', sendLabel: 'Send', resendLabel: 'Resend' },
       { type: 'payment_reminder', label: 'Payment reminder', eligibleStatus: 'pending', sendLabel: 'Send reminder', resendLabel: 'Resend reminder' }
@@ -6092,7 +6347,25 @@
           : '';
         return '<div class="request-email-row"><div class="request-email-info"><strong>' + cat.label + '</strong>' + statusHtml + '</div>' + btnHtml + '</div>' + historyHtml;
       }).join('');
-      return '<div class="app-card-field-label">Emails</div>' + (rows || '<div class="app-card-field-value">Nothing sent.</div>');
+      // Custom emails: always available, whatever the request's status.
+      var customHistory = accountRequestEmailsAll.filter(function (m) { return m.request_id === r.id && m.email_type === 'custom'; });
+      var customLatest = customHistory[0];
+      var customStatus = !customLatest
+        ? '<span class="request-email-status">Write your own message</span>'
+        : (customLatest.status === 'sent'
+          ? '<span class="request-email-status is-sent">Last sent ' + escapeHtml(timeAgo(customLatest.created_at)) + '</span>'
+          : '<span class="request-email-status is-failed">Last failed ' + escapeHtml(timeAgo(customLatest.created_at)) + '</span>');
+      var customHistoryHtml = customHistory.length
+        ? '<div class="request-email-history">' + customHistory.slice(0, 5).map(function (m) {
+            return '<div>' + (m.status === 'sent' ? 'Sent' : 'Failed') + ' - ' +
+              escapeHtml(new Date(m.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) +
+              (m.subject ? ' - &ldquo;' + escapeHtml(m.subject) + '&rdquo;' : '') +
+              (m.status === 'failed' && m.error ? ' - ' + escapeHtml(m.error) : '') + '</div>';
+          }).join('') + '</div>'
+        : '';
+      rows += '<div class="request-email-row"><div class="request-email-info"><strong>Custom email</strong>' + customStatus + '</div>' +
+        '<button type="button" class="btn btn-outline request-email-btn" data-request-email-compose data-id="' + escapeHtml(r.id) + '">Write email…</button></div>' + customHistoryHtml;
+      return '<div class="app-card-field-label">Emails</div>' + rows;
     }
     function refreshRequestEmails(requestId) {
       var r = accountRequestsAll.filter(function (x) { return x.id === requestId; })[0];
@@ -7284,6 +7557,13 @@
             setTimeout(next, 700);
           });
         })();
+        return;
+      }
+
+      var emailComposeBtn = e.target.closest('[data-request-email-compose]');
+      if (emailComposeBtn) {
+        var composeReq = accountRequestsAll.filter(function (r) { return r.id === emailComposeBtn.getAttribute('data-id'); })[0];
+        if (composeReq) openEmailComposer(composeReq);
         return;
       }
 

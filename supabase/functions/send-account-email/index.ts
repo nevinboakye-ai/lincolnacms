@@ -126,9 +126,36 @@ function renderEmailShell(preheader: string, bodyHtml: string) {
   );
 }
 
-type EmailType = 'approved' | 'payment_reminder';
+type EmailType = 'approved' | 'payment_reminder' | 'custom';
+const REPLY_TO = 'acms@lincolnsu.com';
 
-const TEMPLATES: Record<EmailType, (fullName: string) => { subject: string; html: string }> = {
+// A plain-text message the president wrote (custom emails): escaped first,
+// then blank lines become paragraphs, single line breaks stay, and plain
+// http(s) links become clickable. Nothing typed ever reaches the email as markup.
+function textToHtml(text: string) {
+  const linkify = (escaped: string) =>
+    escaped.replace(/https?:\/\/[^\s<]+/g, (m) => {
+      const trail = (/[.,;:!?)\]]+$/.exec(m) || [''])[0];
+      const url = trail ? m.slice(0, m.length - trail.length) : m;
+      return '<a href="' + url + '" style="color:' + GOLD + ';">' + url + '</a>' + trail;
+    });
+  return text
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map((para) => '<p style="margin:0 0 14px;">' + linkify(escapeHtml(para.trim())).replace(/\n/g, '<br>') + '</p>')
+    .join('');
+}
+
+// {name}, {first_name} and {email} in the president's subject / message.
+function fillPlaceholders(text: string, fullName: string, email: string) {
+  const first = fullName.trim().split(/\s+/)[0] || fullName;
+  return text
+    .replace(/\{first_name\}/gi, first)
+    .replace(/\{name\}/gi, fullName)
+    .replace(/\{email\}/gi, email);
+}
+
+const TEMPLATES: Record<'approved' | 'payment_reminder', (fullName: string) => { subject: string; html: string }> = {
   approved: (fullName) => ({
     subject: 'Your LACMS account is live!',
     html: renderEmailShell(
@@ -185,12 +212,26 @@ Deno.serve(async (req: Request) => {
     const email = body?.email as string;
     const fullName = body?.full_name as string;
 
-    const template = TEMPLATES[type];
-    if (!template || !email || !fullName) {
-      return jsonResponse({ error: 'Invalid request - need a known type, email and full_name' }, 400);
+    let subject: string;
+    let html: string;
+    if (type === 'custom') {
+      const rawSubject = String(body?.subject ?? '').trim();
+      const rawMessage = String(body?.message ?? '').trim();
+      if (!email || !fullName || !rawSubject || !rawMessage) {
+        return jsonResponse({ error: 'A custom email needs a recipient, a subject and a message' }, 400);
+      }
+      if (rawSubject.length > 150 || rawMessage.length > 5000) {
+        return jsonResponse({ error: 'That email is too long (subject up to 150 characters, message up to 5,000)' }, 400);
+      }
+      subject = fillPlaceholders(rawSubject, fullName, email).replace(/[\r\n]+/g, ' ');
+      html = renderEmailShell(escapeHtml(subject), textToHtml(fillPlaceholders(rawMessage, fullName, email)));
+    } else {
+      const template = TEMPLATES[type as 'approved' | 'payment_reminder'];
+      if (!template || !email || !fullName) {
+        return jsonResponse({ error: 'Invalid request - need a known type, email and full_name' }, 400);
+      }
+      ({ subject, html } = template(escapeHtml(fullName)));
     }
-
-    const { subject, html } = template(escapeHtml(fullName));
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -198,7 +239,7 @@ Deno.serve(async (req: Request) => {
         Authorization: 'Bearer ' + RESEND_API_KEY,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ from: RESEND_FROM_EMAIL, to: email, subject, html })
+      body: JSON.stringify({ from: RESEND_FROM_EMAIL, to: email, reply_to: REPLY_TO, subject, html })
     });
 
     if (!resendResponse.ok) {

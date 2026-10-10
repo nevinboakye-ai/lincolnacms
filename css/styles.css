@@ -8990,3 +8990,23 @@ body.has-chat-dock .back-to-top { right: calc(var(--space-4) + 68px + env(safe-a
 .res-viewonly-note .icon { width: 14px; height: 14px; flex: 0 0 auto; color: #b28ff0; }
 .res-embed--protect img, .res-embed--protect canvas { pointer-events: none; -webkit-user-drag: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .res-embed--protect { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+
+/* Custom emails to account requesters (js/members.js, migration 077) */
+.email-composer { max-width: 680px; }
+.email-composer textarea { min-height: 190px; resize: vertical; line-height: 1.5; }
+.ce-tools { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; margin-top: 6px; font-size: 0.8rem; color: var(--color-text-faint); }
+.ce-insert { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ce-insert button { padding: 3px 10px; border: 1px solid var(--color-border-strong); border-radius: 999px; background: transparent; color: var(--color-gold-light); font: inherit; font-size: 0.78rem; cursor: pointer; }
+.ce-insert button:hover, .ce-insert button:focus-visible { border-color: var(--color-gold); background: rgba(var(--gold-rgb), 0.12); }
+.ce-preview { margin: var(--space-2) 0 var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-alt, transparent); }
+.ce-preview summary { padding: 9px 14px; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--color-text-muted); }
+.ce-preview-box { padding: 0 14px 12px; font-size: 0.9rem; line-height: 1.55; }
+.ce-preview-box > strong { display: block; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--color-border); }
+.ce-preview-box p { margin: 0 0 10px; overflow-wrap: anywhere; }
+.ce-preview-box a { color: var(--color-gold-light); }
+.ce-empty { color: var(--color-text-faint); font-style: italic; }
+.ce-save { display: flex; gap: 8px; margin-bottom: var(--space-3); }
+.ce-save[hidden] { display: none; }
+.ce-save input { flex: 1 1 auto; min-width: 0; padding: 9px 12px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-surface-raised); color: var(--color-text); font: inherit; }
+.ce-delete { color: #ef8b8f; border-color: #ef8b8f; }
+.ce-delete[hidden] { display: none; }
