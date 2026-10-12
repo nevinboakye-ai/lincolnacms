@@ -2700,13 +2700,34 @@
   // dashboard.) Medicine members only now (not Pharmacy, not the old
   // manual "Sankofa eligible" checkbox) — automatic, based on the
   // member's own course, not something the committee has to flag
-  // per-person. Also closes 11 October 2026 — both rules enforced again
-  // in the DB by migration 054's trigger, this client-side check just
-  // gives a friendlier message. ----
+  // per-person. Whether applications are open is a "phase" the president
+  // opens and closes from the dashboard (Sankofa -> Applications, migration
+  // 078); both rules are enforced again in the database, this client-side
+  // check just gives a friendlier message. ----
   var sankofaFormWrap = document.getElementById('sankofa-form-wrap');
   var sankofaAlreadyApplied = document.getElementById('sankofa-already-applied');
   var sankofaNotEligible = document.getElementById('sankofa-not-eligible');
+  // Only used if the phases table (migration 078) isn't there yet.
   var SANKOFA_MENTEE_DEADLINE = new Date('2026-10-11T23:59:59+01:00').getTime();
+  var sankofaRound = null;
+  function sankofaDateText(iso, withTime) {
+    var d = new Date(iso);
+    var opts = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+    var text = d.toLocaleDateString('en-GB', opts);
+    return withTime ? text + ' at ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : text;
+  }
+  // The note shown instead of the form when this phase isn't open.
+  function sankofaClosedHtml(round) {
+    var name = escapeHtml(round.name);
+    var extra = round.message ? ' ' + escapeHtml(round.message) : ' Keep an eye on the members hub for the next phase.';
+    if (round.state === 'scheduled') {
+      return '<strong>' + name + ' opens ' + escapeHtml(sankofaDateText(round.opens_at, true)) + '</strong> - come back then to apply.' + (round.message ? ' ' + escapeHtml(round.message) : '');
+    }
+    if (round.state === 'ended' && round.closes_at) {
+      return '<strong>Applications closed</strong> - ' + name + ' applications closed on ' + escapeHtml(sankofaDateText(round.closes_at)) + '.' + extra;
+    }
+    return '<strong>Applications closed</strong> - ' + name + ' applications are closed right now.' + extra;
+  }
   if (sankofaFormWrap || sankofaAlreadyApplied) {
     var sankofaAuthGate = document.getElementById('auth-gate');
     var sankofaSession = null;
@@ -2737,12 +2758,26 @@
             if (sankofaNotEligible) sankofaNotEligible.style.display = 'flex';
             return;
           }
-          if (Date.now() > SANKOFA_MENTEE_DEADLINE) {
+          // The server decides whether this phase is open (not the visitor's clock).
+          supabaseClient.rpc('get_sankofa_round').then(function (rr) {
             var deadlineNote = document.getElementById('sankofa-mentee-deadline-passed');
-            if (deadlineNote) deadlineNote.style.display = 'flex';
-            return;
-          }
-          checkExistingApplication(session);
+            if (rr.error) {
+              // Phases not set up yet: the original fixed deadline.
+              if (Date.now() > SANKOFA_MENTEE_DEADLINE) { if (deadlineNote) deadlineNote.style.display = 'flex'; return; }
+              checkExistingApplication(session);
+              return;
+            }
+            sankofaRound = Array.isArray(rr.data) ? (rr.data[0] || null) : rr.data;
+            if (!sankofaRound) {
+              if (deadlineNote) { deadlineNote.querySelector('span').innerHTML = '<strong>Applications closed</strong> - Sankofa Circle applications aren\'t open right now. Keep an eye on the members hub for the next phase.'; deadlineNote.style.display = 'flex'; }
+              return;
+            }
+            if (sankofaRound.state !== 'open') {
+              if (deadlineNote) { deadlineNote.querySelector('span').innerHTML = sankofaClosedHtml(sankofaRound); deadlineNote.style.display = 'flex'; }
+              return;
+            }
+            checkExistingApplication(session);
+          });
         }
 
         if (access && access.sankofa) {
@@ -2764,18 +2799,32 @@
     function checkExistingApplication(session) {
       supabaseClient
         .from('sankofa_applications')
-        .select('created_at')
+        .select(sankofaRound ? 'created_at, round_id' : 'created_at')
         .eq('member_id', session.user.id)
         .order('created_at', { ascending: false })
-        .limit(1)
+        .limit(50)
         .then(function (result) {
-          var existing = result.data && result.data[0];
+          var rows = result.data || [];
+          // Once per phase: an application from an earlier phase doesn't block this one.
+          var existing = sankofaRound ? rows.filter(function (a) { return a.round_id === sankofaRound.id; })[0] : rows[0];
           if (existing) {
             showAlreadyApplied(existing);
           } else if (sankofaFormWrap) {
+            showSankofaRoundBanner(rows.length > 0);
             sankofaFormWrap.style.display = 'block';
           }
         });
+    }
+
+    // "Phase 2 is open until ..." above the form (and a welcome-back line if they applied before).
+    function showSankofaRoundBanner(appliedBefore) {
+      var banner = document.getElementById('sankofa-round-banner');
+      if (!banner || !sankofaRound) return;
+      var text = '<strong>' + escapeHtml(sankofaRound.name) + ' is open</strong>' +
+        (sankofaRound.closes_at ? ' - applications close ' + escapeHtml(sankofaDateText(sankofaRound.closes_at, true)) + '.' : '.') +
+        (appliedBefore ? ' You applied in an earlier phase - you\'re welcome to apply again for this one.' : '');
+      banner.querySelector('span').innerHTML = text;
+      banner.style.display = 'flex';
     }
 
     function showAlreadyApplied(row) {

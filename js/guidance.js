@@ -12,7 +12,8 @@
 
   if (typeof supabaseIsConfigured === 'undefined' || !supabaseIsConfigured || typeof supabaseClient === 'undefined' || !supabaseClient) return;
 
-  var SANKOFA_DEADLINE = new Date('2026-10-11T23:59:59+01:00').getTime();
+  // Used only if the Sankofa phases table (migration 078) isn't there yet.
+  var SANKOFA_LEGACY_DEADLINE = new Date('2026-10-11T23:59:59+01:00').getTime();
   var page = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -89,7 +90,8 @@
       supabaseClient.rpc('get_my_hub_access'),
       supabaseClient.from('members').select('id, full_name, course').eq('id', userId).maybeSingle(),
       supabaseClient.from('motm_nominations').select('id').eq('nominator_id', userId).eq('nomination_month', month).maybeSingle(),
-      supabaseClient.from('sankofa_applications').select('id').eq('member_id', userId).limit(1)
+      supabaseClient.from('sankofa_applications').select('id, round_id').eq('member_id', userId).limit(50),
+      supabaseClient.rpc('get_sankofa_round')
     ]).then(function (res) {
       var access = null;
       if (!res[0].error) {
@@ -98,7 +100,16 @@
       }
       var member = res[1].data || null;
       var nominated = !!res[2].data;
-      var applied = !!(res[3].data && res[3].data.length);
+      // The current Sankofa phase (migration 078): open or not is decided by the
+      // server. Without it, fall back to the original fixed deadline.
+      var round = null;
+      var phases = !res[4].error;
+      if (phases) round = Array.isArray(res[4].data) ? (res[4].data[0] || null) : res[4].data;
+      var appRows = res[3].data || [];
+      var applied = phases && round
+        ? appRows.some(function (a) { return a.round_id === round.id; })
+        : (res[3].error ? false : !!appRows.length);
+      var sankofaOpen = phases ? !!(round && round.is_open) : Date.now() <= SANKOFA_LEGACY_DEADLINE;
       // If the Hub Access rules can't be read, fall back to the original
       // rules: any member can nominate; Medicine members can apply.
       var motmAllowed = access && access.motm_nominate !== undefined ? access.motm_nominate : !!member;
@@ -106,12 +117,13 @@
       return {
         access: access,
         member: member,
+        sankofa: { round: round, phases: phases, open: sankofaOpen, applied: applied, allowed: !!(sankofaAllowed && member), appliedBefore: appRows.length > 0 },
         nudges: {
           motm: !!(motmAllowed && !nominated),
-          sankofa: !!(sankofaAllowed && member && !applied && Date.now() <= SANKOFA_DEADLINE)
+          sankofa: !!(sankofaAllowed && member && !applied && sankofaOpen)
         }
       };
-    }, function () { return { access: null, member: null, nudges: { motm: false, sankofa: false } }; });
+    }, function () { return { access: null, member: null, sankofa: { round: null, phases: false, open: false, applied: false, allowed: false }, nudges: { motm: false, sankofa: false } }; });
     return ctxPromise;
   }
 
@@ -125,9 +137,44 @@
   ];
   var QUIET_PAGES = ['member-login.html', 'login.html', 'request-account.html', 'join.html', 'mmg-login.html', 'president-dashboard.html', 'member-hub.html'];
 
+  // Name the phase in the reminder wording ("Phase 2 applications are open").
+  function sankofaPhaseName(ctx) {
+    return ctx.sankofa && ctx.sankofa.round && ctx.sankofa.round.name ? ctx.sankofa.round.name : '';
+  }
+
+  // The status line on the hub's Sankofa tile (e.g. "Phase 2 - applications open until Sun 25 Jan").
+  function paintSankofaRound(ctx) {
+    var card = document.getElementById('sankofa-apply-card');
+    var line = card && card.querySelector('[data-sankofa-round]');
+    var s = ctx.sankofa;
+    if (!line || !s || !s.phases || !s.round) return;
+    var r = s.round;
+    var day = function (iso) { return new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); };
+    var text, cls;
+    if (r.state === 'open') {
+      text = r.name + ' - applications open' + (r.closes_at ? ' until ' + day(r.closes_at) : '');
+      cls = s.applied ? 'is-applied' : 'is-open';
+      if (s.applied) text = r.name + ' - you\'ve applied';
+    } else if (r.state === 'scheduled') {
+      text = r.name + ' opens ' + day(r.opens_at);
+      cls = 'is-soon';
+    } else {
+      text = r.name + ' applications are closed' + (r.message ? ' - ' + r.message : ' - the next phase will be announced here');
+      cls = 'is-closed';
+    }
+    line.textContent = text;
+    line.className = 'quick-link-round ' + cls;
+    line.hidden = false;
+    var link = card.querySelector('.card-link');
+    if (link && r.state !== 'open') link.firstChild.textContent = 'See details ';
+    else if (link && s.applied) link.firstChild.textContent = 'View your application ';
+  }
+
   function startNudges() {
     getContext().then(function (ctx) {
-      if (page === 'member-hub.html') applyCardNudges(ctx);
+      var nameForText = sankofaPhaseName(ctx);
+      if (nameForText) NUDGES[0].text = nameForText + ' of Sankofa Circle applications is open - apply today';
+      if (page === 'member-hub.html') { paintSankofaRound(ctx); applyCardNudges(ctx); }
       else showPill(ctx);
     });
   }
@@ -998,11 +1045,14 @@
       });
       if (reviewed.length > 3) waiting.push({ icon: 'bell', title: 'And ' + (reviewed.length - 3) + ' more of your resources were reviewed', sub: 'See them in "My submissions"', href: 'member-resources.html' });
       if (ctx.nudges.sankofa) {
-        var left = Math.ceil((SANKOFA_DEADLINE - Date.now()) / 86400000);
+        var rnd = ctx.sankofa && ctx.sankofa.round;
+        var closeAt = rnd && rnd.closes_at ? new Date(rnd.closes_at).getTime() : (!ctx.sankofa.phases ? SANKOFA_LEGACY_DEADLINE : null);
+        var left = closeAt ? Math.ceil((closeAt - Date.now()) / 86400000) : null;
+        var label = rnd && rnd.name ? rnd.name + ' applications' : 'Sankofa applications';
         waiting.push({
           icon: 'todo',
-          title: left <= 1 ? 'Sankofa applications close today' : 'Sankofa applications close in ' + left + ' days',
-          sub: 'You haven\'t applied yet - don\'t miss out', href: 'member-sankofa.html'
+          title: left === null ? label + ' are open' : (left <= 1 ? label + ' close today' : label + ' close in ' + left + ' days'),
+          sub: ctx.sankofa.appliedBefore ? 'A new phase is open - you\'re welcome to apply again' : 'You haven\'t applied yet - don\'t miss out', href: 'member-sankofa.html'
         });
       }
       if (ctx.nudges.motm) waiting.push({ icon: 'todo', title: 'Nominate someone for Member of the Month', sub: 'You haven\'t nominated this month - the winner and runners-up win prizes', href: 'motm.html#nominate' });
