@@ -106,8 +106,10 @@
       var phases = !res[4].error;
       if (phases) round = Array.isArray(res[4].data) ? (res[4].data[0] || null) : res[4].data;
       var appRows = res[3].data || [];
+      // One application per person: an earlier phase's application still counts,
+      // unless this phase has been opened up to people who've already applied.
       var applied = phases && round
-        ? appRows.some(function (a) { return a.round_id === round.id; })
+        ? appRows.some(function (a) { return a.round_id === round.id; }) || (!round.allow_reapply && appRows.length > 0)
         : (res[3].error ? false : !!appRows.length);
       var sankofaOpen = phases ? !!(round && round.is_open) : Date.now() <= SANKOFA_LEGACY_DEADLINE;
       // If the Hub Access rules can't be read, fall back to the original

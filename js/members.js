@@ -2805,8 +2805,10 @@
         .limit(50)
         .then(function (result) {
           var rows = result.data || [];
-          // Once per phase: an application from an earlier phase doesn't block this one.
-          var existing = sankofaRound ? rows.filter(function (a) { return a.round_id === sankofaRound.id; })[0] : rows[0];
+          // One application per person - an earlier phase's application still counts,
+          // unless this phase has been opened up to people who've already applied.
+          var sameRound = sankofaRound ? rows.filter(function (a) { return a.round_id === sankofaRound.id; })[0] : null;
+          var existing = sameRound || (rows.length && !(sankofaRound && sankofaRound.allow_reapply) ? rows[0] : null);
           if (existing) {
             showAlreadyApplied(existing);
           } else if (sankofaFormWrap) {

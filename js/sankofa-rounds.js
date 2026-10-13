@@ -24,6 +24,8 @@
   var isPresident = false;
   var rounds = [];          // newest first
   var appRounds = {};       // application id -> round id
+  var appMembers = {};      // application id -> member id (to spot anyone with more than one)
+  var appTimes = {};        // application id -> created_at
   var offset = 0;           // server clock minus this device's clock
   var loaded = false;
   var filter = 'all';
@@ -82,8 +84,12 @@
       if (cur && cur.server_now) offset = new Date(cur.server_now).getTime() - Date.now();
       rounds = res[1].data || [];
       isPresident = !res[2].error && res[2].data === true;
-      appRounds = {};
-      (res[3].data || []).forEach(function (row) { appRounds[row.application_id] = row.round_id; });
+      appRounds = {}; appMembers = {}; appTimes = {};
+      (res[3].data || []).forEach(function (row) {
+        appRounds[row.application_id] = row.round_id;
+        appMembers[row.application_id] = row.member_id;
+        appTimes[row.application_id] = row.created_at;
+      });
       loaded = true;
       render();
       applyFilter();
@@ -113,7 +119,9 @@
           '<span class="sk-eyebrow">Current phase</span>' +
           '<h3>' + esc(cur.name) + ' <span class="sk-pill sk-pill--' + st + '">' + esc(STATE_LABEL[st]) + '</span></h3>' +
           '<p>' + esc(detail) + '</p>' +
-          '<p class="sk-count">' + countFor(cur.id) + ' mentee application' + (countFor(cur.id) === 1 ? '' : 's') + ' in this phase</p>' +
+          '<p class="sk-count">' + countFor(cur.id) + ' mentee application' + (countFor(cur.id) === 1 ? '' : 's') + ' in this phase &middot; ' +
+            (cur.allow_reapply ? 'people who\'ve applied before may apply again' : 'one application per person') + '</p>' +
+          dupWarning() +
           (cur.message ? '<p class="sk-msg">Message to members while it\'s closed: &ldquo;' + esc(cur.message) + '&rdquo;</p>' : '') +
         '</div>' +
         (isPresident
@@ -145,10 +153,33 @@
       '</div>';
   }
 
+  // Anyone with more than one mentee application: ids of every application after their first.
+  function duplicateIds() {
+    var byMember = {};
+    Object.keys(appMembers).forEach(function (id) {
+      (byMember[appMembers[id]] = byMember[appMembers[id]] || []).push(id);
+    });
+    var extras = [];
+    Object.keys(byMember).forEach(function (m) {
+      var ids = byMember[m];
+      if (ids.length < 2) return;
+      ids.sort(function (a, b) { return new Date(appTimes[a]) - new Date(appTimes[b]); });
+      extras = extras.concat(ids.slice(1));
+    });
+    return extras;
+  }
+  function dupWarning() {
+    var n = duplicateIds().length;
+    return n
+      ? '<p class="sk-dup-warning">' + n + ' extra application' + (n === 1 ? '' : 's') + ' from people who\'ve applied more than once - marked &ldquo;Duplicate&rdquo; below. Open one and press Delete application to remove it.</p>'
+      : '';
+  }
+
   // Narrow the applications list to one phase, and label each mentee card with its phase.
   function applyFilter() {
     if (!list || !loaded) return;
     var byId = {};
+    var dups = duplicateIds();
     rounds.forEach(function (r) { byId[r.id] = r; });
     Array.prototype.forEach.call(list.querySelectorAll('.app-card'), function (c) {
       var del = c.querySelector('[data-sankofa-delete]');
@@ -164,6 +195,16 @@
           badge.textContent = byId[rid].name;
           var first = head.querySelector('.app-badge');
           if (first && first.nextSibling) head.insertBefore(badge, first.nextSibling); else head.appendChild(badge);
+        }
+      }
+      if (isMentee && dups.indexOf(id) !== -1) {
+        var h2 = c.querySelector('.app-card-head-main');
+        if (h2 && !h2.querySelector('.sk-card-dup')) {
+          var b2 = document.createElement('span');
+          b2.className = 'app-badge sk-card-dup';
+          b2.textContent = 'Duplicate';
+          b2.title = 'This person has applied more than once - this is their later application';
+          h2.appendChild(b2);
         }
       }
       var show = filter === 'all' || (isMentee && rid === filter);
@@ -212,6 +253,14 @@
 
   function call(fn, args) {
     return supabaseClient.rpc(fn, args).then(function (res) {
+      // Migration 079 hasn't been run yet: the functions don't know p_allow_reapply, so send without it.
+      if (res.error && args.p_allow_reapply !== undefined && /could not find the function|no function matches/i.test(res.error.message || '')) {
+        var plain = {};
+        Object.keys(args).forEach(function (k) { if (k !== 'p_allow_reapply') plain[k] = args[k]; });
+        return supabaseClient.rpc(fn, plain);
+      }
+      return res;
+    }).then(function (res) {
       if (res.error) throw new Error(res.error.message);
       return res.data;
     });
@@ -224,6 +273,8 @@
         ? '<div class="field"><label class="res-switch"><input type="checkbox" id="sk-open" role="switch"' + (r.is_open ? ' checked' : '') + '><span class="res-switch-track" aria-hidden="true"><span class="res-switch-thumb"></span></span>' +
           '<span class="res-switch-text"><strong>' + (opts.newPhase ? 'Open applications straight away' : 'Applications open') + '</strong><small>' + (opts.newPhase ? 'Off = create it closed and open it later.' : 'Off = closed, whatever the dates say.') + '</small></span></label></div>'
         : '') +
+      '<div class="field"><label class="res-switch"><input type="checkbox" id="sk-reapply" role="switch"' + (r.allow_reapply ? ' checked' : '') + '><span class="res-switch-track" aria-hidden="true"><span class="res-switch-thumb"></span></span>' +
+        '<span class="res-switch-text"><strong>Let people who\'ve already applied apply again</strong><small>Off = one application per person, ever. Turn it on for a phase when you want past applicants to re-enter.</small></span></label></div>' +
       '<div class="sk-dates"><div class="field"><label for="sk-opens">Opens automatically <span class="guide-optional">(optional)</span></label><input type="datetime-local" id="sk-opens" value="' + esc(toLocalInput(r.opens_at)) + '"></div>' +
       '<div class="field"><label for="sk-closes">Closes automatically <span class="guide-optional">(optional)</span></label><input type="datetime-local" id="sk-closes" value="' + esc(toLocalInput(r.closes_at)) + '"></div></div>' +
       '<div class="field"><label for="sk-msg">Message for members while it\'s closed <span class="guide-optional">(optional)</span></label>' +
@@ -237,7 +288,8 @@
       is_open: open ? open.checked : true,
       opens_at: fromLocalInput(d.querySelector('#sk-opens').value),
       closes_at: fromLocalInput(d.querySelector('#sk-closes').value),
-      message: d.querySelector('#sk-msg').value.trim() || null
+      message: d.querySelector('#sk-msg').value.trim() || null,
+      allow_reapply: !!(d.querySelector('#sk-reapply') && d.querySelector('#sk-reapply').checked)
     };
   }
   function bindForm(dlg, submit, label) {
@@ -265,18 +317,18 @@
       '<form class="guide-form" novalidate>' + fieldsHtml(r, { openSwitch: true }) +
       '<div class="guide-actions"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn btn-outline" data-dialog-close>Cancel</button></div></form>');
     bindForm(dlg, function (v) {
-      return call('president_save_sankofa_round', { p_id: id, p_name: v.name, p_is_open: v.is_open, p_opens_at: v.opens_at, p_closes_at: v.closes_at, p_message: v.message });
+      return call('president_save_sankofa_round', { p_id: id, p_name: v.name, p_is_open: v.is_open, p_opens_at: v.opens_at, p_closes_at: v.closes_at, p_message: v.message, p_allow_reapply: v.allow_reapply });
     }, 'Saved.');
   }
 
   function newRound() {
     var n = rounds.length + 1;
     var dlg = openDialog('<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button><span class="guide-eyebrow">Sankofa</span><h2 class="guide-title">Start a new phase</h2>' +
-      '<p class="guide-text">This becomes the phase members apply to' + (rounds[0] ? ', and closes ' + esc(rounds[0].name) + ' if it\'s still open' : '') + '. Anyone who applied before can apply again.</p>' +
+      '<p class="guide-text">This becomes the phase members apply to' + (rounds[0] ? ', and closes ' + esc(rounds[0].name) + ' if it\'s still open' : '') + '. By default each person gets one application, so anyone who has already applied can\'t apply again - switch that on below if you want them to.</p>' +
       '<form class="guide-form" novalidate>' + fieldsHtml({ name: 'Phase ' + n, is_open: true }, { openSwitch: true, newPhase: true }) +
       '<div class="guide-actions"><button type="submit" class="btn btn-primary">Start phase</button><button type="button" class="btn btn-outline" data-dialog-close>Cancel</button></div></form>');
     bindForm(dlg, function (v) {
-      return call('president_create_sankofa_round', { p_name: v.name, p_is_open: v.is_open, p_opens_at: v.opens_at, p_closes_at: v.closes_at, p_message: v.message });
+      return call('president_create_sankofa_round', { p_name: v.name, p_is_open: v.is_open, p_opens_at: v.opens_at, p_closes_at: v.closes_at, p_message: v.message, p_allow_reapply: v.allow_reapply });
     }, 'New phase started.');
   }
 
@@ -291,7 +343,7 @@
         '<p class="guide-error" id="sk-error" role="alert" hidden></p>' +
         '<div class="guide-actions"><button type="button" class="btn btn-primary sk-btn-danger" data-sk-confirm data-autofocus>Close applications</button><button type="button" class="btn btn-outline" data-dialog-close>Cancel</button></div>');
       dlg.el.querySelector('[data-sk-confirm]').addEventListener('click', function () {
-        call('president_save_sankofa_round', { p_id: cur.id, p_name: cur.name, p_is_open: false, p_opens_at: cur.opens_at, p_closes_at: cur.closes_at, p_message: cur.message })
+        call('president_save_sankofa_round', { p_id: cur.id, p_name: cur.name, p_is_open: false, p_opens_at: cur.opens_at, p_closes_at: cur.closes_at, p_message: cur.message, p_allow_reapply: !!cur.allow_reapply })
           .then(function () { dlg.close(); return load(); }).then(function () { toast(cur.name + ' applications are closed.'); })
           .catch(function (ex) { var e = dlg.el.querySelector('#sk-error'); e.textContent = ex.message; e.hidden = false; });
       });
@@ -309,7 +361,7 @@
       e.preventDefault();
       var closes = fromLocalInput(dlg2.el.querySelector('#sk-closes').value);
       var errEl = dlg2.el.querySelector('#sk-error');
-      call('president_save_sankofa_round', { p_id: cur.id, p_name: cur.name, p_is_open: true, p_opens_at: null, p_closes_at: closes, p_message: cur.message })
+      call('president_save_sankofa_round', { p_id: cur.id, p_name: cur.name, p_is_open: true, p_opens_at: null, p_closes_at: closes, p_message: cur.message, p_allow_reapply: !!cur.allow_reapply })
         .then(function () { dlg2.close(); return load(); }).then(function () { toast(cur.name + ' applications are open.'); })
         .catch(function (ex) { errEl.textContent = ex.message; errEl.hidden = false; });
     });

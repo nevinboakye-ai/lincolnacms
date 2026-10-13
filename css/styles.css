@@ -9078,3 +9078,5 @@ body.has-chat-dock .back-to-top { right: calc(var(--space-4) + 68px + env(safe-a
 .quick-link-round.is-applied { background: rgba(var(--gold-rgb), 0.2); color: var(--color-gold-light) !important; }
 .quick-link-round.is-soon { background: rgba(var(--gold-rgb), 0.2); color: var(--color-gold-light) !important; }
 .quick-link-round.is-closed { background: rgba(193, 39, 45, 0.2); color: #ef8b8f !important; }
+.sk-card-dup { background: rgba(193, 39, 45, 0.22) !important; color: #ef8b8f !important; }
+.sk-dup-warning { margin: 8px 0 0 !important; padding: 8px 12px; border-radius: var(--radius-sm); background: rgba(193, 39, 45, 0.14); border: 1px solid rgba(193, 39, 45, 0.45); color: #ef8b8f !important; font-size: 0.84rem !important; }
