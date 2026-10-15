@@ -1416,3 +1416,14 @@ The mentee application is now run in **phases** you control. Dashboard -> **Sank
 - Saving updates the list and the calendar straight away. Nothing else (Table Editor) is needed any more, though it still works.
 
 An event's `slug` (its permanent id, which registrations are keyed on) is created from the name and can never be changed afterwards. Who can change events is enforced in the database (migration 080 policies), not just hidden in the page.
+
+## 134. Edit the About page's committee from the website
+
+**Run [`db/migrations/081-committee-members.sql`](db/migrations/081-committee-members.sql) in Supabase** (needs 037). It creates the `committee_members` table, seeds it with the six people currently on the page - **Martin Oti and Jemimah Omotola are now Co-Vice Presidents, Martin listed first** - and creates a public `committee-photos` storage bucket. Until it's run the page shows the built-in cards (which already have the new roles and order).
+
+When you're signed in as the president or an Executive Committee member, the About page's "Meet the team" section shows an **Edit the team** button, **+ Add a member**, and a pencil on every card.
+- **Edit a person:** name, role (suggestions like Co-Vice President, Treasurer... or type your own), course line, bio, and photo. **Choose a photo** (JPG, PNG or WebP; big pictures are shrunk in your browser before uploading), **Remove photo** (the card shows their initials), and a slider to choose which part of the portrait shows (so faces sit properly). Replacing a photo tidies away the old file.
+- **Edit the team:** reorder with the arrows (first = shown first), **Hide** someone without deleting them (hidden people show dashed to you only), or **Remove** them.
+- **Add a member:** the same form; they appear at the end, then move them where you want.
+
+Everyone else just sees the finished cards. Who can change anything is enforced in the database (the table's and the bucket's policies), not only in the page. Their account role in the Network and dashboard (`members.committee_role`) is separate - update it from Manage accounts if it should match.

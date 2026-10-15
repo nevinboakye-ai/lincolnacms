@@ -7,7 +7,7 @@
 <title>About us - LACMS</title>
 <meta name="description" content="Meet LACMS: our mission, values and the committee running the Lincoln African Caribbean Medical Society.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-106">
+<link rel="stylesheet" href="css/styles.css?v=20260824-108">
 </head>
 <body>
 
@@ -130,11 +130,37 @@
 
             <div class="card person-card" data-expand-row>
               <div class="person-photo">
+                <img src="Media/Committee%20Members/martinlinkedin.png" alt="Martin Oti" loading="lazy">
+                <div class="person-photo-scrim" aria-hidden="true"></div>
+                <div class="person-photo-info">
+                  <div class="person-name">Martin Oti</div>
+                  <div class="person-role">Co-Vice President</div>
+                  <div class="person-course">Medicine, Year 3</div>
+                  <div class="person-card-hint">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    Tap to learn more
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="person-card-toggle-btn" data-expand-btn aria-expanded="false" aria-controls="bio-martin-oti" aria-label="More about Martin Oti">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="reveal-panel" id="bio-martin-oti">
+                <div class="reveal-panel-inner">
+                  <div class="reveal-panel-content">
+                    <p class="person-bio">Medicine MBBS @ University of Lincoln | Aspiring Surgeon | Co-Vice President @ ACMS | Medical Education | Gym, Reading &amp; Anki | Lover of Travel &amp; Good Food</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card person-card" data-expand-row>
+              <div class="person-photo">
                 <img src="Media/Committee%20Members/jemimahlinkedin.png" alt="Jemimah Omotola" loading="lazy">
                 <div class="person-photo-scrim" aria-hidden="true"></div>
                 <div class="person-photo-info">
                   <div class="person-name">Jemimah Omotola</div>
-                  <div class="person-role">Vice President</div>
+                  <div class="person-role">Co-Vice President</div>
                   <div class="person-course">Medicine, Year 2</div>
                   <div class="person-card-hint">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -148,7 +174,7 @@
               <div class="reveal-panel" id="bio-jemimah-omotola">
                 <div class="reveal-panel-inner">
                   <div class="reveal-panel-content">
-                    <p class="person-bio">Top 150 Future Leaders '26 | Medicine MBBS | Aspiring Anaesthetist/OBGYN | Vice President @ ACMS | Founder of For Her Health Initiative | Medics&amp;Me Regional Lead | Academic Tutor | Nail Technician | Lover of Travel, Reading &amp; Fashion</p>
+                    <p class="person-bio">Top 150 Future Leaders '26 | Medicine MBBS | Aspiring Anaesthetist/OBGYN | Co-Vice President @ ACMS | Founder of For Her Health Initiative | Medics&amp;Me Regional Lead | Academic Tutor | Nail Technician | Lover of Travel, Reading &amp; Fashion</p>
                   </div>
                 </div>
               </div>
@@ -201,32 +227,6 @@
                 <div class="reveal-panel-inner">
                   <div class="reveal-panel-content">
                     <p class="person-bio">TOP 150 Future Leaders '26 | Medicine MBBS | Event Secretary @ACMS | Aspiring Gastroenterologist | TAMS communications officer | Tutor. Lover of photography and crocheting :)</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card person-card" data-expand-row>
-              <div class="person-photo">
-                <img src="Media/Committee%20Members/martinlinkedin.png" alt="Martin Oti" loading="lazy">
-                <div class="person-photo-scrim" aria-hidden="true"></div>
-                <div class="person-photo-info">
-                  <div class="person-name">Martin Oti</div>
-                  <div class="person-role">Social Secretary</div>
-                  <div class="person-course">Medicine, Year 3</div>
-                  <div class="person-card-hint">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    Tap to learn more
-                  </div>
-                </div>
-              </div>
-              <button type="button" class="person-card-toggle-btn" data-expand-btn aria-expanded="false" aria-controls="bio-martin-oti" aria-label="More about Martin Oti">
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-              <div class="reveal-panel" id="bio-martin-oti">
-                <div class="reveal-panel-inner">
-                  <div class="reveal-panel-content">
-                    <p class="person-bio">Medicine MBBS @ University of Lincoln | Aspiring Surgeon | Social Secretary @ ACMS | Medical Education | Gym, Reading &amp; Anki | Lover of Travel &amp; Good Food</p>
                   </div>
                 </div>
               </div>
@@ -418,12 +418,13 @@
   </div>
 </footer>
 
-<script src="js/main.js?v=20260824-106"></script>
+<script src="js/main.js?v=20260824-108"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/members.js?v=20260824-106"></script>
-<script src="js/notifications.js?v=20260824-106"></script>
-<script src="js/guidance.js?v=20260824-106"></script>
-<script src="js/chat.js?v=20260824-106"></script>
+<script src="js/members.js?v=20260824-108"></script>
+<script src="js/committee-editor.js?v=20260824-108"></script>
+<script src="js/notifications.js?v=20260824-108"></script>
+<script src="js/guidance.js?v=20260824-108"></script>
+<script src="js/chat.js?v=20260824-108"></script>
 </body>
 </html>
