@@ -1,9 +1,9 @@
-// About page: "Meet the team" from the database, editable by the Executive
-// Committee (migration 081).
+// About page: "Meet the team" from the database, editable by the president
+// (migration 081).
 //
 // about.html ships the committee as static cards (the fallback if the table is
 // empty or can't be reached). Once committee_members has active rows this swaps
-// them in. For the president and Executive Committee the section also gets an
+// them in. For the president the section also gets an
 // "Edit the team" toolbar and a pencil on every card: change a name, role,
 // course line or bio, upload or replace a photo (shrunk in the browser first,
 // with a slider to choose which part of the picture shows), reorder people,
@@ -371,7 +371,7 @@
   // ---- Start -----------------------------------------------------------------------------
   supabaseClient.auth.getSession().then(function (r) {
     if (!(r.data && r.data.session)) return false;
-    return supabaseClient.rpc('is_dashboard_admin').then(function (x) { return !x.error && x.data === true; }, function () { return false; });
+    return supabaseClient.rpc('is_president').then(function (x) { return !x.error && x.data === true; }, function () { return false; });
   }).then(function (admin) {
     canEdit = !!admin;
     return load();

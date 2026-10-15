@@ -1421,9 +1421,9 @@ An event's `slug` (its permanent id, which registrations are keyed on) is create
 
 **Run [`db/migrations/081-committee-members.sql`](db/migrations/081-committee-members.sql) in Supabase** (needs 037). It creates the `committee_members` table, seeds it with the six people currently on the page - **Martin Oti and Jemimah Omotola are now Co-Vice Presidents, Martin listed first** - and creates a public `committee-photos` storage bucket. Until it's run the page shows the built-in cards (which already have the new roles and order).
 
-When you're signed in as the president or an Executive Committee member, the About page's "Meet the team" section shows an **Edit the team** button, **+ Add a member**, and a pencil on every card.
+When you're signed in as the president (only), the About page's "Meet the team" section shows an **Edit the team** button, **+ Add a member**, and a pencil on every card.
 - **Edit a person:** name, role (suggestions like Co-Vice President, Treasurer... or type your own), course line, bio, and photo. **Choose a photo** (JPG, PNG or WebP; big pictures are shrunk in your browser before uploading), **Remove photo** (the card shows their initials), and a slider to choose which part of the portrait shows (so faces sit properly). Replacing a photo tidies away the old file.
 - **Edit the team:** reorder with the arrows (first = shown first), **Hide** someone without deleting them (hidden people show dashed to you only), or **Remove** them.
 - **Add a member:** the same form; they appear at the end, then move them where you want.
 
-Everyone else just sees the finished cards. Who can change anything is enforced in the database (the table's and the bucket's policies), not only in the page. Their account role in the Network and dashboard (`members.committee_role`) is separate - update it from Manage accounts if it should match.
+Everyone else - Executive Committee members included - just sees the finished cards. If you'd already run 081 before this change, run it again: it's safe to repeat and switches editing to president-only. Who can change anything is enforced in the database (the table's and the bucket's policies), not only in the page. Their account role in the Network and dashboard (`members.committee_role`) is separate - update it from Manage accounts if it should match.

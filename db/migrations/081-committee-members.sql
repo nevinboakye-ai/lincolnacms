@@ -7,13 +7,14 @@
 -- page shows those instead. Seeded below from the current page, with Martin Oti
 -- and Jemimah Omotola as Co-Vice Presidents (Martin first).
 --
--- Who can edit: the president and Executive Committee (is_dashboard_admin()).
+-- Who can edit: the president only (is_president()).
 -- Everyone can read the active members. Photos live in a PUBLIC storage bucket,
 -- committee-photos (JPG / PNG / WebP, up to 3 MB; the editor shrinks big
--- photos for you), writable only by those same people.
+-- photos for you), writable only by the president.
 --
 -- Wrapped in a transaction. Run this once in Supabase: Dashboard -> SQL Editor
--- -> New query, paste, Run. Needs 037 (is_dashboard_admin). Safe to run again.
+-- -> New query, paste, Run. Needs 025 (is_president). Safe to run again (and re-running it after an
+-- earlier version simply switches editing to president-only).
 
 begin;
 
@@ -33,36 +34,46 @@ create table if not exists public.committee_members (
 
 alter table public.committee_members enable row level security;
 
+-- If an earlier version of this migration was already run, its Executive
+-- Committee policies are removed here so that only the president can edit.
+drop policy if exists "Executives view all committee members" on public.committee_members;
+drop policy if exists "Executives add committee members" on public.committee_members;
+drop policy if exists "Executives change committee members" on public.committee_members;
+drop policy if exists "Executives remove committee members" on public.committee_members;
+drop policy if exists "Executives upload committee photos" on storage.objects;
+drop policy if exists "Executives replace committee photos" on storage.objects;
+drop policy if exists "Executives remove committee photos" on storage.objects;
+
 drop policy if exists "Anyone can view active committee members" on public.committee_members;
 create policy "Anyone can view active committee members"
   on public.committee_members for select
   to anon, authenticated
   using (is_active = true);
 
-drop policy if exists "Executives view all committee members" on public.committee_members;
-create policy "Executives view all committee members"
+drop policy if exists "President view all committee members" on public.committee_members;
+create policy "President view all committee members"
   on public.committee_members for select
   to authenticated
-  using (public.is_dashboard_admin());
+  using (public.is_president());
 
-drop policy if exists "Executives add committee members" on public.committee_members;
-create policy "Executives add committee members"
+drop policy if exists "President add committee members" on public.committee_members;
+create policy "President add committee members"
   on public.committee_members for insert
   to authenticated
-  with check (public.is_dashboard_admin());
+  with check (public.is_president());
 
-drop policy if exists "Executives change committee members" on public.committee_members;
-create policy "Executives change committee members"
+drop policy if exists "President change committee members" on public.committee_members;
+create policy "President change committee members"
   on public.committee_members for update
   to authenticated
-  using (public.is_dashboard_admin())
-  with check (public.is_dashboard_admin());
+  using (public.is_president())
+  with check (public.is_president());
 
-drop policy if exists "Executives remove committee members" on public.committee_members;
-create policy "Executives remove committee members"
+drop policy if exists "President remove committee members" on public.committee_members;
+create policy "President remove committee members"
   on public.committee_members for delete
   to authenticated
-  using (public.is_dashboard_admin());
+  using (public.is_president());
 
 -- The six people already on the page (only if the table is empty).
 insert into public.committee_members (full_name, role, course_text, bio, photo_url, sort_order)
@@ -82,22 +93,22 @@ values ('committee-photos', 'committee-photos', true, 3145728, array['image/jpeg
 on conflict (id) do update
   set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
-drop policy if exists "Executives upload committee photos" on storage.objects;
-create policy "Executives upload committee photos"
+drop policy if exists "President uploads committee photos" on storage.objects;
+create policy "President uploads committee photos"
   on storage.objects for insert
   to authenticated
-  with check (bucket_id = 'committee-photos' and public.is_dashboard_admin());
+  with check (bucket_id = 'committee-photos' and public.is_president());
 
-drop policy if exists "Executives replace committee photos" on storage.objects;
-create policy "Executives replace committee photos"
+drop policy if exists "President replace committee photos" on storage.objects;
+create policy "President replace committee photos"
   on storage.objects for update
   to authenticated
-  using (bucket_id = 'committee-photos' and public.is_dashboard_admin());
+  using (bucket_id = 'committee-photos' and public.is_president());
 
-drop policy if exists "Executives remove committee photos" on storage.objects;
-create policy "Executives remove committee photos"
+drop policy if exists "President remove committee photos" on storage.objects;
+create policy "President remove committee photos"
   on storage.objects for delete
   to authenticated
-  using (bucket_id = 'committee-photos' and public.is_dashboard_admin());
+  using (bucket_id = 'committee-photos' and public.is_president());
 
 commit;
