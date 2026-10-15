@@ -2337,7 +2337,9 @@
     var detailsHtml = row.details
       ? '<div class="reveal-panel event-row-details" id="' + escapeHtml(detailsId) + '"><div class="reveal-panel-inner"><div class="reveal-panel-content">' + renderRichText(row.details) + '</div></div></div>'
       : '';
-    return '<article class="event-row' + (row.is_flagship ? ' event-row--flagship' : '') + '" id="' + escapeHtml(row.slug) + '" data-expand-row>' +
+    var lastDay = row.ends_on || row.starts_on;
+    var isPast = !!lastDay && lastDay < new Date().toISOString().slice(0, 10);
+    return '<article class="event-row' + (row.is_flagship ? ' event-row--flagship' : '') + (isPast ? ' event-row--past' : '') + '" id="' + escapeHtml(row.slug) + '" data-expand-row>' +
       '<div class="event-row-date">' + escapeHtml(row.date_text) + (row.time_note ? '<br><span class="event-row-date-note">' + escapeHtml(row.time_note) + '</span>' : '') + '</div>' +
       '<div><h2 class="event-row-title">' + titleHtml + '</h2><p>' + escapeHtml(row.summary) + '</p>' + tagHtml + linkHtml + '</div>' +
       '<div class="event-row-actions">' + buttonHtml +
@@ -2348,13 +2350,18 @@
   }
 
   var dbEventList = document.querySelector('[data-events-from-db]');
-  if (dbEventList) {
-    supabaseClient
-      .from('site_events')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .then(function (result) {
+  // Loads the events list from the database. Called once on load and again
+  // whenever the calendar's editor (js/events-calendar.js) changes an event
+  // ("lacms:events-changed"), so the list never goes stale.
+  function loadSiteEventList() {
+    if (!dbEventList) return;
+    var q = supabaseClient.from('site_events').select('*').eq('is_active', true);
+    // Soonest first (events with no date yet last), then the manual order. Falls
+    // back to the manual order alone if the date columns (migration 080) aren't there.
+    q.order('starts_on', { ascending: true, nullsFirst: false }).order('sort_order', { ascending: true }).then(function (first) {
+      if (!first.error) return first;
+      return supabaseClient.from('site_events').select('*').eq('is_active', true).order('sort_order', { ascending: true });
+    }).then(function (result) {
         if (result.error) {
           console.error('Events failed to load from Supabase, keeping the built-in list:', result.error.message);
           return;
@@ -2382,6 +2389,10 @@
         var hashTarget = window.location.hash && document.getElementById(window.location.hash.slice(1));
         if (hashTarget) hashTarget.scrollIntoView();
       });
+  }
+  if (dbEventList) {
+    loadSiteEventList();
+    document.addEventListener('lacms:events-changed', loadSiteEventList);
   }
 
   // ---- Events page: member registration. Each event card carries two
