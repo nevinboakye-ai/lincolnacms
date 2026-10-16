@@ -91,6 +91,12 @@
         appTimes[row.application_id] = row.created_at;
       });
       loaded = true;
+      // The email composer ({phase}) asks which phase an application was in.
+      window.__sankofaRoundNameFor = function (appId) {
+        var rid = appRounds[appId];
+        var r = rounds.filter(function (x) { return x.id === rid; })[0];
+        return r ? r.name : '';
+      };
       render();
       applyFilter();
     });

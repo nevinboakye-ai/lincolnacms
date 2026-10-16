@@ -5099,6 +5099,12 @@
           isPresident ? supabaseClient.rpc('president_get_account_requests') : Promise.resolve({ data: [], error: null }),
           isPresident
             ? supabaseClient.from('account_request_emails').select('*').order('created_at', { ascending: false })
+            : Promise.resolve({ data: [], error: null }),
+          isPresident
+            ? supabaseClient.from('sankofa_application_emails').select('*').order('created_at', { ascending: false })
+            : Promise.resolve({ data: [], error: null }),
+          isPresident
+            ? supabaseClient.from('member_email_log').select('ref_id, status').eq('kind', 'sankofa_application')
             : Promise.resolve({ data: [], error: null })
         ]);
       }).then(function (results) {
@@ -5163,6 +5169,9 @@
             status: m.status
           };
         });
+        sankofaEmailsAll = results[10] && !results[10].error ? (results[10].data || []) : [];
+        sankofaAutoSent = {};
+        if (results[11] && !results[11].error) (results[11].data || []).forEach(function (x) { if (x.status === 'sent') sankofaAutoSent[x.ref_id] = true; });
         var sankofaMerged = mentees.concat(mentors).sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
         if (!dashCan('sankofa')) {
           // not shown to this person - nothing to render
@@ -5951,6 +5960,7 @@
         '<svg class="icon app-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>' +
         '</div>' +
         '<div class="app-card-body">' + appCardField('Email', a.email) + body +
+        (dashboardRole === 'president' && a.email ? '<div class="app-card-field" data-sk-emails data-id="' + escapeHtml(a.id) + '">' + renderSankofaEmailsInner(a) + '</div>' : '') +
         '<button type="button" class="app-card-delete-btn" data-sankofa-delete data-id="' + escapeHtml(a.id) + '" data-type="' + (isMentor ? 'mentor' : 'mentee') + '">Delete application</button>' +
         '</div>' +
         '</div>';
@@ -6197,7 +6207,8 @@
       return String(text || '')
         .replace(/\{first_name\}/gi, first)
         .replace(/\{name\}/gi, r.full_name || '')
-        .replace(/\{email\}/gi, r.email || '');
+        .replace(/\{email\}/gi, r.email || '')
+        .replace(/\{phase\}/gi, r.round_name || 'this phase');
     }
     // Same rules as the Edge Function's textToHtml, so the preview matches what's sent.
     function emailPreviewHtml(text) {
@@ -6219,7 +6230,9 @@
       }, function () { emailTemplatesAvailable = false; savedEmailTemplates = []; });
     }
 
-    function openEmailComposer(r) {
+    function openEmailComposer(r, ctx) {
+      ctx = ctx || {};
+      var TPLS = ctx.templates || BUILT_IN_EMAIL_TEMPLATES;
       var previouslyFocused = document.activeElement;
       var backdrop = document.createElement('div');
       backdrop.className = 'guide-backdrop';
@@ -6230,7 +6243,7 @@
       dialog.setAttribute('aria-labelledby', 'ce-title');
       dialog.innerHTML =
         '<button type="button" class="guide-close" data-ce-close aria-label="Close">&times;</button>' +
-        '<span class="guide-eyebrow">Account request</span>' +
+        '<span class="guide-eyebrow">' + escapeHtml(ctx.eyebrow || 'Account request') + '</span>' +
         '<h2 class="guide-title" id="ce-title">Email ' + escapeHtml(r.full_name) + '</h2>' +
         '<p class="guide-text">To <strong>' + escapeHtml(r.email) + '</strong>. Replies go to acms@lincolnsu.com.</p>' +
         '<form class="guide-form" id="ce-form" novalidate>' +
@@ -6240,7 +6253,8 @@
         '<div class="ce-tools"><span class="ce-insert">Insert: ' +
         '<button type="button" data-ce-insert="{first_name}">first name</button>' +
         '<button type="button" data-ce-insert="{name}">full name</button>' +
-        '<button type="button" data-ce-insert="{email}">their email</button></span>' +
+        '<button type="button" data-ce-insert="{email}">their email</button>' +
+        (ctx.phase ? '<button type="button" data-ce-insert="{phase}">phase</button>' : '') + '</span>' +
         '<span class="guide-count" id="ce-count">0 / 5000</span></div></div>' +
         '<details class="ce-preview" open><summary>Preview for ' + escapeHtml(r.full_name.split(/\s+/)[0] || r.full_name) + '</summary>' +
         '<div class="ce-preview-box"><strong id="ce-preview-subject"></strong><div id="ce-preview-body"></div></div></details>' +
@@ -6292,7 +6306,7 @@
       }
       function fillTemplates() {
         var html = '<option value="">Start from scratch</option><optgroup label="Built in">' +
-          BUILT_IN_EMAIL_TEMPLATES.map(function (t) { return '<option value="b:' + t.id + '">' + escapeHtml(t.name) + '</option>'; }).join('') + '</optgroup>';
+          TPLS.map(function (t) { return '<option value="b:' + t.id + '">' + escapeHtml(t.name) + '</option>'; }).join('') + '</optgroup>';
         if (savedEmailTemplates && savedEmailTemplates.length) {
           html += '<optgroup label="Your saved templates">' + savedEmailTemplates.map(function (t) { return '<option value="s:' + escapeHtml(t.id) + '">' + escapeHtml(t.name) + '</option>'; }).join('') + '</optgroup>';
         }
@@ -6305,7 +6319,7 @@
         var v = tplSel.value;
         currentSaved = null;
         var t = null;
-        if (v.indexOf('b:') === 0) t = BUILT_IN_EMAIL_TEMPLATES.filter(function (x) { return x.id === v.slice(2); })[0];
+        if (v.indexOf('b:') === 0) t = TPLS.filter(function (x) { return x.id === v.slice(2); })[0];
         else if (v.indexOf('s:') === 0) { t = (savedEmailTemplates || []).filter(function (x) { return x.id === v.slice(2); })[0]; currentSaved = t || null; }
         if (t) { subjectEl.value = t.subject; messageEl.value = t.message; }
         deleteBtn.hidden = !currentSaved;
@@ -6383,22 +6397,7 @@
         showError('');
         sendBtn.disabled = true;
         sendBtn.textContent = 'Sending…';
-        supabaseClient.functions.invoke('send-account-email', {
-          body: { type: 'custom', email: r.email, full_name: r.full_name, subject: subject, message: message }
-        }).then(function (result) {
-          return result.error ? describeEmailError(result.error) : null;
-        }).then(function (errorMessage) {
-          var row = {
-            request_id: r.id, email_type: 'custom', recipient: r.email,
-            status: errorMessage ? 'failed' : 'sent',
-            error: errorMessage ? String(errorMessage).slice(0, 1000) : null,
-            subject: fillEmailPlaceholders(subject, r).slice(0, 150), message: message.slice(0, 5000)
-          };
-          supabaseClient.from('account_request_emails').insert(row).select().single().then(function (logResult) {
-            if (logResult.error) console.error('Logging the email failed (has migration 077 been run?):', logResult.error.message);
-            else accountRequestEmailsAll.unshift(logResult.data);
-            refreshRequestEmails(r.id);
-          });
+        deliverCustomEmail(r, subject, message, ctx).then(function (errorMessage) {
           if (errorMessage) {
             sendBtn.disabled = false;
             sendBtn.textContent = 'Send email';
@@ -6408,10 +6407,158 @@
             return;
           }
           dialog.innerHTML = '<div class="guide-done"><span class="guide-done-tick">&#10003;</span><h2 class="guide-title">Email sent</h2>' +
-            '<p class="guide-text">Sent to ' + escapeHtml(r.email) + '. It\'s logged under this request\'s Emails.</p>' +
+            '<p class="guide-text">Sent to ' + escapeHtml(r.email) + '. It\'s logged under this ' + (ctx.noun || 'request') + '\'s Emails.</p>' +
             '<div class="guide-actions guide-actions--stack"><button type="button" class="btn btn-primary btn-block" data-ce-close>Done</button></div></div>';
           var done = dialog.querySelector('[data-ce-close]'); if (done) done.focus();
         });
+      });
+    }
+
+
+    // Sends a custom email (through the same Edge Function as the account
+    // emails) and logs it. {phase} is filled in here; {first_name}, {name} and
+    // {email} are filled in by the function. Resolves to an error message, or
+    // null if it went. Used by the composer and the one-click Sankofa confirmation.
+    function deliverCustomEmail(r, subject, message, ctx) {
+      ctx = ctx || {};
+      var phase = function (t) { return String(t).replace(/\{phase\}/gi, r.round_name || 'this phase'); };
+      var outSubject = phase(subject);
+      var outMessage = phase(message);
+      return supabaseClient.functions.invoke('send-account-email', {
+        body: { type: 'custom', email: r.email, full_name: r.full_name, subject: outSubject, message: outMessage }
+      }).then(function (result) {
+        return result.error ? describeEmailError(result.error) : null;
+      }).then(function (errorMessage) {
+        var row = {
+          recipient: r.email, email_type: 'custom',
+          status: errorMessage ? 'failed' : 'sent',
+          error: errorMessage ? String(errorMessage).slice(0, 1000) : null,
+          subject: fillEmailPlaceholders(outSubject, r).slice(0, 150), message: outMessage.slice(0, 5000)
+        };
+        var logging = ctx.log ? ctx.log(row) : supabaseClient.from('account_request_emails').insert(Object.assign({ request_id: r.id }, row)).select().single().then(function (lr) {
+          if (lr.error) console.error('Logging the email failed (has migration 077 been run?):', lr.error.message);
+          else accountRequestEmailsAll.unshift(lr.data);
+          refreshRequestEmails(r.id);
+        });
+        if (logging && logging.then) logging.then(null, function () { /* the email already went */ });
+        return errorMessage;
+      });
+    }
+
+    // ---- Emails from the Sankofa applications list (president only) -----------
+    // Same idea as the account-request emails: a one-click "send / resend the
+    // confirmation" for people who applied before the automatic confirmation
+    // existed, plus a composer with templates for anything else about their
+    // application (matched, still reviewing, need more info, not this phase...).
+    var SANKOFA_MENTEE_TEMPLATES = [
+      {
+        id: 'received', name: 'Application received (confirmation)',
+        subject: "We've received your Sankofa application",
+        message: 'Hi {first_name},\n\nThanks for applying for a Sankofa Circle ({phase}) - we\'ve got your application, and we\'re sorry this confirmation is arriving a little late.\n\nWhat happens next:\n1. The committee reviews every application.\n2. We pair Circles around what you have in common, ahead of each new term.\n3. We\'ll email you as soon as there\'s an update.\n\nThere\'s nothing more you need to do. If you\'d like to add anything to your application, just reply to this email.\n\nThanks,\nThe LACMS Committee'
+      },
+      {
+        id: 'reviewing', name: 'Still reviewing - update',
+        subject: 'An update on your Sankofa application',
+        message: 'Hi {first_name},\n\nA quick update on your Sankofa application ({phase}): we\'re still going through applications and putting Circles together. You don\'t need to do anything - we\'ll email you as soon as we have news.\n\nThanks for your patience,\nThe LACMS Committee'
+      },
+      {
+        id: 'matched', name: "You've been matched into a Circle",
+        subject: "You've been matched into a Sankofa Circle",
+        message: 'Hi {first_name},\n\nGreat news - you\'ve been matched into a Sankofa Circle!\n\n[Add the details here: who\'s in your Circle, when and where you\'ll first meet, and how to get in touch.]\n\nWe\'re really looking forward to seeing what you get out of it. If anything doesn\'t work for you, just reply to this email.\n\nThanks,\nThe LACMS Committee'
+      },
+      {
+        id: 'more-info', name: 'We need a bit more information',
+        subject: 'A quick question about your Sankofa application',
+        message: 'Hi {first_name},\n\nThanks for applying to Sankofa. Before we can place you in a Circle, could you reply to this email and tell us:\n\n[Add what you need - e.g. your year of study, your availability or your specialty interests.]\n\nThanks,\nThe LACMS Committee'
+      },
+      {
+        id: 'not-this-phase', name: 'Not placed this phase',
+        subject: 'Your Sankofa application',
+        message: 'Hi {first_name},\n\nThank you for applying to Sankofa ({phase}). We had far more applicants than places this time, and we weren\'t able to place you in a Circle in this phase.\n\nWe really appreciate your interest, and we\'ll let you know when applications open again - we\'d love to hear from you then.\n\nThanks,\nThe LACMS Committee'
+      },
+      { id: 'blank', name: 'Blank message', subject: '', message: 'Hi {first_name},\n\n\n\nThanks,\nThe LACMS Committee' }
+    ];
+    var SANKOFA_MENTOR_TEMPLATES = [
+      {
+        id: 'mentor-received', name: 'Thanks for offering to mentor',
+        subject: 'Thank you for offering to mentor with LACMS Sankofa',
+        message: 'Hi {first_name},\n\nThank you for applying to mentor with Sankofa - it means a great deal that you\'d give your time to students who are following in your footsteps.\n\nWe\'ve got your application and a member of the committee will be in touch soon about next steps. If there\'s anything you\'d like to add in the meantime, just reply to this email.\n\nWith thanks,\nThe LACMS Committee'
+      },
+      {
+        id: 'mentor-next', name: 'Next steps - arrange a chat',
+        subject: 'Next steps for mentoring with Sankofa',
+        message: 'Hi {first_name},\n\nThank you again for offering to mentor with Sankofa. We\'d love to arrange a short chat to talk through how it works and find the right Circle for you.\n\nCould you reply with a few times that suit you over the next couple of weeks?\n\nThanks,\nThe LACMS Committee'
+      },
+      { id: 'blank', name: 'Blank message', subject: '', message: 'Hi {first_name},\n\n\n\nThanks,\nThe LACMS Committee' }
+    ];
+    var sankofaEmailsAll = [];       // rows of sankofa_application_emails (migration 083), newest first
+    var sankofaAutoSent = {};        // application id -> true when the automatic confirmation (082) went out
+
+    function sankofaEmailTarget(a) {
+      return Object.assign({}, a, { round_name: a.round_name || (a.applicant_type === 'mentee' ? (window.__sankofaRoundNameFor ? window.__sankofaRoundNameFor(a.id) : '') : '') });
+    }
+    function sankofaLog(a) {
+      return function (row) {
+        return supabaseClient.from('sankofa_application_emails').insert({
+          application_id: a.id, applicant_type: a.applicant_type, recipient: row.recipient,
+          status: row.status, error: row.error, subject: row.subject, message: row.message
+        }).select().single().then(function (lr) {
+          if (lr.error) console.error('Logging the Sankofa email failed (has migration 083 been run?):', lr.error.message);
+          else sankofaEmailsAll.unshift(lr.data);
+          refreshSankofaEmails(a.id);
+        });
+      };
+    }
+    function renderSankofaEmailsInner(a) {
+      var history = sankofaEmailsAll.filter(function (m) { return m.application_id === a.id; });
+      var latest = history[0];
+      var auto = a.applicant_type === 'mentee' && sankofaAutoSent[a.id];
+      var confirmStatus = auto
+        ? '<span class="request-email-status is-sent">Automatic confirmation sent</span>'
+        : (latest && latest.status === 'sent' ? '<span class="request-email-status is-sent">Last email ' + escapeHtml(timeAgo(latest.created_at)) + '</span>' : '<span class="request-email-status">Not sent yet</span>');
+      var rows = '<div class="request-email-row"><div class="request-email-info"><strong>Confirmation</strong>' + confirmStatus + '</div>' +
+        '<button type="button" class="btn btn-outline request-email-btn" data-sk-email-confirm data-id="' + escapeHtml(a.id) + '">' + (auto || history.length ? 'Resend confirmation' : 'Send confirmation') + '</button></div>' +
+        '<div class="request-email-row"><div class="request-email-info"><strong>Write an email</strong><span class="request-email-status">Templates or your own words</span></div>' +
+        '<button type="button" class="btn btn-outline request-email-btn" data-sk-email-compose data-id="' + escapeHtml(a.id) + '">Write email…</button></div>';
+      var hist = history.length
+        ? '<div class="request-email-history">' + history.slice(0, 6).map(function (m) {
+            return '<div>' + (m.status === 'sent' ? 'Sent' : 'Failed') + ' - ' +
+              escapeHtml(new Date(m.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) +
+              (m.subject ? ' - &ldquo;' + escapeHtml(m.subject) + '&rdquo;' : '') +
+              (m.status === 'failed' && m.error ? ' - ' + escapeHtml(m.error) : '') + '</div>';
+          }).join('') + '</div>'
+        : '';
+      return '<div class="app-card-field-label">Emails to ' + escapeHtml((a.full_name || 'them').split(/\s+/)[0]) + '</div>' + rows + hist;
+    }
+    function refreshSankofaEmails(appId) {
+      var a = sankofaAllApplications.filter(function (x) { return x.id === appId; })[0];
+      if (!a) return;
+      document.querySelectorAll('[data-sk-emails][data-id="' + appId + '"]').forEach(function (el) { el.innerHTML = renderSankofaEmailsInner(a); });
+    }
+    function openSankofaComposer(a) {
+      var target = sankofaEmailTarget(a);
+      openEmailComposer(target, {
+        templates: a.applicant_type === 'mentor' ? SANKOFA_MENTOR_TEMPLATES : SANKOFA_MENTEE_TEMPLATES,
+        eyebrow: a.applicant_type === 'mentor' ? 'Sankofa mentor application' : 'Sankofa application',
+        phase: a.applicant_type === 'mentee', noun: 'application', log: sankofaLog(a)
+      });
+    }
+    function sendSankofaConfirmation(a, btn) {
+      if (!a.email) { window.alert('There\'s no email address on this application.'); return; }
+      var tpl = (a.applicant_type === 'mentor' ? SANKOFA_MENTOR_TEMPLATES : SANKOFA_MENTEE_TEMPLATES)[0];
+      var already = (a.applicant_type === 'mentee' && sankofaAutoSent[a.id]) || sankofaEmailsAll.some(function (m) { return m.application_id === a.id && m.status === 'sent'; });
+      var msg = already
+        ? 'They\'ve already been sent a confirmation. Send it again to ' + a.email + '?'
+        : 'Send the confirmation email to ' + a.full_name + ' (' + a.email + ')?';
+      if (!window.confirm(msg)) return;
+      btn.disabled = true;
+      var oldText = btn.textContent;
+      btn.textContent = 'Sending…';
+      deliverCustomEmail(sankofaEmailTarget(a), tpl.subject, tpl.message, { log: sankofaLog(a) }).then(function (err) {
+        btn.disabled = false;
+        btn.textContent = oldText;
+        if (err) window.alert(/Invalid request|known type/i.test(err) ? 'The email function needs updating - see README-members-setup.md, section 129.' : "Couldn't send it: " + err);
+        else refreshSankofaEmails(a.id);
       });
     }
 
@@ -7655,6 +7802,19 @@
             setTimeout(next, 700);
           });
         })();
+        return;
+      }
+
+      var skCompose = e.target.closest('[data-sk-email-compose]');
+      if (skCompose) {
+        var skA = sankofaAllApplications.filter(function (x) { return x.id === skCompose.getAttribute('data-id'); })[0];
+        if (skA) openSankofaComposer(skA);
+        return;
+      }
+      var skConfirm = e.target.closest('[data-sk-email-confirm]');
+      if (skConfirm) {
+        var skB = sankofaAllApplications.filter(function (x) { return x.id === skConfirm.getAttribute('data-id'); })[0];
+        if (skB) sendSankofaConfirmation(skB, skConfirm);
         return;
       }
 
