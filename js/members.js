@@ -5104,7 +5104,7 @@
             ? supabaseClient.from('sankofa_application_emails').select('*').order('created_at', { ascending: false })
             : Promise.resolve({ data: [], error: null }),
           isPresident
-            ? supabaseClient.from('member_email_log').select('ref_id, status').eq('kind', 'sankofa_application')
+            ? supabaseClient.from('member_email_log').select('ref_id, status, error, created_at').eq('kind', 'sankofa_application').order('created_at', { ascending: false })
             : Promise.resolve({ data: [], error: null })
         ]);
       }).then(function (results) {
@@ -5171,7 +5171,7 @@
         });
         sankofaEmailsAll = results[10] && !results[10].error ? (results[10].data || []) : [];
         sankofaAutoSent = {};
-        if (results[11] && !results[11].error) (results[11].data || []).forEach(function (x) { if (x.status === 'sent') sankofaAutoSent[x.ref_id] = true; });
+        if (results[11] && !results[11].error) (results[11].data || []).forEach(function (x) { (sankofaAutoSent[x.ref_id] = sankofaAutoSent[x.ref_id] || []).push(x); });
         var sankofaMerged = mentees.concat(mentors).sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
         if (!dashCan('sankofa')) {
           // not shown to this person - nothing to render
@@ -6492,7 +6492,7 @@
       { id: 'blank', name: 'Blank message', subject: '', message: 'Hi {first_name},\n\n\n\nThanks,\nThe LACMS Committee' }
     ];
     var sankofaEmailsAll = [];       // rows of sankofa_application_emails (migration 083), newest first
-    var sankofaAutoSent = {};        // application id -> true when the automatic confirmation (082) went out
+    var sankofaAutoSent = {};        // application id -> the automatic confirmations (member_email_log, 082) for it, newest first
 
     function sankofaEmailTarget(a) {
       return Object.assign({}, a, { round_name: a.round_name || (a.applicant_type === 'mentee' ? (window.__sankofaRoundNameFor ? window.__sankofaRoundNameFor(a.id) : '') : '') });
@@ -6509,21 +6509,33 @@
         });
       };
     }
+    var SANKOFA_AUTO_SUBJECT = "We've received your Sankofa application";
     function renderSankofaEmailsInner(a) {
-      var history = sankofaEmailsAll.filter(function (m) { return m.application_id === a.id; });
-      var latest = history[0];
-      var auto = a.applicant_type === 'mentee' && sankofaAutoSent[a.id];
-      var confirmStatus = auto
-        ? '<span class="request-email-status is-sent">Automatic confirmation sent</span>'
-        : (latest && latest.status === 'sent' ? '<span class="request-email-status is-sent">Last email ' + escapeHtml(timeAgo(latest.created_at)) + '</span>' : '<span class="request-email-status">Not sent yet</span>');
+      // One feed: the automatic confirmation sent the moment they applied, plus
+      // everything sent from here, newest first.
+      var feed = sankofaEmailsAll.filter(function (m) { return m.application_id === a.id; }).map(function (m) {
+        return { at: m.created_at, status: m.status, subject: m.subject, error: m.error, auto: false };
+      });
+      (sankofaAutoSent[a.id] || []).forEach(function (m) {
+        feed.push({ at: m.created_at, status: m.status, subject: SANKOFA_AUTO_SUBJECT, error: m.error, auto: true });
+      });
+      feed.sort(function (x, y) { return new Date(y.at) - new Date(x.at); });
+      var sentAny = feed.some(function (m) { return m.status === 'sent'; });
+      var autoRows = feed.filter(function (m) { return m.auto; });
+      var confirmStatus;
+      if (autoRows.length && autoRows[0].status === 'sent') confirmStatus = '<span class="request-email-status is-sent">Automatic confirmation sent ' + escapeHtml(timeAgo(autoRows[0].at)) + '</span>';
+      else if (autoRows.length && autoRows[0].status === 'failed') confirmStatus = '<span class="request-email-status is-failed">Automatic confirmation failed - send it from here</span>';
+      else if (feed.length && feed[0].status === 'sent') confirmStatus = '<span class="request-email-status is-sent">Last email ' + escapeHtml(timeAgo(feed[0].at)) + '</span>';
+      else confirmStatus = '<span class="request-email-status">No confirmation sent yet</span>';
       var rows = '<div class="request-email-row"><div class="request-email-info"><strong>Confirmation</strong>' + confirmStatus + '</div>' +
-        '<button type="button" class="btn btn-outline request-email-btn" data-sk-email-confirm data-id="' + escapeHtml(a.id) + '">' + (auto || history.length ? 'Resend confirmation' : 'Send confirmation') + '</button></div>' +
+        '<button type="button" class="btn btn-outline request-email-btn" data-sk-email-confirm data-id="' + escapeHtml(a.id) + '">' + (sentAny ? 'Resend confirmation' : 'Send confirmation') + '</button></div>' +
         '<div class="request-email-row"><div class="request-email-info"><strong>Write an email</strong><span class="request-email-status">Templates or your own words</span></div>' +
         '<button type="button" class="btn btn-outline request-email-btn" data-sk-email-compose data-id="' + escapeHtml(a.id) + '">Write email…</button></div>';
-      var hist = history.length
-        ? '<div class="request-email-history">' + history.slice(0, 6).map(function (m) {
-            return '<div>' + (m.status === 'sent' ? 'Sent' : 'Failed') + ' - ' +
-              escapeHtml(new Date(m.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) +
+      var hist = feed.length
+        ? '<div class="request-email-history">' + feed.slice(0, 8).map(function (m) {
+            return '<div>' + (m.status === 'sent' ? 'Sent' : (m.status === 'failed' ? 'Failed' : 'Sending')) + ' - ' +
+              escapeHtml(new Date(m.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) +
+              (m.auto ? ' <span class="request-email-auto">automatic</span>' : '') +
               (m.subject ? ' - &ldquo;' + escapeHtml(m.subject) + '&rdquo;' : '') +
               (m.status === 'failed' && m.error ? ' - ' + escapeHtml(m.error) : '') + '</div>';
           }).join('') + '</div>'
@@ -6546,7 +6558,7 @@
     function sendSankofaConfirmation(a, btn) {
       if (!a.email) { window.alert('There\'s no email address on this application.'); return; }
       var tpl = (a.applicant_type === 'mentor' ? SANKOFA_MENTOR_TEMPLATES : SANKOFA_MENTEE_TEMPLATES)[0];
-      var already = (a.applicant_type === 'mentee' && sankofaAutoSent[a.id]) || sankofaEmailsAll.some(function (m) { return m.application_id === a.id && m.status === 'sent'; });
+      var already = (sankofaAutoSent[a.id] || []).some(function (m) { return m.status === 'sent'; }) || sankofaEmailsAll.some(function (m) { return m.application_id === a.id && m.status === 'sent'; });
       var msg = already
         ? 'They\'ve already been sent a confirmation. Send it again to ' + a.email + '?'
         : 'Send the confirmation email to ' + a.full_name + ' (' + a.email + ')?';

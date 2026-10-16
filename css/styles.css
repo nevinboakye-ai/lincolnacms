@@ -9251,3 +9251,4 @@ body.has-chat-dock .back-to-top { right: calc(var(--space-4) + 68px + env(safe-a
 .cm-toast.is-in { opacity: 1; transform: translate(-50%, 0); }
 .cm-toast.is-error { border-color: #c1272d; color: var(--accent-red, #ef8b8f); }
 @media (max-width: 560px) { .cm-photo-row { flex-direction: column; } .cm-photo-preview { width: 96px; } }
+.request-email-auto { display: inline-block; padding: 0 7px; border-radius: 999px; background: rgba(var(--gold-rgb), 0.18); color: var(--color-gold-light); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: 1px; }
