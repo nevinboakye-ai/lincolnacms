@@ -1427,3 +1427,14 @@ When you're signed in as the president (only), the About page's "Meet the team" 
 - **Add a member:** the same form; they appear at the end, then move them where you want.
 
 Everyone else - Executive Committee members included - just sees the finished cards. If you'd already run 081 before this change, run it again: it's safe to repeat and switches editing to president-only. Who can change anything is enforced in the database (the table's and the bucket's policies), not only in the page. Their account role in the Network and dashboard (`members.committee_role`) is separate - update it from Manage accounts if it should match.
+
+## 135. Automatic confirmation emails: Sankofa applications and Member of the Month nominations
+
+Three things to do, then it's live:
+1. **Deploy the new Edge Function `send-member-email`**: Supabase -> Edge Functions -> Deploy a new function, name it exactly `send-member-email`, paste in [`supabase/functions/send-member-email/index.ts`](supabase/functions/send-member-email/index.ts), Deploy. It uses the same `RESEND_API_KEY` / `RESEND_FROM_EMAIL` secrets as the account emails (and the same verified domain) - nothing new to add.
+2. **Run [`db/migrations/082-member-email-log.sql`](db/migrations/082-member-email-log.sql)** (the log that guarantees nobody gets the same email twice).
+3. That's all - the website already calls it.
+
+**What gets sent, to whom:** straight after someone submits the Sankofa application form, they get "We've received your Sankofa application" (naming the phase they applied in, with what happens next: the committee reviews it, Circles are matched ahead of each term, and we'll email with an update). Straight after someone nominates for Member of the Month, they get "Thanks for nominating <name> for Member of the Month" (repeating what they wrote and when winners are shared, and that they can nominate again next month). Both are branded like the other LACMS emails, go to the person's own account email, and replies reach acms@lincolnsu.com.
+
+**Safety:** the function only emails the signed-in person about their own application or nomination (made in the last hour); it never accepts an address from the browser. A record per application/nomination in `member_email_log` means the same one can't send twice; failures are recorded there (with Resend's reason) and can be retried. Sending never blocks the form: the application is saved first, and if the email can't go (function not deployed, Resend down) the person simply doesn't get the confirmation and nothing else is affected. To see who was emailed: Supabase -> Table Editor -> `member_email_log`.

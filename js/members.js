@@ -147,6 +147,17 @@
     return copy;
   }
 
+  // The "thanks, we've got it" email after someone applies to Sankofa or
+  // nominates for Member of the Month (supabase/functions/send-member-email).
+  // Fire-and-forget: the application is already saved, so a missing function
+  // or a failed send never gets in the way - it just logs to the console.
+  function sendMemberConfirmation(type, refId) {
+    if (!refId || !supabaseClient.functions) return;
+    supabaseClient.functions.invoke('send-member-email', { body: { type: type, ref_id: refId } }).then(function (res) {
+      if (res && res.error) console.warn('Confirmation email not sent:', res.error.message || res.error);
+    }, function () { /* ignore */ });
+  }
+
   function showMessage(el, message) {
     if (!el) return;
     el.textContent = message;
@@ -2557,6 +2568,8 @@
       supabaseClient
         .from('motm_nominations')
         .insert({ nominator_id: nominateSession.user.id, nominee_name: name, reason: reason })
+        .select('id')
+        .single()
         .then(function (result) {
           btn.disabled = false;
           if (result.error) {
@@ -2571,6 +2584,7 @@
           }
           nominateFormWrap.style.display = 'none';
           document.getElementById('nominate-confirmation').style.display = 'block';
+          sendMemberConfirmation('motm_nomination', result.data && result.data.id);
         });
     });
   }
@@ -2895,12 +2909,15 @@
             looking_for: lookingFor,
             statement: statement || null
           })
+          .select('id')
+          .single()
           .then(function (result) {
             btn.disabled = false;
             if (result.error) {
               showMessage(statusEl, result.error.message);
               return;
             }
+            sendMemberConfirmation('sankofa_application', result.data && result.data.id);
             sankofaFormWrap.style.display = 'none';
             showAlreadyApplied({ created_at: new Date().toISOString() });
           });
