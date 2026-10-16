@@ -6454,7 +6454,7 @@
       {
         id: 'received', name: 'Application received (confirmation)',
         subject: "We've received your Sankofa application",
-        message: 'Hi {first_name},\n\nThanks for applying for a Sankofa Circle ({phase}) - we\'ve got your application, and we\'re sorry this confirmation is arriving a little late.\n\nWhat happens next:\n1. The committee reviews every application.\n2. We pair Circles around what you have in common, ahead of each new term.\n3. We\'ll email you as soon as there\'s an update.\n\nThere\'s nothing more you need to do. If you\'d like to add anything to your application, just reply to this email.\n\nThanks,\nThe LACMS Committee'
+        message: 'Hi {first_name},\n\nThanks for applying for a Sankofa Circle ({phase}) - we\'ve got your application.\n\nWhat happens next:\n1. The committee reviews every application.\n2. We pair Circles around what you have in common, ahead of each new term.\n3. We\'ll email you as soon as there\'s an update.\n\nThere\'s nothing more you need to do. If you\'d like to add anything to your application, just reply to this email.\n\nThanks,\nThe LACMS Committee'
       },
       {
         id: 'reviewing', name: 'Still reviewing - update',
