@@ -4160,6 +4160,10 @@
     }
 
     function yearSortKey(year) {
+      // Foundation Year comes first - before Year 1 - not last with the other
+      // non-numeric labels. (A "Foundation Doctor" is a graduate, so that one
+      // stays down with them.)
+      if (/foundation/i.test(year || '') && !/doctor/i.test(year || '')) return 0;
       var match = /(\d+)/.exec(year || '');
       return match ? parseInt(match[1], 10) : 999;
     }
