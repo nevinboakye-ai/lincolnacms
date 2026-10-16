@@ -105,7 +105,7 @@ function sankofaEmail(first: string, phase: string) {
       '<p>We\'ve got ' + what + '. Nothing more for you to do - here\'s what happens next:</p>' +
       '<ol style="margin:0 0 8px; padding-left:20px;">' +
       '<li style="margin-bottom:6px;"><strong>We review it.</strong> The committee reads every application.</li>' +
-      '<li style="margin-bottom:6px;"><strong>We match you.</strong> We pair Circles around what you have in common, ahead of each new term.</li>' +
+      '<li style="margin-bottom:6px;"><strong>We match you.</strong> We pair Circles around what you have in common, ahead of the coming cycle.</li>' +
       '<li><strong>You hear from us.</strong> We\'ll email you as soon as there\'s an update.</li>' +
       '</ol>' +
       emailButton(SITE + '/member-hub.html', 'Open the Members Hub') +
