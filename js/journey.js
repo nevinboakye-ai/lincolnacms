@@ -80,37 +80,37 @@
   // =======================================================================
   function earnedBadges(s) { return s.badges.filter(function (b) { return b.earned; }); }
 
+  var moreOpen = false;
+
+  // One slim row (two on a phone): level, progress, the single best next step,
+  // and a "more" toggle for everything else. The full picture lives on the
+  // journey page.
   function cardHtml(s) {
     var p = s.progress;
     var earned = earnedBadges(s);
     var steps = s.next_steps || [];
+    var top = steps[0];
     var introKey = 'jy-intro-' + userId;
-    var intro = s.first_run || (lsGet(introKey) === 'pending');
     if (s.first_run) lsSet(introKey, 'pending');
-    var html = '<article class="jy-card" aria-label="Your LACMS journey">';
-    if (intro && lsGet(introKey) === 'pending') {
-      html += '<div class="jy-intro"><span>🎉 <strong>Welcome to your journey.</strong> We\'ve counted what you\'ve already done with LACMS - you start with <strong>' + p.xp + ' XP</strong>. Take part to level up; it\'s just for fun and only you can see it.</span>' +
-        '<button type="button" class="jy-intro-ok" data-jy-intro-ok>Got it</button></div>';
+    var html = '<article class="jy-bar" aria-label="Your LACMS journey">';
+    if (lsGet(introKey) === 'pending') {
+      html += '<p class="jy-intro jy-intro--line"><span>🎉 You start with <strong>' + p.xp + ' XP</strong> for what you\'ve already done.</span>' +
+        '<button type="button" class="jy-intro-ok" data-jy-intro-ok>Got it</button></p>';
     }
-    html += '<div class="jy-card-grid">' +
-      '<div class="jy-card-main">' + ring(p, 'lg') +
-        '<div class="jy-card-text"><span class="jy-eyebrow">Your journey</span>' +
-        '<h2 class="jy-level">Level ' + p.level + ' &middot; ' + esc(rankName(p.level)) + '</h2>' +
-        '<p class="jy-sub">' + p.xp + ' XP &middot; ' + (p.next_floor - p.xp) + ' to level ' + (p.level + 1) + '</p>' +
-        '<div class="jy-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + levelPct(p) + '"><i style="width:' + levelPct(p) + '%"></i></div>' +
-        '<p class="jy-chips">' +
-          (p.streak > 0 ? '<span class="jy-chip jy-chip--streak" title="Weeks in a row you\'ve been involved">' + FLAME + p.streak + '-week streak</span>' : '<span class="jy-chip" title="Do one thing this week to start a streak">Start a streak</span>') +
-          '<span class="jy-chip">' + earned.length + ' of ' + s.badges.length + ' badges</span></p></div>' +
-      '</div>' +
-      '<div class="jy-card-steps"><h3>Next steps</h3>' + (steps.length
-        ? '<ul class="jy-steps">' + steps.map(function (st) {
-            return '<li><a class="jy-step" href="' + esc(st.href) + '"><span class="jy-step-text"><strong>' + esc(st.title) + '</strong><small>' + esc(st.sub) + '</small></span><span class="jy-xp">+' + st.xp + ' XP</span></a></li>';
-          }).join('') + '</ul>'
-        : '<p class="jy-muted">You\'re all caught up - lovely. New ideas will appear here as things come up.</p>') + '</div>' +
-      '<div class="jy-card-badges"><h3>Badges</h3>' + (earned.length
-        ? '<p class="jy-badge-row">' + earned.slice(-6).reverse().map(function (b) { return '<span class="jy-badge" title="' + esc(b.name + ' - ' + b.description) + '">' + esc(b.icon) + '</span>'; }).join('') + '</p>'
-        : '<p class="jy-muted">Your first badges are only a step or two away.</p>') +
-        '<a class="jy-link" href="member-journey.html">See your journey</a></div>' +
+    html += '<div class="jy-bar-row">' +
+      '<a class="jy-bar-main" href="member-journey.html" aria-label="Open your journey - level ' + p.level + ', ' + esc(rankName(p.level)) + '">' + ring(p, 'sm') +
+        '<span class="jy-bar-text"><strong>Level ' + p.level + ' &middot; ' + esc(rankName(p.level)) + '</strong>' +
+        '<small>' + p.xp + ' XP' + (p.streak > 0 ? ' &middot; <span class="jy-bar-streak">' + FLAME + p.streak + 'w</span>' : '') + '</small></span></a>' +
+      '<span class="jy-bar-meter" role="progressbar" aria-label="Progress to level ' + (p.level + 1) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + levelPct(p) + '"><i style="width:' + levelPct(p) + '%"></i></span>' +
+      (top ? '<a class="jy-bar-next" href="' + esc(top.href) + '"><span class="jy-bar-next-label">Next</span><span class="jy-bar-next-title">' + esc(top.title) + '</span><span class="jy-xp">+' + top.xp + ' XP</span></a>' : '<span class="jy-bar-next jy-bar-next--done">You\'re all caught up</span>') +
+      '<button type="button" class="jy-bar-toggle" data-jy-toggle aria-expanded="' + moreOpen + '" aria-controls="jy-more" aria-label="' + (moreOpen ? 'Hide' : 'Show') + ' more of your journey"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>' +
+    '</div>' +
+    '<div class="jy-bar-more" id="jy-more"' + (moreOpen ? '' : ' hidden') + '>' +
+      (steps.length > 1 ? '<ul class="jy-steps">' + steps.slice(1).map(function (st) {
+        return '<li><a class="jy-step" href="' + esc(st.href) + '"><span class="jy-step-text"><strong>' + esc(st.title) + '</strong><small>' + esc(st.sub) + '</small></span><span class="jy-xp">+' + st.xp + ' XP</span></a></li>';
+      }).join('') + '</ul>' : '') +
+      '<div class="jy-bar-foot">' + (earned.length ? '<span class="jy-badge-row">' + earned.slice(-6).reverse().map(function (b) { return '<span class="jy-badge" title="' + esc(b.name + ' - ' + b.description) + '">' + esc(b.icon) + '</span>'; }).join('') + '</span>' : '<span class="jy-muted">Your first badges are a step or two away.</span>') +
+        '<a class="jy-link" href="member-journey.html">' + earned.length + ' of ' + s.badges.length + ' badges &middot; see your journey</a></div>' +
     '</div></article>';
     return html;
   }
@@ -397,6 +397,8 @@
   // Events
   // =======================================================================
   document.addEventListener('click', function (e) {
+    var tg = e.target.closest('[data-jy-toggle]');
+    if (tg) { moreOpen = !moreOpen; renderCard(); var b = document.querySelector('[data-jy-toggle]'); if (b) b.focus(); return; }
     if (e.target.closest('[data-jy-intro-ok]')) { lsSet('jy-intro-' + userId, 'done'); renderCard(); return; }
     if (e.target.closest('[data-jy-show]')) {
       setHidden(false).then(function () { toast('<span class="jy-toast-text">Your journey is back</span>', {}); }, function () {});
@@ -435,6 +437,7 @@
         setTimeout(function () {
           var toggle = document.getElementById('network-profile-toggle');
           var form = document.getElementById('network-profile-form');
+          var acc = document.getElementById('hub-account'); if (acc) acc.open = true;
           if (toggle && form && form.style.display === 'none') toggle.click();
           if (form) form.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
         }, 1200);

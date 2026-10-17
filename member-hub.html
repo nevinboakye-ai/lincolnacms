@@ -7,7 +7,7 @@
 <title>Members Hub - LACMS</title>
 <meta name="description" content="Your LACMS membership profile and digital membership card.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-118">
+<link rel="stylesheet" href="css/styles.css?v=20260824-119">
 </head>
 <body>
 
@@ -81,7 +81,7 @@
     </button>
   </div>
 
-  <section class="page-hero container">
+  <section class="page-hero page-hero--compact container">
     <span class="eyebrow">Members Hub</span>
     <h1 class="page-hero-title"><span data-greeting-word>Welcome back</span>, <span data-member-name-inline>member</span></h1>
     <p class="page-hero-lede">Your profile, digital membership card and account controls.</p>
@@ -94,8 +94,144 @@
     <div class="container"><div data-journey-card></div></div>
   </section>
 
-  <section class="section">
+  <div class="container hub-layout">
+  <section class="hub-block hub-block--tiles" id="member-hub-content-links" style="display:none;" aria-label="Your Members Hub">
     <div class="container">
+      <div class="hub-tiles">
+        <a class="card quick-link-card quick-link-card--blue" id="president-dashboard-card" href="president-dashboard.html" style="display:none;">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/><circle cx="7" cy="15" r="1.4" fill="currentColor" stroke="none"/><circle cx="11" cy="10" r="1.4" fill="currentColor" stroke="none"/><circle cx="14" cy="13" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="6" r="1.4" fill="currentColor" stroke="none"/></svg>
+          </span>
+          <span class="card-tag">Executive Committee Only</span>
+          <h3 class="card-title">Dashboard</h3>
+          <p class="tile-desc">Manage MMG, Sankofa, nominations, events and more.</p>
+          <span class="card-link">Open dashboard
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </a>
+        <a class="card quick-link-card quick-link-card--pink" id="network-card" href="member-network.html" style="display:none;">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><path d="M2 20c0-3.3 2.7-6 6-6h2c3.3 0 6 2.7 6 6"/><circle cx="17" cy="8" r="2.4"/><path d="M22 20c0-2.6-1.8-4.7-4.2-5.4"/></svg>
+          </span>
+          <span class="card-tag">Network</span>
+          <h3 class="card-title">The Network</h3>
+          <p class="tile-desc">Browse members by course and year, and message them.</p>
+          <span class="card-link">Browse the network
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </a>
+        <div class="card quick-link-card quick-link-card--locked" id="network-locked-card">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          </span>
+          <span class="card-tag card-tag--soon">Coming soon</span>
+          <h3 class="card-title">The Network</h3>
+          <p class="tile-desc">Not open yet - check back soon.</p>
+        </div>
+        <a class="card quick-link-card quick-link-card--purple" id="perks-card" href="member-perks.html">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2h7a2 2 0 0 1 2 2v7a2 2 0 0 1-.59 1.41l-8 8a2 2 0 0 1-2.82 0l-7-7a2 2 0 0 1 0-2.82l8-8A2 2 0 0 1 12 2Z"/><circle cx="16.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </span>
+          <span class="card-tag">Perks</span>
+          <h3 class="card-title">Perks &amp; discounts</h3>
+          <p class="tile-desc">Partner offers and members-first opportunities.</p>
+          <span class="card-link">View perks
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </a>
+        <div class="card quick-link-card quick-link-card--locked" id="perks-locked-card" style="display:none;">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          </span>
+          <span class="card-tag card-tag--soon">Coming soon</span>
+          <h3 class="card-title">Perks &amp; discounts</h3>
+          <p class="tile-desc">Not open yet - check back soon.</p>
+        </div>
+        <a class="card quick-link-card quick-link-card--blue" id="resources-card" href="member-resources.html" style="display:none;">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </span>
+          <span class="card-tag">Resources</span>
+          <h3 class="card-title">Resources</h3>
+          <p class="tile-desc">Notes, past papers and links shared by members.</p>
+          <span class="card-link">Browse resources
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </a>
+        <div class="card quick-link-card quick-link-card--locked" id="resources-locked-card" style="display:none;">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          </span>
+          <span class="card-tag">Resources</span>
+          <span class="card-tag card-tag--soon">Coming soon</span>
+          <h3 class="card-title">Resources</h3>
+          <p class="tile-desc">Not open yet - check back soon.</p>
+        </div>
+        <a class="card quick-link-card quick-link-card--gold" id="sankofa-hub-card" href="member-sankofa-hub.html" style="display:none;">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="8" r="2"/><circle cx="8" cy="15" r="2"/><circle cx="16" cy="15" r="2"/></svg>
+          </span>
+          <span class="card-tag">Sankofa</span>
+          <h3 class="card-title" data-sh-tile-title>Your Sankofa Hub</h3>
+          <p data-sh-tile-text>Your Circle, your mentor, your next meeting, goals, messages and rewards.</p>
+          <p class="quick-link-round" data-sh-tile-pill hidden></p>
+          <span class="card-link" data-sh-tile-link>Open the Hub
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </a>
+        <a class="card quick-link-card quick-link-card--green" id="sankofa-apply-card" href="member-sankofa.html" style="display:none;">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22.5 20v-1a4 4 0 0 0-3-3.87"/><path d="M16.5 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <span class="card-tag">Sankofa</span>
+          <h3 class="card-title">Sankofa Circles</h3>
+          <p class="tile-desc">Apply to join a mentoring Circle (Medicine members).</p>
+          <ol class="quick-link-flow" aria-label="How Sankofa works">
+            <li><span aria-hidden="true">1</span>Apply</li>
+            <li><span aria-hidden="true">2</span>Get matched</li>
+            <li><span aria-hidden="true">3</span>Meet termly</li>
+          </ol>
+          <p class="quick-link-note">Your application (stage, interests, what you want from a Circle) is how we match you.</p>
+          <p class="quick-link-round" data-sankofa-round hidden></p>
+          <span class="card-link">Apply now
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </a>
+        <a class="card quick-link-card quick-link-card--red" href="events.html">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+          </span>
+          <span class="card-tag">Events</span>
+          <h3 class="card-title">Events</h3>
+          <p class="tile-desc">See what&#39;s on and reserve your place.</p>
+          <span class="card-link">See events
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </a>
+        <a class="card quick-link-card quick-link-card--gold" id="motm-nominate-card" href="motm.html#nominate">
+          <span class="quick-link-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9 8l-6.5 1 4.7 4.6L6 20l6-3.2L18 20l-1.2-6.4L21.5 9 15 8Z"/></svg>
+          </span>
+          <span class="card-tag">Member of the Month</span>
+          <h3 class="card-title">Member of the Month</h3>
+          <p class="tile-desc">Nominate someone who goes above and beyond.</p>
+          <span class="card-link">Nominate
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="hub-block hub-block--feed" id="member-feed-section" style="display:none;" aria-label="News and updates">
+    <div class="container">
+      <div class="hub-block-head"><h2>News &amp; updates</h2></div>
+      <div id="feed-list" class="feed-list"></div>
+      <p id="feed-empty" style="display:none; color: var(--color-text-faint);">No news yet - check back soon.</p>
+    </div>
+  </section>
+
+  <aside class="hub-side" aria-label="Your membership">
 
       <div class="form-note" data-supabase-not-configured style="display:none;">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
@@ -128,7 +264,7 @@
         <span id="network-recent-joins-text"></span>
       </div>
 
-      <div id="member-hub-content" class="member-hub-grid" style="display:none;">
+      <div id="member-hub-content" class="member-hub-grid member-hub-grid--side" style="display:none;">
 
         <div class="member-card" id="member-card-member">
           <div class="member-card-inner">
@@ -174,8 +310,8 @@
           </div>
         </div>
 
-        <div data-tour="details">
-          <h2>Your details</h2>
+        <details class="hub-account" id="hub-account" data-tour="details" open>
+          <summary class="hub-account-summary"><span>Account &amp; profile</span><small>Details, network profile, password</small></summary>
           <div id="member-details-member">
             <div class="member-info-row">
               <span class="member-info-label">Full name</span>
@@ -261,157 +397,11 @@
             <button type="submit" class="btn btn-primary">Update password</button>
             <p id="change-password-status" class="auth-error" role="status" style="display:none;"></p>
           </form>
-        </div>
+        </details>
 
       </div>
-    </div>
-  </section>
-
-  <section class="section" id="member-feed-section" style="display:none;">
-    <div class="container">
-      <div class="section-head">
-        <span class="eyebrow">Members feed</span>
-        <h2>News &amp; updates</h2>
-        <p>Announcements from the committee, newest first.</p>
-      </div>
-      <div id="feed-list" class="feed-list"></div>
-      <p id="feed-empty" style="display:none; color: var(--color-text-faint);">No news yet - check back soon.</p>
-    </div>
-  </section>
-
-
-  <section class="section section--muted" id="member-hub-content-links" style="display:none;">
-    <div class="container">
-      <div class="section-head">
-        <span class="eyebrow">Members area</span>
-        <h2>Everything in one place</h2>
-        <p>Perks, applications, registrations and nominations - all in your account.</p>
-      </div>
-      <div class="grid grid--2">
-        <a class="card quick-link-card quick-link-card--blue" id="president-dashboard-card" href="president-dashboard.html" style="display:none;">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/><circle cx="7" cy="15" r="1.4" fill="currentColor" stroke="none"/><circle cx="11" cy="10" r="1.4" fill="currentColor" stroke="none"/><circle cx="14" cy="13" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="6" r="1.4" fill="currentColor" stroke="none"/></svg>
-          </span>
-          <span class="card-tag">Executive Committee Only</span>
-          <h3 class="card-title">Platform Activity Dashboard</h3>
-          <p>For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.</p>
-          <span class="card-link">Open dashboard
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </span>
-        </a>
-        <a class="card quick-link-card quick-link-card--pink" id="network-card" href="member-network.html" style="display:none;">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><path d="M2 20c0-3.3 2.7-6 6-6h2c3.3 0 6 2.7 6 6"/><circle cx="17" cy="8" r="2.4"/><path d="M22 20c0-2.6-1.8-4.7-4.2-5.4"/></svg>
-          </span>
-          <span class="card-tag">Network</span>
-          <h3 class="card-title">Meet the LACMS Network</h3>
-          <p>Every member by course and year, plus the professionals supporting Sankofa mentorship.</p>
-          <span class="card-link">Browse the network
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </span>
-        </a>
-        <div class="card quick-link-card quick-link-card--locked" id="network-locked-card">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-          </span>
-          <span class="card-tag card-tag--soon">Coming soon</span>
-          <h3 class="card-title">Meet the LACMS Network</h3>
-          <p>The Network isn't live yet - check back soon.</p>
-        </div>
-        <a class="card quick-link-card quick-link-card--purple" id="perks-card" href="member-perks.html">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2h7a2 2 0 0 1 2 2v7a2 2 0 0 1-.59 1.41l-8 8a2 2 0 0 1-2.82 0l-7-7a2 2 0 0 1 0-2.82l8-8A2 2 0 0 1 12 2Z"/><circle cx="16.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/></svg>
-          </span>
-          <span class="card-tag">Perks</span>
-          <h3 class="card-title">Discounts &amp; members-first opportunities</h3>
-          <p>Partner discount codes and opportunities shared with members before anyone else.</p>
-          <span class="card-link">View perks
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </span>
-        </a>
-        <div class="card quick-link-card quick-link-card--locked" id="perks-locked-card" style="display:none;">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-          </span>
-          <span class="card-tag card-tag--soon">Coming soon</span>
-          <h3 class="card-title">Discounts &amp; members-first opportunities</h3>
-          <p>Partner discount codes and opportunities aren't live yet - check back soon.</p>
-        </div>
-        <a class="card quick-link-card quick-link-card--blue" id="resources-card" href="member-resources.html" style="display:none;">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-          </span>
-          <span class="card-tag">Resources</span>
-          <h3 class="card-title">LACMS Resources</h3>
-          <p>Study notes, past papers, websites and more - shared by members and organised by course. Add your own too.</p>
-          <span class="card-link">Browse resources
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </span>
-        </a>
-        <div class="card quick-link-card quick-link-card--locked" id="resources-locked-card" style="display:none;">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-          </span>
-          <span class="card-tag">Resources</span>
-          <span class="card-tag card-tag--soon">Coming soon</span>
-          <h3 class="card-title">LACMS Resources</h3>
-          <p>A library of study resources shared by members, organised by course. It isn't open yet - check back soon.</p>
-        </div>
-        <a class="card quick-link-card quick-link-card--gold" id="sankofa-hub-card" href="member-sankofa-hub.html" style="display:none;">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="8" r="2"/><circle cx="8" cy="15" r="2"/><circle cx="16" cy="15" r="2"/></svg>
-          </span>
-          <span class="card-tag">Sankofa</span>
-          <h3 class="card-title" data-sh-tile-title>Your Sankofa Hub</h3>
-          <p data-sh-tile-text>Your Circle, your mentor, your next meeting, goals, messages and rewards.</p>
-          <p class="quick-link-round" data-sh-tile-pill hidden></p>
-          <span class="card-link" data-sh-tile-link>Open the Hub
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </span>
-        </a>
-        <a class="card quick-link-card quick-link-card--green" id="sankofa-apply-card" href="member-sankofa.html" style="display:none;">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22.5 20v-1a4 4 0 0 0-3-3.87"/><path d="M16.5 3.13a4 4 0 0 1 0 7.75"/></svg>
-          </span>
-          <span class="card-tag">Sankofa</span>
-          <h3 class="card-title">Apply for a Sankofa Circle</h3>
-          <p>LACMS's mentoring programme: small <strong>Circles</strong> linking every stage, from sixth form to senior doctor. Open to Medicine members.</p>
-          <ol class="quick-link-flow" aria-label="How Sankofa works">
-            <li><span aria-hidden="true">1</span>Apply</li>
-            <li><span aria-hidden="true">2</span>Get matched</li>
-            <li><span aria-hidden="true">3</span>Meet termly</li>
-          </ol>
-          <p class="quick-link-note">Your application (stage, interests, what you want from a Circle) is how we match you.</p>
-          <p class="quick-link-round" data-sankofa-round hidden></p>
-          <span class="card-link">Apply now
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </span>
-        </a>
-        <a class="card quick-link-card quick-link-card--red" href="events.html">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
-          </span>
-          <span class="card-tag">Events</span>
-          <h3 class="card-title">Register for upcoming events</h3>
-          <p>Reserve your place at LACMS events, right from the events page.</p>
-          <span class="card-link">See events
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </span>
-        </a>
-        <a class="card quick-link-card quick-link-card--gold" id="motm-nominate-card" href="motm.html#nominate">
-          <span class="quick-link-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9 8l-6.5 1 4.7 4.6L6 20l6-3.2L18 20l-1.2-6.4L21.5 9 15 8Z"/></svg>
-          </span>
-          <span class="card-tag">Member of the Month</span>
-          <h3 class="card-title">Nominate for Member of the Month</h3>
-          <p>Put forward someone who's gone above and beyond this month. The winner and runners-up win exciting LACMS prizes!</p>
-          <span class="card-link">Nominate
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </span>
-        </a>
-      </div>
-    </div>
-  </section>
+  </aside>
+  </div>
 
   <section class="section" id="member-hub-mmg-section" style="display:none;">
     <div class="container">
@@ -495,13 +485,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-118"></script>
-<script src="js/members.js?v=20260824-118"></script>
-<script src="js/notifications.js?v=20260824-118"></script>
-<script src="js/journey.js?v=20260824-118"></script>
-<script src="js/guidance.js?v=20260824-118"></script>
-<script src="js/sankofa-common.js?v=20260824-118"></script>
-<script src="js/sankofa-hub.js?v=20260824-118"></script>
-<script src="js/chat.js?v=20260824-118"></script>
+<script src="js/main.js?v=20260824-119"></script>
+<script src="js/members.js?v=20260824-119"></script>
+<script src="js/notifications.js?v=20260824-119"></script>
+<script src="js/journey.js?v=20260824-119"></script>
+<script src="js/hub-layout.js?v=20260824-119"></script>
+<script src="js/guidance.js?v=20260824-119"></script>
+<script src="js/sankofa-common.js?v=20260824-119"></script>
+<script src="js/sankofa-hub.js?v=20260824-119"></script>
+<script src="js/chat.js?v=20260824-119"></script>
 </body>
 </html>

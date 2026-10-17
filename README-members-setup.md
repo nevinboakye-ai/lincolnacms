@@ -1523,3 +1523,18 @@ Email notifications when someone is placed in a Circle or a meeting is scheduled
 - Everyone's XP is private to them (only they can read it). The community goals are shared totals with no names.
 
 **Not included on purpose:** leaderboards between members, daily-login pressure, or anything that expires. If you ever want a "committee view" of how engaged people are, say so and I'll add it to the dashboard.
+
+
+## 139. A shorter Members Hub (and a slimmer journey bar)
+
+No database change - this is all in the pages. Run nothing; refresh.
+
+**What changed (on a phone the hub is about two-thirds shorter - roughly 7,800 px down to about 2,500 px):**
+- **Slim header:** the greeting, your level chip and the tour link on one tidy line (the long intro and decorative bar are gone).
+- **One-row journey bar** instead of the tall card: your level, a progress line, and the single best *Next* step. The chevron opens the rest (more next steps and your latest badges); the full picture is on the journey page. The one-off "you start with N XP" welcome is now a single line.
+- **Compact tiles:** Perks, Resources, Network, Events, Member of the Month, Sankofa and the dashboard are now neat tiles (two across on a phone, three on a computer) instead of tall cards. Same links, same lock/unlock rules, same "+XP" and "to review" badges - just shorter titles and a one-line description (hidden on a phone).
+- **Tiles come first.** Order is now: header, journey bar, tiles, news, then your membership card. On a computer the membership card sits beside the tiles and news instead of below everything.
+- **News shows the latest few** (2 on a phone, 3 on a computer) with a **Show all** button; tap a post to read all of it.
+- **Account & profile folds away** (your details, network profile, change password, log out) - open on a computer, closed on a phone, and it opens by itself when you follow "Add a short bio".
+- **Phone footer** uses two columns of links instead of one long list - this shortens every page on a phone, not just the hub.
+- One-line progress strips on Perks / Events / Resources / Nominations / Network are tighter on a phone (tap anywhere on them to open your journey).
