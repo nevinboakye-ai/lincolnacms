@@ -96,12 +96,25 @@ revoke all on function public.chat_is_sixth_form(uuid) from public, anon, authen
 
 -- ---------------------------------------------------------------------
 -- The Hub Access rule: president only to start with.
-alter table public.hub_access_rules drop constraint if exists hub_access_rules_feature_check;
-alter table public.hub_access_rules add constraint hub_access_rules_feature_check
-  check (feature in (
-    'perks', 'sankofa', 'network', 'motm_nominate', 'news_feed', 'resources', 'sankofa_hub',
-    'dash_mmg', 'dash_sankofa', 'dash_motm', 'dash_events', 'dash_gallery'
-  ));
+-- The allowed feature names: everything already in the table, plus the
+-- known ones, so the order these migrations are run in never matters.
+do $$
+declare
+  names text;
+begin
+  select string_agg(quote_literal(f), ', ') into names
+  from (
+    select feature as f from public.hub_access_rules
+    union
+    select unnest(array[
+      'perks', 'sankofa', 'network', 'motm_nominate', 'news_feed', 'resources', 'sankofa_hub', 'journey',
+      'dash_mmg', 'dash_sankofa', 'dash_motm', 'dash_events', 'dash_gallery'
+    ])
+  ) x;
+  alter table public.hub_access_rules drop constraint if exists hub_access_rules_feature_check;
+  execute 'alter table public.hub_access_rules add constraint hub_access_rules_feature_check check (feature in (' || names || '))';
+end;
+$$;
 
 insert into public.hub_access_rules (feature, allow_members, allow_professionals, member_types, courses, blocked_display)
 values ('sankofa_hub', false, false, null, null, 'hidden')
