@@ -1455,7 +1455,7 @@ On Dashboard -> **Sankofa**, every application (mentees and mentors) now has an 
 The Hub is where accepted Sankofa students and professionals live day to day: their Circle, their mentor, their next meeting, messages, goals and rewards - and where the committee places and moves people, from the website, at any time.
 
 **Run these four in Supabase (SQL Editor), in order. Each is safe to run twice:**
-1. [`db/migrations/084-sankofa-hub-core.sql`](db/migrations/084-sankofa-hub-core.sql) - the tables, the security rules, and the chat change below (needs 060, 061, 064, 070, 072, 078).
+1. [`db/migrations/084-sankofa-hub-core.sql`](db/migrations/084-sankofa-hub-core.sql) - the tables, the security rules, and the chat change below. It needs migrations 003, 014, 028, 029, 060, 061 and 070 to have been run already - if one is missing it stops straight away and names it. It doesn't need 064 or 072 (it includes the two messaging helpers from them). If you run 072 *after* 084, run 084 once more.
 2. [`db/migrations/085-sankofa-hub-admin.sql`](db/migrations/085-sankofa-hub-admin.sql) - the committee's tools.
 3. [`db/migrations/086-sankofa-hub-member.sql`](db/migrations/086-sankofa-hub-member.sql) - what participants use.
 4. [`db/migrations/087-sankofa-hub-progress.sql`](db/migrations/087-sankofa-hub-progress.sql) - levels, streaks, badges, leaderboards.

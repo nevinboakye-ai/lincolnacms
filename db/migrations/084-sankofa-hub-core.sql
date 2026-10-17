@@ -28,10 +28,71 @@
 -- progress is kept.
 --
 -- Wrapped in a transaction. Run this once in Supabase: Dashboard -> SQL
--- Editor -> New query, paste, Run. Safe to run again. Needs 060, 061, 064,
--- 070, 072, 078.
+-- Editor -> New query, paste, Run. Safe to run again. Needs 003, 014, 028, 029,
+-- 060, 061 and 070 (it tells you if any is missing). It no longer depends on
+-- 064, 072 or 078.
 
 begin;
+
+-- ---------------------------------------------------------------------
+-- Prerequisites. If something older hasn't been run yet, say which, rather
+-- than failing halfway.
+do $$
+declare
+  missing text[] := '{}';
+begin
+  if to_regclass('public.sankofa_applications') is null then missing := missing || 'sankofa applications (003)'; end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'sankofa_applications' and column_name = 'applicant_type') then missing := missing || 'Sankofa mentor fields (028)'; end if;
+  if to_regclass('public.sankofa_mentor_applications') is null then missing := missing || 'public mentor applications (029)'; end if;
+  if to_regclass('public.network_professionals') is null then missing := missing || 'the Network (014)'; end if;
+  if to_regclass('public.hub_access_rules') is null then missing := missing || 'Hub Access (060)'; end if;
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'hub_access_rules' and column_name = 'titles') then missing := missing || 'Hub Access dashboard rules (061)'; end if;
+  if to_regclass('public.chat_conversations') is null or to_regclass('public.chat_blocks') is null or to_regclass('public.chat_suspensions') is null then missing := missing || 'messaging (070)'; end if;
+  if cardinality(missing) > 0 then
+    raise exception 'Run these migrations first, then run this one again: %', array_to_string(missing, ', ');
+  end if;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Messaging helpers, exactly as in migrations 064 and 072 (so it doesn't
+-- matter whether 072 was run first). Safe to repeat. If you run 072 AFTER
+-- this file, run this file once more so the Hub's messaging rule is restored.
+create or replace function public.is_sixth_form_profile(p_course text, p_year text)
+returns boolean
+language sql
+immutable
+as $$
+  select (coalesce(p_course, '') || ' ' || coalesce(p_year, ''))
+    ~* '(sixth|6th)[ -]?form|a[- ]?levels?|\myear ?1[23]\M|aspiring';
+$$;
+
+create or replace function public.chat_is_executive(p_user uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p_user = '22044cd2-6804-4142-96c4-5c475ce9347a'::uuid
+      or exists (select 1 from public.members m where m.id = p_user and m.member_type = 'executive_committee');
+$$;
+
+create or replace function public.chat_is_sixth_form(p_user uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.members m
+    where m.id = p_user and public.is_sixth_form_profile(m.course, m.year_of_study)
+  );
+$$;
+revoke all on function public.chat_is_executive(uuid) from public, anon, authenticated;
+revoke all on function public.chat_is_sixth_form(uuid) from public, anon, authenticated;
+
 
 -- ---------------------------------------------------------------------
 -- The Hub Access rule: president only to start with.
@@ -638,6 +699,23 @@ $$;
 
 revoke all on function public.chat_user_eligible(uuid) from public, anon, authenticated;
 revoke all on function public.chat_pair_allowed(uuid, uuid) from public, anon, authenticated;
+
+-- Starting and sending a message both refuse a blocked or disallowed pair
+-- (as in migration 072, so the rule above is really enforced).
+create or replace function public.chat_blocked_between(p_a uuid, p_b uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.chat_blocks b
+    where (b.blocker_id = p_a and b.blocked_id = p_b)
+       or (b.blocker_id = p_b and b.blocked_id = p_a)
+  ) or not public.chat_pair_allowed(p_a, p_b);
+$$;
+revoke all on function public.chat_blocked_between(uuid, uuid) from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
 -- Live updates: the board and meetings nudge open pages (Realtime only
