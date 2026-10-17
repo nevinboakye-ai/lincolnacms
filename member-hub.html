@@ -7,7 +7,7 @@
 <title>Members Hub - LACMS</title>
 <meta name="description" content="Your LACMS membership profile and digital membership card.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-117">
+<link rel="stylesheet" href="css/styles.css?v=20260824-118">
 </head>
 <body>
 
@@ -85,8 +85,13 @@
     <span class="eyebrow">Members Hub</span>
     <h1 class="page-hero-title"><span data-greeting-word>Welcome back</span>, <span data-member-name-inline>member</span></h1>
     <p class="page-hero-lede">Your profile, digital membership card and account controls.</p>
+    <p data-journey-chip hidden></p>
     <p style="margin-top: var(--space-3);"><button type="button" class="link-button" data-start-tour hidden>New here? Take the tour</button></p>
     <div class="tricolor-bar tricolor-bar--sm" aria-hidden="true"><span></span><span></span><span></span></div>
+  </section>
+
+  <section class="section jy-section" data-journey-section hidden>
+    <div class="container"><div data-journey-card></div></div>
   </section>
 
   <section class="section">
@@ -490,12 +495,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-117"></script>
-<script src="js/members.js?v=20260824-117"></script>
-<script src="js/notifications.js?v=20260824-117"></script>
-<script src="js/guidance.js?v=20260824-117"></script>
-<script src="js/sankofa-common.js?v=20260824-117"></script>
-<script src="js/sankofa-hub.js?v=20260824-117"></script>
-<script src="js/chat.js?v=20260824-117"></script>
+<script src="js/main.js?v=20260824-118"></script>
+<script src="js/members.js?v=20260824-118"></script>
+<script src="js/notifications.js?v=20260824-118"></script>
+<script src="js/journey.js?v=20260824-118"></script>
+<script src="js/guidance.js?v=20260824-118"></script>
+<script src="js/sankofa-common.js?v=20260824-118"></script>
+<script src="js/sankofa-hub.js?v=20260824-118"></script>
+<script src="js/chat.js?v=20260824-118"></script>
 </body>
 </html>

@@ -6690,6 +6690,7 @@
       { key: 'motm_nominate', label: 'Member of the Month nominations', short: 'MoTM', desc: 'Nominating someone for Member of the Month.', canLock: false },
       { key: 'news_feed', label: 'News & updates feed', short: 'News', desc: 'The announcements feed on the hub.', canLock: false },
       { key: 'sankofa_hub', label: 'Sankofa Hub', short: 'Sankofa Hub', desc: 'The Sankofa Hub - Circles, meetings, board, goals and rewards (president only until you open it up). People also have to be added to the Hub from Dashboard > Sankofa Hub.', canLock: false },
+      { key: 'journey', label: 'Member journey', short: 'Journey', desc: 'XP, levels, badges and the small progress lines around the Members Hub (on for all members; each member can also hide it for themselves).', canLock: false },
       { key: 'resources', label: 'LACMS Resources', short: 'Resources', desc: 'The study resources library shared by members (until opened up, executives only).', canLock: true },
       { key: 'dash_mmg', label: 'Dashboard: MMG', short: 'MMG', desc: 'The MMG guests section of the Platform Activity Dashboard.', dash: true },
       { key: 'dash_sankofa', label: 'Dashboard: Sankofa', short: 'Sankofa', desc: 'Sankofa mentee and mentor applications on the dashboard.', dash: true },

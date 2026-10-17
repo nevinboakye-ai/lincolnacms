@@ -1502,3 +1502,24 @@ Participants get **"Your Circle meets in N days"**, **"Do your weekly check-in"*
 
 ### Not done yet (ideas for later)
 Email notifications when someone is placed in a Circle or a meeting is scheduled (for now they see it on their Hub card and in the sign-in pop-up, and you can message them from the Circle manager), a resources shelf per Circle, and a term-end summary for the committee.
+
+## 138. Your journey: a calm layer of progress across the whole Members Hub
+
+**Run [`db/migrations/088-member-journey.sql`](db/migrations/088-member-journey.sql) in Supabase** (needs 003, 013, 014, 042, 060, 061; safe to run twice). Nothing else to deploy. Until it's run, none of this appears and nothing breaks.
+
+**The idea:** members earn XP for things they genuinely do, and see a level, a gentle weekly streak, badges, a few next steps and shared community goals. There are **no individual leaderboards**, no countdown timers, no pop-up windows. It's deliberately quiet, and anyone can switch it off.
+
+**Where members see it**
+- **Members Hub:** a compact "Your journey" card under the greeting (level, progress, streak, three next steps with their XP, recent badges) and a small level chip. The hub's link cards (Perks, Resources, Network, Events, Nominations) get a small "+XP" tag while there's something left to try there.
+- **Perks, Events, Resources, Nominations, Network:** one calm line of progress under the page title - e.g. *"You've tried 2 of 6 discounts - reveal 1 more for the Deal hunter badge"*.
+- **A small toast** (bottom-left) a moment after they do something: "+10 XP - Registered for an event". A new badge or level gets a slightly warmer toast with a little confetti. Nothing blocks the page.
+- **Your journey page (member-journey.html):** level and rank ladder, next steps, the badge collection (earned and still-to-earn, with hints), recent activity, "What we're doing together" (shared goals for resources shared, event places booked and discounts used - nobody ranked), how XP works, and the **Show my progress** switch.
+
+**What earns XP** (all worked out in the database from what members already do, so it can't be faked, and people are **credited for what they did before this existed**, with the real dates): join +10 and +5 for each month as a member (first year); visiting the hub +2 a day; adding a bio +15 and LinkedIn +10; registering for an event +10; revealing a discount +3 and using one +5; sharing a resource that gets approved +25; liking +1, commenting +2 and using a resource +1; nominating for Member of the Month +15; liking or commenting on news +1 / +2; applying for Sankofa +20; sending a first message in the Network +10. Each thing counts once (doing and undoing it can't earn twice) and small things stop counting after a while (e.g. 15 likes). Ranks: Newcomer, Regular, Contributor, Advocate, Champion, Ambassador, Pillar, Legend (a level needs 25 x (level - 1)^2 XP). 20 badges, from *Welcome aboard* to *All-rounder*, *Consistent* (4-week streak) and *Legend*. A *streak* is weeks in a row with at least one real action; the current week doesn't break it until it's over.
+
+**Control**
+- **Each member:** the *Show my progress* switch on their journey page hides everything (the hub shows a single line, "Your journey progress is hidden - Show it"). XP keeps being counted quietly, so nothing is lost.
+- **You (president):** Dashboard -> **Hub Access** -> **Member journey**. It's on for all members and off for professionals by default; narrow it or switch it off for everyone from there.
+- Everyone's XP is private to them (only they can read it). The community goals are shared totals with no names.
+
+**Not included on purpose:** leaderboards between members, daily-login pressure, or anything that expires. If you ever want a "committee view" of how engaged people are, say so and I'll add it to the dashboard.
