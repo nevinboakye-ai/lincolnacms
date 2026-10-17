@@ -10088,3 +10088,124 @@ button.btn.sh-btn-danger.btn-primary { background: var(--color-red); color: #fff
   #member-perks-content > * { grid-column: 2; }
   #member-perks-content > .perks-card-fold { grid-column: 1; grid-row: 1 / span 12; margin-bottom: 0; }
 }
+
+/* =========================================================
+   Members Hub: shared navigation + smooth page changes
+   ========================================================= */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.18s; animation-timing-function: var(--ease-standard); }
+.site-topbar { view-transition-name: site-topbar; }
+.hub-nav { view-transition-name: hub-nav; }
+@media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+
+.back-nav.has-hub-nav { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.back-nav.has-hub-nav .back-button { flex: none; }
+.hub-nav { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; overflow-x: auto; padding: 3px; scrollbar-width: none; -webkit-overflow-scrolling: touch; border: 1px solid var(--color-border); border-radius: var(--radius-pill); background: var(--color-bg-alt); }
+.hub-nav::-webkit-scrollbar { display: none; }
+.hub-nav-link { position: relative; display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 7px 13px; min-height: 36px; border-radius: var(--radius-pill); color: var(--color-text-muted); font-size: 0.84rem; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background 0.15s, color 0.15s; }
+.hub-nav-link .icon { width: 16px; height: 16px; }
+.hub-nav-link:hover { color: var(--color-text); background: rgba(128, 128, 128, 0.12); }
+.hub-nav-link.is-active { background: var(--color-gold-fill); color: var(--color-on-gold); }
+.hub-nav-link:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+.hub-nav-lv { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: rgba(var(--gold-rgb), 0.25); color: var(--color-gold-light); font-size: 0.68rem; font-weight: 700; }
+.hub-nav-lv[hidden] { display: none; }
+.hub-nav-link.is-active .hub-nav-lv { background: rgba(0, 0, 0, 0.2); color: var(--color-on-gold); }
+@media (max-width: 640px) {
+  .back-nav.has-hub-nav { gap: var(--space-2); }
+  .back-nav.has-hub-nav .back-button { font-size: 0; gap: 0; padding: 8px; border: 1px solid var(--color-border); border-radius: 50%; }
+  .back-nav.has-hub-nav .back-button .icon { width: 18px; height: 18px; }
+  .hub-nav-link { padding: 7px 11px; }
+}
+
+/* =========================================================
+   Network page: compact, grouped, and part of the journey
+   ========================================================= */
+.net-layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--space-4) var(--space-5); align-items: start; }
+.net-side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.net-main { min-width: 0; }
+.net-toolbar { margin-bottom: var(--space-3); }
+.net-toolbar .network-search-row { margin-bottom: 10px; gap: 10px var(--space-3); }
+.net-toolbar .network-search { max-width: none; min-width: 200px; }
+.net-toolbar .network-search input { padding-block: 10px; }
+.net-toolbar #network-search-empty { margin: 8px 0 0; }
+.net-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.net-chips[hidden] { display: none; }
+.net-chips::-webkit-scrollbar { display: none; }
+.net-chip { display: inline-flex; align-items: center; gap: 7px; flex: none; padding: 7px 14px; min-height: 36px; border-radius: var(--radius-pill); border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-text-muted); font: inherit; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+.net-chip b { font-weight: 700; font-size: 0.74rem; color: var(--color-text-faint); }
+.net-chip:hover { color: var(--color-text); border-color: var(--color-border-strong); }
+.net-chip[aria-pressed="true"] { background: var(--color-gold-fill); border-color: var(--color-gold-fill); color: var(--color-on-gold); }
+.net-chip[aria-pressed="true"] b { color: var(--color-on-gold); opacity: 0.75; }
+.net-chip.is-mine:not([aria-pressed="true"]) { border-color: rgba(var(--gold-rgb), 0.5); }
+.net-chip--pro:not([aria-pressed="true"]) { border-color: rgba(var(--green-rgb), 0.5); }
+.net-chip:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.net-hidden { display: none !important; }
+
+/* People as slim rows */
+.net-layout .network-course-section { margin-bottom: 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); overflow: hidden; }
+.net-layout .network-course-head { cursor: pointer; align-items: center; gap: 10px; margin: 0; padding: 12px 14px; border-bottom: 0; border-left: 4px solid var(--network-accent, var(--color-gold)); min-height: 52px; }
+.net-layout .network-course-head h2 { font-size: 1.02rem; }
+.net-layout .network-course-count { margin-left: auto; font-size: 0.78rem; }
+.net-layout .network-course-head:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.net-acc-chev { width: 9px; height: 9px; flex: none; border-right: 2px solid var(--color-text-muted); border-bottom: 2px solid var(--color-text-muted); transform: rotate(-135deg) translateY(-2px); transition: transform 0.2s var(--ease-standard); }
+.net-acc.is-collapsed .net-acc-chev { transform: rotate(45deg) translateY(-2px); }
+.net-mine-tag { padding: 1px 9px; border-radius: var(--radius-pill); background: rgba(var(--gold-rgb), 0.18); border: 1px solid rgba(var(--gold-rgb), 0.45); color: var(--color-gold-light); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; }
+.net-acc.is-collapsed .network-year-group { display: none; }
+.net-layout.is-searching .net-acc.is-collapsed .network-year-group { display: block; }
+.net-layout .network-year-group { margin: 0; padding: 4px 12px 12px; }
+.net-layout .network-year-label { margin: 8px 0 8px; }
+.net-layout .network-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.net-layout .network-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "av name badge" "av meta badge"; column-gap: 10px; row-gap: 0; align-items: center; padding: 8px 12px; border-radius: var(--radius-sm); min-height: 54px; }
+.net-layout .network-card:hover, .net-layout .network-card:focus-visible { transform: translateY(-1px); }
+.net-layout .network-card-avatar { grid-area: av; width: 36px; height: 36px; font-size: 0.82rem; }
+.net-layout .network-card-name { grid-area: name; font-size: 0.9rem; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; word-break: normal; overflow-wrap: normal; }
+.net-layout .network-card-meta { grid-area: meta; font-size: 0.74rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; word-break: normal; overflow-wrap: normal; }
+.net-layout .network-card-badge { grid-area: badge; margin: 0; font-size: 0.58rem; padding: 2px 7px; align-self: center; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.net-layout .network-card-linkedin { top: 6px; right: 8px; width: 14px; height: 14px; }
+.net-layout .network-card-msg { top: 50%; bottom: auto; right: 8px; width: 30px; height: 30px; margin-top: -15px; }
+.net-layout .network-card--restricted .network-card-lock { font-size: 0.7rem; padding: 4px 10px; }
+.net-layout #network-professionals-wrap { margin-top: var(--space-3) !important; }
+.net-layout .hub-block-head { margin: var(--space-2) 0 var(--space-2); }
+.net-layout .hub-block-head p { margin: 0; }
+.net-layout #network-professionals-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+
+/* Side column: the join ticker and "Say hello" */
+.net-side .network-ticker { margin: 0; flex-wrap: wrap; row-gap: 8px; padding: 10px 12px; }
+.net-side .network-ticker-viewport { flex: 1 1 100%; order: 2; }
+.net-side .network-ticker-controls { order: 3; flex: 1 1 100%; justify-content: space-between; }
+.net-side .network-ticker-icon { order: 1; }
+.net-hello { border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); padding: var(--space-3); }
+.net-hello[hidden] { display: none; }
+.net-hello-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.net-hello-head h2 { margin: 0; font-size: 1.05rem; }
+.net-hello > p { margin: 4px 0 var(--space-2); font-size: 0.84rem; }
+.net-hello-list { list-style: none; margin: 0; padding: 0; }
+.net-hello-list li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--color-border); }
+.net-av { display: inline-flex; width: 34px; height: 34px; flex: none; align-items: center; justify-content: center; border-radius: 50%; background: rgba(var(--gold-rgb), 0.18); color: var(--color-gold-light); font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; }
+.net-hello-text { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.25; }
+.net-hello-text strong { font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.net-hello-text small { color: var(--color-text-faint); font-size: 0.74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.net-hello-more { margin-top: 6px; font-size: 0.82rem; }
+
+@media (max-width: 900px) {
+  /* One column: search and course chips, then the join ticker and "Say hello", then the people. */
+  .net-layout { display: flex; flex-direction: column; gap: var(--space-3); }
+  .net-side, .net-main { display: contents; }
+  .net-toolbar { order: 1; margin-bottom: 0; }
+  .net-side .network-ticker { order: 2; }
+  .net-hello { order: 3; }
+  .net-layout #network-members-sections { order: 4; }
+  .net-layout #network-professionals-wrap { order: 5; margin-top: 0 !important; }
+  .net-layout #network-empty { order: 6; }
+}
+@media (max-width: 640px) {
+  .net-layout .network-grid, .net-layout #network-professionals-grid { grid-template-columns: minmax(0, 1fr); }
+  .net-layout .network-year-group { padding-inline: 10px; }
+}
+
+.net-layout .network-card.net-capped, .net-layout .network-year-group.net-capped { display: none; }
+.net-layout.is-searching .network-card.net-capped { display: grid; }
+.net-layout.is-searching .network-year-group.net-capped { display: block; }
+.net-acc.is-collapsed .net-more-btn { display: none; }
+.net-layout.is-searching .net-more-btn { display: none; }
+.net-more-btn { display: block; width: calc(100% - 24px); margin: 4px 12px 12px; }

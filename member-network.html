@@ -7,7 +7,7 @@
 <title>Network - LACMS</title>
 <meta name="description" content="The LACMS Network - every member and the healthcare professionals supporting Sankofa mentorship.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-120">
+<link rel="stylesheet" href="css/styles.css?v=20260824-121">
 </head>
 <body>
 
@@ -124,8 +124,9 @@
       </div>
 
       <div id="network-people-panel" role="tabpanel" aria-labelledby="net-tab-people">
-      <div id="network-content" style="display:none;">
+      <div id="network-content" class="net-layout" style="display:none;">
 
+        <aside class="net-side" aria-label="Network highlights">
         <div id="network-ticker" class="network-ticker" style="display:none;">
           <span class="network-ticker-icon" aria-hidden="true">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22.5 20v-1a4 4 0 0 0-3-3.87"/><path d="M16.5 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -145,6 +146,11 @@
           </div>
         </div>
 
+          <section class="net-hello" id="net-hello" aria-label="Say hello" hidden></section>
+        </aside>
+
+        <div class="net-main">
+          <div class="net-toolbar">
         <div class="network-search-row">
           <div class="network-search">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -155,18 +161,20 @@
 
         <p id="network-search-empty" style="display:none; color: var(--color-text-faint);">No one matches that search.</p>
 
+            <div class="net-chips" id="net-chips" role="group" aria-label="Filter by course" hidden></div>
+          </div>
+
         <div id="network-members-sections"></div>
 
-        <div id="network-professionals-wrap" style="display:none; margin-top: var(--space-8);">
-          <div class="section-head">
-            <span class="eyebrow">Sankofa Mentorship</span>
-            <h2>Healthcare Professionals</h2>
-            <p>Senior doctors, alumni doctors and pharmacists supporting our members through Sankofa Circles.</p>
-          </div>
+        <div id="network-professionals-wrap" style="display:none;">
+          <div class="hub-block-head"><h2>Healthcare professionals</h2><p class="jy-muted">Senior doctors, alumni doctors and pharmacists supporting Sankofa.</p></div>
           <div id="network-professionals-grid" class="network-grid"></div>
         </div>
 
         <p id="network-empty" style="display:none; color: var(--color-text-faint);">No one's listed yet - check back soon.</p>
+
+
+        </div>
 
       </div>
       </div>
@@ -253,11 +261,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-120"></script>
-<script src="js/members.js?v=20260824-120"></script>
-<script src="js/notifications.js?v=20260824-120"></script>
-<script src="js/journey.js?v=20260824-120"></script>
-<script src="js/guidance.js?v=20260824-120"></script>
-<script src="js/chat.js?v=20260824-120"></script>
+<script src="js/main.js?v=20260824-121"></script>
+<script src="js/members.js?v=20260824-121"></script>
+<script src="js/notifications.js?v=20260824-121"></script>
+<script src="js/journey.js?v=20260824-121"></script>
+<script src="js/hub-nav.js?v=20260824-121"></script>
+<script src="js/network-layout.js?v=20260824-121"></script>
+<script src="js/guidance.js?v=20260824-121"></script>
+<script src="js/chat.js?v=20260824-121"></script>
 </body>
 </html>

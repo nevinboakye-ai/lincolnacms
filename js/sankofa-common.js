@@ -114,8 +114,19 @@
   var THEMES = ['gold', 'green', 'red', 'purple', 'blue', 'teal'];
   var THEME_LABEL = { gold: 'Gold', green: 'Green', red: 'Red', purple: 'Purple', blue: 'Blue', teal: 'Teal' };
 
-  var XP_TITLES = ['Seedling', 'Sprout', 'Rooted', 'Branching', 'Canopy', 'Towering', 'Elder tree', 'Baobab'];
-  function levelTitle(level) { return XP_TITLES[Math.min(Math.max(level, 1), XP_TITLES.length) - 1]; }
+  // The Sankofa Hub's ranks are Adinkra symbols (fitting the programme), each with its meaning.
+  var HUB_RANKS = [
+    { name: 'Akoma', meaning: 'The heart: patience and tolerance' },
+    { name: 'Aya', meaning: 'The fern: endurance and resourcefulness' },
+    { name: 'Duafe', meaning: 'The wooden comb: care and love' },
+    { name: 'Boa Me', meaning: '"Help me and let me help you": cooperation' },
+    { name: 'Nyansapo', meaning: 'The wisdom knot: wisdom, ingenuity and patience' },
+    { name: 'Dwennimmen', meaning: 'The ram\'s horns: humility and strength' },
+    { name: 'Adinkrahene', meaning: 'Chief of the symbols: greatness and leadership' },
+    { name: 'Sankofa', meaning: '"Go back and fetch it": passing wisdom on' }
+  ];
+  function levelTitle(level) { return HUB_RANKS[Math.min(Math.max(level, 1), HUB_RANKS.length) - 1].name; }
+  function levelMeaning(level) { return HUB_RANKS[Math.min(Math.max(level, 1), HUB_RANKS.length) - 1].meaning; }
 
   // ---- Dialogs ------------------------------------------------------------------
   function openDialog(html, extraClass) {
@@ -268,7 +279,7 @@
     confetti: confetti, avatar: avatar, firstName: firstName, greetName: greetName, hash: hash,
     fmtDay: fmtDay, fmtLongDay: fmtLongDay, fmtTime: fmtTime, fmtDateTime: fmtDateTime, timeAgo: timeAgo, until: until,
     toLocalInput: toLocalInput, fromLocalInput: fromLocalInput,
-    THEMES: THEMES, THEME_LABEL: THEME_LABEL, levelTitle: levelTitle,
+    THEMES: THEMES, THEME_LABEL: THEME_LABEL, levelTitle: levelTitle, levelMeaning: levelMeaning, hubRanks: HUB_RANKS,
     downloadIcs: downloadIcs, message: message, reduceMotion: reduceMotion
   };
 })();

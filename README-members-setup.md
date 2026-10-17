@@ -1551,3 +1551,13 @@ No database change - refresh to see it.
 - **Perks:** the membership card folds on a phone (tap "Your membership card" to show it when you use a discount) and sits on the left on a computer; each discount is a slim one-line row (tap to open the code and details); the "coming soon" opportunities block is one short note.
 - **Resources:** the filters sit two across on a phone.
 - **Your journey:** earned badges show first in a compact two-across grid ("To earn" and "All" are one tap away); Recent activity, Community goals and How XP works fold away; the rank ladder is a sideways-scrolling strip on a phone.
+
+
+## 141. African and Caribbean names for the game, a shared Members Hub nav, and a rebuilt Network page
+
+**Re-run `084-sankofa-hub-core.sql` and `088-member-journey.sql` in Supabase** (safe to repeat) to update the badge names.
+
+- **Ranks (member journey):** Akwaaba, Nkyinkyim, Mate Masie, Harambee, Tallawah, Ubuntu, Griot, Mzee - each with a short meaning shown on the journey page. **Sankofa Hub ranks** are Adinkra symbols: Akoma, Aya, Duafe, Boa Me, Nyansapo, Dwennimmen, Adinkrahene, Sankofa.
+- **Badges** renamed across both systems (e.g. Kente Weaver, Susu Saver, Fete-goer, Anansi's Gift, Timbuktu Keeper, Palaver Tree, Drumbeat, Piti Piti, Riddim, Irie).
+- **Shared nav:** every member page has the same row (Hub, Perks, Resources, Network, Events, Sankofa, Journey) beside the Back button; it only shows what you have access to and marks where you are. Pages also fade smoothly between each other in supported browsers.
+- **Network page:** compact people rows, course chips, folding courses (your own opens first), first 8 people per course with Show all, and a Say hello panel (+XP for a first message).

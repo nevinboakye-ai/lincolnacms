@@ -20,7 +20,18 @@
   if (typeof supabaseIsConfigured === 'undefined' || !supabaseIsConfigured || typeof supabaseClient === 'undefined' || !supabaseClient) return;
   if (window.lacmsJourney) return;
 
-  var RANKS = ['Newcomer', 'Regular', 'Contributor', 'Advocate', 'Champion', 'Ambassador', 'Pillar', 'Legend'];
+  // The ranks, named from African and Caribbean culture and history - each with
+  // what it means, shown on the journey page.
+  var RANKS = [
+    { name: 'Akwaaba', meaning: 'Welcome - the Akan greeting' },
+    { name: 'Nkyinkyim', meaning: 'Twisting and turning: initiative and adaptability (Adinkra)' },
+    { name: 'Mate Masie', meaning: '"What I hear, I keep": wisdom and learning (Adinkra)' },
+    { name: 'Harambee', meaning: '"All pull together" (Swahili)' },
+    { name: 'Tallawah', meaning: 'Small but mighty - strong and determined (Jamaican)' },
+    { name: 'Ubuntu', meaning: '"I am because we are" (Nguni)' },
+    { name: 'Griot', meaning: 'Keeper of a community\'s stories and history (West Africa)' },
+    { name: 'Mzee', meaning: 'Honoured elder (Swahili)' }
+  ];
   var KIND_LABEL = {
     join: 'Joined LACMS', visit: 'Visited the Members Hub', bio: 'Added a bio', linkedin: 'Added your LinkedIn',
     event_reg: 'Registered for an event', disc_reveal: 'Tried a discount', disc_used: 'Used a discount',
@@ -47,7 +58,8 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
-  function rankName(level) { return RANKS[Math.min(Math.max(level, 1), RANKS.length) - 1]; }
+  function rankName(level) { return RANKS[Math.min(Math.max(level, 1), RANKS.length) - 1].name; }
+  function rankMeaning(level) { return RANKS[Math.min(Math.max(level, 1), RANKS.length) - 1].meaning; }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
   function today() {
     var d = new Date();
@@ -418,7 +430,7 @@
     sync: function (o) { return sync(o); },
     poke: poke,
     setHidden: setHidden,
-    rankName: rankName,
+    rankName: rankName, rankMeaning: rankMeaning,
     kindLabel: function (k) { return KIND_LABEL[k] || k; },
     ring: ring, levelPct: levelPct, esc: esc, plural: plural, flame: FLAME, toast: toast, ranks: RANKS
   };

@@ -240,7 +240,7 @@
       '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
       '<div class="sh-celebrate"><div class="sh-celebrate-ring" aria-hidden="true">' + lvl + '</div>' +
       '<span class="guide-eyebrow">Level up</span><h2 class="guide-title">You\'re now level ' + lvl + ' - ' + esc(S.levelTitle(lvl)) + '</h2>' +
-      '<p class="guide-text">Keep showing up for your Circle - every check-in, meeting and goal grows you.</p>' +
+      '<p class="guide-text"><em>' + esc(S.levelMeaning(lvl)) + '</em><br>Keep showing up for your Circle - every check-in, meeting and goal grows you.</p>' +
       '<div class="guide-actions"><button type="button" class="btn btn-primary" data-dialog-close data-autofocus>Keep going</button></div></div>');
     S.confetti(dlg.el);
   }
@@ -1052,7 +1052,7 @@
     var earned = p.badges.filter(function (b) { return b.earned; }).length;
     var html = '<div class="sh-grid"><div class="sh-col sh-col--main">';
     html += '<div class="sh-card sh-card--level sh-card--hero">' + ring(p, 'xl') +
-      '<div><span class="sh-eyebrow">Your level</span><h2>' + esc(S.levelTitle(p.level)) + ' <span class="sh-muted">· level ' + p.level + '</span></h2>' +
+      '<div><span class="sh-eyebrow">Your level</span><h2>' + esc(S.levelTitle(p.level)) + ' <span class="sh-muted">· level ' + p.level + '</span></h2><p class="sh-muted sh-rank-meaning">' + esc(S.levelMeaning(p.level)) + '</p>' +
       '<p class="sh-muted">' + p.xp + ' XP in total · ' + (p.next_floor - p.xp) + ' XP to level ' + (p.level + 1) + '</p>' +
       '<p class="sh-top-chips">' + (p.streak > 0 ? '<span class="sh-chip sh-chip--streak">' + ICON.flame + p.streak + '-week streak</span>' : '<span class="sh-chip">No streak yet - do a check-in this week</span>') +
       '<span class="sh-chip">Best: ' + (p.best_streak || 0) + ' weeks</span><span class="sh-chip">' + (p.xp_30d || 0) + ' XP in 30 days</span></p></div></div>';

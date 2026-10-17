@@ -85,7 +85,7 @@
       '<span class="jy-chip">Best: ' + (p.best_streak || 0) + ' ' + ((p.best_streak || 0) === 1 ? 'week' : 'weeks') + '</span><span class="jy-chip">+' + (p.xp_week || 0) + ' XP this week</span></p></div>' +
       '<ol class="jy-ranks" aria-label="Ranks">' + J.ranks.map(function (r, i) {
         var lvl = i + 1, floor = Math.round(25 * Math.pow(lvl - 1, 2));
-        return '<li class="' + (lvl === p.level ? 'is-now' : lvl < p.level ? 'is-done' : '') + '"><span>' + esc(r) + '</span><small>' + floor + ' XP</small></li>';
+        return '<li class="' + (lvl === p.level ? 'is-now' : lvl < p.level ? 'is-done' : '') + '" title="' + esc(r.meaning) + '"><span>' + esc(r.name) + '</span><small>' + floor + ' XP</small></li>';
       }).join('') + '</ol></section>';
 
     // ---- Next steps
