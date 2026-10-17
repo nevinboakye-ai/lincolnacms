@@ -1460,6 +1460,12 @@ The Hub is where accepted Sankofa students and professionals live day to day: th
 3. [`db/migrations/086-sankofa-hub-member.sql`](db/migrations/086-sankofa-hub-member.sql) - what participants use.
 4. [`db/migrations/087-sankofa-hub-progress.sql`](db/migrations/087-sankofa-hub-progress.sql) - levels, streaks, badges, leaderboards.
 
+**The Hub starts president-only.** Migration 084 adds a Hub Access rule called **Sankofa Hub** that is closed to everyone but you: nobody else sees the Hub card, the page, or the Circle manager, and anyone who opens the page by link just sees "The Sankofa Hub isn't open yet". (If you already ran 084-087 earlier, run all four again - it's safe - to switch this on.)
+
+**Choosing who can use it:** Dashboard -> **Hub Access** -> **Sankofa Hub**. Open it to a group (by member type, course, committee title, or professionals) or just name individual people; the screen shows exactly who currently has it. Switching someone off locks them out immediately and their progress is kept. Using the Hub takes two things: *access* (this rule) **and** being added to the Hub by the committee (Dashboard -> Sankofa Hub -> Add people). The Circle manager additionally needs the existing **Dashboard: Sankofa** access, so the Executive Committee only gets it if you open the Sankofa Hub rule to them.
+
+**Previewing it yourself:** in the Circle manager, **Add people -> Add me as a mentee / as a mentor** puts you in the Hub so you can open it as a member sees it. Remove yourself from your card's menu afterwards.
+
 Nothing else needs deploying; the pages are in the repo (`member-sankofa-hub.html`, `js/sankofa-hub.js`, `js/sankofa-admin.js`, `js/sankofa-common.js`).
 
 ### Getting started (committee)

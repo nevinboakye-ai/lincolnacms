@@ -161,6 +161,14 @@
 
   function start() {
     var ov = st.ov;
+    if (ov.hub_closed) {
+      showClosed(
+        '<span class="sh-closed-icon" aria-hidden="true">' + ICON.lock + '</span>' +
+        '<h2>The Sankofa Hub isn\'t open yet</h2>' +
+        '<p>We\'re putting the finishing touches on it. You\'ll see it on your Members Hub as soon as it opens to you.</p>' +
+        '<div class="sh-closed-actions"><a class="btn btn-outline" href="member-hub.html">Back to the Members Hub</a></div>');
+      return;
+    }
     if (!ov.participant) {
       showClosed(
         '<span class="sh-closed-icon" aria-hidden="true">' + ICON.lock + '</span>' +

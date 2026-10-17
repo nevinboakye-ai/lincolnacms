@@ -471,6 +471,7 @@
           (tab === 'mentee' && cand.mentees.length ? '<p class="sh-muted" style="margin-top:12px"><button type="button" class="link-button" data-all>Select all ' + cand.mentees.length + '</button></p>' : '') +
           '<div class="shm-pick-wrap">' + listFor(tab) + '</div>' +
           (tab === 'mentor' && cand.no_account.length ? '<details class="shm-noacct"><summary>' + plural(cand.no_account.length, 'mentor') + ' applied without an account</summary><p class="sh-muted">They can\'t be added until they have a LACMS account - create one from Dashboard &rarr; Create account, then they\'ll appear in the list above.</p><ul>' + cand.no_account.map(function (n) { return '<li><strong>' + esc(n.name) + '</strong> <small>' + esc([n.job_title, n.organisation, n.email].filter(Boolean).join(' · ')) + '</small></li>'; }).join('') + '</ul></details>' : '') +
+          '<p class="sh-muted shm-preview">Want to see the Hub as a member sees it? <button type="button" class="link-button" data-add-me="mentee">Add me as a mentee</button> or <button type="button" class="link-button" data-add-me="mentor">as a mentor</button> (you can remove yourself from your card afterwards).</p>' +
           '<div class="field" style="margin-top:12px"><label for="shm-addto">Place them in</label><select id="shm-addto"><option value="">No Circle yet (Unplaced)</option>' + circleOptions(null, false) + '</select></div>' +
           '<p class="guide-error" hidden></p><div class="guide-actions"><button type="button" class="btn btn-primary" data-do ' + (count ? '' : 'disabled') + '>Add ' + (count ? plural(count, 'person', 'people') : 'selected') + '</button><button type="button" class="btn btn-outline" data-dialog-close>Cancel</button></div>' +
           '<p class="guide-fine">Their application answers are carried across for matching, and a pending application is marked accepted.</p>';
@@ -481,6 +482,13 @@
         var t = e.target.closest('[data-tab]');
         if (t) { addTo = $('shm-addto') ? $('shm-addto').value : ''; tab = t.getAttribute('data-tab'); draw(); $('shm-addto').value = addTo; return; }
         if (e.target.closest('[data-all]')) { cand.mentees.forEach(function (r) { picked[r.user_id] = 'mentee'; }); addTo = $('shm-addto').value; draw(); $('shm-addto').value = addTo; return; }
+        var me = e.target.closest('[data-add-me]');
+        if (me) {
+          supabaseClient.auth.getSession().then(function (r) {
+            return rpc('sankofa_admin_add_participant', { p_user: r.data.session.user.id, p_role: me.getAttribute('data-add-me'), p_circle: $('shm-addto').value || null });
+          }).then(function () { dlg.close(); S.toast('You\'re in the Hub - open the Sankofa Hub page to see it as a member does'); return load(true); }, fail);
+          return;
+        }
         var go = e.target.closest('[data-do]');
         if (!go) return;
         var people = Object.keys(picked).map(function (id) { return { user: id, role: picked[id] }; });

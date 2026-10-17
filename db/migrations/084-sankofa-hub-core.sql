@@ -19,10 +19,32 @@
 -- anyone but an executive they appear as "Sixth-form member" (no name) and
 -- can't be messaged or message anyone but an executive.
 --
+-- WHO CAN USE THE HUB is a Hub Access rule, "sankofa_hub", created below
+-- as president-only: nobody else can see or use any of it until the
+-- president opens it up (Dashboard -> Hub Access -> Sankofa Hub), for
+-- everyone it should reach or for named people. Being in the Hub is a
+-- separate thing (the president / committee adds people to Circles), and
+-- both are needed. Losing access locks someone out immediately, and their
+-- progress is kept.
+--
 -- Wrapped in a transaction. Run this once in Supabase: Dashboard -> SQL
--- Editor -> New query, paste, Run. Needs 060, 061, 064, 070, 072, 078.
+-- Editor -> New query, paste, Run. Safe to run again. Needs 060, 061, 064,
+-- 070, 072, 078.
 
 begin;
+
+-- ---------------------------------------------------------------------
+-- The Hub Access rule: president only to start with.
+alter table public.hub_access_rules drop constraint if exists hub_access_rules_feature_check;
+alter table public.hub_access_rules add constraint hub_access_rules_feature_check
+  check (feature in (
+    'perks', 'sankofa', 'network', 'motm_nominate', 'news_feed', 'resources', 'sankofa_hub',
+    'dash_mmg', 'dash_sankofa', 'dash_motm', 'dash_events', 'dash_gallery'
+  ));
+
+insert into public.hub_access_rules (feature, allow_members, allow_professionals, member_types, courses, blocked_display)
+values ('sankofa_hub', false, false, null, null, 'hidden')
+on conflict (feature) do nothing;
 
 -- ---------------------------------------------------------------------
 -- Participants: everyone taking part, as a mentee or a mentor.
@@ -227,6 +249,7 @@ create table if not exists public.sankofa_badges (
 
 -- ---------------------------------------------------------------------
 -- Helper functions (all run as the owner, never trusting the browser).
+-- An active participant who is also allowed into the Hub right now.
 create or replace function public.sankofa_is_active(p_user uuid)
 returns boolean
 language sql
@@ -234,7 +257,8 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (select 1 from public.sankofa_participants p where p.user_id = p_user and p.status = 'active');
+  select exists (select 1 from public.sankofa_participants p where p.user_id = p_user and p.status = 'active')
+    and coalesce((select d.allowed from public.hub_access_decision(p_user, 'sankofa_hub') d), false);
 $$;
 
 -- Is the CALLER an active participant? (Row-level security runs as the
@@ -247,11 +271,13 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (select 1 from public.sankofa_participants p where p.user_id = auth.uid() and p.status = 'active');
+  select exists (select 1 from public.sankofa_participants p where p.user_id = auth.uid() and p.status = 'active')
+    and coalesce((select d.allowed from public.hub_access_decision(auth.uid(), 'sankofa_hub') d), false);
 $$;
 
--- The committee: whoever the Hub Access rule "dash_sankofa" allows
--- (the president, plus the Executive Committee by default).
+-- The committee: whoever the Hub Access rule "dash_sankofa" allows (the
+-- president, plus the Executive Committee by default) AND who is allowed
+-- into the Hub at all ("sankofa_hub").
 create or replace function public.sankofa_is_admin()
 returns boolean
 language sql
@@ -259,7 +285,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select public.has_hub_access('dash_sankofa');
+  select public.has_hub_access('dash_sankofa') and public.has_hub_access('sankofa_hub');
 $$;
 
 create or replace function public.sankofa_circle_of(p_user uuid)
@@ -291,7 +317,8 @@ set search_path = public
 as $$
   select p_circle is not null and (
     public.sankofa_is_admin()
-    or exists (select 1 from public.sankofa_circle_members cm where cm.circle_id = p_circle and cm.user_id = auth.uid())
+    or (public.sankofa_am_active()
+        and exists (select 1 from public.sankofa_circle_members cm where cm.circle_id = p_circle and cm.user_id = auth.uid()))
   );
 $$;
 
@@ -305,11 +332,11 @@ set search_path = public
 as $$
   select p_circle is not null and (
     public.sankofa_is_admin()
-    or exists (
+    or (public.sankofa_am_active() and exists (
       select 1 from public.sankofa_circle_members cm
       join public.sankofa_participants sp on sp.user_id = cm.user_id
       where cm.circle_id = p_circle and cm.user_id = auth.uid() and sp.role = 'mentor' and sp.status = 'active'
-    )
+    ))
   );
 $$;
 
@@ -325,7 +352,7 @@ as $$
     where m.id = p_meeting
       and (
         public.sankofa_is_admin()
-        or (m.pairing_id is not null and exists (
+        or (m.pairing_id is not null and public.sankofa_am_active() and exists (
               select 1 from public.sankofa_pairings pr
               where pr.id = m.pairing_id and auth.uid() in (pr.mentee_id, pr.mentor_id)))
         or (m.pairing_id is null and m.circle_id is not null and public.sankofa_can_see_circle(m.circle_id))
@@ -345,7 +372,8 @@ set search_path = public
 as $$
   select jsonb_build_object(
     'id', p_user,
-    'name', case when x.blurred then 'Sixth-form member' else coalesce(x.mname, x.pname, 'LACMS member') end,
+    'name', case when x.blurred then 'Sixth-form member'
+                 else coalesce(x.mname, x.pname, case when p_user = '22044cd2-6804-4142-96c4-5c475ce9347a'::uuid then 'President' else 'LACMS member' end) end,
     'role', x.prole,
     'stage', x.stage,
     'detail', case when x.blurred then null else x.detail end,
@@ -475,7 +503,7 @@ create policy "Committee reads Circle history" on public.sankofa_circle_history 
 
 drop policy if exists "Read your own pairing" on public.sankofa_pairings;
 create policy "Read your own pairing" on public.sankofa_pairings for select to authenticated
-  using (auth.uid() in (mentee_id, mentor_id) or public.sankofa_is_admin());
+  using ((auth.uid() in (mentee_id, mentor_id) and public.sankofa_am_active()) or public.sankofa_is_admin());
 
 drop policy if exists "Read meetings you can attend" on public.sankofa_meetings;
 create policy "Read meetings you can attend" on public.sankofa_meetings for select to authenticated

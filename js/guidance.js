@@ -781,8 +781,8 @@
   // that, any feature that becomes allowed is tagged "New" until they open
   // it or 14 days pass. Losing access and getting it back counts as new.
   var NEW_ACCESS_DAYS = 14;
-  var ACCESS_PAGES = { 'member-perks.html': 'perks', 'member-sankofa.html': 'sankofa', 'member-network.html': 'network', 'member-resources.html': 'resources' };
-  var HUB_ACCESS_CARDS = { perks: 'perks-card', sankofa: 'sankofa-apply-card', network: 'network-card', resources: 'resources-card', motm_nominate: 'motm-nominate-card' };
+  var ACCESS_PAGES = { 'member-perks.html': 'perks', 'member-sankofa.html': 'sankofa', 'member-network.html': 'network', 'member-resources.html': 'resources', 'member-sankofa-hub.html': 'sankofa_hub' };
+  var HUB_ACCESS_CARDS = { perks: 'perks-card', sankofa: 'sankofa-apply-card', network: 'network-card', resources: 'resources-card', sankofa_hub: 'sankofa-hub-card', motm_nominate: 'motm-nominate-card' };
   var DASH_SECTION_FOR = { dash_mmg: 'mmg', dash_sankofa: 'sankofa', dash_motm: 'motm', dash_events: 'events', dash_gallery: 'gallery' };
   var accessSeen = null;
 
@@ -909,7 +909,8 @@
     sankofa: { title: 'Sankofa', sub: 'Apply to join a Sankofa Circle', href: 'member-sankofa.html' },
     network: { title: 'The Network', sub: 'Connect with LACMS members and professionals', href: 'member-network.html' },
     motm_nominate: { title: 'Member of the Month nominations', sub: 'Nominate someone - the winner and runners-up win prizes', href: 'motm.html#nominate' },
-    resources: { title: 'LACMS Resources', sub: 'Study resources shared by LACMS members', href: 'member-resources.html' }
+    resources: { title: 'LACMS Resources', sub: 'Study resources shared by LACMS members', href: 'member-resources.html' },
+    sankofa_hub: { title: 'The Sankofa Hub', sub: 'Your Circle, mentor, meetings and rewards', href: 'member-sankofa-hub.html' }
   };
   var DASH_LABELS = { dash_mmg: 'Midlands Medics Gala', dash_sankofa: 'Sankofa', dash_motm: 'Member of the Month', dash_events: 'Events', dash_gallery: 'Gallery' };
   var ICONS = {

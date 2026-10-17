@@ -908,6 +908,10 @@ begin
   if me is null then
     raise exception 'Please sign in.';
   end if;
+  -- Not opened to this person (Hub Access rule "sankofa_hub").
+  if not public.has_hub_access('sankofa_hub') then
+    return jsonb_build_object('participant', false, 'is_admin', false, 'hub_closed', true);
+  end if;
   select * into sp from public.sankofa_participants where user_id = me;
   if not found then
     return jsonb_build_object('participant', false, 'is_admin', admin);
@@ -1029,7 +1033,7 @@ declare
   nm public.sankofa_meetings;
   wk date := public.sankofa_week_start();
 begin
-  if me is null then
+  if me is null or not public.has_hub_access('sankofa_hub') then
     return jsonb_build_object('participant', false);
   end if;
   select * into sp from public.sankofa_participants where user_id = me;
