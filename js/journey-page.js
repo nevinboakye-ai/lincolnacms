@@ -15,7 +15,9 @@
   var J = window.lacmsJourney;
   var gate = document.getElementById('auth-gate');
   var community = null;
-  var badgeFilter = 'all';
+  var badgeFilter = null;   // null = choose a sensible default (earned, once there is something earned)
+  var wide = window.matchMedia ? window.matchMedia('(min-width: 900px)').matches : true;
+  var folds = {};           // panel id -> open (remembers what the member opened)
 
   function esc(s) { return J.esc(s); }
   function fmtDay(iso) { return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
@@ -47,6 +49,13 @@
       '<p>' + (m.next - n) + ' more ' + esc(noun) + ' to reach ' + m.next + ' together</p></li>';
   }
 
+
+  // A panel that folds away. Reference-style panels are closed (or closed on a phone) so the page stays short.
+  function fold(id, title, bodyHtml, openByDefault) {
+    var open = folds[id] !== undefined ? folds[id] : openByDefault;
+    return '<details class="jy-panel jy-fold" data-fold="' + id + '"' + (open ? ' open' : '') + '><summary class="jy-fold-summary"><h2>' + title + '</h2></summary><div class="jy-fold-body">' + bodyHtml + '</div></details>';
+  }
+
   function draw(s) {
     if (gate) gate.style.display = 'none';
     root.style.display = '';
@@ -64,6 +73,7 @@
     }
     var p = s.progress;
     var earned = s.badges.filter(function (b) { return b.earned; });
+    var filter = badgeFilter || (earned.length ? 'earned' : 'all');
     var html = '';
 
     // ---- Summary
@@ -87,29 +97,29 @@
 
     // ---- Badges
     html += '<section class="jy-panel" id="badges" aria-labelledby="jy-badges-h"><div class="jy-panel-head"><h2 id="jy-badges-h">Badges <span class="jy-muted">' + earned.length + ' of ' + s.badges.length + '</span></h2>' +
-      '<div class="sh-seg ui-seg" role="group" aria-label="Show badges"><button type="button" data-jy-filter="all" class="' + (badgeFilter === 'all' ? 'is-active' : '') + '">All</button><button type="button" data-jy-filter="earned" class="' + (badgeFilter === 'earned' ? 'is-active' : '') + '">Earned</button><button type="button" data-jy-filter="todo" class="' + (badgeFilter === 'todo' ? 'is-active' : '') + '">To earn</button></div></div>' +
-      '<ul class="jy-badges">' + s.badges.filter(function (b) { return badgeFilter === 'all' || (badgeFilter === 'earned' ? b.earned : !b.earned); }).map(function (b) {
+      '<div class="sh-seg ui-seg" role="group" aria-label="Show badges"><button type="button" data-jy-filter="earned" class="' + (filter === 'earned' ? 'is-active' : '') + '">Earned</button><button type="button" data-jy-filter="todo" class="' + (filter === 'todo' ? 'is-active' : '') + '">To earn</button><button type="button" data-jy-filter="all" class="' + (filter === 'all' ? 'is-active' : '') + '">All</button></div></div>' +
+      '<ul class="jy-badges">' + s.badges.filter(function (b) { return filter === 'all' || (filter === 'earned' ? b.earned : !b.earned); }).map(function (b) {
         return '<li class="jy-badge-card' + (b.earned ? ' is-earned' : '') + '"><span class="jy-badge jy-badge--lg" aria-hidden="true">' + esc(b.icon) + '</span><div><strong>' + esc(b.name) + '</strong>' +
           '<small>' + esc(b.earned ? b.description : b.hint) + '</small>' + (b.earned ? '<small class="jy-earned">Earned ' + esc(fmtDay(b.awarded_at)) + '</small>' : '') + '</div></li>';
       }).join('') + '</ul></section>';
 
     // ---- Recent activity
-    html += '<section class="jy-panel" aria-labelledby="jy-recent-h"><h2 id="jy-recent-h">Recent activity</h2>' + ((s.recent || []).length
-      ? '<ul class="jy-recent">' + s.recent.map(function (r) { return '<li><strong>+' + r.points + '</strong><span>' + esc(J.kindLabel(r.kind)) + '</span><time>' + esc(timeAgo(r.at)) + '</time></li>'; }).join('') + '</ul>'
-      : '<p class="jy-muted">Nothing yet - your first step will show up here.</p>') + '</section>';
+    html += fold('recent', 'Recent activity', ((s.recent || []).length
+      ? '<ul class="jy-recent">' + s.recent.slice(0, 6).map(function (r) { return '<li><strong>+' + r.points + '</strong><span>' + esc(J.kindLabel(r.kind)) + '</span><time>' + esc(timeAgo(r.at)) + '</time></li>'; }).join('') + '</ul>'
+      : '<p class="jy-muted">Nothing yet - your first step will show up here.</p>'), wide);
 
     // ---- Community
     if (community && community.members) {
-      html += '<section class="jy-panel" aria-labelledby="jy-comm-h"><h2 id="jy-comm-h">What we\'re doing together</h2>' +
+      html += fold('community', 'What we\'re doing together',
         '<p class="jy-muted">Shared goals for all ' + community.members + ' of us - nobody is ranked, everyone helps.</p><ul class="jy-goals">' +
         goalHtml('Resources shared', community.resources, 25, 'resources') +
         goalHtml('Event places booked this year', community.event_places, 25, 'places') +
-        goalHtml('Member discounts used', community.discounts_used, 50, 'uses') + '</ul></section>';
+        goalHtml('Member discounts used', community.discounts_used, 50, 'uses') + '</ul>', wide);
     }
 
     // ---- How it works
-    html += '<section class="jy-panel" aria-labelledby="jy-how-h"><h2 id="jy-how-h">How XP works</h2><p class="jy-muted">XP comes from things you really do on the site - it\'s counted by the database, so it can\'t be gamed, and what you did before this existed counts too. Each thing counts once, and small ones (likes, comments) stop after a while. A level needs 25 &times; (level &minus; 1)&sup2; XP.</p>' +
-      '<ul class="jy-earn">' + EARN.map(function (e) { return '<li><span>' + esc(e[0]) + '</span><b>' + esc(e[1]) + '</b></li>'; }).join('') + '</ul></section>';
+    html += fold('how', 'How XP works', '<p class="jy-muted">XP comes from things you really do on the site - it\'s counted by the database, so it can\'t be gamed, and what you did before this existed counts too. Each thing counts once, and small ones (likes, comments) stop after a while. A level needs 25 &times; (level &minus; 1)&sup2; XP.</p>' +
+      '<ul class="jy-earn">' + EARN.map(function (e) { return '<li><span>' + esc(e[0]) + '</span><b>' + esc(e[1]) + '</b></li>'; }).join('') + '</ul>', false);
 
     root.innerHTML = html + switchHtml;
     wire();
@@ -124,6 +134,11 @@
         function () { sw.checked = !show; sw.disabled = false; });
     });
   }
+
+  root.addEventListener('toggle', function (e) {
+    var d = e.target;
+    if (d && d.getAttribute && d.getAttribute('data-fold')) folds[d.getAttribute('data-fold')] = d.open;
+  }, true);
 
   root.addEventListener('click', function (e) {
     var f = e.target.closest('[data-jy-filter]');

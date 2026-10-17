@@ -928,4 +928,9 @@
       }
     });
   });
+
+  // Collapsible panels that are open on a wide screen and folded on a phone
+  // (e.g. the membership card on the Perks page), to keep pages short.
+  var wideScreen = window.matchMedia ? window.matchMedia('(min-width: 900px)').matches : true;
+  document.querySelectorAll('details[data-fold-wide]').forEach(function (d) { d.open = wideScreen; });
 })();

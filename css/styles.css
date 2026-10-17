@@ -9871,10 +9871,10 @@ button.btn.sh-btn-danger.btn-primary { background: var(--color-red); color: #fff
 .page-hero--compact [data-journey-chip] .jy-hero-chip { margin-top: 0; }
 .page-hero--compact [data-start-tour] { font-size: 0.82rem; }
 
-.hub-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--space-4) var(--space-5); align-items: start; padding-block: var(--space-3) var(--space-6); }
-.hub-block--tiles { grid-column: 1; grid-row: 1; }
-.hub-block--feed { grid-column: 1; grid-row: 2; }
-.hub-side { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 12px; display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.hub-layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: var(--space-4) var(--space-5); align-items: start; padding-block: var(--space-3) var(--space-6); }
+.hub-side { grid-column: 1; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.hub-block--tiles { grid-column: 2; grid-row: 1; }
+.hub-block--feed { grid-column: 2; grid-row: 2; }
 .hub-side > .network-recent-joins { margin: 0; }
 .hub-side > .form-note { margin: 0; }
 .member-hub-grid--side { grid-template-columns: 1fr; gap: var(--space-3); }
@@ -9959,8 +9959,17 @@ button.btn.sh-btn-danger.btn-primary { background: var(--color-red); color: #fff
 .jy-intro--line .jy-intro-ok { flex: none; }
 
 @media (max-width: 900px) {
-  .hub-layout { display: flex; flex-direction: column; gap: var(--space-4); padding-block: var(--space-2) var(--space-5); }
-  .hub-side { position: static; }
+  .hub-layout { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-2) var(--space-5); }
+  /* Flatten the side column so its parts can be ordered among the tiles:
+     membership card first (right under the level bar), then tiles, news,
+     the "just joined" note, and the folded Account area last. */
+  .hub-side, #member-hub-content, .member-hub-grid--side { display: contents; }
+  .hub-layout #member-card-member, .hub-layout #member-card-professional { order: 1; }
+  .hub-layout .member-card { width: 100%; max-width: 380px; }
+  .hub-block--tiles { order: 2; }
+  .hub-block--feed { order: 3; }
+  .hub-layout .network-recent-joins { order: 4; }
+  .hub-layout .hub-account { order: 5; }
 }
 @media (max-width: 640px) {
   .hub-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -9979,3 +9988,103 @@ button.btn.sh-btn-danger.btn-primary { background: var(--color-red); color: #fff
 }
 
 :root[data-theme="light"] .hub-tiles .jy-reward { background: rgba(255, 255, 255, 0.2); border-color: rgba(255, 255, 255, 0.5); color: var(--on-deep-accent); }
+
+/* =========================================================
+   Compact member pages (Perks, Resources, Network, Sankofa, Journey):
+   the same short-scroll treatment as the Members Hub.
+   ========================================================= */
+.page-hero--slim { padding-block: var(--space-3) var(--space-3); border-bottom: 0; }
+.page-hero--slim .eyebrow, .page-hero--slim .tricolor-bar { display: none; }
+.page-hero--slim .page-hero-title { font-size: clamp(1.45rem, 5.2vw, 2rem); margin: 0; line-height: 1.2; }
+.page-hero--slim .page-hero-lede { font-size: 0.92rem; line-height: 1.45; margin: 6px 0 0; color: var(--color-text-muted); max-width: 70ch; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.back-nav { padding-top: var(--space-3); }
+.back-button { padding-block: 2px; }
+.jy-strip-wrap { margin-top: var(--space-2); }
+.jy-strip-wrap:empty, .jy-strip-wrap:has(> [hidden]) { display: none; }
+
+.hub-block-head--row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.hub-block-head--row h2 { margin: 0 0 var(--space-2); }
+.hub-block-head--row .dash-section-count { margin: 0; font-size: 0.82rem; }
+.hub-block-head--spaced { margin-top: var(--space-5); }
+.hub-block-head--spaced p { margin: 0 0 var(--space-2); }
+
+/* Perks: the membership card folds on a phone; the month banner and the
+   discount rows are slim; the "coming soon" block is one short note. */
+.perks-card-fold { margin-bottom: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.perks-card-summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 12px 16px; min-height: 48px; font-weight: 700; border-radius: var(--radius-md); }
+.perks-card-summary::-webkit-details-marker { display: none; }
+.perks-card-summary span { white-space: nowrap; }
+.perks-card-summary small { margin-left: auto; color: var(--color-text-faint); font-weight: 400; font-size: 0.78rem; }
+.perks-card-summary::after { content: ''; width: 9px; height: 9px; flex: none; border-right: 2px solid var(--color-text-muted); border-bottom: 2px solid var(--color-text-muted); transform: rotate(45deg) translateY(-2px); transition: transform 0.2s var(--ease-standard); }
+.perks-card-fold[open] > .perks-card-summary::after { transform: rotate(-135deg) translateY(-2px); }
+.perks-card-summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.perks-card-fold[open] > .perks-card-summary { border-bottom: 1px solid var(--color-border); border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.perks-card-fold .perks-card-wrap { margin: 16px; max-width: 380px; }
+.discounts-month-banner { margin-bottom: var(--space-3); padding: 6px 14px; font-size: 0.86rem; }
+#discounts-list { gap: 10px; }
+
+.discount-card { padding: 12px 14px; }
+.discount-card .discount-card-toggle { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; }
+.discount-card .discount-card-top { gap: 6px; }
+.discount-card .discount-card-badge { width: 38px; height: 38px; font-size: 1rem; }
+.discount-card .discount-card-title-row { margin-top: 0; }
+.discount-card .discount-card-title-row .card-title { font-size: 1rem; line-height: 1.25; }
+.discount-card .new-badge { font-size: 0.6rem; padding: 1px 7px; }
+.discount-card.discount-card--has-image { padding-top: 96px; --discount-photo-fade: 84px; }
+.discount-card .reveal-panel-content { padding-top: 10px; }
+
+#member-opportunities-wrap { min-height: 0; margin-top: var(--space-2); }
+#member-opportunities-wrap #member-opportunities-list, #member-opportunities-wrap .opportunities-locked-fade { display: none; }
+#member-opportunities-wrap .opportunities-locked-cta { position: static; transform: none; width: auto; display: flex; align-items: center; gap: 14px; text-align: left; padding: 14px 16px; box-shadow: none; border-radius: var(--radius-md); }
+#member-opportunities-wrap .opportunities-locked-icon { width: 36px; height: 36px; margin: 0; flex: none; }
+#member-opportunities-wrap .opportunities-locked-cta h3 { font-size: 0.98rem; margin: 0 0 2px !important; }
+#member-opportunities-wrap .opportunities-locked-cta p { font-size: 0.84rem; color: var(--color-text-muted); }
+
+/* Resources: filters two across on a phone. */
+@media (max-width: 640px) {
+  .perks-card-summary small { display: none; }
+  .res-filters { gap: 8px; margin-bottom: var(--space-3); }
+  .res-filters .res-search { flex: 1 1 100%; }
+  .res-filters .ui-select { flex: 1 1 calc(50% - 4px); min-width: 0; }
+  .res-toolbar { margin-bottom: var(--space-3); gap: var(--space-2); }
+}
+
+/* Journey page: compact, with the reference sections folded. */
+.jy-fold { padding: 0; }
+.jy-fold-summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 14px 16px; min-height: 52px; border-radius: var(--radius-md); }
+.jy-fold-summary::-webkit-details-marker { display: none; }
+.jy-fold-summary h2 { margin: 0; font-size: 1.05rem; }
+.jy-fold-summary::after { content: ''; width: 9px; height: 9px; flex: none; border-right: 2px solid var(--color-text-muted); border-bottom: 2px solid var(--color-text-muted); transform: rotate(45deg) translateY(-2px); transition: transform 0.2s var(--ease-standard); }
+.jy-fold[open] > .jy-fold-summary::after { transform: rotate(-135deg) translateY(-2px); }
+.jy-fold-summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+.jy-fold[open] > .jy-fold-summary { border-bottom: 1px solid var(--color-border); border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.jy-fold-body { padding: 12px 16px 16px; }
+#jy-page { gap: var(--space-3); }
+.jy-panel { padding: var(--space-3) var(--space-4); }
+.jy-badges { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.jy-badge-card { padding: 8px 12px; gap: 10px; }
+.jy-badge--lg { width: 40px; height: 40px; font-size: 1.25rem; }
+.jy-ranks { margin-top: var(--space-1); padding-top: var(--space-2); }
+
+@media (max-width: 640px) {
+  .jy-summary { padding: var(--space-3); gap: var(--space-3); }
+  .jy-summary .jy-ring--xl { width: 84px; height: 84px; }
+  .jy-summary .jy-ring--xl .jy-ring-num { font-size: 1.7rem; }
+  .jy-summary-text h2 { font-size: 1.3rem; }
+  .jy-ranks { flex-wrap: nowrap; overflow-x: auto; margin-inline: calc(var(--space-3) * -1); padding-inline: var(--space-3); scrollbar-width: none; }
+  .jy-ranks::-webkit-scrollbar { display: none; }
+  .jy-ranks li { flex: none; padding: 4px 10px; }
+  .jy-badges { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .jy-badge-card { flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; }
+  .jy-badge-card small { font-size: 0.72rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .jy-steps--page .jy-step { padding: 10px 12px; }
+  .jy-settings { gap: var(--space-2); }
+  .jy-earn { columns: 1; }
+}
+
+/* Perks on a wide screen: membership card on the left, like the Members Hub. */
+@media (min-width: 900px) {
+  #member-perks-content { display: grid; grid-template-columns: 360px minmax(0, 1fr); column-gap: var(--space-5); align-items: start; }
+  #member-perks-content > * { grid-column: 2; }
+  #member-perks-content > .perks-card-fold { grid-column: 1; grid-row: 1 / span 12; margin-bottom: 0; }
+}

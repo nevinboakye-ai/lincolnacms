@@ -1538,3 +1538,16 @@ No database change - this is all in the pages. Run nothing; refresh.
 - **Account & profile folds away** (your details, network profile, change password, log out) - open on a computer, closed on a phone, and it opens by itself when you follow "Add a short bio".
 - **Phone footer** uses two columns of links instead of one long list - this shortens every page on a phone, not just the hub.
 - One-line progress strips on Perks / Events / Resources / Nominations / Network are tighter on a phone (tap anywhere on them to open your journey).
+
+
+## 140. The compact look across the member pages, and the card moves
+
+No database change - refresh to see it.
+
+**Members Hub layout (update to section 139):** the gold membership card now sits **on the left on a computer** (tiles and news to its right), and **directly under the level bar on a phone**, before the tiles. On a phone the order is: header, level bar, membership card, tiles, news, then the folded *Account & profile*.
+
+**The same short-scroll treatment on every member page** (phone page heights, before -> after): Perks 4,050 -> 2,300 px, Resources 2,600 -> 2,100 px, Sankofa application 1,680 -> 1,400 px, Network 1,700 -> 1,450 px (before any people load), Your journey 6,140 -> 3,340 px.
+- **Slim page titles:** a title and a two-line summary instead of the large heading, long intro and decorative bar.
+- **Perks:** the membership card folds on a phone (tap "Your membership card" to show it when you use a discount) and sits on the left on a computer; each discount is a slim one-line row (tap to open the code and details); the "coming soon" opportunities block is one short note.
+- **Resources:** the filters sit two across on a phone.
+- **Your journey:** earned badges show first in a compact two-across grid ("To earn" and "All" are one tap away); Recent activity, Community goals and How XP works fold away; the rank ladder is a sideways-scrolling strip on a phone.

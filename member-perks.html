@@ -7,7 +7,7 @@
 <title>Members Perks - LACMS</title>
 <meta name="description" content="Partner discounts and members-first opportunities for LACMS members.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-119">
+<link rel="stylesheet" href="css/styles.css?v=20260824-120">
 </head>
 <body>
 
@@ -82,7 +82,7 @@
     </button>
   </div>
 
-  <section class="page-hero container">
+  <section class="page-hero page-hero--slim container">
     <span class="eyebrow">Members Hub</span>
     <h1 class="page-hero-title">Perks</h1>
     <p class="page-hero-lede">Partner discount codes and opportunities shared with LACMS members before anyone else.</p>
@@ -113,6 +113,8 @@
 
       <div id="member-perks-content" style="display:none;">
 
+        <details class="perks-card-fold" data-fold-wide open>
+          <summary class="perks-card-summary"><span>Your membership card</span><small>Show it when you use a discount</small></summary>
         <div class="perks-card-wrap">
           <div class="member-card">
             <div class="member-card-inner">
@@ -136,25 +138,18 @@
             </div>
           </div>
         </div>
+        </details>
 
         <div class="discounts-month-banner">
           <span class="discounts-month-banner-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7"/><path d="M12 2 2 9h20L12 2Z"/><circle cx="12" cy="13" r="2.4"/></svg></span>
           <span>LACMS <strong id="discounts-month-label">This Month's</strong> Discounts</span>
         </div>
 
-        <div class="section-head">
-          <span class="eyebrow">Partner discounts</span>
-          <h2>Exclusive to members</h2>
-          <p id="discounts-count-line" class="dash-section-count"></p>
-        </div>
+        <div class="hub-block-head hub-block-head--row"><h2>Partner discounts</h2><p id="discounts-count-line" class="dash-section-count"></p></div>
         <div id="discounts-list" class="grid grid--2"></div>
         <p id="discounts-empty" style="display:none; color: var(--color-text-faint);">No discounts live yet - check back soon.</p>
 
-        <div class="section-head" style="margin-top: var(--space-8);">
-          <span class="eyebrow">Members-first opportunities</span>
-          <h2>Something new is coming</h2>
-          <p>A dedicated space for opportunities shared with LACMS members before anyone else sees them - here first.</p>
-        </div>
+        <div class="hub-block-head hub-block-head--spaced"><h2>Members-first opportunities</h2><p class="jy-muted">Shared with members before anyone else sees them.</p></div>
         <div id="member-opportunities-wrap" class="opportunities-locked-wrap" style="display:none;">
           <div id="member-opportunities-list" class="grid grid--2" aria-hidden="true"></div>
           <div class="opportunities-locked-fade" aria-hidden="true"></div>
@@ -226,11 +221,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-119"></script>
-<script src="js/members.js?v=20260824-119"></script>
-<script src="js/notifications.js?v=20260824-119"></script>
-<script src="js/journey.js?v=20260824-119"></script>
-<script src="js/guidance.js?v=20260824-119"></script>
-<script src="js/chat.js?v=20260824-119"></script>
+<script src="js/main.js?v=20260824-120"></script>
+<script src="js/members.js?v=20260824-120"></script>
+<script src="js/notifications.js?v=20260824-120"></script>
+<script src="js/journey.js?v=20260824-120"></script>
+<script src="js/guidance.js?v=20260824-120"></script>
+<script src="js/chat.js?v=20260824-120"></script>
 </body>
 </html>
