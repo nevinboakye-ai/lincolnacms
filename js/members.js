@@ -4903,8 +4903,8 @@
     var dashboardRole = null;
     // The five sections non-presidents can be given (by Hub Access rules),
     // and which rule feature controls each.
-    var DASH_SHARED_SECTIONS = ['mmg', 'sankofa', 'motm', 'events', 'gallery'];
-    var DASH_FEATURE_FOR = { mmg: 'dash_mmg', sankofa: 'dash_sankofa', motm: 'dash_motm', events: 'dash_events', gallery: 'dash_gallery' };
+    var DASH_SHARED_SECTIONS = ['mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery'];
+    var DASH_FEATURE_FOR = { mmg: 'dash_mmg', sankofa: 'dash_sankofa', sankofahub: 'dash_sankofa', motm: 'dash_motm', events: 'dash_events', gallery: 'dash_gallery' };
     var dashAllowed = {};
     // President: everything. Anyone else: only the shared sections the
     // rules allow - never the president-only ones (accounts, activity,
@@ -4988,7 +4988,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {

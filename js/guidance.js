@@ -981,6 +981,12 @@
       return row && row.can_message ? (row.unread || 0) : 0;
     }, function () { return 0; });
   }
+  // Sankofa Hub reminders (migration 086): null for anyone who isn't in the Hub.
+  function loadSankofaHub() {
+    return supabaseClient.rpc('sankofa_hub_status').then(function (r) {
+      return !r.error && r.data && r.data.participant ? r.data : null;
+    }, function () { return null; });
+  }
   function loadPendingRequests() {
     return supabaseClient.rpc('is_president').then(function (r) {
       if (r.error || r.data !== true) return 0;
@@ -1001,13 +1007,15 @@
       withTimeout(loadReviewedResources(sinceMs), 6000, []),
       withTimeout(loadReviewQueue(), 6000, 0),
       withTimeout(loadPendingRequests(), 6000, 0),
-      withTimeout(loadUnreadMessages(), 6000, 0)
+      withTimeout(loadUnreadMessages(), 6000, 0),
+      withTimeout(loadSankofaHub(), 6000, null)
     ]).then(function (res) {
       var snapshot = res[0] || [];
       var reviewed = res[1];
       var queue = res[2];
       var requests = res[3];
       var unreadMessages = res[4];
+      var hub = res[5];
       var groups = [];
       var announce = [];
 
@@ -1034,6 +1042,18 @@
       // -- Waiting for you
       var waiting = [];
       if (unreadMessages > 0) waiting.push({ icon: 'bell', title: plural(unreadMessages, 'unread message', 'unread messages'), sub: 'From people in the Network', href: 'member-network.html#messages', count: unreadMessages });
+      if (hub) {
+        var nm = hub.next_meeting;
+        var daysTo = nm ? Math.ceil((new Date(nm.starts_at).getTime() - Date.now()) / 86400000) : null;
+        if (nm && daysTo !== null && daysTo <= 7) {
+          waiting.push({
+            icon: 'check', title: daysTo <= 0 ? 'Your Circle meets today' : (daysTo === 1 ? 'Your Circle meets tomorrow' : 'Your Circle meets in ' + daysTo + ' days'),
+            sub: nm.title + ' - let your mentors know if you\'re coming', href: 'member-sankofa-hub.html#meetings'
+          });
+        }
+        if (!hub.profile_done) waiting.push({ icon: 'todo', title: 'Finish your Sankofa Hub profile', sub: 'Introduce yourself to your Circle and earn XP', href: 'member-sankofa-hub.html' });
+        if (hub.checkin_due) waiting.push({ icon: 'todo', title: 'Do your weekly check-in', sub: hub.streak > 0 ? 'Keep your ' + hub.streak + '-week streak alive' : 'It takes a minute and earns XP', href: 'member-sankofa-hub.html#growth' });
+      }
       if (requests > 0) waiting.push({ icon: 'todo', title: plural(requests, 'account request', 'account requests') + ' waiting', sub: 'Review and approve new members', href: 'president-dashboard.html#requests', count: requests });
       if (queue > 0) waiting.push({ icon: 'todo', title: plural(queue, 'resource', 'resources') + ' waiting for review', sub: 'Shared by members, hidden until you approve them', href: 'member-resources.html', count: queue });
       reviewed.slice(0, 3).forEach(function (x) {

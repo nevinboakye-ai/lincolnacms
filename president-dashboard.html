@@ -8,7 +8,7 @@
 <meta name="description" content="For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-115">
+<link rel="stylesheet" href="css/styles.css?v=20260824-116">
 </head>
 <body>
 
@@ -132,6 +132,12 @@
               <span class="dash-nav-card-title">Sankofa</span>
               <span class="dash-nav-card-desc">Mentee &amp; mentor Circle applications</span>
               <span class="dash-nav-card-count" id="dash-count-sankofa">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="sankofahub">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="8" r="2"/><circle cx="8" cy="15" r="2"/><circle cx="16" cy="15" r="2"/></svg></span>
+              <span class="dash-nav-card-title">Sankofa Hub</span>
+              <span class="dash-nav-card-desc">Circles: place &amp; move people, match mentors and mentees</span>
+              <span class="dash-nav-card-count" id="dash-count-sankofahub">&nbsp;</span>
             </button>
             <button type="button" class="dash-nav-card" data-dash-section="motm">
               <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M8.2 13.5 6 22l6-3 6 3-2.2-8.5"/></svg></span>
@@ -320,9 +326,23 @@
                 <button type="button" class="dash-filter-tab" data-sankofa-filter="mentor">Mentors</button>
               </div>
             </div>
+            <p class="sk-hub-link">Accepted someone? Place them in a Circle and match them with a mentor in the <button type="button" class="link-button" data-open-hub-manager>Sankofa Hub Circle manager</button>.</p>
             <section class="sk-rounds-box" id="sankofa-rounds" aria-label="Application phases" hidden></section>
             <div class="app-card-list" id="sankofa-applications-list"></div>
             <p id="sankofa-applications-empty" style="display:none; color: var(--color-text-faint);">No Sankofa applications yet.</p>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-sankofahub" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Sankofa Hub</span>
+              <h2>Circle manager</h2>
+              <p>Put accepted students and professionals into Circles, move anyone at any time (drag a card, or use its menu), pair mentees with mentors, and let the matcher suggest a plan. Changes show up for people in the Hub straight away.</p>
+            </div>
+            <div id="shm-root"><p class="sh-muted">Loading the Hub…</p></div>
           </div>
 
           <div class="dash-panel" id="dash-panel-motm" style="display:none;">
@@ -742,13 +762,15 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-115"></script>
-<script src="js/members.js?v=20260824-115"></script>
-<script src="js/notifications.js?v=20260824-115"></script>
-<script src="js/guidance.js?v=20260824-115"></script>
-<script src="js/chat.js?v=20260824-115"></script>
-<script src="js/chat-admin.js?v=20260824-115"></script>
-<script src="js/site-stats-admin.js?v=20260824-115"></script>
-<script src="js/sankofa-rounds.js?v=20260824-115"></script>
+<script src="js/main.js?v=20260824-116"></script>
+<script src="js/members.js?v=20260824-116"></script>
+<script src="js/notifications.js?v=20260824-116"></script>
+<script src="js/guidance.js?v=20260824-116"></script>
+<script src="js/chat.js?v=20260824-116"></script>
+<script src="js/chat-admin.js?v=20260824-116"></script>
+<script src="js/site-stats-admin.js?v=20260824-116"></script>
+<script src="js/sankofa-rounds.js?v=20260824-116"></script>
+<script src="js/sankofa-common.js?v=20260824-116"></script>
+<script src="js/sankofa-admin.js?v=20260824-116"></script>
 </body>
 </html>

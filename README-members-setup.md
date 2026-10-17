@@ -1449,3 +1449,50 @@ On Dashboard -> **Sankofa**, every application (mentees and mentors) now has an 
 - Everything you send is listed under that application (sent / failed, when, and the subject), so you can see exactly what each person has had. Replies go to acms@lincolnsu.com.
 
 **Automatic and manual together (update to sections 135 and 136):** every new Sankofa application sends its own confirmation the moment it's submitted (needs the `send-member-email` function deployed and migration 082 run - section 135). That automatic email now appears in each application's **Emails** feed, tagged *automatic*, alongside anything you send by hand; if the automatic one ever fails, the card says so with Resend's reason and "Send confirmation" is there to send it yourself. For people who applied before the automatic email existed, the card says "No confirmation sent yet" and **Send confirmation** sends it (and **Resend confirmation** appears once something has gone out).
+
+## 137. The Sankofa Hub
+
+The Hub is where accepted Sankofa students and professionals live day to day: their Circle, their mentor, their next meeting, messages, goals and rewards - and where the committee places and moves people, from the website, at any time.
+
+**Run these four in Supabase (SQL Editor), in order. Each is safe to run twice:**
+1. [`db/migrations/084-sankofa-hub-core.sql`](db/migrations/084-sankofa-hub-core.sql) - the tables, the security rules, and the chat change below (needs 060, 061, 064, 070, 072, 078).
+2. [`db/migrations/085-sankofa-hub-admin.sql`](db/migrations/085-sankofa-hub-admin.sql) - the committee's tools.
+3. [`db/migrations/086-sankofa-hub-member.sql`](db/migrations/086-sankofa-hub-member.sql) - what participants use.
+4. [`db/migrations/087-sankofa-hub-progress.sql`](db/migrations/087-sankofa-hub-progress.sql) - levels, streaks, badges, leaderboards.
+
+Nothing else needs deploying; the pages are in the repo (`member-sankofa-hub.html`, `js/sankofa-hub.js`, `js/sankofa-admin.js`, `js/sankofa-common.js`).
+
+### Getting started (committee)
+1. **Dashboard -> Sankofa Hub** (needs the *Sankofa* dashboard access in Hub Access - the president and Executive Committee have it by default).
+2. **New Circle** a few times - name, colour, motto, how many places, optional group-chat link (e.g. a WhatsApp invite).
+3. **Add people.** *Student applicants* lists everyone who applied as a mentee and isn't in yet; *Professionals* lists professionals who have an account; *Find anyone* searches by name. Adding someone carries their application answers across (specialty, interests, communication style, how often they want to meet, what they're looking for / what a mentor offers, how many mentees a mentor can take) and marks a pending application as accepted. Mentors who applied on the public form **but have no account** are listed separately - create their account first (Dashboard -> Create account); they then appear under *Professionals*.
+4. **Suggest matches** proposes which Circle each unplaced person goes in and which mentor each mentee pairs with, with the reasons ("Both interested in Cardiology", "Shared interests: football", "Same meeting rhythm"). Untick anything you'd do differently, then **Apply selected**.
+5. **Move anyone, any time:** drag their card onto another lane (or the **Unplaced** lane), or use the **...** menu on the card (works on a phone). A toast offers **Undo**; everything is recorded under **Activity**. People see the change immediately.
+
+Also in the manager: set a **Circle lead**, **pair / change a mentor**, **edit the matching profile** (fix a specialty, interests, mentor capacity or the stage label shown to the Circle), **pause** someone (locks them out without losing anything) or **remove** them (their goals, XP and badges are kept if you add them back), **schedule a meeting** for one Circle or an **event for everyone**, post an **announcement**, archive or delete a Circle. The stats strip flags unplaced people, mentees without a mentor, anyone who has asked for a check-in, and Circles that are over their places or have no mentor.
+
+### What people see (member-sankofa-hub.html, via the new Sankofa Hub card on the Members Hub)
+- **Home:** the next meeting (countdown, RSVP, check-in when it opens, join link, add to calendar), this week's quests, their mentor or mentees, level and streak, the latest from the board, their Circle.
+- **My Circle:** who's in it (mentors first), headline, level, streak, a **Message** button for each person. Mentors also see how each mentee is doing and a **Progress** view (shared goals and weekly check-ins).
+- **Meetings:** upcoming and past; RSVP going / maybe / can't make it; **I'm here - check in** from 30 minutes before the start until 2 hours after the end; add to calendar; rate a finished meeting. Mentors schedule their Circle's meetings and see who's coming and who hasn't replied, and can mark attendance; a mentor and mentee can book a **one-to-one**.
+- **Board:** posts, mentor/committee **announcements** (and pins), **kudos** to a Circle-mate, and 👏 ❤️ 🔥 💡 reactions - live.
+- **Growth:** a weekly **check-in** (mood, a win, a challenge, "I'd like someone to check in with me") and personal **goals** (private or shared with the Circle's mentors).
+- **Rewards:** XP, level, weekly streak, **18 badges**, the **Circle Cup** (Circles ranked by *average* XP per member over 30 days, so small Circles can win) and the Circle's own board (each person can opt out of it).
+- **People:** everyone in the Hub, searchable, with a message button - a way for mentees to find a mentor who shares their interests.
+
+XP: finish profile +20, attend a meeting +20, weekly check-in +15, finish a goal +15 (3 a week), say hello to someone +10 each (checked against the real chat), schedule a meeting +10, receive kudos +5, meeting feedback +5, reply to a meeting +3, post +3 (3 a day). Level *n* needs 30 x (n-1)^2 XP. Everything is awarded by the database; it can't be edited from the browser, and repeats and caps stop farming.
+
+### Messaging
+Sankofa participants can use the existing chat **without** Network access, but only with other participants and the Executive Committee (migration 084 widens `chat_user_eligible` and `chat_pair_allowed`; it doesn't open the wider Network to them). Everything from sections on chat (reports, blocking, suspensions) applies unchanged. Participants chat through the chat window (bottom-right of every page); the full *Messages page* is part of the Network page, which still follows the Network Hub Access rule.
+
+### Sixth-form students
+The earlier rule stands: to everyone except the Executive Committee a sixth-form member appears as **"Sixth-form member"** (no name or details) everywhere in the Hub, and can only message / be messaged by the committee. They still get their own Hub, their Circle, meetings and rewards. The committee sees real names. If you ever want sixth-formers to message their own mentors, that's the one function to change: `chat_pair_allowed` (migration 072 / 084).
+
+### Privacy
+Goals marked private are only the person's. Shared goals and every weekly check-in can be seen by the mentors in that person's Circle, their paired mentor and the committee - so nobody quietly struggles. Meeting feedback is seen by the committee only. Nobody can read another Circle's board, meetings or members.
+
+### Reminders
+Participants get **"Your Circle meets in N days"**, **"Do your weekly check-in"** and **"Finish your Sankofa Hub profile"** in the sign-in *What's new* pop-up, and a status line on the Hub card.
+
+### Not done yet (ideas for later)
+Email notifications when someone is placed in a Circle or a meeting is scheduled (for now they see it on their Hub card and in the sign-in pop-up, and you can message them from the Circle manager), a resources shelf per Circle, and a term-end summary for the committee.
