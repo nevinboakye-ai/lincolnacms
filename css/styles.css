@@ -10162,10 +10162,6 @@ button.btn.sh-btn-danger.btn-primary { background: var(--color-red); color: #fff
 .net-layout #network-professionals-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 
 /* Side column: the join ticker and "Say hello" */
-.net-side .network-ticker { margin: 0; flex-wrap: wrap; row-gap: 8px; padding: 10px 12px; }
-.net-side .network-ticker-viewport { flex: 1 1 100%; order: 2; }
-.net-side .network-ticker-controls { order: 3; flex: 1 1 100%; justify-content: space-between; }
-.net-side .network-ticker-icon { order: 1; }
 .net-hello { border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); padding: var(--space-3); }
 .net-hello[hidden] { display: none; }
 .net-hello-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -10184,7 +10180,6 @@ button.btn.sh-btn-danger.btn-primary { background: var(--color-red); color: #fff
   .net-layout { display: flex; flex-direction: column; gap: var(--space-3); }
   .net-side, .net-main { display: contents; }
   .net-toolbar { order: 1; margin-bottom: 0; }
-  .net-side .network-ticker { order: 2; }
   .net-hello { order: 3; }
   .net-layout #network-members-sections { order: 4; }
   .net-layout #network-professionals-wrap { order: 5; margin-top: 0 !important; }
@@ -10206,9 +10201,10 @@ button.btn.sh-btn-danger.btn-primary { background: var(--color-red); color: #fff
 /* ---- Members Hub: bigger greeting, a little more air, MMG hidden for now ---- */
 .page-hero--compact { padding-block: var(--space-4) var(--space-4); }
 .page-hero--compact .page-hero-title { font-size: clamp(1.9rem, 7.4vw, 2.7rem); line-height: 1.15; }
-.page-hero--compact .network-recent-joins { display: flex; align-items: center; margin: 12px 0 0; padding: 8px 14px; font-size: 0.86rem; border-radius: var(--radius-md); max-width: 100%; }
+.page-hero--compact .network-recent-joins { display: flex; align-items: center; margin: 16px 0 0; padding: 8px 14px; font-size: 0.86rem; border-radius: var(--radius-md); max-width: 100%; }
 .page-hero--compact .network-recent-joins[style*="display: none"], .page-hero--compact .network-recent-joins[style*="display:none"] { display: none; }
 .page-hero--compact .network-recent-joins #network-recent-joins-text { min-width: 0; white-space: normal; line-height: 1.35; }
+@media (max-width: 640px) { .page-hero--compact .network-recent-joins { margin-top: 22px; } }
 .jy-section { padding-block: 0 var(--space-2); }
 .hub-layout { gap: var(--space-4) var(--space-5); padding-block: var(--space-4) var(--space-6); }
 @media (max-width: 900px) { .hub-layout { gap: 1.25rem; padding-block: var(--space-3) var(--space-5); } }
@@ -10232,19 +10228,23 @@ button.btn.sh-btn-danger.btn-primary { background: var(--color-red); color: #fff
   .net-layout .network-card--restricted .network-card-lock { font-size: 0.62rem; padding: 3px 8px; white-space: nowrap; }
 }
 
-/* The "just joined" notification: one slim line on a phone */
+/* The "just joined" notification: full width under the progress strip, full text always visible */
+.net-ticker-wrap { padding-top: var(--space-3); }
+.net-ticker-wrap .network-ticker { margin: 0; padding: 10px 14px; gap: 12px; align-items: center; background: linear-gradient(90deg, var(--ticker-item-accent-bg, rgba(var(--green-rgb), 0.12)), var(--color-surface) 55%); }
+.net-ticker-wrap .network-ticker-item { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding-right: 0; }
+.net-ticker-wrap .network-ticker-item-title { flex: 1 1 100%; white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; font-size: 0.95rem; }
+.net-ticker-wrap .network-ticker-item-meta { order: 1; font-size: 0.82rem; color: var(--color-text-muted); }
+.net-ticker-wrap .network-ticker-item-time { order: 2; font-size: 0.78rem; }
+.net-ticker-wrap .network-ticker-item-meta + .network-ticker-item-time::before { content: "·"; margin-right: 8px; color: var(--color-text-faint); }
 @media (max-width: 640px) {
-  .network-ticker, .net-side .network-ticker { flex-wrap: nowrap; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 0; }
-  .network-ticker-icon, .net-side .network-ticker-icon { order: 0; width: 30px; height: 30px; }
-  .network-ticker-icon .icon { width: 15px; height: 15px; }
-  .net-side .network-ticker-viewport { order: 0; flex: 1 1 auto; }
-  .network-ticker-item { gap: 0; }
-  .network-ticker-item-title { white-space: nowrap; font-size: 0.84rem; }
-  .network-ticker-item-time { font-size: 0.72rem; }
-  .network-ticker-item-meta { display: none; }
-  .network-ticker-controls, .net-side .network-ticker-controls { order: 0; flex: none; flex-basis: auto; justify-content: flex-end; }
-  .network-ticker-nav, .network-ticker-counter { display: none; }
-  .network-ticker-viewall { display: inline; font-size: 0.78rem; }
+  .net-ticker-wrap { padding-top: var(--space-2); }
+  .net-ticker-wrap .network-ticker { flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 12px; }
+  .net-ticker-wrap .network-ticker-icon { width: 30px; height: 30px; }
+  .net-ticker-wrap .network-ticker-icon .icon { width: 15px; height: 15px; }
+  .net-ticker-wrap .network-ticker-viewport { flex: 1 1 0; min-width: 0; }
+  .net-ticker-wrap .network-ticker-item-title { font-size: 0.88rem; }
+  .net-ticker-wrap .network-ticker-controls { flex: 1 1 100%; justify-content: space-between; padding-top: 6px; border-top: 1px solid var(--color-border); }
+  .net-ticker-wrap .network-ticker-viewall { display: inline; font-size: 0.8rem; }
 }
 
 /* =========================================================
@@ -10312,4 +10312,80 @@ button.btn.sh-btn-danger.btn-primary { background: var(--color-red); color: #fff
   .res-body > .res-card-foot { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
   .res-card-foot .res-actions { margin-top: 0; gap: 6px; }
   .res-btn { padding: 5px 12px; font-size: 0.78rem; min-height: 34px; }
+}
+
+
+/* ---- Network colour: every course keeps its own colour, from first paint ---- */
+.net-chip { --chip-accent: var(--color-gold); --chip-light: var(--color-gold-light); --chip-bg: rgba(var(--gold-rgb), 0.16); }
+.net-chip[data-net-chip]:not([data-net-chip="all"]):not(.net-chip--pro) { border-color: color-mix(in srgb, var(--chip-accent) 55%, transparent); background: var(--chip-bg); color: var(--chip-light); }
+.net-chip[data-net-chip]:not([data-net-chip="all"]):not(.net-chip--pro) b { color: var(--chip-light); opacity: 0.8; }
+.net-chip--pro { --chip-accent: #6fcf97; --chip-light: #6fcf97; --chip-bg: rgba(30, 122, 70, 0.2); background: var(--chip-bg); color: var(--chip-light); border-color: rgba(111, 207, 151, 0.5); }
+.net-chip--pro b { color: var(--chip-light); }
+.net-chip[data-net-chip="all"]:not([aria-pressed="true"]) { border-color: rgba(var(--gold-rgb), 0.5); color: var(--color-gold-light); }
+.net-chip[data-net-chip]:not([data-net-chip="all"])[aria-pressed="true"] { background: var(--chip-accent); border-color: var(--chip-accent); color: var(--color-on-gold); box-shadow: 0 2px 10px -3px var(--chip-accent); }
+.net-chip--pro[aria-pressed="true"] { background: #6fcf97; border-color: #6fcf97; color: #0e2a1a; }
+.net-chip[aria-pressed="true"] b { color: inherit; opacity: 0.75; }
+.net-layout .network-course-head { background: linear-gradient(90deg, var(--network-accent-bg, rgba(var(--gold-rgb), 0.14)), transparent 70%); }
+.net-layout .network-year-label { color: var(--network-accent-light, var(--color-gold-light)); }
+.net-layout .network-course-section { border-color: color-mix(in srgb, var(--network-accent, var(--color-gold)) 30%, var(--color-border)); }
+.net-hello { border-top: 3px solid var(--color-gold); }
+
+
+/* ---- Sankofa Hub colour: each section has its own hue, the header gets a warm banner ---- */
+.sh-tab[data-sh-tab="home"],     #sh-pane-home     { --pane-rgb: var(--gold-rgb);   --pane-ink: var(--color-gold-light); }
+.sh-tab[data-sh-tab="circle"],   #sh-pane-circle   { --pane-rgb: var(--green-rgb);  --pane-ink: var(--accent-green); }
+.sh-tab[data-sh-tab="meetings"], #sh-pane-meetings { --pane-rgb: var(--blue-rgb);   --pane-ink: var(--accent-blue); }
+.sh-tab[data-sh-tab="board"],    #sh-pane-board    { --pane-rgb: var(--purple-rgb); --pane-ink: var(--accent-purple); }
+.sh-tab[data-sh-tab="growth"],   #sh-pane-growth   { --pane-rgb: 20, 140, 140;      --pane-ink: #5fd1c9; }
+.sh-tab[data-sh-tab="rewards"],  #sh-pane-rewards  { --pane-rgb: 255, 140, 40;      --pane-ink: #ff9a3d; }
+.sh-tab[data-sh-tab="people"],   #sh-pane-people   { --pane-rgb: var(--red-rgb);    --pane-ink: var(--accent-red); }
+:root[data-theme="light"] #sh-pane-growth, :root[data-theme="light"] .sh-tab[data-sh-tab="growth"] { --pane-ink: #0f6f6a; }
+:root[data-theme="light"] #sh-pane-rewards, :root[data-theme="light"] .sh-tab[data-sh-tab="rewards"] { --pane-ink: #b45f06; }
+
+.sh-top { padding: var(--space-3) var(--space-4); border: 1px solid rgba(var(--gold-rgb), 0.35); border-radius: var(--radius-lg); background: linear-gradient(120deg, rgba(var(--gold-rgb), 0.18), rgba(var(--green-rgb), 0.10) 55%, rgba(var(--red-rgb), 0.08)); position: relative; overflow: hidden; }
+.sh-top::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--color-red, #c1272d), var(--color-gold, #d4a62b), var(--color-green, #1e7a46)); }
+.sh-tab .icon { color: var(--pane-ink, currentColor); }
+.sh-tab:hover { background: rgba(var(--pane-rgb, 128, 128, 128), 0.16); }
+.sh-tab.is-active { background: rgba(var(--pane-rgb, var(--gold-rgb)), 0.22); color: var(--color-text); box-shadow: inset 0 -3px 0 var(--pane-ink, var(--color-gold)); }
+.sh-tab.is-active .icon { color: var(--pane-ink, currentColor); }
+.sh-pane > .sh-card, .sh-pane .sh-col > .sh-card, .sh-pane .sh-grid > .sh-card { border-top: 3px solid rgba(var(--pane-rgb, var(--gold-rgb)), 0.75); }
+.sh-pane .sh-card h3, .sh-pane .sh-section-title { color: var(--pane-ink, inherit); }
+.sh-pane .sh-card--circle h3, .sh-pane .sh-card--next h3 { color: var(--sh-ink, inherit); }
+.sh-pane .sh-pane-title { color: var(--pane-ink, inherit); }
+.sh-pane .sh-card--meet { border-top-width: 1px; border-left: 4px solid rgba(var(--sh-rgb), 0.8); }
+.sh-pane .sh-meter span { background: linear-gradient(90deg, rgba(var(--pane-rgb, var(--gold-rgb)), 0.9), var(--pane-ink, var(--color-gold-fill))); }
+.sh-pane .sh-ring-fg { stroke: var(--pane-ink, var(--sh-ink)); }
+.sh-pane .sh-eyebrow { color: var(--pane-ink, var(--sh-ink)); }
+
+
+/* ---- Platform dashboard: the compact look, tight on a phone ---- */
+.dash-nav-grid { gap: var(--space-3); }
+@media (max-width: 700px) {
+  .page-hero--slim .page-hero-lede { display: none; }
+  .page-hero--slim .page-hero-title { font-size: 1.5rem; }
+  .dash-nav-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .dash-nav-card { padding: 12px; gap: 6px; min-height: 0; }
+  .dash-nav-card-icon { width: 32px; height: 32px; }
+  .dash-nav-card-icon svg, .dash-nav-card-icon .icon { width: 17px; height: 17px; }
+  .dash-nav-card-title { font-size: 0.98rem; line-height: 1.2; }
+  .dash-nav-card-desc { display: none; }
+  .dash-nav-card-count { padding-top: 0; font-size: 0.74rem; }
+  .dash-nav-card:hover, .dash-nav-card:focus-visible { transform: none; }
+  .dash-panel-back { margin-bottom: var(--space-3); }
+  .dash-toolbar { gap: var(--space-2); margin-bottom: var(--space-3); }
+  .dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: var(--space-4); }
+  .dash-stat { padding: 10px 12px; }
+  .dash-stat-num { font-size: 1.5rem; }
+  .dash-stat-label { margin-top: 4px; font-size: 0.68rem; }
+  .dash-panel .section-head { margin-bottom: var(--space-3); max-width: none; }
+  .dash-panel .section-head[style*="margin-top"] { margin-top: var(--space-5) !important; }
+  .dash-panel .section-head h2 { font-size: 1.15rem; margin-bottom: 4px; }
+  .dash-panel .section-head > p { font-size: 0.84rem; line-height: 1.4; margin-bottom: 0; }
+  .dash-filter-tabs { overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+  .dash-filter-tabs::-webkit-scrollbar { display: none; }
+  .dash-filter-tab { flex: none; padding: 6px 12px; white-space: nowrap; }
+  .app-card-list { gap: 8px; }
+  .app-card-head { padding: var(--space-2) var(--space-3); }
+  .dash-course-section { margin-bottom: var(--space-4); }
+  .online-now { padding: var(--space-3); margin-bottom: var(--space-3); }
 }

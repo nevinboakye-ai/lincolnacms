@@ -1575,3 +1575,15 @@ No database change - refresh to see it.
 - **Events (phone):** each event is a compact date-and-details card instead of a tall stack.
 - **Resources:** slimmer cards (thumbnail beside the title and details, like / comment and buttons across the bottom), and a small "+25 XP" on *Share a resource* until you've shared one.
 - Checked every public and member page at phone width for sideways overflow - none.
+
+
+## 143. A colourful Network and Sankofa Hub, a full-width "just joined" bar, and a compact dashboard on phones
+
+No database changes this round.
+
+- **Network "just joined" bar:** moved out of the side column to a full-width bar directly under the progress strip, on desktop and phone. The whole sentence now wraps instead of being cut off, with course · year and the time underneath; on a phone the previous / next controls sit on their own slim row.
+- **Network colour:** the course chips at the top are tinted in each course's own colour from the first paint (All = gold, Professionals = green); course headers fade in from their colour and the year labels match.
+- **Sankofa Hub colour:** a warm gold-green-red header banner, and every tab has its own hue (gold Home, green Circle, blue Meetings, purple Board, teal Growth, orange Rewards, red People) carried into its cards, titles and progress bars.
+- **Members Hub (phone):** more space between the greeting and the "just joined" note.
+- **Platform dashboard (phone):** slim title (the long line is hidden), two-across section tiles with the descriptions hidden, smaller stat tiles, tighter section headings, and scrolling filter tabs, so far less scrolling.
+- Rechecked every page at phone width for sideways overflow and cut-off text - nothing found outside the intentional hero image.

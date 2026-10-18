@@ -7,7 +7,7 @@
 <title>Network - LACMS</title>
 <meta name="description" content="The LACMS Network - every member and the healthcare professionals supporting Sankofa mentorship.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-122">
+<link rel="stylesheet" href="css/styles.css?v=20260824-123">
 </head>
 <body>
 
@@ -91,6 +91,27 @@
 
   <div class="container jy-strip-wrap"><div data-journey-strip="network" hidden></div></div>
 
+  <div class="container net-ticker-wrap">
+        <div id="network-ticker" class="network-ticker" style="display:none;">
+          <span class="network-ticker-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22.5 20v-1a4 4 0 0 0-3-3.87"/><path d="M16.5 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          <div class="network-ticker-viewport">
+            <div class="network-ticker-track" id="network-ticker-track"></div>
+          </div>
+          <div class="network-ticker-controls">
+            <button type="button" class="network-ticker-nav" id="network-ticker-prev" aria-label="Previous network activity">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span class="network-ticker-counter" id="network-ticker-counter"></span>
+            <button type="button" class="network-ticker-nav" id="network-ticker-next" aria-label="Next network activity">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <button type="button" class="network-ticker-viewall" id="network-ticker-viewall">View all</button>
+          </div>
+        </div>
+  </div>
+
   <section class="section">
     <div class="container">
 
@@ -127,26 +148,7 @@
       <div id="network-content" class="net-layout" style="display:none;">
 
         <aside class="net-side" aria-label="Network highlights">
-        <div id="network-ticker" class="network-ticker" style="display:none;">
-          <span class="network-ticker-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22.5 20v-1a4 4 0 0 0-3-3.87"/><path d="M16.5 3.13a4 4 0 0 1 0 7.75"/></svg>
-          </span>
-          <div class="network-ticker-viewport">
-            <div class="network-ticker-track" id="network-ticker-track"></div>
-          </div>
-          <div class="network-ticker-controls">
-            <button type="button" class="network-ticker-nav" id="network-ticker-prev" aria-label="Previous network activity">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-            <span class="network-ticker-counter" id="network-ticker-counter"></span>
-            <button type="button" class="network-ticker-nav" id="network-ticker-next" aria-label="Next network activity">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-            <button type="button" class="network-ticker-viewall" id="network-ticker-viewall">View all</button>
-          </div>
-        </div>
-
-          <section class="net-hello" id="net-hello" aria-label="Say hello" hidden></section>
+<section class="net-hello" id="net-hello" aria-label="Say hello" hidden></section>
         </aside>
 
         <div class="net-main">
@@ -261,13 +263,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-122"></script>
-<script src="js/members.js?v=20260824-122"></script>
-<script src="js/notifications.js?v=20260824-122"></script>
-<script src="js/journey.js?v=20260824-122"></script>
-<script src="js/hub-nav.js?v=20260824-122"></script>
-<script src="js/network-layout.js?v=20260824-122"></script>
-<script src="js/guidance.js?v=20260824-122"></script>
-<script src="js/chat.js?v=20260824-122"></script>
+<script src="js/main.js?v=20260824-123"></script>
+<script src="js/members.js?v=20260824-123"></script>
+<script src="js/notifications.js?v=20260824-123"></script>
+<script src="js/journey.js?v=20260824-123"></script>
+<script src="js/hub-nav.js?v=20260824-123"></script>
+<script src="js/network-layout.js?v=20260824-123"></script>
+<script src="js/guidance.js?v=20260824-123"></script>
+<script src="js/chat.js?v=20260824-123"></script>
 </body>
 </html>

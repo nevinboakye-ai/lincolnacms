@@ -128,9 +128,11 @@
     var proShown = proWrap && proWrap.style.display !== 'none' && proWrap.querySelector('.network-card');
     var items = Array.prototype.map.call(secs, function (s) {
       var c = s.querySelector('.network-course-count');
-      return { key: sectionName(s), label: sectionName(s), count: c ? parseInt(c.textContent, 10) || 0 : 0 };
+      var cs = s.style;
+      return { key: sectionName(s), label: sectionName(s), count: c ? parseInt(c.textContent, 10) || 0 : 0,
+        accent: cs.getPropertyValue('--network-accent').trim(), light: cs.getPropertyValue('--network-accent-light').trim(), bg: cs.getPropertyValue('--network-accent-bg').trim() };
     });
-    var sig = items.map(function (i) { return i.key + ':' + i.count; }).join('|') + '|' + (proShown ? 'p' : '') + '|' + me.course;
+    var sig = items.map(function (i) { return i.key + ':' + i.count + ':' + i.accent; }).join('|') + '|' + (proShown ? 'p' : '') + '|' + me.course;
     if (sig === signature) return;
     signature = sig;
     if (!items.length && !proShown) { chipsEl.hidden = true; return; }
@@ -138,7 +140,7 @@
     var html = '<button type="button" class="net-chip" data-net-chip="all" aria-pressed="' + (active === 'all') + '">All<b>' + total + '</b></button>';
     items.sort(function (a, b) { return (isMine(b.key) ? 1 : 0) - (isMine(a.key) ? 1 : 0); });
     items.forEach(function (i) {
-      html += '<button type="button" class="net-chip' + (isMine(i.key) ? ' is-mine' : '') + '" data-net-chip="' + esc(i.key) + '" aria-pressed="' + (active === i.key) + '">' + esc(i.label) + '<b>' + i.count + '</b></button>';
+      html += '<button type="button" class="net-chip' + (isMine(i.key) ? ' is-mine' : '') + '" data-net-chip="' + esc(i.key) + '" aria-pressed="' + (active === i.key) + '"' + (i.accent ? ' style="--chip-accent:' + esc(i.accent) + ';--chip-light:' + esc(i.light || i.accent) + ';--chip-bg:' + esc(i.bg) + ';"' : '') + '>' + esc(i.label) + '<b>' + i.count + '</b></button>';
     });
     if (proShown) html += '<button type="button" class="net-chip net-chip--pro" data-net-chip="pros" aria-pressed="' + (active === 'pros') + '">Professionals<b>' + proWrap.querySelectorAll('.network-card').length + '</b></button>';
     chipsEl.innerHTML = html;
