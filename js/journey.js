@@ -20,17 +20,17 @@
   if (typeof supabaseIsConfigured === 'undefined' || !supabaseIsConfigured || typeof supabaseClient === 'undefined' || !supabaseClient) return;
   if (window.lacmsJourney) return;
 
-  // The ranks, named from African and Caribbean culture and history - each with
-  // what it means, shown on the journey page.
+  // The ranks are capital cities across Africa and the Caribbean - each with a
+  // line on why it's special, shown on the journey page.
   var RANKS = [
-    { name: 'Akwaaba', meaning: 'Welcome - the Akan greeting' },
-    { name: 'Nkyinkyim', meaning: 'Twisting and turning: initiative and adaptability (Adinkra)' },
-    { name: 'Mate Masie', meaning: '"What I hear, I keep": wisdom and learning (Adinkra)' },
-    { name: 'Harambee', meaning: '"All pull together" (Swahili)' },
-    { name: 'Tallawah', meaning: 'Small but mighty - strong and determined (Jamaican)' },
-    { name: 'Ubuntu', meaning: '"I am because we are" (Nguni)' },
-    { name: 'Griot', meaning: 'Keeper of a community\'s stories and history (West Africa)' },
-    { name: 'Mzee', meaning: 'Honoured elder (Swahili)' }
+    { name: 'Accra', meaning: 'Ghana - the first sub-Saharan nation to win independence (1957)' },
+    { name: 'Kingston', meaning: 'Jamaica - birthplace of reggae and ska' },
+    { name: 'Abuja', meaning: 'Nigeria - home to more people than any other African nation' },
+    { name: 'Bridgetown', meaning: 'Barbados - a UNESCO World Heritage historic capital' },
+    { name: 'Nairobi', meaning: 'Kenya - the "Green City in the Sun"' },
+    { name: 'Port of Spain', meaning: 'Trinidad and Tobago - home of Carnival, calypso and the steelpan' },
+    { name: 'Dakar', meaning: 'Senegal - the westernmost city on mainland Africa, known for teranga (hospitality)' },
+    { name: 'Addis Ababa', meaning: 'Ethiopia - seat of the African Union' }
   ];
   var KIND_LABEL = {
     join: 'Joined LACMS', visit: 'Visited the Members Hub', bio: 'Added a bio', linkedin: 'Added your LinkedIn',
@@ -221,7 +221,13 @@
   var STEP_CARD = { discount: '#perks-card', resources: '#resources-card', share: '#resources-card', motm: '#motm-nominate-card', hello: '#network-card', event: '.quick-link-card[href="events.html"]' };
   function renderRewards() {
     Array.prototype.forEach.call(document.querySelectorAll('.jy-reward'), function (n) { n.remove(); });
-    if (!isHub || !state || state.eligible === false || state.hidden) return;
+    if (!state || state.eligible === false || state.hidden) return;
+    // Resources: a small "+25 XP" on the Share button until they've shared one.
+    var shareBtn = document.getElementById('res-share-btn');
+    if (shareBtn && state.areas && state.areas.resources && !state.areas.resources.shared) {
+      shareBtn.insertAdjacentHTML('beforeend', '<span class="jy-reward jy-reward--btn" title="Earn XP when your resource is approved">+25 XP</span>');
+    }
+    if (!isHub) return;
     var seen = {};
     (state.next_steps || []).forEach(function (st) {
       var sel = STEP_CARD[st.key];

@@ -642,23 +642,23 @@ revoke all on
 -- Badges (the rules that award them are in 087).
 insert into public.sankofa_badge_defs (key, name, description, icon, sort_order) values
   ('founding',      'Founding Seed',      'Part of the very first Sankofa Hub cohort.',                          '🌱', 1),
-  ('first_steps',   'Griot''s Tale',      'Finished your Hub profile - your story is told.',                      '🎙️', 2),
-  ('ice_breaker',   'First Lime',         'Sent your first message to someone in your Circle - a good lime starts with hello.', '💬', 3),
-  ('connector',     'Many Hands',         'Said hello to three different people - harambee, many hands.',        '🤝', 4),
-  ('showed_up',     'Pull Up',            'Attended your first meeting.',                                        '📍', 5),
-  ('regular',       'Yard Regular',       'Attended five meetings.',                                             '🏠', 6),
-  ('reflective',    'Moonlight Stories',  'Completed four weekly check-ins - stories shared by moonlight.',      '🌙', 7),
-  ('goal_getter',   'Piti Piti',          'Completed your first goal - little by little, the bird builds its nest.', '🎯', 8),
-  ('goal_crusher',  'Nest Builder',       'Completed five goals.',                                               '🐦', 9),
-  ('voice',         'Talking Drum',       'Posted five times on your Circle board.',                             '🥁', 10),
-  ('cheerleader',   'Calypsonian',        'Sent five kudos to your Circle.',                                     '🎉', 11),
-  ('appreciated',   'Irie',               'Received three kudos from your Circle - all good vibes.',             '💛', 12),
-  ('on_a_roll',     'Riddim',             'Kept a three-week streak going.',                                     '🎶', 13),
-  ('unstoppable',   'Maroon Spirit',      'Kept an eight-week streak going - unbowed and unbroken.',             '✊', 14),
-  ('host',          'Yard Host',          'Hosted three meetings.',                                              '🏡', 15),
-  ('feedback',      'Measuring Rod',      'Gave feedback on three meetings - Hwehwemudua, the measuring rod of excellence.', '📝', 16),
-  ('canopy',        'Nyansapo',           'Reached level 5 - the wisdom knot.',                                  '🌳', 17),
-  ('baobab',        'Sankofa Bird',       'Reached level 8 - you went back to fetch it, and now you pass it on.', '🌍', 18)
+  ('first_steps',   'Griot''s Tale',      'Finished your Hub profile - your story is told, griot-style (Mali).',  '🎙️', 2),
+  ('ice_breaker',   'First Lime',         'Sent your first message to someone in your Circle - a good lime starts with hello (Trinidad).', '💬', 3),
+  ('connector',     'Harambee Hands',     'Said hello to three different people - many hands, harambee (Kenya).', '🤝', 4),
+  ('showed_up',     'Pull Up',            'Attended your first meeting (Jamaica).',                              '📍', 5),
+  ('regular',       'Sawubona',           'Attended five meetings - "I see you" (South Africa).',                '🏠', 6),
+  ('reflective',    'Tales by Moonlight', 'Completed four weekly check-ins - stories shared by moonlight (Nigeria).', '🌙', 7),
+  ('goal_getter',   'Piti Piti',          'Completed your first goal - little by little, the bird builds its nest (Haiti).', '🎯', 8),
+  ('goal_crusher',  'Lalibela Builder',   'Completed five goals - carved stone by stone, like Lalibela (Ethiopia).', '⛪', 9),
+  ('voice',         'Talking Drum',       'Posted five times on your Circle board (Nigeria).',                   '🥁', 10),
+  ('cheerleader',   'Calypsonian',        'Sent five kudos to your Circle (Trinidad and Tobago).',               '🎉', 11),
+  ('appreciated',   'Irie',               'Received three kudos from your Circle - all good vibes (Jamaica).',   '💛', 12),
+  ('on_a_roll',     'Highlife',           'Kept a three-week streak going - good times, Ghana-style.',           '🎶', 13),
+  ('unstoppable',   'Maroon Spirit',      'Kept an eight-week streak going - unbowed and unbroken (Jamaica and Suriname).', '✊', 14),
+  ('host',          'Teranga Host',       'Hosted three meetings - teranga, Senegalese hospitality.',            '🏡', 15),
+  ('feedback',      'Measuring Rod',      'Gave feedback on three meetings - Hwehwemudua, the Akan measuring rod of excellence (Ghana).', '📝', 16),
+  ('canopy',        'Nyansapo',           'Reached level 5 - the wisdom knot (Ghana).',                          '🌳', 17),
+  ('baobab',        'Sankofa Bird',       'Reached level 8 - you went back to fetch it, and now you pass it on (Ghana).', '🌍', 18)
 on conflict (key) do update
   set name = excluded.name, description = excluded.description, icon = excluded.icon, sort_order = excluded.sort_order;
 

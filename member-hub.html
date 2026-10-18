@@ -7,7 +7,7 @@
 <title>Members Hub - LACMS</title>
 <meta name="description" content="Your LACMS membership profile and digital membership card.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-121">
+<link rel="stylesheet" href="css/styles.css?v=20260824-122">
 </head>
 <body>
 
@@ -84,6 +84,11 @@
   <section class="page-hero page-hero--compact container">
     <span class="eyebrow">Members Hub</span>
     <h1 class="page-hero-title"><span data-greeting-word>Welcome back</span>, <span data-member-name-inline>member</span></h1>
+    <div id="network-recent-joins" class="network-recent-joins" style="display:none;">
+        <svg class="icon network-recent-joins-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22.5 20v-1a4 4 0 0 0-3-3.87"/><path d="M16.5 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span id="network-recent-joins-text"></span>
+      </div>
+
     <p class="page-hero-lede">Your profile, digital membership card and account controls.</p>
     <p data-journey-chip hidden></p>
     <p style="margin-top: var(--space-3);"><button type="button" class="link-button" data-start-tour hidden>New here? Take the tour</button></p>
@@ -123,10 +128,6 @@
 
       <p id="hub-error" class="auth-error" role="status" style="display:none;"></p>
 
-      <div id="network-recent-joins" class="network-recent-joins" style="display:none;">
-        <svg class="icon network-recent-joins-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1"/><circle cx="10" cy="7" r="4"/><path d="M22.5 20v-1a4 4 0 0 0-3-3.87"/><path d="M16.5 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span id="network-recent-joins-text"></span>
-      </div>
 
       <div id="member-hub-content" class="member-hub-grid member-hub-grid--side" style="display:none;">
 
@@ -486,15 +487,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-121"></script>
-<script src="js/members.js?v=20260824-121"></script>
-<script src="js/notifications.js?v=20260824-121"></script>
-<script src="js/journey.js?v=20260824-121"></script>
-<script src="js/hub-nav.js?v=20260824-121"></script>
-<script src="js/hub-layout.js?v=20260824-121"></script>
-<script src="js/guidance.js?v=20260824-121"></script>
-<script src="js/sankofa-common.js?v=20260824-121"></script>
-<script src="js/sankofa-hub.js?v=20260824-121"></script>
-<script src="js/chat.js?v=20260824-121"></script>
+<script src="js/main.js?v=20260824-122"></script>
+<script src="js/members.js?v=20260824-122"></script>
+<script src="js/notifications.js?v=20260824-122"></script>
+<script src="js/journey.js?v=20260824-122"></script>
+<script src="js/hub-layout.js?v=20260824-122"></script>
+<script src="js/guidance.js?v=20260824-122"></script>
+<script src="js/sankofa-common.js?v=20260824-122"></script>
+<script src="js/sankofa-hub.js?v=20260824-122"></script>
+<script src="js/chat.js?v=20260824-122"></script>
 </body>
 </html>

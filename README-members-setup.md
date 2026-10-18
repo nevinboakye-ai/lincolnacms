@@ -1561,3 +1561,17 @@ No database change - refresh to see it.
 - **Badges** renamed across both systems (e.g. Kente Weaver, Susu Saver, Fete-goer, Anansi's Gift, Timbuktu Keeper, Palaver Tree, Drumbeat, Piti Piti, Riddim, Irie).
 - **Shared nav:** every member page has the same row (Hub, Perks, Resources, Network, Events, Sankofa, Journey) beside the Back button; it only shows what you have access to and marks where you are. Pages also fade smoothly between each other in supported browsers.
 - **Network page:** compact people rows, course chips, folding courses (your own opens first), first 8 people per course with Show all, and a Say hello panel (+XP for a first message).
+
+
+## 142. Capital-city ranks, country badges, a calmer hub, and a tidier Network, Events and Resources
+
+**Run in Supabase (all safe to repeat):** `084-sankofa-hub-core.sql` and `088-member-journey.sql` (new badge names), and the new `089-mmg-date-tbc.sql` (puts the Midlands Medics Gala on "Date TBC" on the Events page and takes it off the calendar until a date is set - the committee can set the real date again from the Events page).
+
+- **Member ranks are now capital cities:** Accra, Kingston, Abuja, Bridgetown, Nairobi, Port of Spain, Dakar, Addis Ababa - each with a line on why it's special on the journey page.
+- **Badges** now represent many countries (mostly African, plus the Caribbean): Ghana, Nigeria, South Africa, Kenya, Senegal, Mali, Botswana, Zimbabwe, Guinea, Morocco, Ethiopia, Jamaica, Trinidad and Tobago, Barbados, the Bahamas and Haiti. Each badge's description names its country. The Sankofa Hub's own badges follow the same idea.
+- **Members Hub:** no top navigation row on the hub itself (the other member pages keep it); the "just joined" note sits right under the greeting; the greeting is larger; a little more space between sections; the Midlands Medics Gala updates are hidden for now (one CSS line, `#member-hub-mmg-section`, brings them back).
+- **Midlands Medics Gala:** says "Date TBC" everywhere instead of 21 November, and the ticket countdown is replaced by "Date to be confirmed".
+- **Network:** boxed cards again, several per row (two across on a phone), the "just joined" bar is one slim line on a phone, course headings are tidier, and everything else from section 141 stays.
+- **Events (phone):** each event is a compact date-and-details card instead of a tall stack.
+- **Resources:** slimmer cards (thumbnail beside the title and details, like / comment and buttons across the bottom), and a small "+25 XP" on *Share a resource* until you've shared one.
+- Checked every public and member page at phone width for sideways overflow - none.
