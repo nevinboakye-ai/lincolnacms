@@ -1595,3 +1595,14 @@ No database changes this round.
 
 - **Members Hub:** the small level pill under the greeting is gone (the bigger journey bar already shows it). The bar now also says how far you are from the next city, e.g. "120 XP · 40 to Kingston".
 - **Badges:** tap any badge - on the Journey page, in the hub bar, or in the Sankofa Hub - to open a pop-up with its full text, how to earn it, and a short note on the culture or history behind its name (Akwaaba, Adire, Junkanoo, Ubuntu, Timbuktu, Sawubona, Piti Piti, Lalibela and so on). The text lives in `js/badge-lore.js`. The Journey page badge cards no longer cut off their text on a phone.
+
+
+## 145. Sankofa Circles manager, rebuilt (dashboard, "Sankofa Hub" section)
+
+No database changes. The long lanes of names are gone.
+
+- **Unplaced pool (left on desktop, on top on a phone):** a slim, scrollable list - avatar, name, "Mentor / Mentee · stage" and a **Place** button - with search and All / Mentees / Mentors. Tick people (or tap a row) and use **Add N here** on any Circle, or **Place in a Circle…**, to move several at once. Mentors have a gold ring.
+- **Circles are drawn as rings of seats:** one seat per place, filled by member avatars (mentors first, gold ring; ★ for the Circle lead), empty seats dashed. You see how full each Circle is at a glance, with first names underneath and a warning when there is no mentor or mentees are unpaired. Drag a person (or several ticked people) onto a Circle to place them; drag a seat to another Circle to move them; click a seat for their details. An **Undo** button appears after every move.
+- **Open & pair:** each Circle opens into mentor boxes with their mentees - drag a mentee onto a mentor, or choose from the menu - plus a **Needs a mentor** list and **Suggest pairings** for just that Circle.
+- Page height: 28 people in 6 Circles is about 1,350px on a phone (was several thousand).
+- The existing **Suggest matches** plan, Add people, announcements and activity log are unchanged. The panel is now headed "Sankofa Circles".

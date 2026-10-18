@@ -42,6 +42,7 @@
   var FREQ_LABEL = { weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly' };
   var MOOD_EMOJI = ['', '😞', '😕', '😐', '🙂', '😄'];
   var DRAG = null;
+  var detailRedraw = null;     // redraws an open Circle dialog after the data reloads
 
   function $(id) { return document.getElementById(id); }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
@@ -73,6 +74,7 @@
       var c = $('dash-count-sankofahub');
       if (c) c.textContent = ov.stats.participants ? plural(ov.stats.participants, 'person', 'people') + ' · ' + plural(ov.stats.circles, 'Circle') : 'Not started yet';
       render();
+      if (detailRedraw) detailRedraw();
     }, function (err) {
       loading = false;
       if (!quiet || !data) {
@@ -108,96 +110,125 @@
     return [p.name, p.stage, p.specialty, (p.interests || []).join(' '), (p.offers || []).join(' '), p.email].join(' ').toLowerCase().indexOf(query) !== -1;
   }
 
+  var selected = {};          // people ticked in the Unplaced pool
+
+  function selectedIds() { return Object.keys(selected).filter(function (id) { return personById(id); }); }
+
   function render() {
     var st = data.stats;
+    var sel = selectedIds().length;
     var html =
-      '<div class="shm-stats">' +
-        stat(st.participants, 'In the Hub') + stat(st.mentees, 'Mentees') + stat(st.mentors, 'Mentors') +
-        stat(st.placed, 'In Circles') + stat(data.unplaced.length, 'Unplaced', data.unplaced.length ? 'warn' : '') +
-        stat(st.pairings, 'Mentor pairings') + stat(st.upcoming, 'Meetings, next 14 days') + stat(st.need_help, 'Asked for a check-in', st.need_help ? 'bad' : '') +
+      '<div class="shm-statline" role="list">' +
+        stat(st.participants, 'in the Hub') + stat(st.mentors, 'mentors') + stat(st.mentees, 'mentees') +
+        stat(st.placed, 'in Circles') + stat(data.unplaced.length, 'unplaced', data.unplaced.length ? 'warn' : '') +
+        stat(st.pairings, 'pairings') + stat(st.upcoming, 'meetings soon') + (st.need_help ? stat(st.need_help, 'want a check-in', 'bad') : '') +
       '</div>' +
       '<div class="shm-toolbar">' +
         '<button type="button" class="btn btn-primary" data-shm-add>' + ICON.plus + ' Add people</button>' +
         '<button type="button" class="btn btn-outline" data-shm-newcircle>' + ICON.plus + ' New Circle</button>' +
         '<button type="button" class="btn btn-outline" data-shm-suggest>' + ICON.wand + ' Suggest matches</button>' +
-        '<button type="button" class="btn btn-outline" data-shm-event>Event or announcement for everyone</button>' +
-        '<button type="button" class="btn btn-outline" data-shm-history>' + ICON.log + ' Activity</button>' +
         '<span class="shm-spacer"></span>' +
-        '<input type="search" id="shm-q" placeholder="Search people…" aria-label="Search people" value="' + esc(query) + '">' +
-        '<div class="sh-seg ui-seg" role="group" aria-label="Show">' + [['all', 'All'], ['mentee', 'Mentees'], ['mentor', 'Mentors']].map(function (r) {
-          return '<button type="button" data-shm-role="' + r[0] + '" class="' + (roleFilter === r[0] ? 'is-active' : '') + '">' + r[1] + '</button>';
-        }).join('') + '</div>' +
+        '<button type="button" class="btn btn-outline" data-shm-event>Announce</button>' +
+        '<button type="button" class="btn btn-outline" data-shm-history>' + ICON.log + ' Activity</button>' +
       '</div>';
 
     if (!st.participants && !data.circles.length) {
-      html += '<div class="shm-empty"><h3>Let\'s get the Hub started</h3><ol><li><strong>Create your Circles</strong> - e.g. "Adowa", "Nkyinkyim" - with a colour and a motto.</li><li><strong>Add people</strong> - bring in accepted applicants and your professionals.</li><li><strong>Suggest matches</strong> to fill the Circles, or drag people in yourself.</li></ol>' +
+      html += '<div class="shm-empty"><h3>Let\'s get the Sankofa Circles started</h3><ol><li><strong>Create your Circles</strong> - e.g. "Adowa", "Nkyinkyim" - with a colour and a motto.</li><li><strong>Add people</strong> - bring in accepted applicants and your professionals.</li><li><strong>Suggest matches</strong> to fill the Circles, or tick people and place them yourself.</li></ol>' +
         '<p><button type="button" class="btn btn-primary" data-shm-newcircle>' + ICON.plus + ' Create the first Circle</button></p></div>';
     } else {
-      html += '<div class="shm-board" id="shm-board">' + unplacedLane() + activeCircles().map(circleLane).join('') + '</div>';
+      html += '<div class="shm-work">' + poolPanel(sel) + '<div class="shm-circles" id="shm-circles">' +
+        (activeCircles().length ? activeCircles().map(circleCard).join('') : '<p class="shm-lane-empty">No Circles yet - create one to start placing people.</p>') + '</div></div>';
       var archived = data.circles.filter(function (c) { return c.status !== 'active'; });
       if (archived.length) {
-        html += '<details class="shm-archived"><summary>Archived Circles (' + archived.length + ')</summary><div class="shm-board">' + archived.map(circleLane).join('') + '</div></details>';
+        html += '<details class="shm-archived"><summary>Archived Circles (' + archived.length + ')</summary><div class="shm-circles">' + archived.map(circleCard).join('') + '</div></details>';
       }
-      html += '<p class="sh-fineprint">Drag a card onto another lane to move that person - or use ' + ICON.dots.replace('class="icon"', 'class="icon sh-icon-inline"') + ' on the card (works on phones too). Sixth-form members are shown by name to you, but appear anonymously to everyone else in the Hub and can only be messaged by the committee.</p>';
+      html += '<p class="sh-fineprint">Tick people in the Unplaced list (or drag them) and place them in a Circle - drag a seat to another Circle to move someone. A <strong>gold ring</strong> marks a mentor. Open a Circle to pair mentors and mentees. Sixth-form members show by name to you, but anonymously to everyone else.</p>';
     }
+    var oldPool = root.querySelector('.shm-pool-list');
+    var poolTop = oldPool ? oldPool.scrollTop : 0;
     root.innerHTML = html;
-    var q = $('shm-q');
-    if (q && document.activeElement === document.body && query) { /* keep as is */ }
+    var newPool = root.querySelector('.shm-pool-list');
+    if (newPool && poolTop) newPool.scrollTop = poolTop;
   }
 
   function stat(n, label, tone) {
-    return '<div class="shm-stat' + (tone ? ' is-' + tone : '') + '"><strong>' + n + '</strong><span>' + esc(label) + '</span></div>';
+    return '<span class="shm-stat' + (tone ? ' is-' + tone : '') + '" role="listitem"><strong>' + n + '</strong> ' + esc(label) + '</span>';
   }
 
-  function unplacedLane() {
-    var list = data.unplaced;
-    return '<section class="shm-lane shm-lane--unplaced" data-lane="" aria-label="Unplaced people">' +
-      '<header class="shm-lane-head"><div><h3>Unplaced</h3><p>' + (list.length ? plural(list.length, 'person', 'people') + ' waiting for a Circle' : 'Everyone has a Circle 🎉') + '</p></div></header>' +
-      '<div class="shm-lane-body" data-drop="">' + (list.length ? list.map(personCard).join('') : '<p class="shm-lane-empty">Drop someone here to take them out of their Circle.</p>') + '</div></section>';
+  // ---- The pool of people who still need a Circle ----
+  function poolPanel(sel) {
+    var list = data.unplaced.filter(matches);
+    var shown = list.length;
+    return '<aside class="shm-pool" data-lane="" aria-label="Unplaced people">' +
+      '<header class="shm-pool-head"><div><h3>Unplaced</h3><p>' + (data.unplaced.length ? plural(data.unplaced.length, 'person', 'people') + ' waiting' : 'Everyone has a Circle 🎉') + '</p></div>' +
+        (shown ? '<button type="button" class="link-button" data-shm-selall>' + (sel >= shown && shown ? 'Clear' : 'Select all') + '</button>' : '') + '</header>' +
+      '<div class="shm-pool-tools"><input type="search" id="shm-q" placeholder="Search everyone…" aria-label="Search people" value="' + esc(query) + '">' +
+        '<div class="sh-seg ui-seg" role="group" aria-label="Show">' + [['all', 'All'], ['mentee', 'Mentees'], ['mentor', 'Mentors']].map(function (r) {
+          return '<button type="button" data-shm-role="' + r[0] + '" class="' + (roleFilter === r[0] ? 'is-active' : '') + '">' + r[1] + '</button>';
+        }).join('') + '</div></div>' +
+      '<div class="shm-pool-list">' + (list.length ? list.map(poolRow).join('') : '<p class="shm-lane-empty">' + (data.unplaced.length ? 'No one matches that.' : 'Drop someone here to take them out of their Circle.') + '</p>') + '</div>' +
+      (sel ? '<div class="shm-pool-bar"><strong>' + sel + ' selected</strong><button type="button" class="btn btn-primary btn-sm" data-shm-placesel>Place in a Circle…</button></div>' : '') +
+    '</aside>';
   }
 
-  function circleLane(c) {
-    var mentors = c.members.filter(function (m) { return m.role === 'mentor'; }).length;
-    var mentees = c.members.length - mentors;
+  function poolRow(p) {
+    var on = !!selected[p.id];
+    var d = inactiveDays(p);
+    var note = p.status !== 'active' ? p.status : (!p.profile_done ? 'no profile yet' : '');
+    return '<div class="shm-prow' + (on ? ' is-on' : '') + '" draggable="true" data-pcard="' + esc(p.id) + '">' +
+      '<label class="shm-check"><input type="checkbox" data-shm-tick="' + esc(p.id) + '"' + (on ? ' checked' : '') + ' aria-label="Select ' + esc(p.name) + '"></label>' +
+      '<span class="shm-prow-av' + (p.role === 'mentor' ? ' is-mentor' : '') + '">' + S.avatar(p, 'sm') + '</span>' +
+      '<span class="shm-prow-main"><strong>' + esc(p.name) + '</strong><small><b class="shm-role-tag' + (p.role === 'mentor' ? ' is-mentor' : '') + '">' + (p.role === 'mentor' ? 'Mentor' : 'Mentee') + '</b>' + (p.stage ? ' · ' + esc(p.stage) : '') + (note ? ' · ' + esc(note) : '') + '</small></span>' +
+      '<button type="button" class="shm-place" data-shm-place="' + esc(p.id) + '" aria-label="Place ' + esc(p.name) + ' in a Circle">Place</button>' +
+      '<button type="button" class="sh-icon-btn" data-shm-person-menu="' + esc(p.id) + '" aria-label="Options for ' + esc(p.name) + '">' + ICON.dots + '</button></div>';
+  }
+
+  // ---- A Circle: a ring of seats ----
+  function ringSeats(c) {
+    var members = c.members.slice().sort(function (a, b) {
+      return (b.role === 'mentor') - (a.role === 'mentor') || (b.is_lead ? 1 : 0) - (a.is_lead ? 1 : 0) || a.name.localeCompare(b.name);
+    });
+    var total = Math.max(c.capacity, members.length, 1);
+    var R = 37;
+    var dia = Math.max(9, Math.min(22, (2 * Math.PI * R / total) * 0.86));
+    var out = '';
+    for (var i = 0; i < total; i++) {
+      var ang = (i / total) * 2 * Math.PI - Math.PI / 2;
+      var pos = 'left:' + (50 + R * Math.cos(ang)).toFixed(2) + '%;top:' + (50 + R * Math.sin(ang)).toFixed(2) + '%;--d:' + dia.toFixed(1) + ';';
+      var m = members[i];
+      if (!m) { out += '<span class="shm-seat shm-seat--empty" style="' + pos + '" aria-hidden="true"></span>'; continue; }
+      out += '<button type="button" class="shm-seat' + (m.role === 'mentor' ? ' is-mentor' : '') + (m.is_lead ? ' is-lead' : '') + (matches(m) ? '' : ' is-dim') + (query && matches(m) ? ' is-hit' : '') +
+        '" style="' + pos + '" draggable="true" data-pcard="' + esc(m.id) + '" title="' + esc(m.name + ' · ' + (m.role === 'mentor' ? 'Mentor' : 'Mentee') + (m.is_lead ? ' · Lead' : '')) + '" aria-label="' + esc(m.name) + ', ' + (m.role === 'mentor' ? 'mentor' : 'mentee') + '">' + S.avatar(m, 'seat') + '</button>';
+    }
+    return out;
+  }
+
+  function circleCard(c) {
+    var mentors = c.members.filter(function (m) { return m.role === 'mentor'; });
+    var mentees = c.members.length - mentors.length;
     var over = c.members.length > c.capacity;
     var full = c.members.length >= c.capacity;
-    return '<section class="shm-lane sh-theme-' + esc(c.theme) + (c.status !== 'active' ? ' is-archived' : '') + '" data-lane="' + esc(c.id) + '" aria-label="' + esc(c.name) + '">' +
-      '<header class="shm-lane-head"><div class="shm-lane-title"><span class="shm-swatch" aria-hidden="true"></span><div><h3>' + esc(c.name) + '</h3>' +
-      '<p><span class="' + (over ? 'shm-over' : full ? 'shm-full' : '') + '">' + c.members.length + '/' + c.capacity + '</span> · ' + plural(mentors, 'mentor') + ' · ' + plural(mentees, 'mentee') +
-      (c.next_meeting ? ' · next ' + esc(S.fmtDay(c.next_meeting)) : '') + '</p></div></div>' +
-      '<button type="button" class="sh-icon-btn" data-shm-circle-menu="' + esc(c.id) + '" aria-label="Options for ' + esc(c.name) + '">' + ICON.dots + '</button></header>' +
-      (mentors === 0 && c.members.length ? '<p class="shm-warn">No mentor in this Circle yet</p>' : '') +
-      '<div class="shm-lane-body" data-drop="' + esc(c.id) + '">' + (c.members.length ? c.members.map(personCard).join('') : '<p class="shm-lane-empty">Drag people here</p>') + '</div></section>';
+    var needMentor = c.members.filter(function (m) { return m.role === 'mentee' && !m.mentor_id; }).length;
+    var sel = selectedIds().length;
+    var names = c.members.slice().sort(function (a, b) { return (b.role === 'mentor') - (a.role === 'mentor') || a.name.localeCompare(b.name); }).map(function (m) { return S.firstName ? S.firstName(m.name) : m.name.split(' ')[0]; });
+    var warn = '';
+    if (c.status === 'active') {
+      if (c.members.length && !mentors.length) warn = '<p class="shm-warn">No mentor yet</p>';
+      else if (needMentor) warn = '<p class="shm-warn shm-warn--soft">' + plural(needMentor, 'mentee') + ' without a mentor</p>';
+    }
+    return '<section class="shm-circle sh-theme-' + esc(c.theme) + (c.status !== 'active' ? ' is-archived' : '') + '" data-lane="' + esc(c.id) + '" aria-label="' + esc(c.name) + '">' +
+      '<header class="shm-circle-head"><span class="shm-swatch" aria-hidden="true"></span><h3>' + esc(c.name) + '</h3>' +
+        '<button type="button" class="sh-icon-btn" data-shm-circle-menu="' + esc(c.id) + '" aria-label="Options for ' + esc(c.name) + '">' + ICON.dots + '</button></header>' +
+      '<div class="shm-ring">' + ringSeats(c) + '<button type="button" class="shm-ring-mid" data-shm-open="' + esc(c.id) + '" aria-label="Open ' + esc(c.name) + '"><b class="' + (over ? 'shm-over' : full ? 'shm-full' : '') + '">' + c.members.length + '</b><small>of ' + c.capacity + '</small></button></div>' +
+      '<p class="shm-circle-meta">' + plural(mentors.length, 'mentor') + ' · ' + plural(mentees, 'mentee') + (c.next_meeting ? ' · next ' + esc(S.fmtDay(c.next_meeting)) : '') + '</p>' +
+      (names.length ? '<p class="shm-circle-names">' + esc(names.join(', ')) + '</p>' : '<p class="shm-circle-names is-empty">Empty - drag people here</p>') + warn +
+      '<footer class="shm-circle-foot">' + (sel && c.status === 'active' ? '<button type="button" class="btn btn-primary btn-sm" data-shm-addsel="' + esc(c.id) + '">Add ' + sel + ' here</button>' : '') +
+        '<button type="button" class="btn btn-outline btn-sm" data-shm-open="' + esc(c.id) + '">Open &amp; pair</button></footer></section>';
   }
 
   function inactiveDays(p) {
     if (!p.last_active) return Math.floor((Date.now() - new Date(p.joined_at).getTime()) / 86400000);
     return Math.floor((Date.now() - new Date(p.last_active).getTime()) / 86400000);
-  }
-
-  function personCard(p) {
-    var dim = !matches(p);
-    var flags = [];
-    if (p.checkin && p.checkin.need_help && (Date.now() - new Date(p.checkin.at).getTime()) < 21 * 86400000) flags.push('<span class="sh-flag" title="Asked for a check-in">Wants a check-in</span>');
-    if (p.status !== 'active') flags.push('<span class="sh-chip sh-chip--bad">' + esc(p.status) + '</span>');
-    var d = inactiveDays(p);
-    if (p.status === 'active' && d >= 21 && (Date.now() - new Date(p.joined_at).getTime()) > 21 * 86400000) flags.push('<span class="sh-chip" title="No activity for ' + d + ' days">Quiet ' + d + 'd</span>');
-    if (!p.profile_done) flags.push('<span class="sh-chip" title="Hasn\'t finished their Hub profile">No profile</span>');
-    var pairing = '';
-    if (p.role === 'mentee') {
-      var mentor = p.mentor_id ? personById(p.mentor_id) : null;
-      pairing = mentor ? '<span class="shm-pair">Mentor: ' + esc(mentor.name) + '</span>' : '<span class="shm-pair is-none">No mentor paired</span>';
-    } else {
-      var n = (p.mentee_ids || []).length;
-      pairing = '<span class="shm-pair">' + n + (p.capacity != null ? '/' + p.capacity : '') + ' mentee' + (n === 1 ? '' : 's') + '</span>';
-    }
-    return '<article class="shm-card' + (dim ? ' is-dim' : '') + '" draggable="true" data-pcard="' + esc(p.id) + '" tabindex="0" aria-label="' + esc(p.name) + ', ' + (p.role === 'mentor' ? 'mentor' : 'mentee') + '">' +
-      '<span class="shm-grip" aria-hidden="true">' + ICON.grip + '</span>' + S.avatar(p, 'md') +
-      '<div class="shm-card-main"><strong>' + esc(p.name) + '</strong>' +
-      '<span class="shm-card-sub">' + esc(p.stage || '') + '</span>' +
-      '<span class="shm-card-chips"><span class="sh-chip sh-chip--role">' + (p.role === 'mentor' ? 'Mentor' : 'Mentee') + '</span>' + (p.is_lead ? '<span class="sh-chip sh-chip--lead">Lead</span>' : '') +
-      (p.sixth_form ? '<span class="sh-chip" title="Shown anonymously to everyone except the committee">Sixth form</span>' : '') + pairing + flags.join('') + '</span></div>' +
-      '<button type="button" class="sh-icon-btn" data-shm-person-menu="' + esc(p.id) + '" aria-label="Options for ' + esc(p.name) + '">' + ICON.dots + '</button></article>';
   }
 
   // =======================================================================
@@ -220,6 +251,175 @@
         });
       });
     }, fail);
+  }
+
+  // Move one or many people. One person gets the usual Undo; several go through the plan call.
+  function bulkMove(ids, circleId) {
+    ids = ids.filter(function (id) { return personById(id); });
+    if (!ids.length) return Promise.resolve();
+    if (ids.length === 1) { selected = {}; return doMove(ids[0], circleId); }
+    var to = circleId ? circleById(circleId) : null;
+    var before = ids.map(function (id) { return { id: id, circle: personById(id).circle_id || null }; });
+    var changed = before.filter(function (b) { return b.circle !== (circleId || null); });
+    if (!changed.length) return Promise.resolve();
+    return rpc('sankofa_admin_apply_plan', { p_plan: { moves: changed.map(function (b) { return { user: b.id, circle: circleId || '' }; }), pairings: [] } }).then(function () {
+      selected = {};
+      return load(true).then(function () {
+        var over = to && to.members.length + changed.length > to.capacity;
+        S.toast(plural(changed.length, 'person', 'people') + ' moved to ' + (to ? to.name : 'Unplaced') + (over ? ' - now over its ' + to.capacity + ' places' : ''), {
+          action: { label: 'Undo', fn: function () {
+            var chain = Promise.resolve();
+            changed.forEach(function (b) { chain = chain.then(function () { return rpc('sankofa_admin_move', { p_user: b.id, p_circle: b.circle, p_note: 'Undo' }); }); });
+            chain.then(function () { return load(true); }, fail);
+          } }
+        });
+      });
+    }, fail);
+  }
+
+  // "Place in..." - a big, tappable list of Circles (works the same on a phone)
+  function openPlace(ids) {
+    ids = ids.filter(function (id) { return personById(id); });
+    if (!ids.length) return;
+    var who = ids.length === 1 ? personById(ids[0]).name : plural(ids.length, 'person', 'people');
+    var anyPlaced = ids.some(function (id) { return personById(id).circle_id; });
+    var circles = activeCircles();
+    var dlg = S.openDialog('<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button><span class="guide-eyebrow">Place in a Circle</span><h2 class="guide-title">' + esc(who) + '</h2>' +
+      (circles.length ? '<div class="shm-place-list">' + circles.map(function (c) {
+        var after = c.members.length + ids.filter(function (id) { return personById(id).circle_id !== c.id; }).length;
+        var mentors = c.members.filter(function (m) { return m.role === 'mentor'; }).length;
+        return '<button type="button" class="shm-place-opt sh-theme-' + esc(c.theme) + '" data-to="' + esc(c.id) + '"><span class="shm-swatch" aria-hidden="true"></span>' +
+          '<span class="shm-place-main"><strong>' + esc(c.name) + '</strong><small>' + c.members.length + '/' + c.capacity + ' · ' + plural(mentors, 'mentor') + '</small></span>' +
+          (after > c.capacity ? '<span class="sh-chip sh-chip--bad">Over</span>' : after === c.capacity ? '<span class="sh-chip">Fills it</span>' : '') + '</button>';
+      }).join('') + '</div>' : '<p class="sh-muted">Create a Circle first.</p>') +
+      (anyPlaced ? '<p class="shm-place-un"><button type="button" class="link-button" data-to="">Take out of their Circle (Unplaced)</button></p>' : ''));
+    dlg.el.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-to]');
+      if (!b) return;
+      var to = b.getAttribute('data-to') || null;
+      dlg.close();
+      bulkMove(ids, to);
+    });
+  }
+
+  // A Circle opened up: who is in it, and who mentors whom
+  function openCircleDetail(id) {
+    var dlg = S.openDialog('', 'shm-dlg-wide');
+    var dragId = null;
+    dlg.onClose = function () { detailRedraw = null; };
+    function draw() {
+      var c = circleById(id);
+      if (!c) { dlg.close(); return; }
+      var mentors = c.members.filter(function (m) { return m.role === 'mentor'; });
+      var mentees = c.members.filter(function (m) { return m.role === 'mentee'; });
+      var mentorIds = {};
+      mentors.forEach(function (m) { mentorIds[m.id] = true; });
+      var unpaired = mentees.filter(function (m) { return !m.mentor_id || !mentorIds[m.mentor_id]; });
+      function chip(m, removable) {
+        var out = '<span class="shm-pchip" draggable="true" data-dpcard="' + esc(m.id) + '">' + S.avatar(m, 'sm') + '<button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '">' + esc(m.name) + '</button>' +
+          (removable ? '<button type="button" class="shm-x" data-unpair="' + esc(m.id) + '" aria-label="Unpair ' + esc(m.name) + '" title="Unpair">&times;</button>' : '') + '</span>';
+        return out;
+      }
+      var html = '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
+        '<div class="shm-detail-head sh-theme-' + esc(c.theme) + '"><span class="shm-swatch" aria-hidden="true"></span><div><span class="guide-eyebrow">Sankofa Circle</span><h2 class="guide-title" style="margin:0">' + esc(c.name) + '</h2>' +
+        '<p class="sh-muted" style="margin:2px 0 0">' + c.members.length + '/' + c.capacity + ' places · ' + plural(mentors.length, 'mentor') + ' · ' + plural(mentees.length, 'mentee') + (c.motto ? ' · “' + esc(c.motto) + '”' : '') + '</p></div></div>' +
+        '<div class="shm-detail-actions"><button type="button" class="btn btn-outline btn-sm" data-d-auto' + (unpaired.length && mentors.length ? '' : ' disabled') + '>' + ICON.wand + ' Suggest pairings</button>' +
+        '<button type="button" class="btn btn-outline btn-sm" data-d-menu>Meeting, announcement &amp; settings</button></div>';
+      html += '<h3 class="sh-dlg-h">Mentors <span class="sh-muted">drag a mentee onto a mentor, or use the menu</span></h3>';
+      if (!mentors.length) html += '<p class="sh-muted">No mentor in this Circle yet. Place a mentor here from the Unplaced list.</p>';
+      html += '<div class="shm-mgroups">' + mentors.map(function (m) {
+        var mine = mentees.filter(function (x) { return x.mentor_id === m.id; });
+        var cap = m.capacity;
+        return '<div class="shm-mgroup" data-mentor-drop="' + esc(m.id) + '"><div class="shm-mgroup-head">' + S.avatar(m, 'sm') + '<button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '"><strong>' + esc(m.name) + '</strong></button>' +
+          '<span class="' + (cap != null && mine.length > cap ? 'shm-over' : '') + ' shm-mgroup-n">' + mine.length + (cap != null ? '/' + cap : '') + '</span></div>' +
+          '<div class="shm-mgroup-body">' + (mine.length ? mine.map(function (x) { return chip(x, true); }).join('') : '<span class="shm-lane-empty">No mentees yet</span>') + '</div></div>';
+      }).join('') + '</div>';
+      if (unpaired.length) {
+        html += '<h3 class="sh-dlg-h">Needs a mentor (' + unpaired.length + ')</h3><ul class="shm-unpaired">' + unpaired.map(function (m) {
+          var other = m.mentor_id && !mentorIds[m.mentor_id] ? personById(m.mentor_id) : null;
+          return '<li draggable="true" data-dpcard="' + esc(m.id) + '">' + S.avatar(m, 'sm') + '<span class="shm-prow-main"><button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '"><strong>' + esc(m.name) + '</strong></button><small>' + esc(m.stage || '') + (other ? ' · paired with ' + esc(other.name) + ' (other Circle)' : '') + '</small></span>' +
+            (mentors.length ? '<select data-pair-for="' + esc(m.id) + '" aria-label="Choose a mentor for ' + esc(m.name) + '"><option value="">Choose a mentor…</option>' + mentors.map(function (mt) {
+              var n = mentees.filter(function (x) { return x.mentor_id === mt.id; }).length;
+              return '<option value="' + esc(mt.id) + '">' + esc(mt.name) + ' (' + n + (mt.capacity != null ? '/' + mt.capacity : '') + ')</option>';
+            }).join('') + '</select>' : '') + '</li>';
+        }).join('') + '</ul>';
+      } else if (mentees.length) {
+        html += '<p class="shm-allpaired">Every mentee has a mentor 🎉</p>';
+      }
+      dlg.el.innerHTML = html;
+    }
+    draw();
+    detailRedraw = function () { if (!dlg.closed) draw(); };
+    function after(msg) { return load(true).then(function () { if (msg) S.toast(msg); draw(); }); }
+    function pair(menteeId, mentorId) {
+      return rpc('sankofa_admin_pair', { p_mentee: menteeId, p_mentor: mentorId, p_note: null }).then(function () { return after('Paired'); }, fail);
+    }
+    dlg.el.addEventListener('change', function (e) {
+      var s = e.target.closest('[data-pair-for]');
+      if (s && s.value) pair(s.getAttribute('data-pair-for'), s.value);
+    });
+    dlg.el.addEventListener('click', function (e) {
+      var u = e.target.closest('[data-unpair]');
+      if (u) { rpc('sankofa_admin_unpair', { p_mentee: u.getAttribute('data-unpair') }).then(function () { return after('Unpaired'); }, fail); return; }
+      var pm = e.target.closest('[data-shm-person-menu]');
+      if (pm) { openPersonMenu(pm.getAttribute('data-shm-person-menu')); return; }
+      if (e.target.closest('[data-d-menu]')) { openCircleMenu(id); return; }
+      if (e.target.closest('[data-d-auto]')) {
+        var plan = pairingsForCircle(circleById(id));
+        if (!plan.length) { S.toast('No pairings to suggest - check mentor capacity'); return; }
+        rpc('sankofa_admin_apply_plan', { p_plan: { moves: [], pairings: plan.map(function (x) { return { mentee: x.mentee.id, mentor: x.mentor.id }; }) } }).then(function () {
+          return after(plural(plan.length, 'pairing') + ' made - ' + plan.slice(0, 2).map(function (x) { return x.mentee.name.split(' ')[0] + ' → ' + x.mentor.name.split(' ')[0]; }).join(', ') + (plan.length > 2 ? '…' : ''));
+        }, fail);
+      }
+    });
+    dlg.el.addEventListener('dragstart', function (e) {
+      var d = e.target.closest && e.target.closest('[data-dpcard]');
+      if (!d) return;
+      dragId = d.getAttribute('data-dpcard');
+      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId); } catch (er) { /* fine */ }
+    });
+    dlg.el.addEventListener('dragover', function (e) {
+      var g = e.target.closest && e.target.closest('[data-mentor-drop]');
+      if (!g || !dragId) return;
+      e.preventDefault();
+      g.classList.add('is-over');
+    });
+    dlg.el.addEventListener('dragleave', function (e) {
+      var g = e.target.closest && e.target.closest('[data-mentor-drop]');
+      if (g && !g.contains(e.relatedTarget)) g.classList.remove('is-over');
+    });
+    dlg.el.addEventListener('drop', function (e) {
+      var g = e.target.closest && e.target.closest('[data-mentor-drop]');
+      if (!g || !dragId) return;
+      e.preventDefault();
+      var mid = dragId; dragId = null;
+      var p = personById(mid);
+      if (p && p.role === 'mentee' && p.mentor_id !== g.getAttribute('data-mentor-drop')) pair(mid, g.getAttribute('data-mentor-drop'));
+      else draw();
+    });
+  }
+
+  // Best mentor in the Circle for each mentee who doesn't have one
+  function pairingsForCircle(c) {
+    var mentors = c.members.filter(function (m) { return m.role === 'mentor' && m.status === 'active'; });
+    var mentorIds = {};
+    mentors.forEach(function (m) { mentorIds[m.id] = true; });
+    var mentees = c.members.filter(function (m) { return m.role === 'mentee' && (!m.mentor_id || !mentorIds[m.mentor_id]); });
+    var load = {};
+    mentors.forEach(function (m) { load[m.id] = c.members.filter(function (x) { return x.mentor_id === m.id; }).length; });
+    var cands = [];
+    mentees.forEach(function (me) { mentors.forEach(function (mt) { cands.push({ mentee: me, mentor: mt, a: affinity(me, mt) }); }); });
+    cands.sort(function (x, y) { return y.a.score - x.a.score || (load[x.mentor.id] || 0) - (load[y.mentor.id] || 0); });
+    var done = {}, out = [];
+    cands.forEach(function (cd) {
+      if (done[cd.mentee.id]) return;
+      var cap = cd.mentor.capacity == null ? 6 : cd.mentor.capacity;
+      if ((load[cd.mentor.id] || 0) >= cap) return;
+      done[cd.mentee.id] = true;
+      load[cd.mentor.id] = (load[cd.mentor.id] || 0) + 1;
+      out.push(cd);
+    });
+    return out;
   }
 
   // =======================================================================
@@ -692,19 +892,43 @@
     if (t.closest('[data-shm-event]')) { openEventChooser(); return; }
     if (t.closest('[data-shm-history]')) { openHistory(); return; }
     if ((el = t.closest('[data-shm-role]'))) { roleFilter = el.getAttribute('data-shm-role'); render(); return; }
+    if (t.closest('[data-shm-selall]')) {
+      var vis = data.unplaced.filter(matches);
+      var all = vis.length && vis.every(function (p) { return selected[p.id]; });
+      vis.forEach(function (p) { if (all) delete selected[p.id]; else selected[p.id] = true; });
+      render(); return;
+    }
+    if (t.closest('[data-shm-placesel]')) { openPlace(selectedIds()); return; }
+    if ((el = t.closest('[data-shm-addsel]'))) { bulkMove(selectedIds(), el.getAttribute('data-shm-addsel')); return; }
+    if ((el = t.closest('[data-shm-place]'))) { openPlace([el.getAttribute('data-shm-place')]); return; }
+    if ((el = t.closest('[data-shm-open]'))) { openCircleDetail(el.getAttribute('data-shm-open')); return; }
     if ((el = t.closest('[data-shm-circle-menu]'))) { openCircleMenu(el.getAttribute('data-shm-circle-menu')); return; }
     if ((el = t.closest('[data-shm-person-menu]'))) { openPersonMenu(el.getAttribute('data-shm-person-menu')); return; }
-    if ((el = t.closest('[data-pcard]'))) { openPersonMenu(el.getAttribute('data-pcard')); return; }
+    if (t.closest('.shm-check')) return;
+    if ((el = t.closest('.shm-prow'))) {   // tapping a row ticks it
+      var id = el.getAttribute('data-pcard');
+      if (selected[id]) delete selected[id]; else selected[id] = true;
+      render(); return;
+    }
+    if ((el = t.closest('.shm-seat[data-pcard]'))) { openPersonMenu(el.getAttribute('data-pcard')); return; }
+  });
+  root.addEventListener('change', function (e) {
+    var tick = e.target.closest && e.target.closest('[data-shm-tick]');
+    if (tick) {
+      var id = tick.getAttribute('data-shm-tick');
+      if (tick.checked) selected[id] = true; else delete selected[id];
+      render();
+    }
   });
   root.addEventListener('keydown', function (e) {
-    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-pcard]')) { e.preventDefault(); openPersonMenu(e.target.getAttribute('data-pcard')); }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.shm-prow')) { e.preventDefault(); var id = e.target.getAttribute('data-pcard'); if (selected[id]) delete selected[id]; else selected[id] = true; render(); }
   });
   root.addEventListener('input', function (e) {
     if (e.target.id === 'shm-q') {
       query = e.target.value.trim().toLowerCase();
       var pos = e.target.selectionStart;
       render();
-      var q = $('shm-q'); q.focus(); try { q.setSelectionRange(pos, pos); } catch (er) { /* fine */ }
+      var q = $('shm-q'); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch (er) { /* fine */ } }
     }
   });
 
@@ -729,7 +953,7 @@
     if (!lane || !DRAG) return;
     e.preventDefault();
     try { e.dataTransfer.dropEffect = 'move'; } catch (er) { /* fine */ }
-    Array.prototype.forEach.call(root.querySelectorAll('.shm-lane.is-over'), function (n) { if (n !== lane) n.classList.remove('is-over'); });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-lane].is-over'), function (n) { if (n !== lane) n.classList.remove('is-over'); });
     lane.classList.add('is-over');
   });
   root.addEventListener('dragleave', function (e) {
@@ -744,12 +968,11 @@
     DRAG = null;
     lane.classList.remove('is-over');
     var target = lane.getAttribute('data-lane') || null;
-    var p = personById(id);
-    if (p && (p.circle_id || null) !== target) {
-      var c = target ? circleById(target) : null;
-      if (c && c.status !== 'active') { S.toast('That Circle is archived', { type: 'err' }); return; }
-      doMove(id, target);
-    }
+    var c = target ? circleById(target) : null;
+    if (c && c.status !== 'active') { S.toast('That Circle is archived', { type: 'err' }); return; }
+    // Dragging one of several ticked people takes them all along.
+    var ids = selected[id] && selectedIds().length > 1 ? selectedIds() : [id];
+    bulkMove(ids, target);
   });
 
   // =======================================================================
