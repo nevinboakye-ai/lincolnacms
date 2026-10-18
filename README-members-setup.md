@@ -1587,3 +1587,11 @@ No database changes this round.
 - **Members Hub (phone):** more space between the greeting and the "just joined" note.
 - **Platform dashboard (phone):** slim title (the long line is hidden), two-across section tiles with the descriptions hidden, smaller stat tiles, tighter section headings, and scrolling filter tabs, so far less scrolling.
 - Rechecked every page at phone width for sideways overflow and cut-off text - nothing found outside the intentional hero image.
+
+
+## 144. Badge stories, and the next city on the hub bar
+
+No database changes this round.
+
+- **Members Hub:** the small level pill under the greeting is gone (the bigger journey bar already shows it). The bar now also says how far you are from the next city, e.g. "120 XP · 40 to Kingston".
+- **Badges:** tap any badge - on the Journey page, in the hub bar, or in the Sankofa Hub - to open a pop-up with its full text, how to earn it, and a short note on the culture or history behind its name (Akwaaba, Adire, Junkanoo, Ubuntu, Timbuktu, Sawubona, Piti Piti, Lalibela and so on). The text lives in `js/badge-lore.js`. The Journey page badge cards no longer cut off their text on a phone.

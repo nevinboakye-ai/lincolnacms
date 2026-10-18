@@ -99,7 +99,7 @@
     html += '<section class="jy-panel" id="badges" aria-labelledby="jy-badges-h"><div class="jy-panel-head"><h2 id="jy-badges-h">Badges <span class="jy-muted">' + earned.length + ' of ' + s.badges.length + '</span></h2>' +
       '<div class="sh-seg ui-seg" role="group" aria-label="Show badges"><button type="button" data-jy-filter="earned" class="' + (filter === 'earned' ? 'is-active' : '') + '">Earned</button><button type="button" data-jy-filter="todo" class="' + (filter === 'todo' ? 'is-active' : '') + '">To earn</button><button type="button" data-jy-filter="all" class="' + (filter === 'all' ? 'is-active' : '') + '">All</button></div></div>' +
       '<ul class="jy-badges">' + s.badges.filter(function (b) { return filter === 'all' || (filter === 'earned' ? b.earned : !b.earned); }).map(function (b) {
-        return '<li class="jy-badge-card' + (b.earned ? ' is-earned' : '') + '"><span class="jy-badge jy-badge--lg" aria-hidden="true">' + esc(b.icon) + '</span><div><strong>' + esc(b.name) + '</strong>' +
+        return '<li class="jy-badge-card' + (b.earned ? ' is-earned' : '') + '"' + (window.lacmsBadgeLore ? window.lacmsBadgeLore.attrs(b, 'member') : '') + '><span class="jy-badge jy-badge--lg" aria-hidden="true">' + esc(b.icon) + '</span><div><strong>' + esc(b.name) + '</strong>' +
           '<small>' + esc(b.earned ? b.description : b.hint) + '</small>' + (b.earned ? '<small class="jy-earned">Earned ' + esc(fmtDay(b.awarded_at)) + '</small>' : '') + '</div></li>';
       }).join('') + '</ul></section>';
 

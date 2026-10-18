@@ -482,7 +482,7 @@
     var earned = p.badges.filter(function (b) { return b.earned; });
     return '<div class="sh-card"><div class="sh-card-head"><h3>Badges</h3><button type="button" class="link-button" data-sh-goto="rewards">' + earned.length + ' of ' + p.badges.length + '</button></div>' +
       (earned.length
-        ? '<p class="sh-badge-row">' + earned.slice(-8).reverse().map(function (b) { return '<span class="sh-badge-ico" title="' + esc(b.name + ' - ' + b.description) + '">' + esc(b.icon) + '</span>'; }).join('') + '</p>'
+        ? '<p class="sh-badge-row">' + earned.slice(-8).reverse().map(function (b) { return '<span class="sh-badge-ico" title="' + esc(b.name + ' - tap for the story') + '"' + (window.lacmsBadgeLore ? window.lacmsBadgeLore.attrs(b, 'sankofa') : '') + '>' + esc(b.icon) + '</span>'; }).join('') + '</p>'
         : '<p class="sh-muted">Take part to earn your first badge - finish your profile for "First steps".</p>') + '</div>';
   }
 
@@ -1057,7 +1057,7 @@
       '<p class="sh-top-chips">' + (p.streak > 0 ? '<span class="sh-chip sh-chip--streak">' + ICON.flame + p.streak + '-week streak</span>' : '<span class="sh-chip">No streak yet - do a check-in this week</span>') +
       '<span class="sh-chip">Best: ' + (p.best_streak || 0) + ' weeks</span><span class="sh-chip">' + (p.xp_30d || 0) + ' XP in 30 days</span></p></div></div>';
     html += '<div class="sh-card"><div class="sh-card-head"><h3>Badges</h3><span class="sh-muted">' + earned + ' of ' + p.badges.length + ' earned</span></div><ul class="sh-badges">' + p.badges.map(function (b) {
-      return '<li class="sh-badge' + (b.earned ? ' is-earned' : '') + '"><span class="sh-badge-ico" aria-hidden="true">' + esc(b.icon) + '</span><div><strong>' + esc(b.name) + '</strong><small>' + esc(b.description) + '</small>' +
+      return '<li class="sh-badge' + (b.earned ? ' is-earned' : '') + '"' + (window.lacmsBadgeLore ? window.lacmsBadgeLore.attrs(b, 'sankofa') : '') + '><span class="sh-badge-ico" aria-hidden="true">' + esc(b.icon) + '</span><div><strong>' + esc(b.name) + '</strong><small>' + esc(b.description) + '</small>' +
         (b.earned ? '<small class="sh-badge-date">Earned ' + esc(S.fmtDay(b.awarded_at)) + '</small>' : '') + '</div></li>';
     }).join('') + '</ul></div>';
     html += '</div><div class="sh-col sh-col--side">';

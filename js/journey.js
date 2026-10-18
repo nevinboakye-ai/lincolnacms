@@ -112,7 +112,7 @@
     html += '<div class="jy-bar-row">' +
       '<a class="jy-bar-main" href="member-journey.html" aria-label="Open your journey - level ' + p.level + ', ' + esc(rankName(p.level)) + '">' + ring(p, 'sm') +
         '<span class="jy-bar-text"><strong>Level ' + p.level + ' &middot; ' + esc(rankName(p.level)) + '</strong>' +
-        '<small>' + p.xp + ' XP' + (p.streak > 0 ? ' &middot; <span class="jy-bar-streak">' + FLAME + p.streak + 'w</span>' : '') + '</small></span></a>' +
+        '<small>' + p.xp + ' XP' + (p.level < RANKS.length ? ' &middot; ' + Math.max(p.next_floor - p.xp, 0) + ' to ' + esc(rankName(p.level + 1)) : ' &middot; top rank') + (p.streak > 0 ? ' &middot; <span class="jy-bar-streak">' + FLAME + p.streak + 'w</span>' : '') + '</small></span></a>' +
       '<span class="jy-bar-meter" role="progressbar" aria-label="Progress to level ' + (p.level + 1) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + levelPct(p) + '"><i style="width:' + levelPct(p) + '%"></i></span>' +
       (top ? '<a class="jy-bar-next" href="' + esc(top.href) + '"><span class="jy-bar-next-label">Next</span><span class="jy-bar-next-title">' + esc(top.title) + '</span><span class="jy-xp">+' + top.xp + ' XP</span></a>' : '<span class="jy-bar-next jy-bar-next--done">You\'re all caught up</span>') +
       '<button type="button" class="jy-bar-toggle" data-jy-toggle aria-expanded="' + moreOpen + '" aria-controls="jy-more" aria-label="' + (moreOpen ? 'Hide' : 'Show') + ' more of your journey"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>' +
@@ -121,7 +121,7 @@
       (steps.length > 1 ? '<ul class="jy-steps">' + steps.slice(1).map(function (st) {
         return '<li><a class="jy-step" href="' + esc(st.href) + '"><span class="jy-step-text"><strong>' + esc(st.title) + '</strong><small>' + esc(st.sub) + '</small></span><span class="jy-xp">+' + st.xp + ' XP</span></a></li>';
       }).join('') + '</ul>' : '') +
-      '<div class="jy-bar-foot">' + (earned.length ? '<span class="jy-badge-row">' + earned.slice(-6).reverse().map(function (b) { return '<span class="jy-badge" title="' + esc(b.name + ' - ' + b.description) + '">' + esc(b.icon) + '</span>'; }).join('') + '</span>' : '<span class="jy-muted">Your first badges are a step or two away.</span>') +
+      '<div class="jy-bar-foot">' + (earned.length ? '<span class="jy-badge-row">' + earned.slice(-6).reverse().map(function (b) { return '<span class="jy-badge jy-badge--btn" title="' + esc(b.name + ' - tap for the story') + '"' + (window.lacmsBadgeLore ? window.lacmsBadgeLore.attrs(b, 'member') : '') + '>' + esc(b.icon) + '</span>'; }).join('') + '</span>' : '<span class="jy-muted">Your first badges are a step or two away.</span>') +
         '<a class="jy-link" href="member-journey.html">' + earned.length + ' of ' + s.badges.length + ' badges &middot; see your journey</a></div>' +
     '</div></article>';
     return html;
