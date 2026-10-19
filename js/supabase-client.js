@@ -30,6 +30,11 @@ var supabaseClient = supabaseIsConfigured
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true
-      }
+      },
+      // js/view-as.js (the president's "View the website as..." preview) wraps
+      // fetch so a preview can never write anything. It does nothing unless a
+      // preview has been switched on in this tab.
+      global: window.lacmsViewAs ? { fetch: window.lacmsViewAs.fetch } : {}
     })
   : null;
+if (supabaseClient && window.lacmsViewAs) window.lacmsViewAs.attach(supabaseClient);

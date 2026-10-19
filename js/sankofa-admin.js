@@ -42,6 +42,8 @@
   var FREQ_LABEL = { weekly: 'Weekly', fortnightly: 'Fortnightly', monthly: 'Monthly' };
   var MOOD_EMOJI = ['', '😞', '😕', '😐', '🙂', '😄'];
   var DRAG = null;
+  var managersTried = false;
+  var managers = null;         // president only: who can manage the Circles (null for everyone else)
   var detailRedraw = null;     // redraws an open Circle dialog after the data reloads
 
   function $(id) { return document.getElementById(id); }
@@ -58,6 +60,7 @@
     dots: '<svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
     wand: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 1.5 3L20 8.500 16.500 10 15 13l-1.500-3L10 8.500 13.500 7z"/><path d="M4 20 14 10"/></svg>',
     log: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.500 14"/></svg>',
+    people: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.870"/><path d="M16 3.130a4 4 0 0 1 0 7.750"/></svg>',
     grip: '<svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>'
   };
 
@@ -75,6 +78,7 @@
       if (c) c.textContent = ov.stats.participants ? plural(ov.stats.participants, 'person', 'people') + ' · ' + plural(ov.stats.circles, 'Circle') : 'Not started yet';
       render();
       if (detailRedraw) detailRedraw();
+      if (managers === null && !managersTried) { managersTried = true; loadManagers().then(function (m) { if (m) render(); }); }
     }, function (err) {
       loading = false;
       if (!quiet || !data) {
@@ -129,6 +133,7 @@
         '<button type="button" class="btn btn-outline" data-shm-suggest>' + ICON.wand + ' Suggest matches</button>' +
         '<span class="shm-spacer"></span>' +
         '<button type="button" class="btn btn-outline" data-shm-event>Announce</button>' +
+        (managers ? '<button type="button" class="btn btn-outline" data-shm-managers>' + ICON.people + ' Who can manage</button>' : '') +
         '<button type="button" class="btn btn-outline" data-shm-history>' + ICON.log + ' Activity</button>' +
       '</div>';
 
@@ -729,6 +734,54 @@
   }
 
   // =======================================================================
+  // Who can manage the Circles (president only)
+  // =======================================================================
+  // Handing someone the manager sets Hub Access overrides in the database (migration 090),
+  // and taking it back restores what they had before. The database checks every
+  // Circle-manager call, so this switch is the only thing a manager needs.
+  function loadManagers() {
+    return rpc('president_get_sankofa_managers').then(function (rows) {
+      managers = rows || [];
+      return managers;
+    }, function () { managers = null; return null; });
+  }
+
+  function openManagers() {
+    var dlg = S.openDialog('<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button><span class="guide-eyebrow">Sankofa Circles</span><h2 class="guide-title">Who can manage the Circles</h2>' +
+      '<p class="guide-text">Committee members you switch on get the same Circle manager as you: place people, pair mentors, schedule meetings and post announcements. They find it under Dashboard &rarr; Sankofa Hub. Only you can change this list.</p><div class="shm-mgr-list" id="shm-mgr-list"><p class="sh-muted">Loading…</p></div>', 'shm-dlg-mgr');
+    function draw() {
+      var box = dlg.el.querySelector('#shm-mgr-list');
+      if (!box) return;
+      if (!managers || !managers.length) {
+        box.innerHTML = '<p class="sh-muted">No committee members found yet. Committee members appear here once their account has the Executive or Supporting Committee type.</p>';
+        return;
+      }
+      box.innerHTML = managers.map(function (m) {
+        var viaRules = m.can_manage && !m.granted;
+        return '<label class="shm-mgr-row' + (m.can_manage ? ' is-on' : '') + '">' + S.avatar({ name: m.full_name }, 'md') +
+          '<span class="shm-mgr-main"><strong>' + esc(m.full_name) + '</strong><small>' + (m.member_type === 'executive_committee' ? 'Executive Committee' : 'Supporting Committee') +
+          (m.course ? ' · ' + esc(m.course) : '') + (viaRules ? ' · through your Hub Access rules' : '') + '</small></span>' +
+          '<span class="shm-switch"><input type="checkbox" role="switch" data-mgr="' + esc(m.user_id) + '"' + (m.can_manage ? ' checked' : '') + (viaRules ? ' disabled' : '') +
+          ' aria-label="' + esc(m.full_name) + ' can manage the Circles"><span aria-hidden="true"></span></span></label>';
+      }).join('');
+    }
+    function refresh() { return loadManagers().then(draw); }
+    refresh();
+    dlg.el.addEventListener('change', function (e) {
+      var cb = e.target.closest && e.target.closest('[data-mgr]');
+      if (!cb) return;
+      var id = cb.getAttribute('data-mgr');
+      var m = (managers || []).filter(function (x) { return x.user_id === id; })[0];
+      var on = cb.checked;
+      cb.disabled = true;
+      rpc('president_set_sankofa_manager', { p_user: id, p_on: on }).then(function () {
+        S.toast(on ? (m ? m.full_name : 'They') + ' can now manage the Circles' : (m ? m.full_name : 'They') + ' can no longer manage the Circles');
+        return refresh();
+      }, function (err) { fail(err); return refresh(); });
+    });
+  }
+
+  // =======================================================================
   // Match suggestions
   // =======================================================================
   function lc(s) { return String(s || '').toLowerCase().trim(); }
@@ -891,6 +944,7 @@
     if (t.closest('[data-shm-suggest]')) { openSuggest(); return; }
     if (t.closest('[data-shm-event]')) { openEventChooser(); return; }
     if (t.closest('[data-shm-history]')) { openHistory(); return; }
+    if (t.closest('[data-shm-managers]')) { openManagers(); return; }
     if ((el = t.closest('[data-shm-role]'))) { roleFilter = el.getAttribute('data-shm-role'); render(); return; }
     if (t.closest('[data-shm-selall]')) {
       var vis = data.unplaced.filter(matches);

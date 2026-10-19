@@ -1606,3 +1606,21 @@ No database changes. The long lanes of names are gone.
 - **Open & pair:** each Circle opens into mentor boxes with their mentees - drag a mentee onto a mentor, or choose from the menu - plus a **Needs a mentor** list and **Suggest pairings** for just that Circle.
 - Page height: 28 people in 6 Circles is about 1,350px on a phone (was several thousand).
 - The existing **Suggest matches** plan, Add people, announcements and activity log are unchanged. The panel is now headed "Sankofa Circles".
+
+
+## 146. "View site as…" and choosing who manages the Sankofa Circles
+
+**Run in Supabase (both safe to repeat):** `090-sankofa-managers.sql` and `091-view-as.sql`.
+
+### View the website as another account (president only)
+- Dashboard → **View site as…** (or the small purple **View as** button at the bottom-left of any page while you're signed in as the president).
+- Pick a **quick preset** (Medicine Y1, Pharmacy Y2, Midwifery Y1, Nursing Y2, Sixth former, Executive Committee, Supporting Committee, Sankofa mentor, Alumni doctor, Pharmacist, MMG guest, Logged out), **build your own** (type, course, year, committee title, kind of professional), or use the **A real person** tab to see the site as a particular member or professional (their course, type and any individual access you've given them).
+- A list under the picker shows exactly which features that account gets under your Hub Access rules before you start.
+- While previewing, a purple bar at the bottom says who you're viewing as, with **Switch** and **Exit**. You stay signed in as yourself; "Log out" while previewing just ends the preview.
+- **It's read-only:** every save, like, registration, message, upload and email is refused, and a few quiet background writes (presence, analytics) are skipped, so the preview never changes any data or the site stats. The account looks brand new (no tours seen, no discounts used, no registrations).
+- **What it does and doesn't show:** menus, locked / hidden features, the profile (name, course, year, type) and the dashboard sections come from the real Hub Access rules for that account type (migration 091 puts the rule check in one place, shared with the real login check). Content lists come from the live site as you see it, so a list the real account couldn't read might show more. Chat is switched off in a preview, and your own Journey progress is what shows. Preview only lasts for the browser tab and ends after six hours.
+- Code: `js/view-as.js` (wraps the Supabase client's `fetch`; loaded before `js/supabase-client.js` on every page).
+
+### Choose who can manage the Sankofa Circles (president only)
+- Dashboard → Sankofa Hub → **Who can manage**. Switch on any Executive or Supporting Committee member and they get the same Circle manager you have (placing people, pairing, meetings, announcements) under Dashboard → Sankofa Hub, plus the Sankofa applications section. Switch them off and their access goes back exactly as it was.
+- It works through the existing per-person Hub Access overrides (`sankofa_hub` and `dash_sankofa`), recording what each person had before so switching off restores it. Every Circle-manager call is still checked in the database. Only the president can change the list.
