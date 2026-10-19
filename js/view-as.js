@@ -746,10 +746,9 @@
       });
       if (!list.length) return '<p class="va-muted">Nobody matches that.</p>';
       return list.slice(0, 80).map(function (p) {
-        return '<button type="button" class="va-person' + (p.activated ? '' : ' is-off') + '" data-person="' + esc(p.key) + '"' + (p.activated ? '' : ' disabled') + '>' +
+        return '<button type="button" class="va-person" data-person="' + esc(p.key) + '">' +
           '<span class="va-person-av" aria-hidden="true">' + esc((p.full_name || '?').charAt(0).toUpperCase()) + '</span>' +
-          '<span class="va-person-main"><strong>' + esc(p.full_name) + '</strong><small>' + esc(personSub(p)) + '</small></span>' +
-          (p.activated ? '' : '<span class="va-person-tag">Not set up yet</span>') + '</button>';
+          '<span class="va-person-main"><strong>' + esc(p.full_name) + '</strong><small>' + esc(personSub(p)) + '</small></span></button>';
       }).join('') + (list.length > 80 ? '<p class="va-muted">Showing the first 80 - type a name to narrow it down.</p>' : '');
     }
 
@@ -817,21 +816,21 @@
       if (people || peopleError) return;
       function safe(promise) { return promise.then(function (r) { return r; }, function (e) { return { data: null, error: e }; }); }
       Promise.all([
-        safe(client.from('members').select('id, full_name, course, year_of_study, member_type, committee_role, activated_at').order('full_name', { ascending: true }).limit(3000)),
-        safe(client.from('network_professionals').select('user_id, full_name, title, category, is_active, activated_at').not('user_id', 'is', null).eq('is_active', true).order('full_name', { ascending: true }).limit(2000)),
-        safe(client.from('mmg_guests').select('id, full_name, activated_at').order('full_name', { ascending: true }).limit(1000))
+        safe(client.from('members').select('id, full_name, course, year_of_study, member_type, committee_role').order('full_name', { ascending: true }).limit(3000)),
+        safe(client.from('network_professionals').select('user_id, full_name, title, category, is_active').not('user_id', 'is', null).eq('is_active', true).order('full_name', { ascending: true }).limit(2000)),
+        safe(client.from('mmg_guests').select('id, full_name').order('full_name', { ascending: true }).limit(1000))
       ]).then(function (res) {
         if (res[0].error) throw res[0].error;
         var list = [];
         (res[0].data || []).forEach(function (m) {
           if (m.id === PRESIDENT_UID) return;
-          list.push({ key: 'm:' + m.id, personKind: 'member', id: m.id, full_name: m.full_name, course: m.course, year_of_study: m.year_of_study, member_type: m.member_type, committee_role: m.committee_role, activated: !!m.activated_at });
+          list.push({ key: 'm:' + m.id, personKind: 'member', id: m.id, full_name: m.full_name, course: m.course, year_of_study: m.year_of_study, member_type: m.member_type, committee_role: m.committee_role });
         });
         ((res[1] && res[1].data) || []).forEach(function (p) {
-          list.push({ key: 'p:' + p.user_id, personKind: 'professional', id: p.user_id, full_name: p.full_name, title: p.title, category: p.category, activated: !!p.activated_at });
+          list.push({ key: 'p:' + p.user_id, personKind: 'professional', id: p.user_id, full_name: p.full_name, title: p.title, category: p.category });
         });
         ((res[2] && res[2].data) || []).forEach(function (g) {
-          list.push({ key: 'g:' + g.id, personKind: 'mmg', id: g.id, full_name: g.full_name, activated: !!g.activated_at });
+          list.push({ key: 'g:' + g.id, personKind: 'mmg', id: g.id, full_name: g.full_name });
         });
         list.sort(function (a, b) { return (a.full_name || '').localeCompare(b.full_name || ''); });
         people = list;
@@ -914,7 +913,7 @@
       }
       if (e.target.closest('[data-start]')) { go(currentPersona()); return; }
       var per = e.target.closest('[data-person]');
-      if (per && !per.disabled) {
+      if (per) {
         var row = (people || []).filter(function (x) { return x.key === per.getAttribute('data-person'); })[0];
         if (row) openPerson(row);
       }
