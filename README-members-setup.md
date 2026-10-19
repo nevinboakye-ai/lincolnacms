@@ -1612,14 +1612,16 @@ No database changes. The long lanes of names are gone.
 
 **Run in Supabase (both safe to repeat):** `090-sankofa-managers.sql` and `091-view-as.sql`.
 
-### View the website as another account (president only)
-- Dashboard → **View site as…** (or the small purple **View as** button at the bottom-left of any page while you're signed in as the president).
-- Pick a **quick preset** (Medicine Y1, Pharmacy Y2, Midwifery Y1, Nursing Y2, Sixth former, Executive Committee, Supporting Committee, Sankofa mentor, Alumni doctor, Pharmacist, MMG guest, Logged out), **build your own** (type, course, year, committee title, kind of professional), or use the **A real person** tab to see the site as a particular member or professional (their course, type and any individual access you've given them).
-- A list under the picker shows exactly which features that account gets under your Hub Access rules before you start.
-- While previewing, a purple bar at the bottom says who you're viewing as, with **Switch** and **Exit**. You stay signed in as yourself; "Log out" while previewing just ends the preview.
-- **It's read-only:** every save, like, registration, message, upload and email is refused, and a few quiet background writes (presence, analytics) are skipped, so the preview never changes any data or the site stats. The account looks brand new (no tours seen, no discounts used, no registrations).
-- **What it does and doesn't show:** menus, locked / hidden features, the profile (name, course, year, type) and the dashboard sections come from the real Hub Access rules for that account type (migration 091 puts the rule check in one place, shared with the real login check). Content lists come from the live site as you see it, so a list the real account couldn't read might show more. Chat is switched off in a preview, and your own Journey progress is what shows. Preview only lasts for the browser tab and ends after six hours.
-- Code: `js/view-as.js` (wraps the Supabase client's `fetch`; loaded before `js/supabase-client.js` on every page).
+### View the website as someone else (president only)
+**Set-up for the exact view (once):** run `092-view-as-exact.sql` (and `091-view-as.sql` for the generic account types) in Supabase, then deploy the Edge Function: Supabase Dashboard -> Edge Functions -> Deploy a new function -> name it exactly **view-as** -> paste the whole of `supabase/functions/view-as/index.ts` -> Deploy. No new secrets are needed.
+
+- Dashboard -> **View site as...** (or the small purple **View as** button at the bottom-left of any page while signed in as the president).
+- **A real person (exact):** search or filter (students, committee, mentors, professionals, MMG guests) and click someone. You then see the site exactly as they do - their own lists, locks, counts, notifications, tours-seen state, Sankofa Hub and everything else, because the pages are answered with their access, not yours. People who haven't finished setting up their account are greyed out.
+- **An account type (approximate):** presets and a builder (Medicine Y1, Pharmacy Y2, Midwifery Y1, Nursing Y2, sixth former, Executive/Supporting Committee, mentors, alumni doctor, pharmacist, MMG guest, logged out). These are generic, so they use your data with that kind of account's profile and access rules; use a real person when you need it exactly.
+- A purple bar at the bottom says who you're viewing as, with **Switch** and **Exit**. You stay signed in as yourself, and "Log out" while previewing just ends the preview.
+- **What can't happen in a preview:** every save, like, registration, message, upload and email is refused; changing a password, sending a reset or signing in as someone is refused; the quiet background writes (presence, analytics, "seen" markers, journey progress) are skipped, so looking at someone's view doesn't make them look online or change their data. **Private chat is never shown** (no conversations, messages or live channels), and the person's "last signed in" time is put back afterwards.
+- **How the exact view works:** the `view-as` function checks you are the president and hands back a token for that person that works for about an hour (no refresh token); the page asks again before it runs out. Each use is recorded in `view_as_log` (readable by the president only). Code: `js/view-as.js`, `supabase/functions/view-as/index.ts`.
+- A preview only lasts for the browser tab and ends after six hours.
 
 ### Who can see the Sankofa Hub, and who can manage it
 - **See:** the Executive Committee (and you). Everyone else doesn't see the Hub at all. This is the `sankofa_hub` rule in Dashboard > Hub Access, which migration 090 sets to Executive Committee only. People added to the Hub earlier who aren't on the Executive Committee (students, mentors) will no longer see the member-side Hub until you open the rule up again.

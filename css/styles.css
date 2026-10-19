@@ -10632,3 +10632,23 @@ html.va-modal { overflow: hidden; }
 .shm-mgr-add input[type=search]:focus { outline: 2px solid var(--color-focus); border-color: transparent; }
 .shm-mgr-results { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; max-height: 26vh; overflow-y: auto; }
 .shm-mgr-results .btn-sm { padding: 6px 14px; font-size: 0.82rem; min-height: 34px; }
+
+/* View as: real-person picker */
+.va-tabs small { display: block; margin-top: 1px; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.7; }
+.va-tabs button { line-height: 1.2; }
+.va-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.va-chips .va-chip b { font-weight: 700; opacity: 0.7; margin-left: 3px; }
+.va-chip.is-on { background: var(--accent-purple); border-color: var(--accent-purple); color: #1c1233; }
+.va-approx { padding: 9px 12px; margin-bottom: 12px; border-radius: var(--radius-md); background: rgba(var(--gold-rgb), 0.1); border: 1px solid rgba(var(--gold-rgb), 0.35); }
+.va-person.is-off { opacity: 0.5; cursor: not-allowed; }
+.va-person.is-off:hover { border-color: var(--color-border); background: var(--color-bg-alt); }
+.va-person-tag { flex: none; margin-left: auto; padding: 1px 9px; border-radius: var(--radius-pill); border: 1px solid var(--color-border-strong); font-size: 0.68rem; color: var(--color-text-faint); white-space: nowrap; }
+.va-status { display: flex; align-items: center; gap: 14px; padding: 18px 16px; margin: 6px 0 12px; border: 1px solid rgba(var(--purple-rgb), 0.4); border-radius: var(--radius-md); background: rgba(var(--purple-rgb), 0.1); }
+.va-status strong { display: block; font-size: 0.95rem; }
+.va-status small { display: block; margin-top: 2px; color: var(--color-text-muted); font-size: 0.84rem; line-height: 1.45; }
+.va-status--error { border-color: rgba(var(--red-rgb), 0.5); background: rgba(var(--red-rgb), 0.08); align-items: flex-start; }
+.va-status-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.va-spinner { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(var(--purple-rgb), 0.3); border-top-color: var(--accent-purple); animation: vaSpin 0.8s linear infinite; }
+@keyframes vaSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .va-spinner { animation-duration: 2.4s; } }
+.va-dialog code { font-size: 0.8em; padding: 1px 5px; border-radius: 4px; background: rgba(128, 128, 128, 0.18); }
