@@ -4136,7 +4136,8 @@
     function loadNetwork() {
       Promise.all([
         supabaseClient.rpc('get_network_members'),
-        supabaseClient.from('network_professionals').select('*').order('sort_order', { ascending: true })
+        supabaseClient.from('network_professionals').select('*').order('sort_order', { ascending: true }),
+        networkPlaceholdersRequest()
       ]).then(function (results) {
         if (networkAuthGate) networkAuthGate.style.display = 'none';
 
@@ -4147,8 +4148,9 @@
 
         networkAllMembers = results[0].data || [];
         networkAllProfessionals = (results[1] && results[1].data) || [];
+        networkProPlaceholders = results[2] || [];
 
-        if (!networkAllMembers.length && !networkAllProfessionals.length && !networkIsPresident) {
+        if (!networkAllMembers.length && !networkAllProfessionals.length && !networkProPlaceholders.length && !networkIsPresident) {
           document.getElementById('network-empty').style.display = 'block';
           return;
         }
@@ -4156,7 +4158,7 @@
         networkContent.style.display = '';
         renderNetworkMembers(networkAllMembers);
         renderNetworkProfessionals(networkAllProfessionals);
-        updateNetworkCount(networkAllMembers.length + networkAllProfessionals.length);
+        updateNetworkCount(networkAllMembers.length + networkAllProfessionals.length + networkProPlaceholders.length);
         wireNetworkInteractions();
         if (networkIsPresident) initNetworkAdmin();
         // Runs after renderNetworkMembers() so networkCourseAccents is
@@ -4307,10 +4309,29 @@
         '</button>';
     }
 
+    // Before the Network is launched, professionals the viewer isn't allowed to see yet come back from the
+    // database as category-only placeholders (migration 093: no name, job, photo or link is ever sent). They are
+    // drawn as blurred, locked cards - one per real professional, so the numbers are true.
+    var networkProPlaceholders = [];
+    function networkPlaceholdersRequest() {
+      return supabaseClient.rpc('get_network_professional_placeholders').then(function (r) {
+        return r.error ? [] : (r.data || []);
+      }, function () { return []; });
+    }
+    function renderLockedProfessionalCard(ph) {
+      return '<div class="network-card network-card--restricted network-card--prelaunch" role="group" aria-label="A healthcare professional - revealed when the Network launches">' +
+        '<span class="network-card-lock">' + NETWORK_LOCK_ICON + 'Revealed at launch</span>' +
+        '<span class="network-card-avatar" aria-hidden="true">Dr</span>' +
+        '<span class="network-card-name" aria-hidden="true">Healthcare professional</span>' +
+        '<span class="network-card-meta" aria-hidden="true">Name hidden until launch</span>' +
+        '<span class="network-card-badge" aria-hidden="true">' + escapeHtml(PROFESSIONAL_CATEGORY_LABELS[ph.category] || 'Professional') + '</span>' +
+        '</div>';
+    }
     function renderNetworkProfessionals(rows) {
       var gridWrap = document.getElementById('network-professionals-wrap');
       var grid = document.getElementById('network-professionals-grid');
-      if (!rows.length) {
+      var locked = networkProPlaceholders || [];
+      if (!rows.length && !locked.length) {
         gridWrap.style.display = 'none';
         grid.innerHTML = '';
         return;
@@ -4319,7 +4340,10 @@
       var sorted = rows.slice().sort(function (a, b) {
         return (a.full_name || '').localeCompare(b.full_name || '');
       });
-      grid.innerHTML = sorted.map(renderNetworkProfessionalCard).join('');
+      grid.innerHTML = sorted.map(renderNetworkProfessionalCard).join('') + locked.map(renderLockedProfessionalCard).join('') +
+        (locked.length ? '<div class="network-soon" role="note"><span class="network-card-avatar" aria-hidden="true">+</span><span class="network-card-name">More professionals joining at launch</span><span class="network-card-meta">Doctors and pharmacists, ready to support you</span></div>' : '');
+      var note = document.getElementById('network-pro-note');
+      if (note) note.hidden = !locked.length;
     }
 
     function renderNetworkProfessionalCard(p) {
@@ -4500,7 +4524,8 @@
     function refreshNetwork() {
       return Promise.all([
         supabaseClient.rpc('get_network_members'),
-        supabaseClient.from('network_professionals').select('*').order('sort_order', { ascending: true })
+        supabaseClient.from('network_professionals').select('*').order('sort_order', { ascending: true }),
+        networkPlaceholdersRequest()
       ]).then(function (results) {
         if (results[0].error) {
           announceNetworkAdmin("Couldn't refresh the Network: " + results[0].error.message);
@@ -4508,9 +4533,10 @@
         }
         networkAllMembers = results[0].data || [];
         networkAllProfessionals = (results[1] && results[1].data) || [];
+        networkProPlaceholders = results[2] || [];
         renderNetworkMembers(networkAllMembers);
         renderNetworkProfessionals(networkAllProfessionals);
-        updateNetworkCount(networkAllMembers.length + networkAllProfessionals.length);
+        updateNetworkCount(networkAllMembers.length + networkAllProfessionals.length + networkProPlaceholders.length);
         var searchInput = document.getElementById('network-search-input');
         if (searchInput && searchInput.value.trim()) searchInput.dispatchEvent(new Event('input'));
         applyNetworkSelection();
@@ -6728,7 +6754,41 @@
       el.classList.toggle('is-success', kind === 'success');
     }
 
+    // ---- Network launch switch (migration 093) ----
+    // Until the president launches the Network, everyone else sees professionals as blurred, locked cards.
+    function loadNetworkLaunch() {
+      var box = document.getElementById('network-launch-card');
+      if (!box) return;
+      supabaseClient.rpc('network_launch_state').then(function (r) {
+        if (r.error) {
+          box.className = 'net-launch';
+          box.innerHTML = '<div class="net-launch-text"><h3>Network launch</h3><p>Not available yet - run db/migrations/093-network-prelaunch.sql in Supabase.</p></div>';
+          return;
+        }
+        var launched = !!(r.data && r.data.launched);
+        box.className = 'net-launch' + (launched ? ' is-live' : '');
+        box.innerHTML = '<div class="net-launch-text"><h3>' + (launched ? 'The Network is launched' : 'The Network is in pre-launch') + '</h3>' +
+          '<p>' + (launched
+            ? 'Everyone with Network access can see the professionals\' names, photos and profiles, and can message them.'
+            : 'Everyone except the Executive Committee sees the professionals as blurred, locked cards (no names or details are sent). Sixth formers stay hidden as always. Nothing changes until you press launch.') + '</p></div>' +
+          '<button type="button" class="btn ' + (launched ? 'btn-outline' : 'btn-primary') + '" id="network-launch-btn">' + (launched ? 'Back to pre-launch' : 'Launch the Network') + '</button>';
+        var btn = document.getElementById('network-launch-btn');
+        btn.addEventListener('click', function () {
+          var msg = launched
+            ? 'Go back to pre-launch? Professionals will be blurred again for everyone except the Executive Committee.'
+            : 'Launch the Network? Professionals\' names, photos and profiles become visible to everyone with Network access, and they can be messaged.';
+          if (!window.confirm(msg)) return;
+          btn.disabled = true;
+          supabaseClient.rpc('president_set_network_launched', { p_launched: !launched }).then(function (res) {
+            if (res.error) { btn.disabled = false; window.alert("Couldn't change that: " + res.error.message); return; }
+            loadNetworkLaunch();
+          });
+        });
+      });
+    }
+
     function loadHubAccess() {
+      loadNetworkLaunch();
       return Promise.all([
         supabaseClient.rpc('president_get_hub_rules'),
         supabaseClient.rpc('president_get_hub_access')

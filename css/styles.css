@@ -10719,3 +10719,19 @@ html.va-modal body { overflow: hidden; }
   .impact-stats-row { flex-wrap: wrap; }
   .impact-stat { min-width: 0; }
 }
+
+/* Network before launch: blurred, locked professionals */
+.network-card--prelaunch { min-height: 128px; }
+.network-card--prelaunch .network-card-lock { color: var(--accent-purple); border-color: rgba(var(--purple-rgb), 0.45); background: rgba(var(--purple-rgb), 0.14); }
+.net-prelaunch-note { margin: 4px 0 0; font-size: 0.8rem; font-weight: 600; color: var(--accent-purple); }
+.network-soon { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; padding: 12px; border: 1px dashed rgba(var(--purple-rgb), 0.5); border-radius: var(--radius-md); background: rgba(var(--purple-rgb), 0.06); cursor: default; }
+.network-soon .network-card-avatar { background: rgba(var(--purple-rgb), 0.2); color: var(--accent-purple); font-size: 1.2rem; }
+.network-soon .network-card-name { font-size: 0.86rem; line-height: 1.25; }
+.network-soon .network-card-meta { font-size: 0.72rem; color: var(--color-text-faint); }
+.net-launch { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-5); border: 1px solid var(--color-border); border-left: 4px solid var(--accent-purple); border-radius: var(--radius-md); background: var(--color-surface); }
+.net-launch.is-live { border-left-color: var(--accent-green); }
+.net-launch-text { flex: 1 1 260px; min-width: 0; }
+.net-launch-text h3 { margin: 0 0 2px; font-size: 1.05rem; }
+.net-launch-text p { margin: 0; color: var(--color-text-muted); font-size: 0.86rem; line-height: 1.45; }
+.net-launch .btn { flex: none; }
+@media (max-width: 640px) { .net-launch .btn { width: 100%; } }

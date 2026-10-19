@@ -1628,3 +1628,14 @@ No database changes. The long lanes of names are gone.
 - **Manage** (place people in Circles, pair mentors, meetings, announcements, the whole programme): only you, Martin Oti and anyone you choose. This is its own list, no longer tied to the Hub Access rules, so being on the Executive Committee doesn't give it on its own.
 - **Choose managers:** Dashboard > Sankofa Hub > **Who can manage**. Switch committee members on or off, or search for anyone with an account (sixth formers can't be added). Only you can change the list. Migration 090 adds Martin to it automatically (by name; if he has no account yet, add him here afterwards) and tidies up anything an earlier version of 090 did.
 - Managers see just the Sankofa Hub card on the dashboard (plus whatever dashboard sections the Hub Access rules already give them).
+
+
+## 147. The Network before launch: professionals blurred until you switch it on
+
+**Run in Supabase (safe to repeat):** `093-network-prelaunch.sql`. If you ever re-run `084`, run 093 again afterwards.
+
+- **What members see until launch:** the real members (sixth formers stay hidden exactly as before), and the healthcare professionals as **blurred, locked cards** ("Revealed at launch") grouped by category, plus a small "More professionals joining at launch" tile. The number of locked cards is the real number of professionals, so nothing is invented. No name, job, organisation, photo, LinkedIn or bio is sent to their browser at all, so there is nothing behind the blur.
+- **Who still sees everything:** you and the Executive Committee. A professional always sees their own card.
+- **Enforced in the database**, not just on the page: the professionals table, the "X just joined" entries about professionals, and the message directory / new chats with professionals all stay closed to others until launch (Sankofa mentors and mentees can still message each other).
+- **The switch:** Dashboard > Hub Access, at the top: **Launch the Network** (and **Back to pre-launch** if you want to undo it). Only you can press it.
+- **Opening the Network to everyone** is still the Network rule in the same Hub Access page (set it to allow members); that isn't changed automatically. Until you press launch, opening it only ever shows the blurred version.
