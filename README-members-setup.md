@@ -1628,6 +1628,7 @@ No database changes. The long lanes of names are gone.
 - **See:** the Executive Committee (and you). Everyone else doesn't see the Hub at all. This is the `sankofa_hub` rule in Dashboard > Hub Access, which migration 090 sets to Executive Committee only. People added to the Hub earlier who aren't on the Executive Committee (students, mentors) will no longer see the member-side Hub until you open the rule up again.
 - **Manage** (place people in Circles, pair mentors, meetings, announcements, the whole programme): only you, Martin Oti and anyone you choose. This is its own list, no longer tied to the Hub Access rules, so being on the Executive Committee doesn't give it on its own.
 - **Choose managers:** Dashboard > Sankofa Hub > **Who can manage**. Switch committee members on or off, or search for anyone with an account (sixth formers can't be added). Only you can change the list. Migration 090 adds Martin to it automatically (by name; if he has no account yet, add him here afterwards) and tidies up anything an earlier version of 090 did.
+- **If a manager can't open the Circle manager:** run the latest `090-sankofa-managers.sql` (an older copy of 090 gave access a different way). Until you do, the dashboard falls back to the older rule so they aren't locked out, and the "Who can manage" dialog tells you the database is on the older version.
 - Managers see just the Sankofa Hub card on the dashboard (plus whatever dashboard sections the Hub Access rules already give them).
 
 

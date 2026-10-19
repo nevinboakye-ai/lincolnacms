@@ -768,6 +768,11 @@
         box.innerHTML = rows + '<p class="auth-error" style="display:block">Couldn\'t load the list. Has migration 090 been run?</p>';
         return;
       }
+      // An older version of migration 090 (no "is_committee" column) still hands out access through Hub Access
+      // overrides. Say so, because the newer rules need the current file to be run.
+      if (managers.length && managers[0].is_committee === undefined) {
+        rows = '<p class="auth-error" style="display:block">The database is on an older version of migration 090. Run the latest <b>090-sankofa-managers.sql</b> in Supabase so managers can open the Circle manager.</p>' + rows;
+      }
       rows += managers.map(function (m) {
         return '<label class="shm-mgr-row' + (m.can_manage ? ' is-on' : '') + '">' + S.avatar({ name: m.full_name }, 'md') +
           '<span class="shm-mgr-main"><strong>' + esc(m.full_name) + '</strong><small>' + esc(personType(m)) + (m.course ? ' · ' + esc(m.course) : '') + '</small></span>' +

@@ -4996,13 +4996,19 @@
       // list (a separate list from Hub Access: seeing the Sankofa Hub and
       // managing it are different things). If the rules can't be loaded, the
       // original rule: Executive Committee members get the five sections.
+      // null = the database doesn't have the newer manager list yet (migration 090 not run), so
+      // fall back to the earlier rule below instead of locking a manager out.
       var canManageSankofa = supabaseClient.rpc('sankofa_can_manage').then(
-        function (r) { return !r.error && r.data === true; },
-        function () { return false; }
+        function (r) { return r.error ? null : r.data === true; },
+        function () { return null; }
       );
       Promise.all([getHubAccess(), canManageSankofa]).then(function (results) {
         var access = results[0];
         var managesSankofa = results[1];
+        if (managesSankofa === null) {
+          // Earlier rule: whoever Hub Access lets into both the Sankofa dashboard section and the Hub.
+          managesSankofa = !!(access && access.dash_sankofa && access.dash_sankofa.allowed && access.sankofa_hub && access.sankofa_hub.allowed);
+        }
         if (access) {
           DASH_SHARED_SECTIONS.forEach(function (sec) {
             dashAllowed[sec] = !!(access[DASH_FEATURE_FOR[sec]] && access[DASH_FEATURE_FOR[sec]].allowed);
