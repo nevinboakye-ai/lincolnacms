@@ -615,17 +615,21 @@
     if (!realGetSession) return;
     realGetSession().then(function (res) {
       var s = res && res.data && res.data.session;
-      if (s && s.user && s.user.id === PRESIDENT_UID) {
-        renderPill();
-        Array.prototype.forEach.call(document.querySelectorAll('[data-open-view-as]'), function (el) { el.addEventListener('click', openPicker); });
-      } else {
-        Array.prototype.forEach.call(document.querySelectorAll('[data-open-view-as]'), function (el) { el.style.display = 'none'; });
-      }
-    }, function () {});
+      var isPresident = !!(s && s.user && s.user.id === PRESIDENT_UID);
+      // Everything that opens "View as" is hidden by default and only shown to the president's own session.
+      Array.prototype.forEach.call(document.querySelectorAll('[data-open-view-as]'), function (el) {
+        if (isPresident) { el.style.display = ''; el.addEventListener('click', openPicker); }
+        else el.parentNode && el.parentNode.removeChild(el);
+      });
+      if (isPresident) renderPill();
+    }, function () {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-open-view-as]'), function (el) { if (el.parentNode) el.parentNode.removeChild(el); });
+    });
   }
 
   // ---- the picker ----
   var pickerEl = null;
+  var pickerOpening = false;
   var pickerPrev = null;
 
   function closePicker() {
@@ -670,9 +674,19 @@
     return 'Midlands Medics Gala guest';
   }
 
+  // Opens the picker for the president only (the real session is checked again here, whatever called this).
   function openPicker() {
-    if (!client || pickerEl) return;
+    if (!client || !realGetSession || pickerEl || pickerOpening) return;
     pickerPrev = document.activeElement;
+    pickerOpening = true;
+    realGetSession().then(function (res) {
+      var s = res && res.data && res.data.session;
+      if (s && s.user && s.user.id === PRESIDENT_UID) buildPicker();
+    }, function () {}).then(function () { pickerOpening = false; });
+  }
+
+  function buildPicker() {
+    if (pickerEl) return;
     var form = { kind: 'member', course: 'Medicine', year: 'Year 1', member_type: 'member', committee_role: '', category: 'alumni_doctor', title: '' };
     var tab = 'person';
     var people = null;          // everyone with a login, loaded when the dialog opens

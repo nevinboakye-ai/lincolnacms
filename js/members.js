@@ -4924,6 +4924,8 @@
           var card = document.querySelector('[data-dash-section="' + section + '"]');
           if (card) card.style.display = 'none';
         });
+        // "View site as" is the president's alone.
+        Array.prototype.forEach.call(document.querySelectorAll('[data-open-view-as]'), function (el) { if (el.parentNode) el.parentNode.removeChild(el); });
         // The "place them in a Circle" shortcut only makes sense for people who can manage the Circles.
         if (!dashCan('sankofahub')) {
           Array.prototype.forEach.call(document.querySelectorAll('.sk-hub-link'), function (el) { el.style.display = 'none'; });
