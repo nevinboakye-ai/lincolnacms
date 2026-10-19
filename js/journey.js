@@ -53,6 +53,9 @@
   var toastBox = null;
   var disabled = false;
 
+  // The president previewing someone's account (js/view-as.js): show their levels and badges, but no pop-ups or intros that belong to them.
+  function inPreview() { return !!(window.lacmsViewAs && window.lacmsViewAs.active && window.lacmsViewAs.active()); }
+
   function esc(str) {
     return String(str == null ? '' : str)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -103,7 +106,7 @@
     var steps = s.next_steps || [];
     var top = steps[0];
     var introKey = 'jy-intro-' + userId;
-    if (s.first_run) lsSet(introKey, 'pending');
+    if (s.first_run && !inPreview()) lsSet(introKey, 'pending');
     var html = '<article class="jy-bar" aria-label="Your LACMS journey">';
     if (lsGet(introKey) === 'pending') {
       html += '<p class="jy-intro jy-intro--line"><span>🎉 You start with <strong>' + p.xp + ' XP</strong> for what you\'ve already done.</span>' +
@@ -344,7 +347,7 @@
       state = res.data;
       if (state.eligible === false) { disabled = true; }
       renderAll();
-      if (!opts.silent && !state.first_run) celebrate(prev, state, opts.visit ? 2 : 0);
+      if (!opts.silent && !state.first_run && !inPreview()) celebrate(prev, state, opts.visit ? 2 : 0);
       if (pending) { pending = false; setTimeout(function () { sync({}); }, 600); }
       return state;
     }, function () { syncing = false; return state; });
@@ -352,7 +355,7 @@
 
   // Called (debounced) after the member does something.
   function poke() {
-    if (disabled || !userId) return;
+    if (disabled || !userId || inPreview()) return;
     clearTimeout(pokeTimer);
     pokeTimer = setTimeout(function () {
       var wait = 3000 - (Date.now() - lastSyncAt);

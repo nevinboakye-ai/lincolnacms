@@ -12,7 +12,9 @@
 //   hour is up. No refresh token is ever handed out.
 //   The browser refuses every write, upload and email while a preview is open,
 //   never shows private chat (messages, conversations, live channels) and
-//   skips the quiet background writes (presence, analytics, "seen" markers), so
+//   skips the quiet background writes (presence, analytics, "seen" markers). Their
+//   levels, badges and streak are shown (worked out read-only by migration 094),
+//   without the pop-ups or intros that belong to them, so
 //   looking at someone's view changes nothing about them.
 //
 // A GENERIC ACCOUNT TYPE (approximate)
@@ -335,7 +337,9 @@
       if (/^chat_/.test(name)) return Promise.resolve(refusedQuietly());
       if (exact) {
         // Their own login answers everything (hub access, notifications, who they are...).
-        if (name === 'journey_sync' || name === 'journey_set_hidden') return Promise.resolve(refusedQuietly());
+        if (name === 'journey_set_hidden') return Promise.resolve(refusedQuietly());
+        // Their levels, badges and streak: worked out for them without recording anything (migration 094).
+        if (name === 'journey_sync') return previewJourney(origin, headers);
         if (isReadRpc(name)) return passthrough();
         return Promise.resolve(QUIET_RPC.test(name) ? refusedQuietly() : blocked());
       }
@@ -368,6 +372,18 @@
     }
 
     return passthrough();
+  }
+
+  // The person's journey, read with the PRESIDENT's own token (only the president may ask), without saving anything.
+  function previewJourney(origin, headers) {
+    return realGetSession().then(function (res) {
+      var s = res && res.data && res.data.session;
+      if (!s || !s.user || s.user.id !== PRESIDENT_UID) return refusedQuietly();
+      var h = new Headers(headers);
+      h.set('Authorization', 'Bearer ' + s.access_token);
+      h.set('Content-Type', 'application/json');
+      return nativeFetch(origin + '/rest/v1/rpc/president_journey_preview', { method: 'POST', headers: h, body: JSON.stringify({ p_user: persona.userId }) });
+    }, function () { return refusedQuietly(); });
   }
 
   function viewAsFetch(input, init) {
