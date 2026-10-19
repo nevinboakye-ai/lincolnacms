@@ -790,31 +790,36 @@
     }
 
     function draw() {
-      var html = '<div class="va-head"><div><span class="va-eyebrow">President tools</span><h2 id="va-title">View the website as&hellip;</h2></div>' +
+      // Header and tabs stay put, the middle scrolls, and the buttons stay at the bottom.
+      var head = '<div class="va-head"><div><span class="va-eyebrow">President tools</span><h2 id="va-title">View the website as&hellip;</h2></div>' +
         '<button type="button" class="va-x" data-va-close aria-label="Close"' + (opening ? ' disabled' : '') + '>&times;</button></div>' +
-        '<p class="va-lede">Browse the site as someone else sees it. It\'s read-only - nothing you click is saved or sent - and you stay signed in as yourself.</p>' +
         '<div class="va-tabs" role="tablist"><button type="button" role="tab" class="' + (tab === 'person' ? 'is-active' : '') + '" aria-selected="' + (tab === 'person') + '" data-tab="person">A real person <small>exact</small></button>' +
         '<button type="button" role="tab" class="' + (tab === 'type' ? 'is-active' : '') + '" aria-selected="' + (tab === 'type') + '" data-tab="type">An account type <small>approximate</small></button></div>';
+      var lede = '<p class="va-lede">Browse the site as someone else sees it. It\'s read-only - nothing you click is saved or sent - and you stay signed in as yourself.</p>';
+      var body, foot;
       if (tab === 'person') {
-        html += statusHtml();
+        body = lede + statusHtml();
         if (!opening && !failure) {
-          html += '<div class="va-section"><label class="va-field va-field--wide"><span>Find someone</span><input type="search" id="va-q" placeholder="Search by name…" value="' + esc(q) + '" autocomplete="off"></label>' +
+          body += '<div class="va-section"><label class="va-field va-field--wide"><span>Find someone</span><input type="search" id="va-q" placeholder="Search by name…" value="' + esc(q) + '" autocomplete="off"></label>' +
             '<div class="va-chips" id="va-chips">' + chipsHtml() + '</div>' +
             '<div class="va-people" id="va-people">' + peopleHtml() + '</div>' +
             '<p class="va-note">You see their account exactly as they do - their lists, locks, counts and anything personal to them. Their private messages stay hidden, and each use is logged.</p></div>';
         }
-        html += '<div class="va-foot"><button type="button" class="va-btn" data-va-close' + (opening ? ' disabled' : '') + '>Cancel</button></div>';
+        foot = '<button type="button" class="va-btn" data-va-close' + (opening ? ' disabled' : '') + '>Cancel</button>';
       } else {
-        html += '<p class="va-note va-approx">A generic account of this kind. It uses your own data with that account\'s profile and access rules, so a list the real account couldn\'t read may show more. For an exact view, pick a real person.</p>' +
+        body = lede + '<p class="va-note va-approx">A generic account of this kind. It uses your own data with that account\'s profile and access rules, so a list the real account couldn\'t read may show more. For an exact view, pick a real person.</p>' +
           '<div class="va-section"><span class="va-label">Quick pick</span><div class="va-presets">' + PRESETS.map(function (p) { return '<button type="button" class="va-chip" data-preset="' + p.id + '">' + esc(p.label) + '</button>'; }).join('') + '</div></div>' +
           '<div class="va-section"><span class="va-label">Or build one</span><div class="va-kinds" role="radiogroup" aria-label="Account type">' + KINDS.map(function (k) {
             return '<button type="button" role="radio" aria-checked="' + (form.kind === k[0]) + '" class="va-kind' + (form.kind === k[0] ? ' is-on' : '') + '" data-kind="' + k[0] + '"><strong>' + k[1] + '</strong><small>' + k[2] + '</small></button>';
           }).join('') + '</div><div class="va-fields">' + fieldsHtml() + '</div></div>' +
-          '<div class="va-section"><span class="va-label">What this account can use</span><div class="va-access" id="va-access" aria-live="polite"><span class="va-muted">Checking…</span></div></div>' +
-          '<div class="va-foot"><button type="button" class="va-btn" data-va-close>Cancel</button><button type="button" class="va-btn va-btn--primary" data-start id="va-start">Start viewing</button></div>';
+          '<div class="va-section"><span class="va-label">What this account can use</span><div class="va-access" id="va-access" aria-live="polite"><span class="va-muted">Checking…</span></div></div>';
+        foot = '<button type="button" class="va-btn" data-va-close>Cancel</button><button type="button" class="va-btn va-btn--primary" data-start id="va-start">Start viewing</button>';
       }
       var hadFocus = document.activeElement && document.activeElement.id;
-      dlg.innerHTML = html;
+      var scrollTop = dlg.querySelector('.va-body') ? dlg.querySelector('.va-body').scrollTop : 0;
+      dlg.innerHTML = head + '<div class="va-body">' + body + '</div><div class="va-foot">' + foot + '</div>';
+      var nb = dlg.querySelector('.va-body');
+      if (nb && scrollTop) nb.scrollTop = scrollTop;
       if (tab === 'type') refreshAccess();
       if (hadFocus && document.getElementById(hadFocus)) document.getElementById(hadFocus).focus();
     }
