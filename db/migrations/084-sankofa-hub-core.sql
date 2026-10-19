@@ -116,8 +116,10 @@ begin
 end;
 $$;
 
+-- Who can SEE the Hub: the Executive Committee (the president always can).
+-- Who can MANAGE it is separate - see sankofa_managers below.
 insert into public.hub_access_rules (feature, allow_members, allow_professionals, member_types, courses, blocked_display)
-values ('sankofa_hub', false, false, null, null, 'hidden')
+values ('sankofa_hub', true, false, array['executive_committee'], null, 'hidden')
 on conflict (feature) do nothing;
 
 -- ---------------------------------------------------------------------
@@ -349,9 +351,23 @@ as $$
     and coalesce((select d.allowed from public.hub_access_decision(auth.uid(), 'sankofa_hub') d), false);
 $$;
 
--- The committee: whoever the Hub Access rule "dash_sankofa" allows (the
--- president, plus the Executive Committee by default) AND who is allowed
--- into the Hub at all ("sankofa_hub").
+-- Who can MANAGE the Hub (place people in Circles, pair mentors, schedule
+-- meetings, post announcements): the president, plus the people the president
+-- picks in Dashboard > Sankofa Hub > Who can manage. This is deliberately not
+-- the same as who can SEE the Hub (the "sankofa_hub" Hub Access rule). Added by
+-- 090, which also sets who is on the list to begin with.
+create table if not exists public.sankofa_managers (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  added_by uuid references auth.users (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+alter table public.sankofa_managers enable row level security;
+drop policy if exists "President manages Sankofa managers" on public.sankofa_managers;
+create policy "President manages Sankofa managers"
+  on public.sankofa_managers for all to authenticated
+  using (public.is_president()) with check (public.is_president());
+revoke all on public.sankofa_managers from anon;
+
 create or replace function public.sankofa_is_admin()
 returns boolean
 language sql
@@ -359,7 +375,8 @@ stable
 security definer
 set search_path = public
 as $$
-  select public.has_hub_access('dash_sankofa') and public.has_hub_access('sankofa_hub');
+  select public.is_president()
+      or exists (select 1 from public.sankofa_managers m where m.user_id = auth.uid());
 $$;
 
 create or replace function public.sankofa_circle_of(p_user uuid)

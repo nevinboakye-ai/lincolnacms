@@ -736,9 +736,9 @@
   // =======================================================================
   // Who can manage the Circles (president only)
   // =======================================================================
-  // Handing someone the manager sets Hub Access overrides in the database (migration 090),
-  // and taking it back restores what they had before. The database checks every
-  // Circle-manager call, so this switch is the only thing a manager needs.
+  // The Executive Committee can SEE the Sankofa Hub; only the people on this list (and the
+  // president) can MANAGE it. The list lives in the database (migration 090) and every
+  // Circle-manager call is checked against it there, so this dialog is the only control needed.
   function loadManagers() {
     return rpc('president_get_sankofa_managers').then(function (rows) {
       managers = rows || [];
@@ -746,26 +746,47 @@
     }, function () { managers = null; return null; });
   }
 
+  function personType(m) {
+    if (m.member_type === 'executive_committee') return 'Executive Committee';
+    if (m.member_type === 'supporting_committee') return 'Supporting Committee';
+    if (m.member_type === 'professional') return 'Professional';
+    return 'Member';
+  }
+
   function openManagers() {
     var dlg = S.openDialog('<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button><span class="guide-eyebrow">Sankofa Circles</span><h2 class="guide-title">Who can manage the Circles</h2>' +
-      '<p class="guide-text">Committee members you switch on get the same Circle manager as you: place people, pair mentors, schedule meetings and post announcements. They find it under Dashboard &rarr; Sankofa Hub. Only you can change this list.</p><div class="shm-mgr-list" id="shm-mgr-list"><p class="sh-muted">Loading…</p></div>', 'shm-dlg-mgr');
-    function draw() {
+      '<p class="guide-text">The whole Executive Committee can see the Sankofa Hub. Only you and the people switched on below can <strong>manage</strong> it: place people in Circles, pair mentors, schedule meetings and post announcements. They find it under Dashboard &rarr; Sankofa Hub.</p>' +
+      '<div class="shm-mgr-list" id="shm-mgr-list"><p class="sh-muted">Loading…</p></div>' +
+      '<div class="shm-mgr-add"><label for="shm-mgr-q" class="shm-mgr-add-label">Add someone else</label>' +
+      '<input type="search" id="shm-mgr-q" placeholder="Search anyone with an account by name…" autocomplete="off"><div class="shm-mgr-results" id="shm-mgr-results" aria-live="polite"></div></div>', 'shm-dlg-mgr');
+    var found = [];
+    function drawList() {
       var box = dlg.el.querySelector('#shm-mgr-list');
       if (!box) return;
-      if (!managers || !managers.length) {
-        box.innerHTML = '<p class="sh-muted">No committee members found yet. Committee members appear here once their account has the Executive or Supporting Committee type.</p>';
+      var rows = '<div class="shm-mgr-row is-on is-fixed">' + S.avatar({ name: 'You' }, 'md') + '<span class="shm-mgr-main"><strong>You (President)</strong><small>Always manages the Circles</small></span><span class="shm-mgr-fixed">Always</span></div>';
+      if (!managers) {
+        box.innerHTML = rows + '<p class="auth-error" style="display:block">Couldn\'t load the list. Has migration 090 been run?</p>';
         return;
       }
-      box.innerHTML = managers.map(function (m) {
-        var viaRules = m.can_manage && !m.granted;
+      rows += managers.map(function (m) {
         return '<label class="shm-mgr-row' + (m.can_manage ? ' is-on' : '') + '">' + S.avatar({ name: m.full_name }, 'md') +
-          '<span class="shm-mgr-main"><strong>' + esc(m.full_name) + '</strong><small>' + (m.member_type === 'executive_committee' ? 'Executive Committee' : 'Supporting Committee') +
-          (m.course ? ' · ' + esc(m.course) : '') + (viaRules ? ' · through your Hub Access rules' : '') + '</small></span>' +
-          '<span class="shm-switch"><input type="checkbox" role="switch" data-mgr="' + esc(m.user_id) + '"' + (m.can_manage ? ' checked' : '') + (viaRules ? ' disabled' : '') +
+          '<span class="shm-mgr-main"><strong>' + esc(m.full_name) + '</strong><small>' + esc(personType(m)) + (m.course ? ' · ' + esc(m.course) : '') + '</small></span>' +
+          '<span class="shm-switch"><input type="checkbox" role="switch" data-mgr="' + esc(m.user_id) + '"' + (m.can_manage ? ' checked' : '') +
           ' aria-label="' + esc(m.full_name) + ' can manage the Circles"><span aria-hidden="true"></span></span></label>';
       }).join('');
+      if (!managers.length) rows += '<p class="sh-muted">No other committee members found. Use the search below to add someone.</p>';
+      box.innerHTML = rows;
     }
-    function refresh() { return loadManagers().then(draw); }
+    function drawResults(msg) {
+      var box = dlg.el.querySelector('#shm-mgr-results');
+      if (!box) return;
+      if (msg) { box.innerHTML = '<p class="sh-muted">' + esc(msg) + '</p>'; return; }
+      box.innerHTML = found.map(function (r) {
+        return '<div class="shm-mgr-row">' + S.avatar({ name: r.full_name }, 'sm') + '<span class="shm-mgr-main"><strong>' + esc(r.full_name) + '</strong><small>' + esc((r.kind === 'professional' ? 'Professional' : 'Member') + (r.detail ? ' · ' + r.detail : '')) + '</small></span>' +
+          '<button type="button" class="btn btn-outline btn-sm" data-mgr-add="' + esc(r.user_id) + '">Add</button></div>';
+      }).join('');
+    }
+    function refresh() { return loadManagers().then(drawList); }
     refresh();
     dlg.el.addEventListener('change', function (e) {
       var cb = e.target.closest && e.target.closest('[data-mgr]');
@@ -773,11 +794,38 @@
       var id = cb.getAttribute('data-mgr');
       var m = (managers || []).filter(function (x) { return x.user_id === id; })[0];
       var on = cb.checked;
+      var name = m ? m.full_name : 'They';
       cb.disabled = true;
       rpc('president_set_sankofa_manager', { p_user: id, p_on: on }).then(function () {
-        S.toast(on ? (m ? m.full_name : 'They') + ' can now manage the Circles' : (m ? m.full_name : 'They') + ' can no longer manage the Circles');
+        S.toast(name + (on ? ' can now manage the Circles' : ' can no longer manage the Circles'));
         return refresh();
       }, function (err) { fail(err); return refresh(); });
+    });
+    dlg.el.addEventListener('click', function (e) {
+      var add = e.target.closest && e.target.closest('[data-mgr-add]');
+      if (!add) return;
+      var id = add.getAttribute('data-mgr-add');
+      var r = found.filter(function (x) { return x.user_id === id; })[0];
+      add.disabled = true;
+      rpc('president_set_sankofa_manager', { p_user: id, p_on: true }).then(function () {
+        S.toast((r ? r.full_name : 'They') + ' can now manage the Circles');
+        found = found.filter(function (x) { return x.user_id !== id; });
+        drawResults(found.length ? null : 'Added. Search for someone else if you like.');
+        return refresh();
+      }, function (err) { fail(err); add.disabled = false; });
+    });
+    var timer;
+    dlg.el.addEventListener('input', function (e) {
+      if (e.target.id !== 'shm-mgr-q') return;
+      clearTimeout(timer);
+      var q = e.target.value.trim();
+      if (q.length < 2) { found = []; drawResults(''); return; }
+      timer = setTimeout(function () {
+        rpc('president_search_people_for_manager', { p_query: q }).then(function (rows) {
+          found = rows || [];
+          drawResults(found.length ? null : 'Nobody found - they may already be on the list.');
+        }, function (err) { drawResults(err.message); });
+      }, 250);
     });
   }
 

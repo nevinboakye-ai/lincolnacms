@@ -4924,6 +4924,10 @@
           var card = document.querySelector('[data-dash-section="' + section + '"]');
           if (card) card.style.display = 'none';
         });
+        // The "place them in a Circle" shortcut only makes sense for people who can manage the Circles.
+        if (!dashCan('sankofahub')) {
+          Array.prototype.forEach.call(document.querySelectorAll('.sk-hub-link'), function (el) { el.style.display = 'none'; });
+        }
       }
       initDashNav();
       loadPresidentDashboard();
@@ -4952,16 +4956,23 @@
         return;
       }
       // Anyone else gets exactly the dashboard sections the Hub Access
-      // rules give them (default: Executive Committee, all five). If the
-      // rules can't be loaded, the original rule: Executive Committee
-      // members get all five.
-      getHubAccess().then(function (access) {
+      // rules give them (default: Executive Committee, all five), plus the
+      // Sankofa Circle manager if the president has put them on its manager
+      // list (a separate list from Hub Access: seeing the Sankofa Hub and
+      // managing it are different things). If the rules can't be loaded, the
+      // original rule: Executive Committee members get the five sections.
+      var canManageSankofa = supabaseClient.rpc('sankofa_can_manage').then(
+        function (r) { return !r.error && r.data === true; },
+        function () { return false; }
+      );
+      Promise.all([getHubAccess(), canManageSankofa]).then(function (results) {
+        var access = results[0];
+        var managesSankofa = results[1];
         if (access) {
           DASH_SHARED_SECTIONS.forEach(function (sec) {
             dashAllowed[sec] = !!(access[DASH_FEATURE_FOR[sec]] && access[DASH_FEATURE_FOR[sec]].allowed);
           });
-          // The Circle manager also needs the Sankofa Hub itself to be open to them.
-          dashAllowed.sankofahub = !!(dashAllowed.sankofa && access.sankofa_hub && access.sankofa_hub.allowed);
+          dashAllowed.sankofahub = managesSankofa;
           if (DASH_SHARED_SECTIONS.some(function (sec) { return dashAllowed[sec]; })) {
             enterDashboard(session, 'exec_committee');
           } else {
@@ -4975,9 +4986,10 @@
           .eq('id', session.user.id)
           .maybeSingle()
           .then(function (memberResult) {
-            if (memberResult.data && memberResult.data.member_type === 'executive_committee') {
-              DASH_SHARED_SECTIONS.forEach(function (sec) { dashAllowed[sec] = true; });
-              dashAllowed.sankofahub = false; // the Hub is president-only unless the rules say otherwise
+            var isExec = !!(memberResult.data && memberResult.data.member_type === 'executive_committee');
+            if (isExec) DASH_SHARED_SECTIONS.forEach(function (sec) { dashAllowed[sec] = true; });
+            dashAllowed.sankofahub = managesSankofa;
+            if (isExec || managesSankofa) {
               enterDashboard(session, 'exec_committee');
               return;
             }
@@ -6689,7 +6701,7 @@
       { key: 'network', label: 'The LACMS Network', short: 'Network', desc: 'The member and professional directory.', canLock: true },
       { key: 'motm_nominate', label: 'Member of the Month nominations', short: 'MoTM', desc: 'Nominating someone for Member of the Month.', canLock: false },
       { key: 'news_feed', label: 'News & updates feed', short: 'News', desc: 'The announcements feed on the hub.', canLock: false },
-      { key: 'sankofa_hub', label: 'Sankofa Hub', short: 'Sankofa Hub', desc: 'The Sankofa Hub - Circles, meetings, board, goals and rewards (president only until you open it up). People also have to be added to the Hub from Dashboard > Sankofa Hub.', canLock: false },
+      { key: 'sankofa_hub', label: 'Sankofa Hub', short: 'Sankofa Hub', desc: 'Who can SEE the Sankofa Hub - Circles, meetings, board, goals and rewards (Executive Committee only to start with). Managing it is a separate list: Dashboard > Sankofa Hub > Who can manage. People also have to be added to the Hub from Dashboard > Sankofa Hub.', canLock: false },
       { key: 'journey', label: 'Member journey', short: 'Journey', desc: 'XP, levels, badges and the small progress lines around the Members Hub (on for all members; each member can also hide it for themselves).', canLock: false },
       { key: 'resources', label: 'LACMS Resources', short: 'Resources', desc: 'The study resources library shared by members (until opened up, executives only).', canLock: true },
       { key: 'dash_mmg', label: 'Dashboard: MMG', short: 'MMG', desc: 'The MMG guests section of the Platform Activity Dashboard.', dash: true },
