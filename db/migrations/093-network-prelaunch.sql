@@ -7,7 +7,10 @@
 --     (migration 072), and
 --   * the professionals as blurred, locked cards: just their category and a lock.
 --     No name, job, organisation, photo, LinkedIn or bio is sent to the browser,
---     so there is nothing hidden behind the blur.
+--     so there is nothing hidden behind the blur, and
+--   * a number of extra locked cards marked "Joining soon" for professionals who
+--     are on their way but aren't added yet (the president sets how many, default
+--     10, on the Hub Access page; they disappear at launch).
 -- The president and the Executive Committee always see everything. A professional
 -- always sees their own card.
 --
@@ -16,8 +19,9 @@
 --   * "X just joined" entries about professionals are hidden until launch;
 --   * the message directory and new chats leave professionals out until launch
 --     (Sankofa mentors and mentees can still message each other as before).
--- The blurred cards are real people, one per active professional, so the numbers
--- shown are true. Nothing is invented.
+-- The cards for professionals already added are real people, one per active
+-- professional. The "Joining soon" cards are plain placeholders and are labelled
+-- as such; the Network's headline count never includes them.
 --
 -- Launching is one switch on the Hub Access page (and it can be switched back).
 -- Note: this redefines chat_pair_allowed() from 084. If you ever re-run 084,
@@ -30,6 +34,9 @@ begin;
 -- ---------------------------------------------------------------------
 -- The switch. Not launched until the president says so.
 insert into public.site_settings (key, value) values ('network_launched', 'false')
+on conflict (key) do nothing;
+-- How many "Joining soon" cards to show before launch (0 to 30).
+insert into public.site_settings (key, value) values ('network_coming_soon', '10')
 on conflict (key) do nothing;
 
 create or replace function public.network_is_launched()
@@ -66,7 +73,12 @@ stable
 security definer
 set search_path = public
 as $$
-  select jsonb_build_object('launched', public.network_is_launched(), 'can_see_professionals', public.network_can_see_professionals());
+  select jsonb_build_object(
+    'launched', public.network_is_launched(),
+    'can_see_professionals', public.network_can_see_professionals(),
+    'coming_soon', case when public.network_can_see_professionals() then 0 else
+      least(greatest(coalesce((select nullif(regexp_replace(s.value, '[^0-9]', '', 'g'), '')::integer from public.site_settings s where s.key = 'network_coming_soon'), 0), 0), 30) end
+  );
 $$;
 
 revoke all on function public.network_launch_state() from public, anon;
@@ -91,6 +103,26 @@ $$;
 
 revoke all on function public.president_set_network_launched(boolean) from public, anon;
 grant execute on function public.president_set_network_launched(boolean) to authenticated;
+
+-- President only: how many "Joining soon" cards to show before launch (0 to 30).
+create or replace function public.president_set_network_coming_soon(p_count integer)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_president() then
+    raise exception 'Only the president can change this.';
+  end if;
+  insert into public.site_settings (key, value, updated_at)
+  values ('network_coming_soon', least(greatest(coalesce(p_count, 0), 0), 30)::text, now())
+  on conflict (key) do update set value = excluded.value, updated_at = now();
+end;
+$$;
+
+revoke all on function public.president_set_network_coming_soon(integer) from public, anon;
+grant execute on function public.president_set_network_coming_soon(integer) to authenticated;
 
 -- ---------------------------------------------------------------------
 -- Professionals: others can read them only once launched (or if they are on the

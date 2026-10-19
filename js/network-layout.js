@@ -125,7 +125,7 @@
   // ---- Chips ---------------------------------------------------------------------------
   function enhanceChips() {
     var secs = sections.querySelectorAll('.network-course-section');
-    var proShown = proWrap && proWrap.style.display !== 'none' && proWrap.querySelector('.network-card');
+    var proShown = proWrap && proWrap.style.display !== 'none' && proWrap.querySelector('.network-card:not(.network-card--soon-pro)');
     var items = Array.prototype.map.call(secs, function (s) {
       var c = s.querySelector('.network-course-count');
       var cs = s.style;
@@ -142,7 +142,7 @@
     items.forEach(function (i) {
       html += '<button type="button" class="net-chip' + (isMine(i.key) ? ' is-mine' : '') + '" data-net-chip="' + esc(i.key) + '" aria-pressed="' + (active === i.key) + '"' + (i.accent ? ' style="--chip-accent:' + esc(i.accent) + ';--chip-light:' + esc(i.light || i.accent) + ';--chip-bg:' + esc(i.bg) + ';"' : '') + '>' + esc(i.label) + '<b>' + i.count + '</b></button>';
     });
-    if (proShown) html += '<button type="button" class="net-chip net-chip--pro" data-net-chip="pros" aria-pressed="' + (active === 'pros') + '">Professionals<b>' + proWrap.querySelectorAll('.network-card').length + '</b></button>';
+    if (proShown) html += '<button type="button" class="net-chip net-chip--pro" data-net-chip="pros" aria-pressed="' + (active === 'pros') + '">Professionals<b>' + proWrap.querySelectorAll('.network-card:not(.network-card--soon-pro)').length + '</b></button>';
     chipsEl.innerHTML = html;
     chipsEl.hidden = false;
   }

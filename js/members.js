@@ -4313,25 +4313,33 @@
     // database as category-only placeholders (migration 093: no name, job, photo or link is ever sent). They are
     // drawn as blurred, locked cards - one per real professional, so the numbers are true.
     var networkProPlaceholders = [];
+    var networkComingSoon = 0;      // "Joining soon" cards for professionals not added yet (the president sets how many)
     function networkPlaceholdersRequest() {
-      return supabaseClient.rpc('get_network_professional_placeholders').then(function (r) {
+      var cards = supabaseClient.rpc('get_network_professional_placeholders').then(function (r) {
         return r.error ? [] : (r.data || []);
       }, function () { return []; });
+      var state = supabaseClient.rpc('network_launch_state').then(function (r) {
+        networkComingSoon = (!r.error && r.data && r.data.coming_soon) ? Math.max(0, Math.min(30, parseInt(r.data.coming_soon, 10) || 0)) : 0;
+      }, function () { networkComingSoon = 0; });
+      return Promise.all([cards, state]).then(function (res) { return res[0]; });
     }
     function renderLockedProfessionalCard(ph) {
-      return '<div class="network-card network-card--restricted network-card--prelaunch" role="group" aria-label="A healthcare professional - revealed when the Network launches">' +
-        '<span class="network-card-lock">' + NETWORK_LOCK_ICON + 'Revealed at launch</span>' +
+      var soon = !!ph.soon;
+      return '<div class="network-card network-card--restricted network-card--prelaunch' + (soon ? ' network-card--soon-pro' : '') + '" role="group" aria-label="' + (soon ? 'A healthcare professional joining soon' : 'A healthcare professional - revealed when the Network launches') + '">' +
+        '<span class="network-card-lock">' + NETWORK_LOCK_ICON + (soon ? 'Joining soon' : 'Revealed at launch') + '</span>' +
         '<span class="network-card-avatar" aria-hidden="true">Dr</span>' +
         '<span class="network-card-name" aria-hidden="true">Healthcare professional</span>' +
         '<span class="network-card-meta" aria-hidden="true">Name hidden until launch</span>' +
-        '<span class="network-card-badge" aria-hidden="true">' + escapeHtml(PROFESSIONAL_CATEGORY_LABELS[ph.category] || 'Professional') + '</span>' +
+        '<span class="network-card-badge" aria-hidden="true">' + (soon ? 'Joining soon' : escapeHtml(PROFESSIONAL_CATEGORY_LABELS[ph.category] || 'Professional')) + '</span>' +
         '</div>';
     }
     function renderNetworkProfessionals(rows) {
       var gridWrap = document.getElementById('network-professionals-wrap');
       var grid = document.getElementById('network-professionals-grid');
       var locked = networkProPlaceholders || [];
-      if (!rows.length && !locked.length) {
+      var soonCards = [];
+      for (var si = 0; si < networkComingSoon; si++) soonCards.push({ soon: true });
+      if (!rows.length && !locked.length && !soonCards.length) {
         gridWrap.style.display = 'none';
         grid.innerHTML = '';
         return;
@@ -4340,10 +4348,9 @@
       var sorted = rows.slice().sort(function (a, b) {
         return (a.full_name || '').localeCompare(b.full_name || '');
       });
-      grid.innerHTML = sorted.map(renderNetworkProfessionalCard).join('') + locked.map(renderLockedProfessionalCard).join('') +
-        (locked.length ? '<div class="network-soon" role="note"><span class="network-card-avatar" aria-hidden="true">+</span><span class="network-card-name">More professionals joining at launch</span><span class="network-card-meta">Doctors and pharmacists, ready to support you</span></div>' : '');
+      grid.innerHTML = sorted.map(renderNetworkProfessionalCard).join('') + locked.map(renderLockedProfessionalCard).join('') + soonCards.map(renderLockedProfessionalCard).join('');
       var note = document.getElementById('network-pro-note');
-      if (note) note.hidden = !locked.length;
+      if (note) note.hidden = !(locked.length || soonCards.length);
     }
 
     function renderNetworkProfessionalCard(p) {
@@ -6759,7 +6766,14 @@
     function loadNetworkLaunch() {
       var box = document.getElementById('network-launch-card');
       if (!box) return;
-      supabaseClient.rpc('network_launch_state').then(function (r) {
+      // The president's own view of the state reports 0 "joining soon" cards (they see the real thing), so the
+      // number to edit is read from the setting itself.
+      Promise.all([
+        supabaseClient.rpc('network_launch_state'),
+        supabaseClient.from('site_settings').select('value').eq('key', 'network_coming_soon').maybeSingle()
+      ]).then(function (both) {
+        var r = both[0];
+        var soonSetting = both[1] && both[1].data ? parseInt(both[1].data.value, 10) : NaN;
         if (r.error) {
           box.className = 'net-launch';
           box.innerHTML = '<div class="net-launch-text"><h3>Network launch</h3><p>Not available yet - run db/migrations/093-network-prelaunch.sql in Supabase.</p></div>';
@@ -6771,7 +6785,20 @@
           '<p>' + (launched
             ? 'Everyone with Network access can see the professionals\' names, photos and profiles, and can message them.'
             : 'Everyone except the Executive Committee sees the professionals as blurred, locked cards (no names or details are sent). Sixth formers stay hidden as always. Nothing changes until you press launch.') + '</p></div>' +
+          (launched ? '' : '<label class="net-launch-soon" for="network-soon-count"><span>"Joining soon" cards</span><input type="number" id="network-soon-count" min="0" max="30" value="' + (isNaN(soonSetting) ? 10 : Math.max(0, Math.min(30, soonSetting))) + '"><small>Extra locked cards for professionals not added yet. They show on the Network until you launch.</small></label>') +
           '<button type="button" class="btn ' + (launched ? 'btn-outline' : 'btn-primary') + '" id="network-launch-btn">' + (launched ? 'Back to pre-launch' : 'Launch the Network') + '</button>';
+        var soonInput = document.getElementById('network-soon-count');
+        if (soonInput) {
+          var shown = soonInput.value;
+          soonInput.addEventListener('change', function () {
+            var n = Math.max(0, Math.min(30, parseInt(soonInput.value, 10) || 0));
+            soonInput.value = n;
+            supabaseClient.rpc('president_set_network_coming_soon', { p_count: n }).then(function (res) {
+              if (res.error) { soonInput.value = shown; window.alert("Couldn't change that: " + res.error.message); return; }
+              shown = String(n);
+            });
+          });
+        }
         var btn = document.getElementById('network-launch-btn');
         btn.addEventListener('click', function () {
           var msg = launched
