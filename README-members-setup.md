@@ -1641,3 +1641,18 @@ No database changes. The long lanes of names are gone.
 - **Enforced in the database**, not just on the page: the professionals table, the "X just joined" entries about professionals, and the message directory / new chats with professionals all stay closed to others until launch (Sankofa mentors and mentees can still message each other).
 - **The switch:** Dashboard > Hub Access, at the top: **Launch the Network** (and **Back to pre-launch** if you want to undo it). Only you can press it.
 - **Opening the Network to everyone** is still the Network rule in the same Hub Access page (set it to allow members); that isn't changed automatically. Until you press launch, opening it only ever shows the blurred version.
+
+
+## 148. MMG portal closed, and healthcare professionals can request an account
+
+**Run in Supabase (safe to repeat):** `095-mmg-portal-closed.sql` and `096-professional-requests.sql`.
+
+### MMG portal switched off for now
+- Nobody can create an MMG account (the sign-up is gone, and the database refuses it too), and the "MMG portal login" is removed from the login page and the Gala page. `mmg-login.html` stays (so old links work) but just says the portal is closed. Existing guests, the dashboard MMG section, and Lincoln members marked as MMG attendees aren't touched; you can still add a guest yourself from the dashboard.
+- To reopen later: set the site setting `mmg_portal_open` to `true` (Table Editor -> site_settings) and put the login cards back on `login.html` and `mmg.html`.
+
+### Professional account requests
+- New public page `request-professional-account.html` (linked from the login page and from the student request page). It asks for: name, email and a password; role (senior doctor, doctor/alumni, pharmacist, other); job title; workplace; specialty; **regulator and registration number** (GMC, GPhC, NMC, HCPC, other or none - only you see it); their connection to Lincoln (and graduation year); how they'd like to help (mentoring, talks, careers advice, work experience, sponsorship); LinkedIn; a short bio for their Network card; anything else; and consent for their name, job and organisation to appear in the Network once approved.
+- They choose their own password when they ask (as students do), so approving needs no password email. Until you approve, they can sign in but see nothing.
+- **To approve:** Dashboard -> Account requests -> the **Healthcare professionals** tab. Open a request, check them on the register, then **Approve & add to the Network** (adds their professional profile to their login and emails them) or **Reject**. Approved and rejected requests can be removed. Pending requests also count on the dashboard tile.
+- Their approval email uses the existing `send-account-email` function's custom message, so no redeploy is needed.

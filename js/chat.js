@@ -37,7 +37,7 @@
   var pageRoot = document.getElementById('network-messages');
   var DOCK = !pageRoot;
   var thisPage = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
-  if (DOCK && ['member-login.html', 'login.html', 'request-account.html', 'join.html', 'mmg-login.html'].indexOf(thisPage) !== -1) return;
+  if (DOCK && ['member-login.html', 'login.html', 'request-account.html', 'request-professional-account.html', 'join.html', 'mmg-login.html'].indexOf(thisPage) !== -1) return;
   var root = pageRoot;       // in dock mode: the panel's inner element, created by buildDock()
 
   var PAGE_SIZE = 40;

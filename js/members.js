@@ -393,6 +393,105 @@
     });
   }
 
+  // ---- Request-professional-account page (request-professional-account.html): public, like the
+  // student request above. The professional sets their own password now (so approving later just adds
+  // their profile to that login), and the committee reviews the rest from the dashboard
+  // (migration 096's professional_requests table). ----
+  var requestProForm = document.getElementById('request-pro-form');
+  if (requestProForm) {
+    var rpRegBody = document.getElementById('rp-regbody');
+    var rpRegNumWrap = document.getElementById('rp-regnum-wrap');
+    var rpRegNum = document.getElementById('rp-regnum');
+    var rpConnection = document.getElementById('rp-connection');
+    var rpGradWrap = document.getElementById('rp-gradyear-wrap');
+    var rpGradYear = document.getElementById('rp-gradyear');
+    function syncProRegistration() {
+      var needsNumber = !!rpRegBody.value && rpRegBody.value !== 'None';
+      rpRegNumWrap.style.display = needsNumber ? '' : 'none';
+      rpRegNum.required = needsNumber;
+      if (!needsNumber) rpRegNum.value = '';
+    }
+    function syncProConnection() {
+      var grad = rpConnection.value === 'lincoln_graduate';
+      rpGradWrap.style.display = grad ? '' : 'none';
+      rpGradYear.required = grad;
+      if (!grad) rpGradYear.value = '';
+    }
+    rpRegBody.addEventListener('change', syncProRegistration);
+    rpConnection.addEventListener('change', syncProConnection);
+    syncProRegistration();
+    syncProConnection();
+
+    requestProForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var statusEl = document.getElementById('request-pro-status');
+      hideMessage(statusEl);
+      function val(id) { return document.getElementById(id).value.trim(); }
+      var name = val('rp-name'), email = val('rp-email');
+      var password = document.getElementById('rp-password').value;
+      var passwordConfirm = document.getElementById('rp-password-confirm').value;
+      var category = document.getElementById('rp-category').value;
+      var title = val('rp-title'), org = val('rp-org');
+      var regBody = rpRegBody.value, regNum = rpRegNum.value.trim();
+      var connection = rpConnection.value, gradYear = rpGradYear.value.trim();
+      var linkedin = val('rp-linkedin');
+      var ways = Array.prototype.map.call(requestProForm.querySelectorAll('input[name="rp-help"]:checked'), function (c) { return c.value; });
+
+      if (!name || !email || !password || !category || !title || !org || !regBody || !connection) {
+        showMessage(statusEl, 'Fill in your name, email, password, role, job title, workplace, regulator and your connection to Lincoln.');
+        return;
+      }
+      if (regBody !== 'None' && !regNum) { showMessage(statusEl, 'Add your registration number so we can check you on the register.'); return; }
+      if (connection === 'lincoln_graduate' && !gradYear) { showMessage(statusEl, 'Tell us the year you graduated.'); return; }
+      if (password.length < 8) { showMessage(statusEl, 'Your password needs to be at least 8 characters.'); return; }
+      if (password !== passwordConfirm) { showMessage(statusEl, "Those passwords don't match."); return; }
+      if (!document.getElementById('rp-consent').checked) { showMessage(statusEl, 'Please tick the box to agree to how we use your details.'); return; }
+      if (linkedin) {
+        if (!/^https?:\/\//i.test(linkedin)) linkedin = 'https://' + linkedin;
+        if (!/^https?:\/\/([a-z0-9-]+\.)*linkedin\.com\//i.test(linkedin)) { showMessage(statusEl, 'That LinkedIn link doesn\'t look right - paste your profile address, or leave it blank.'); return; }
+      }
+
+      var btn = requestProForm.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      statusEl.style.color = 'var(--color-text-muted)';
+      showMessage(statusEl, 'Sending…');
+
+      // Same approach as the student request: a real signUp() on an isolated client (no live session
+      // here for an account that isn't approved yet), then the request row pointing at that login.
+      var proSignupClient = createImplicitFlowClient();
+      proSignupClient.auth.signUp({ email: email, password: password, options: { emailRedirectTo: window.location.origin + '/member-login.html' } }).then(function (signUpResult) {
+        if (signUpResult.error || !signUpResult.data || !signUpResult.data.user) {
+          btn.disabled = false;
+          statusEl.style.color = '#ef8b8f';
+          showMessage(statusEl, (signUpResult.error && signUpResult.error.message) || "Couldn't create your login - the email may already be in use.");
+          return;
+        }
+        supabaseClient.from('professional_requests').insert({
+          full_name: name, email: email, auth_user_id: signUpResult.data.user.id,
+          category: category, job_title: title, organisation: org,
+          specialty: val('rp-specialty') || null,
+          registration_body: regBody, registration_number: regBody === 'None' ? null : regNum,
+          lincoln_connection: connection, graduation_year: connection === 'lincoln_graduate' ? gradYear : null,
+          ways_to_help: ways, linkedin_url: linkedin || null,
+          bio: val('rp-bio') || null, note: val('rp-note') || null, consent_network: true
+        }).then(function (result) {
+          if (result.error) {
+            btn.disabled = false;
+            statusEl.style.color = '#ef8b8f';
+            showMessage(statusEl, result.error.code === '23505'
+              ? "You've already got a request pending review - the committee will get to it soon."
+              : (result.error.message || "Your login was created, but saving your request failed - email acms@lincolnsu.com so the committee can finish this for you."));
+            return;
+          }
+          document.getElementById('request-pro-sent-email').textContent = email;
+          document.getElementById('request-pro-form-wrap').style.display = 'none';
+          document.getElementById('request-pro-success').style.display = '';
+          window.scrollTo(0, 0);
+        });
+      });
+    });
+  }
+
   // A professional has no row in `members` — this is how every gate
   // that already checks the `members` table (nav, homepage perks card,
   // the members hub itself, opportunities, MoTM nominations) also
@@ -5267,9 +5366,9 @@
             if (results[9].error) console.warn('Account request email log failed to load (has migration 057 been run?):', results[9].error.message);
             accountRequestEmailsAll = results[9].error ? [] : (results[9].data || []);
             renderAccountRequests(accountRequestsList);
-            var pendingCount = accountRequestsList.filter(function (r) { return r.status === 'pending'; }).length;
-            setDashCount('requests', pendingCount + ' pending');
+            updateRequestCounts();
           }
+          loadProfessionalRequests();
         }
         if (dashCan('gallery')) {
           loadGallerySubmissions();
@@ -6730,6 +6829,140 @@
     }
 
 
+    // ---- Professional account requests (migration 096) ----
+    // Same idea as the student requests above: the professional chose their own password when they
+    // asked, so approving just adds their professional profile to that login. Shown in the same
+    // "Account requests" section, under the Professionals tab.
+    var proRequestsAll = [];
+    var requestsKind = 'member';
+    var PRO_CATEGORY_NAMES = { senior_doctor: 'Senior doctor', alumni_doctor: 'Doctor / alumni doctor', pharmacist: 'Pharmacist', other: 'Other healthcare professional' };
+    var PRO_CONNECTION_NAMES = { lincoln_graduate: 'University of Lincoln graduate', other_university: 'Studied elsewhere', invited: 'Invited by a member or the committee', none: 'No connection yet' };
+    var PRO_HELP_NAMES = { sankofa_mentor: 'Mentor through Sankofa Circles', speak_at_events: 'Speak or run a session at an event', careers_advice: 'Careers, applications and interview advice', work_experience: 'Work experience, shadowing or placements', partnership: 'Sponsorship or partnership' };
+    function proRequestsPending() { return proRequestsAll.filter(function (r) { return r.status === 'pending'; }).length; }
+    function memberRequestsPending() { return accountRequestsAll.filter(function (r) { return r.status === 'pending'; }).length; }
+    function updateRequestCounts() {
+      var m = memberRequestsPending(), p = proRequestsPending();
+      var mc = document.getElementById('req-count-member'), pc = document.getElementById('req-count-pro');
+      if (mc) mc.textContent = m ? '(' + m + ')' : '';
+      if (pc) pc.textContent = p ? '(' + p + ')' : '';
+      setDashCount('requests', (m + p) + ' pending');
+    }
+    function loadProfessionalRequests() {
+      return supabaseClient.rpc('president_get_professional_requests').then(function (res) {
+        if (res.error) {
+          console.warn('Professional requests failed to load (has migration 096 been run?):', res.error.message);
+          proRequestsAll = [];
+        } else {
+          proRequestsAll = res.data || [];
+        }
+        renderProfessionalRequests();
+        updateRequestCounts();
+      });
+    }
+    function setRequestsKind(kind) {
+      requestsKind = kind === 'professional' ? 'professional' : 'member';
+      var tabs = document.querySelectorAll('[data-requests-kind]');
+      Array.prototype.forEach.call(tabs, function (b) { b.classList.toggle('is-active', b.getAttribute('data-requests-kind') === requestsKind); });
+      var memberWrap = document.getElementById('requests-member-wrap'), proWrap = document.getElementById('requests-pro-wrap');
+      if (memberWrap) memberWrap.style.display = requestsKind === 'member' ? '' : 'none';
+      if (proWrap) proWrap.style.display = requestsKind === 'professional' ? '' : 'none';
+      renderProfessionalRequests();
+    }
+    function renderProfessionalRequests() {
+      var listEl = document.getElementById('professional-requests-list');
+      var emptyEl = document.getElementById('professional-requests-empty');
+      var countEl = document.getElementById('professional-requests-count-line');
+      if (!listEl) return;
+      var filter = accountRequestsFilter;
+      if (countEl) countEl.textContent = proRequestsAll.length + ' total - ' + proRequestsPending() + ' pending';
+      var filtered = filter === 'all' ? proRequestsAll : proRequestsAll.filter(function (r) { return r.status === filter; });
+      if (!filtered.length) {
+        if (emptyEl) {
+          emptyEl.style.display = 'block';
+          emptyEl.textContent = filter === 'pending' ? 'No professional requests waiting.' : 'Nothing here.';
+        }
+        listEl.innerHTML = '';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+      listEl.innerHTML = filtered.map(renderProfessionalRequestCard).join('');
+    }
+    function renderProfessionalRequestCard(r) {
+      var statusLabel = r.status.charAt(0).toUpperCase() + r.status.slice(1);
+      var meta = [PRO_CATEGORY_NAMES[r.category] || 'Professional', r.job_title].filter(Boolean).join(' · ') + ' · ' + timeAgo(r.created_at);
+      var reg = r.registration_body === 'None' || !r.registration_body ? 'Not on a professional register' : r.registration_body + (r.registration_number ? ' ' + r.registration_number : '');
+      var connection = (PRO_CONNECTION_NAMES[r.lincoln_connection] || r.lincoln_connection) + (r.graduation_year ? ' (' + r.graduation_year + ')' : '');
+      var ways = (r.ways_to_help || []).map(function (w) { return PRO_HELP_NAMES[w] || w; }).join(', ');
+      var linkedin = safeUrl(r.linkedin_url);
+      var actionsHtml = r.status === 'pending'
+        ? '<div style="display:flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3);">' +
+          '<button type="button" class="btn btn-primary" data-pro-approve data-id="' + escapeHtml(r.id) + '">Approve &amp; add to the Network</button>' +
+          '<button type="button" class="btn btn-outline" data-pro-reject data-id="' + escapeHtml(r.id) + '" style="color: #ef8b8f; border-color: #ef8b8f;">Reject</button></div>'
+        : '';
+      return '<div class="app-card">' +
+        '<div class="app-card-head" data-app-card-toggle>' +
+        '<div class="app-card-head-main">' +
+        '<span class="member-status-badge member-status-badge--' + ACCOUNT_REQUEST_STATUS_KEY[r.status] + '"><span class="member-status-badge-dot" aria-hidden="true"></span>' + statusLabel + '</span>' +
+        '<span class="app-card-name">' + escapeHtml(r.full_name || 'Unnamed') + '</span>' +
+        '<span class="app-card-meta">' + escapeHtml(meta) + '</span></div>' +
+        '<svg class="icon app-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>' +
+        '</div>' +
+        '<div class="app-card-body">' +
+        appCardField('Email', r.email) +
+        appCardField('Role', PRO_CATEGORY_NAMES[r.category] || r.category) +
+        appCardField('Job title', r.job_title) +
+        appCardField('Where they work', r.organisation) +
+        appCardField('Specialty', r.specialty) +
+        appCardField('Registration (check on the public register)', reg) +
+        appCardField('Link to Lincoln', connection) +
+        appCardField('Would like to help by', ways) +
+        (linkedin ? '<div class="app-card-field"><div class="app-card-field-label">LinkedIn</div><div class="app-card-field-value"><a href="' + escapeHtml(linkedin) + '" target="_blank" rel="noopener noreferrer" style="color: var(--color-gold-light);">' + escapeHtml(linkedin) + '</a></div></div>' : '') +
+        appCardField('Short bio (for their Network card)', r.bio) +
+        appCardField('Anything else', r.note) +
+        actionsHtml +
+        (r.status !== 'pending' ? '<button type="button" class="app-card-delete-btn" data-pro-delete data-id="' + escapeHtml(r.id) + '">Remove this request</button>' : '') +
+        '</div></div>';
+    }
+    function proApprovalEmail(r) {
+      // "Dr Ada Okoye" -> "Dr Okoye"; anyone else by first name.
+      var parts = String(r.full_name || '').trim().split(/\s+/).filter(Boolean);
+      var first = parts.length > 1 && /^(dr|prof|professor)\.?$/i.test(parts[0]) ? parts[0] + ' ' + parts[parts.length - 1] : (parts[0] || 'there');
+      return {
+        subject: 'Your LACMS professional account is approved',
+        message: 'Hi ' + first + ',\n\nThank you for offering to support the Lincoln African Caribbean Medical Society. Your professional account has been approved.\n\n' +
+          'You can log in at ' + window.location.origin + '/member-login.html with the email address and password you chose when you made your request.\n\n' +
+          'Once you are in, you can add or update your profile, and we will be in touch about the ways you said you would like to help. If anything looks wrong, just reply to this email.\n\nThe LACMS committee'
+      };
+    }
+    // The login already exists (they set their own password when they asked), so this adds their
+    // professional profile to it, marks the request approved, and emails them.
+    function approveProfessionalRequest(r, onDone) {
+      if (!r.auth_user_id) {
+        onDone('This request has no login attached to it - create their account from Create Account instead, then remove this request.');
+        return;
+      }
+      insertWithFkRetry(function () {
+        return supabaseClient.from('network_professionals').insert({
+          user_id: r.auth_user_id, email: r.email, full_name: r.full_name, title: r.job_title,
+          organisation: r.organisation || null, category: r.category,
+          bio: r.bio || null, linkedin_url: safeUrl(r.linkedin_url) || null,
+          is_active: true, activated_at: new Date().toISOString()
+        }).select('id').single();
+      }).then(function (ins) {
+        if (ins.error) {
+          onDone('Their login exists, but adding their profile failed (' + ins.error.message + '). Their account id is ' + r.auth_user_id + '.');
+          return;
+        }
+        supabaseClient.rpc('president_mark_professional_request_approved', { target_id: r.id, new_professional_id: ins.data.id }).then(function (mark) {
+          if (mark.error) { onDone('Their profile was added, but marking the request approved failed: ' + mark.error.message); return; }
+          var mail = proApprovalEmail(r);
+          deliverCustomEmail({ id: r.id, email: r.email, full_name: r.full_name }, mail.subject, mail.message, { log: function () { return Promise.resolve(); } }).then(function (emailError) {
+            onDone(null, emailError);
+          });
+        });
+      });
+    }
+
     // ---- Hub Access (president only): rules for who can use each part
     // of the members hub (hub_access_rules), plus a person-by-person grid
     // showing the resulting access and letting the president force one
@@ -7898,6 +8131,52 @@
         requestsFilterTab.parentElement.querySelectorAll('[data-requests-filter]').forEach(function (t) { t.classList.remove('is-active'); });
         requestsFilterTab.classList.add('is-active');
         renderAccountRequestsFiltered(requestsFilterTab.getAttribute('data-requests-filter'));
+        renderProfessionalRequests();
+        return;
+      }
+
+      var requestsKindTab = e.target.closest('[data-requests-kind]');
+      if (requestsKindTab) { setRequestsKind(requestsKindTab.getAttribute('data-requests-kind')); return; }
+
+      var proApproveBtn = e.target.closest('[data-pro-approve]');
+      if (proApproveBtn) {
+        var proReq = proRequestsAll.filter(function (r) { return r.id === proApproveBtn.getAttribute('data-id'); })[0];
+        if (!proReq) return;
+        if (!window.confirm('Approve ' + proReq.full_name + ' and add them to the Network?\n\nHave you checked their ' + (proReq.registration_body && proReq.registration_body !== 'None' ? proReq.registration_body + ' registration' : 'details') + '? They will be emailed, and they can log in straight away.')) return;
+        proApproveBtn.disabled = true;
+        proApproveBtn.textContent = 'Adding…';
+        approveProfessionalRequest(proReq, function (errorMessage, emailError) {
+          if (errorMessage) {
+            proApproveBtn.disabled = false;
+            proApproveBtn.textContent = 'Approve & add to the Network';
+            window.alert("Couldn't approve this request: " + errorMessage);
+            return;
+          }
+          if (emailError) window.alert('Approved and added - but the email to them failed to send: ' + emailError + '\n\nYou may want to let them know yourself at ' + proReq.email + '.');
+          loadPresidentDashboard();
+        });
+        return;
+      }
+
+      var proRejectBtn = e.target.closest('[data-pro-reject]');
+      if (proRejectBtn) {
+        if (!window.confirm("Reject this request? They'll need to submit a new one to try again.")) return;
+        proRejectBtn.disabled = true;
+        supabaseClient.rpc('president_reject_professional_request', { target_id: proRejectBtn.getAttribute('data-id') }).then(function (result) {
+          if (result.error) { proRejectBtn.disabled = false; window.alert("Couldn't reject this request: " + result.error.message); return; }
+          loadProfessionalRequests();
+        });
+        return;
+      }
+
+      var proDeleteBtn = e.target.closest('[data-pro-delete]');
+      if (proDeleteBtn) {
+        if (!window.confirm("Remove this request? This can't be undone.")) return;
+        proDeleteBtn.disabled = true;
+        supabaseClient.rpc('president_delete_professional_request', { target_id: proDeleteBtn.getAttribute('data-id') }).then(function (result) {
+          if (result.error) { proDeleteBtn.disabled = false; return; }
+          loadProfessionalRequests();
+        });
         return;
       }
 

@@ -137,7 +137,7 @@
     { key: 'sankofa', cardId: 'sankofa-apply-card', badge: 'Apply now', href: 'member-sankofa.html', hidePages: ['member-sankofa.html'], text: 'Applications for a Sankofa Circle are open - apply today' },
     { key: 'motm', cardId: 'motm-nominate-card', badge: 'Prizes to win', href: 'motm.html#nominate', hidePages: ['motm.html'], text: 'Nominate someone for Member of the Month - the winner and runners-up win LACMS prizes' }
   ];
-  var QUIET_PAGES = ['member-login.html', 'login.html', 'request-account.html', 'join.html', 'mmg-login.html', 'president-dashboard.html', 'member-hub.html'];
+  var QUIET_PAGES = ['member-login.html', 'login.html', 'request-account.html', 'request-professional-account.html', 'join.html', 'mmg-login.html', 'president-dashboard.html', 'member-hub.html'];
 
   // Name the phase in the reminder wording ("Phase 2 applications are open").
   function sankofaPhaseName(ctx) {
@@ -903,7 +903,7 @@
   // What's remembered: user_ui_state key welcome_seen (migration 069) =
   // { at: when it last appeared, off: they asked not to see it }.
   var DIGEST_GAP_MS = 3 * 3600 * 1000;
-  var DIGEST_SKIP_PAGES = ['member-login.html', 'login.html', 'request-account.html', 'join.html', 'mmg-login.html'];
+  var DIGEST_SKIP_PAGES = ['member-login.html', 'login.html', 'request-account.html', 'request-professional-account.html', 'join.html', 'mmg-login.html'];
   var ACCESS_COPY = {
     perks: { title: 'Discounts & opportunities', sub: 'Member discounts, offers and opportunities', href: 'member-perks.html' },
     sankofa: { title: 'Sankofa', sub: 'Apply to join a Sankofa Circle', href: 'member-sankofa.html' },

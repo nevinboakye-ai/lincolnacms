@@ -8,7 +8,7 @@
 <meta name="description" content="For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-137">
+<link rel="stylesheet" href="css/styles.css?v=20260824-138">
 </head>
 <body>
 
@@ -415,6 +415,10 @@
             <div class="section-head">
               <span class="eyebrow">Account Requests</span>
               <h2>Review &amp; approve</h2>
+              <div class="dash-filter-tabs" id="requests-kind-tabs" style="margin-bottom: var(--space-2);">
+                <button type="button" class="dash-filter-tab is-active" data-requests-kind="member">Students <span id="req-count-member"></span></button>
+                <button type="button" class="dash-filter-tab" data-requests-kind="professional">Healthcare professionals <span id="req-count-pro"></span></button>
+              </div>
               <p id="account-requests-count-line" class="dash-section-count"></p>
               <div class="dash-filter-tabs" id="account-requests-filter-tabs">
                 <button type="button" class="dash-filter-tab is-active" data-requests-filter="pending">Pending</button>
@@ -423,8 +427,15 @@
                 <button type="button" class="dash-filter-tab" data-requests-filter="all">All</button>
               </div>
             </div>
-            <div class="app-card-list" id="account-requests-list"></div>
-            <p id="account-requests-empty" style="display:none; color: var(--color-text-faint);">No pending requests right now - you're all caught up.</p>
+            <div id="requests-member-wrap">
+              <div class="app-card-list" id="account-requests-list"></div>
+              <p id="account-requests-empty" style="display:none; color: var(--color-text-faint);">No pending requests right now - you're all caught up.</p>
+            </div>
+            <div id="requests-pro-wrap" style="display:none;">
+              <p id="professional-requests-count-line" class="dash-section-count"></p>
+              <div class="app-card-list" id="professional-requests-list"></div>
+              <p id="professional-requests-empty" style="display:none; color: var(--color-text-faint);">No professional requests waiting.</p>
+            </div>
           </div>
 
           <div class="dash-panel" id="dash-panel-access" style="display:none;">
@@ -768,17 +779,17 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/view-as.js?v=20260824-137"></script>
+<script src="js/view-as.js?v=20260824-138"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-137"></script>
-<script src="js/members.js?v=20260824-137"></script>
-<script src="js/notifications.js?v=20260824-137"></script>
-<script src="js/guidance.js?v=20260824-137"></script>
-<script src="js/chat.js?v=20260824-137"></script>
-<script src="js/chat-admin.js?v=20260824-137"></script>
-<script src="js/site-stats-admin.js?v=20260824-137"></script>
-<script src="js/sankofa-rounds.js?v=20260824-137"></script>
-<script src="js/sankofa-common.js?v=20260824-137"></script>
-<script src="js/sankofa-admin.js?v=20260824-137"></script>
+<script src="js/main.js?v=20260824-138"></script>
+<script src="js/members.js?v=20260824-138"></script>
+<script src="js/notifications.js?v=20260824-138"></script>
+<script src="js/guidance.js?v=20260824-138"></script>
+<script src="js/chat.js?v=20260824-138"></script>
+<script src="js/chat-admin.js?v=20260824-138"></script>
+<script src="js/site-stats-admin.js?v=20260824-138"></script>
+<script src="js/sankofa-rounds.js?v=20260824-138"></script>
+<script src="js/sankofa-common.js?v=20260824-138"></script>
+<script src="js/sankofa-admin.js?v=20260824-138"></script>
 </body>
 </html>
