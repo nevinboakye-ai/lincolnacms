@@ -5,9 +5,9 @@
 <script>(function(){try{var t=localStorage.getItem('lacms-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Member Login - LACMS</title>
-<meta name="description" content="Log in to LACMS - as a Lincoln member, or as an MMG attendee or partner-committee member.">
+<meta name="description" content="Log in to your LACMS account, or request one if you don't have a login yet - for members and for healthcare professionals.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-139">
+<link rel="stylesheet" href="css/styles.css?v=20260824-141">
 </head>
 <body>
 
@@ -85,51 +85,46 @@
   <section class="page-hero container">
     <span class="eyebrow">LACMS</span>
     <h1 class="page-hero-title">Member login</h1>
-    <p class="page-hero-lede">Choose the account that matches you - full LACMS membership, or Midlands Medics Gala access.</p>
+    <p class="page-hero-lede">Log in to your LACMS account, or request one if you don't have a login yet.</p>
     <div class="tricolor-bar tricolor-bar--sm" aria-hidden="true"><span></span><span></span><span></span></div>
   </section>
 
   <section class="section">
     <div class="container">
-      <div class="grid grid--4">
-
-        <div class="card login-choice-card">
-          <span class="login-choice-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
-          </span>
+      <div class="card login-feature">
+        <span class="login-choice-icon" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        </span>
+        <div class="login-feature-text">
           <h3 class="card-title">Lincoln LACMS member</h3>
-          <p>Full members of the Lincoln African Caribbean Medical Society - your profile, digital membership card, perks, Sankofa Circles and more.</p>
-          <a class="btn btn-primary" href="member-login.html">Member login</a>
+          <p>Your profile, digital membership card, perks, Sankofa Circles and more.</p>
         </div>
-        <div class="card login-choice-card">
-          <span class="login-choice-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
-          </span>
-          <h3 class="card-title">Healthcare professional?</h3>
-          <p>Doctors, pharmacists and other clinicians supporting our members: request an account and the committee will review it.</p>
-          <a class="btn btn-outline" href="request-professional-account.html">Request a professional account</a>
-        </div>
+        <a class="btn btn-primary" href="member-login.html">Member login</a>
+      </div>
 
-        <div class="card login-choice-card">
-          <span class="login-choice-icon" aria-hidden="true">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 8.6a4.6 4.6 0 0 0-7.9-3.2L12 6.3l-.9-.9a4.6 4.6 0 1 0-6.5 6.5L12 19.5l7.4-7.6a4.6 4.6 0 0 0 1.4-3.3z"/></svg>
-          </span>
-          <h3 class="card-title">Not a member yet?</h3>
-          <p>Membership is £7.50 for the year, purchased directly through the University of Lincoln Students' Union - that's where your payment is processed and your membership is officially recorded.</p>
-          <a class="btn btn-outline" href="https://lincolnsu.com/activities/view/acs-medical">Join via the Students' Union</a>
-        </div>
-
+      <div class="grid grid--2 login-secondary">
         <div class="card login-choice-card">
           <span class="login-choice-icon" aria-hidden="true">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
           </span>
           <h3 class="card-title">Already paid, no login yet?</h3>
-          <p>Request your account - the committee reviews it and sets up your login, no need to wait on us to reach out first.</p>
+          <p>Request your account. The committee reviews it and sets up your login.</p>
           <a class="btn btn-outline" href="request-account.html">Request your account</a>
         </div>
 
+        <div class="card login-choice-card">
+          <span class="login-choice-icon" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+          </span>
+          <h3 class="card-title">Healthcare professional?</h3>
+          <p>Doctors, pharmacists and other clinicians supporting our members, including those we've invited to our programmes.</p>
+          <a class="btn btn-outline" href="request-professional-account.html">Request a professional account</a>
+        </div>
       </div>
-      <p style="margin-top: var(--space-5); font-size: 0.85rem; color: var(--color-text-faint);">Not sure which one? If you already have a login, use Member login. If you've paid but don't have a login yet, request your account. If you're a healthcare professional wanting to support our members, request a professional account.</p>
+
+      <p class="login-small-link">Not a member yet? <a href="https://lincolnsu.com/activities/view/acs-medical">Join via the Students' Union</a> (£7.50 for the year).</p>
+
+      <p style="margin-top: var(--space-5); font-size: 0.85rem; color: var(--color-text-faint);">Not sure which one? If you already have a login, use Member login. If you've paid but don't have a login yet, request your account. </p>
     </div>
   </section>
 
@@ -188,12 +183,12 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/view-as.js?v=20260824-139"></script>
+<script src="js/view-as.js?v=20260824-141"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-139"></script>
-<script src="js/members.js?v=20260824-139"></script>
-<script src="js/notifications.js?v=20260824-139"></script>
-<script src="js/guidance.js?v=20260824-139"></script>
-<script src="js/chat.js?v=20260824-139"></script>
+<script src="js/main.js?v=20260824-141"></script>
+<script src="js/members.js?v=20260824-141"></script>
+<script src="js/notifications.js?v=20260824-141"></script>
+<script src="js/guidance.js?v=20260824-141"></script>
+<script src="js/chat.js?v=20260824-141"></script>
 </body>
 </html>
