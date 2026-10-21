@@ -405,6 +405,8 @@
     var rpConnection = document.getElementById('rp-connection');
     var rpGradWrap = document.getElementById('rp-gradyear-wrap');
     var rpGradYear = document.getElementById('rp-gradyear');
+    var rpInvitedWrap = document.getElementById('rp-invited-wrap');
+    var rpInvited = document.getElementById('rp-invited');
     function syncProRegistration() {
       var needsNumber = !!rpRegBody.value && rpRegBody.value !== 'None';
       rpRegNumWrap.style.display = needsNumber ? '' : 'none';
@@ -416,6 +418,9 @@
       rpGradWrap.style.display = grad ? '' : 'none';
       rpGradYear.required = grad;
       if (!grad) rpGradYear.value = '';
+      var invited = rpConnection.value === 'invited';
+      rpInvitedWrap.style.display = invited ? '' : 'none';
+      if (!invited) rpInvited.value = '';
     }
     rpRegBody.addEventListener('change', syncProRegistration);
     rpConnection.addEventListener('change', syncProConnection);
@@ -472,6 +477,7 @@
           specialty: val('rp-specialty') || null,
           registration_body: regBody, registration_number: regBody === 'None' ? null : regNum,
           lincoln_connection: connection, graduation_year: connection === 'lincoln_graduate' ? gradYear : null,
+          invited_by: connection === 'invited' ? (rpInvited.value.trim() || null) : null,
           ways_to_help: ways, linkedin_url: linkedin || null,
           bio: val('rp-bio') || null, note: val('rp-note') || null, consent_network: true
         }).then(function (result) {
@@ -6836,7 +6842,7 @@
     var proRequestsAll = [];
     var requestsKind = 'member';
     var PRO_CATEGORY_NAMES = { senior_doctor: 'Senior doctor', alumni_doctor: 'Doctor / alumni doctor', pharmacist: 'Pharmacist', other: 'Other healthcare professional' };
-    var PRO_CONNECTION_NAMES = { lincoln_graduate: 'University of Lincoln graduate', other_university: 'Studied elsewhere', invited: 'Invited by a member or the committee', none: 'No connection yet' };
+    var PRO_CONNECTION_NAMES = { lincoln_graduate: 'University of Lincoln graduate', other_university: 'Studied elsewhere', invited: 'Invited to join a LACMS programme', none: 'No connection yet' };
     var PRO_HELP_NAMES = { sankofa_mentor: 'Mentor through Sankofa Circles', speak_at_events: 'Speak or run a session at an event', careers_advice: 'Careers, applications and interview advice', work_experience: 'Work experience, shadowing or placements', partnership: 'Sponsorship or partnership' };
     function proRequestsPending() { return proRequestsAll.filter(function (r) { return r.status === 'pending'; }).length; }
     function memberRequestsPending() { return accountRequestsAll.filter(function (r) { return r.status === 'pending'; }).length; }
@@ -6890,6 +6896,7 @@
     function renderProfessionalRequestCard(r) {
       var statusLabel = r.status.charAt(0).toUpperCase() + r.status.slice(1);
       var meta = [PRO_CATEGORY_NAMES[r.category] || 'Professional', r.job_title].filter(Boolean).join(' · ') + ' · ' + timeAgo(r.created_at);
+      var invitedTag = r.lincoln_connection === 'invited' ? '<span class="member-status-badge member-status-badge--active"><span class="member-status-badge-dot" aria-hidden="true"></span>Invited</span>' : '';
       var reg = r.registration_body === 'None' || !r.registration_body ? 'Not on a professional register' : r.registration_body + (r.registration_number ? ' ' + r.registration_number : '');
       var connection = (PRO_CONNECTION_NAMES[r.lincoln_connection] || r.lincoln_connection) + (r.graduation_year ? ' (' + r.graduation_year + ')' : '');
       var ways = (r.ways_to_help || []).map(function (w) { return PRO_HELP_NAMES[w] || w; }).join(', ');
@@ -6903,7 +6910,7 @@
         '<div class="app-card-head" data-app-card-toggle>' +
         '<div class="app-card-head-main">' +
         '<span class="member-status-badge member-status-badge--' + ACCOUNT_REQUEST_STATUS_KEY[r.status] + '"><span class="member-status-badge-dot" aria-hidden="true"></span>' + statusLabel + '</span>' +
-        '<span class="app-card-name">' + escapeHtml(r.full_name || 'Unnamed') + '</span>' +
+        '<span class="app-card-name">' + escapeHtml(r.full_name || 'Unnamed') + '</span>' + invitedTag +
         '<span class="app-card-meta">' + escapeHtml(meta) + '</span></div>' +
         '<svg class="icon app-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>' +
         '</div>' +
@@ -6915,6 +6922,7 @@
         appCardField('Specialty', r.specialty) +
         appCardField('Registration (check on the public register)', reg) +
         appCardField('Link to Lincoln', connection) +
+        appCardField('Invited by / programme', r.invited_by) +
         appCardField('Would like to help by', ways) +
         (linkedin ? '<div class="app-card-field"><div class="app-card-field-label">LinkedIn</div><div class="app-card-field-value"><a href="' + escapeHtml(linkedin) + '" target="_blank" rel="noopener noreferrer" style="color: var(--color-gold-light);">' + escapeHtml(linkedin) + '</a></div></div>' : '') +
         appCardField('Short bio (for their Network card)', r.bio) +
@@ -6931,6 +6939,7 @@
         subject: 'Your LACMS professional account is approved',
         message: 'Hi ' + first + ',\n\nThank you for offering to support the Lincoln African Caribbean Medical Society. Your professional account has been approved.\n\n' +
           'You can log in at ' + window.location.origin + '/member-login.html with the email address and password you chose when you made your request.\n\n' +
+          (r.lincoln_connection === 'invited' ? 'As you were invited to join one of our programmes' + (r.invited_by ? ' (' + r.invited_by + ')' : '') + ', the team running it will be in touch with you directly about the next steps.\n\n' : '') +
           'Once you are in, you can add or update your profile, and we will be in touch about the ways you said you would like to help. If anything looks wrong, just reply to this email.\n\nThe LACMS committee'
       };
     }

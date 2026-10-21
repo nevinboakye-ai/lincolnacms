@@ -7,7 +7,7 @@
 <title>Request a professional account - LACMS</title>
 <meta name="description" content="Healthcare professionals: request a LACMS account to support our members through mentoring, talks and careers advice. The committee reviews every request.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-138">
+<link rel="stylesheet" href="css/styles.css?v=20260824-139">
 </head>
 <body>
 
@@ -85,7 +85,7 @@
   <section class="page-hero container">
     <span class="eyebrow">For healthcare professionals</span>
     <h1 class="page-hero-title">Request a professional account</h1>
-    <p class="page-hero-lede">Doctors, pharmacists and other clinicians supporting LACMS members through mentoring, talks and careers advice. Tell us about you and the committee will review your request and set up your account.</p>
+    <p class="page-hero-lede">For doctors, pharmacists and other clinicians who support LACMS members, including those we've invited to take part in our programmes such as Sankofa Circles. Tell us about you and the committee will review your request and set up your account.</p>
     <div class="tricolor-bar tricolor-bar--sm" aria-hidden="true"><span></span><span></span><span></span></div>
     <p style="margin-top: var(--space-3); font-size: 0.85rem;"><a href="request-account.html" style="color: var(--color-text-faint);">&larr; I'm a student requesting a member account</a></p>
   </section>
@@ -96,6 +96,11 @@
       <div class="form-note" data-supabase-not-configured style="display:none;">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
         <span>The members hub isn't connected yet - Nevin still needs to add the Supabase project keys to js/supabase-client.js. See README-members-setup.md.</span>
+      </div>
+
+      <div class="form-note">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+        <span><strong>Been invited by us?</strong> If a member of the LACMS committee invited you to join a programme like Sankofa Circles, you're in the right place. Fill this in and choose "I've been invited" in the Your link to LACMS section. We'll recognise your request and set you up.</span>
       </div>
 
       <div class="form-panel" id="request-pro-form-wrap">
@@ -109,7 +114,7 @@
           <div class="field">
             <label for="rp-email">Email</label>
             <input type="email" id="rp-email" name="rp-email" autocomplete="email" maxlength="254" required>
-            <span class="hint">We'll use this to reach you and for your login.</span>
+            <span class="hint">We'll use this to reach you and for your login. Use the address we invited you on, if you were invited.</span>
           </div>
           <div class="field">
             <label for="rp-password">Password</label>
@@ -171,9 +176,13 @@
               <option value="">Select…</option>
               <option value="lincoln_graduate">I'm a University of Lincoln graduate</option>
               <option value="other_university">I studied elsewhere</option>
-              <option value="invited">A LACMS member or the committee invited me</option>
+              <option value="invited">I've been invited to join a LACMS programme (for example Sankofa Circles)</option>
               <option value="none">No connection yet - I'd like to support</option>
             </select>
+          </div>
+          <div class="field" id="rp-invited-wrap" style="display:none;">
+            <label for="rp-invited">Who invited you, or which programme? <span class="optional">(optional)</span></label>
+            <input type="text" id="rp-invited" name="rp-invited" maxlength="200" placeholder="e.g. Sankofa Circles, invited by Nevin">
           </div>
           <div class="field" id="rp-gradyear-wrap" style="display:none;">
             <label for="rp-gradyear">Year you graduated</label>
@@ -280,12 +289,12 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/view-as.js?v=20260824-138"></script>
+<script src="js/view-as.js?v=20260824-139"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-138"></script>
-<script src="js/members.js?v=20260824-138"></script>
-<script src="js/notifications.js?v=20260824-138"></script>
-<script src="js/guidance.js?v=20260824-138"></script>
-<script src="js/chat.js?v=20260824-138"></script>
+<script src="js/main.js?v=20260824-139"></script>
+<script src="js/members.js?v=20260824-139"></script>
+<script src="js/notifications.js?v=20260824-139"></script>
+<script src="js/guidance.js?v=20260824-139"></script>
+<script src="js/chat.js?v=20260824-139"></script>
 </body>
 </html>
