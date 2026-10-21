@@ -3,8 +3,7 @@
 -- Students already request an account and the president approves it (047). This is
 -- the same for healthcare professionals - doctors, pharmacists and other clinicians
 -- who want to support LACMS - with the questions that matter for them: who they are,
--- what they do and where, their regulator and registration number (so the committee
--- can check them), how they're connected to Lincoln, and how they'd like to help.
+-- what they do and where, how they're connected to Lincoln, and how they'd like to help.
 --
 -- Like the student request, they choose their own password when they ask (the page
 -- creates their login then), so approving just adds their professional profile to
@@ -12,11 +11,13 @@
 -- but see nothing: the Network, Sankofa and the rest all check for a real profile.
 --
 -- People the committee has invited (for example doctors in programmes like Sankofa Circles) use the same
--- form: they pick "I've been invited" and can say who invited them or which programme, and the dashboard
--- marks the request as invited so it's quick to recognise.
+-- form: they pick "I've been invited" and the dashboard marks the request as invited.
 --
 -- Requests are write-only for the public and readable only by the president (through
--- the RPCs below); the registration number never leaves the president's dashboard.
+-- the RPCs below).
+--
+-- If you ran an earlier copy that also asked for a regulator and registration number or who invited
+-- someone, those columns are simply left empty and unused (drop them whenever you like).
 --
 -- Safe to run more than once. Needs 014, 015, 025 and 032.
 
@@ -31,11 +32,8 @@ create table if not exists public.professional_requests (
   job_title text not null,
   organisation text not null,
   specialty text,
-  registration_body text check (registration_body is null or registration_body in ('GMC', 'GPhC', 'NMC', 'HCPC', 'Other', 'None')),
-  registration_number text,
   lincoln_connection text not null check (lincoln_connection in ('lincoln_graduate', 'other_university', 'invited', 'none')),
   graduation_year text,
-  invited_by text,
   ways_to_help text[] not null default '{}',
   linkedin_url text,
   bio text,
@@ -47,9 +45,6 @@ create table if not exists public.professional_requests (
   created_professional_id uuid references public.network_professionals (id) on delete set null,
   created_at timestamptz not null default now()
 );
-
--- (A copy of this table made before invited_by existed gets the column here.)
-alter table public.professional_requests add column if not exists invited_by text;
 
 alter table public.professional_requests enable row level security;
 
@@ -68,9 +63,7 @@ create policy "Anyone can submit a professional account request"
     and char_length(btrim(job_title)) between 1 and 150
     and char_length(btrim(organisation)) between 1 and 200
     and (specialty is null or char_length(specialty) <= 150)
-    and (registration_number is null or char_length(registration_number) <= 50)
     and (graduation_year is null or char_length(graduation_year) <= 20)
-    and (invited_by is null or char_length(invited_by) <= 200)
     and cardinality(ways_to_help) <= 8
     and (linkedin_url is null or char_length(linkedin_url) <= 300)
     and (bio is null or char_length(bio) <= 1200)

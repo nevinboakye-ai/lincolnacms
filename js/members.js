@@ -399,32 +399,16 @@
   // (migration 096's professional_requests table). ----
   var requestProForm = document.getElementById('request-pro-form');
   if (requestProForm) {
-    var rpRegBody = document.getElementById('rp-regbody');
-    var rpRegNumWrap = document.getElementById('rp-regnum-wrap');
-    var rpRegNum = document.getElementById('rp-regnum');
     var rpConnection = document.getElementById('rp-connection');
     var rpGradWrap = document.getElementById('rp-gradyear-wrap');
     var rpGradYear = document.getElementById('rp-gradyear');
-    var rpInvitedWrap = document.getElementById('rp-invited-wrap');
-    var rpInvited = document.getElementById('rp-invited');
-    function syncProRegistration() {
-      var needsNumber = !!rpRegBody.value && rpRegBody.value !== 'None';
-      rpRegNumWrap.style.display = needsNumber ? '' : 'none';
-      rpRegNum.required = needsNumber;
-      if (!needsNumber) rpRegNum.value = '';
-    }
     function syncProConnection() {
       var grad = rpConnection.value === 'lincoln_graduate';
       rpGradWrap.style.display = grad ? '' : 'none';
       rpGradYear.required = grad;
       if (!grad) rpGradYear.value = '';
-      var invited = rpConnection.value === 'invited';
-      rpInvitedWrap.style.display = invited ? '' : 'none';
-      if (!invited) rpInvited.value = '';
     }
-    rpRegBody.addEventListener('change', syncProRegistration);
     rpConnection.addEventListener('change', syncProConnection);
-    syncProRegistration();
     syncProConnection();
 
     requestProForm.addEventListener('submit', function (e) {
@@ -437,16 +421,14 @@
       var passwordConfirm = document.getElementById('rp-password-confirm').value;
       var category = document.getElementById('rp-category').value;
       var title = val('rp-title'), org = val('rp-org');
-      var regBody = rpRegBody.value, regNum = rpRegNum.value.trim();
       var connection = rpConnection.value, gradYear = rpGradYear.value.trim();
       var linkedin = val('rp-linkedin');
       var ways = Array.prototype.map.call(requestProForm.querySelectorAll('input[name="rp-help"]:checked'), function (c) { return c.value; });
 
-      if (!name || !email || !password || !category || !title || !org || !regBody || !connection) {
-        showMessage(statusEl, 'Fill in your name, email, password, role, job title, workplace, regulator and your connection to Lincoln.');
+      if (!name || !email || !password || !category || !title || !org || !connection) {
+        showMessage(statusEl, 'Fill in your name, email, password, role, job title, workplace and your connection to Lincoln.');
         return;
       }
-      if (regBody !== 'None' && !regNum) { showMessage(statusEl, 'Add your registration number so we can check you on the register.'); return; }
       if (connection === 'lincoln_graduate' && !gradYear) { showMessage(statusEl, 'Tell us the year you graduated.'); return; }
       if (password.length < 8) { showMessage(statusEl, 'Your password needs to be at least 8 characters.'); return; }
       if (password !== passwordConfirm) { showMessage(statusEl, "Those passwords don't match."); return; }
@@ -475,9 +457,7 @@
           full_name: name, email: email, auth_user_id: signUpResult.data.user.id,
           category: category, job_title: title, organisation: org,
           specialty: val('rp-specialty') || null,
-          registration_body: regBody, registration_number: regBody === 'None' ? null : regNum,
           lincoln_connection: connection, graduation_year: connection === 'lincoln_graduate' ? gradYear : null,
-          invited_by: connection === 'invited' ? (rpInvited.value.trim() || null) : null,
           ways_to_help: ways, linkedin_url: linkedin || null,
           bio: val('rp-bio') || null, note: val('rp-note') || null, consent_network: true
         }).then(function (result) {
@@ -6897,7 +6877,6 @@
       var statusLabel = r.status.charAt(0).toUpperCase() + r.status.slice(1);
       var meta = [PRO_CATEGORY_NAMES[r.category] || 'Professional', r.job_title].filter(Boolean).join(' · ') + ' · ' + timeAgo(r.created_at);
       var invitedTag = r.lincoln_connection === 'invited' ? '<span class="member-status-badge member-status-badge--active"><span class="member-status-badge-dot" aria-hidden="true"></span>Invited</span>' : '';
-      var reg = r.registration_body === 'None' || !r.registration_body ? 'Not on a professional register' : r.registration_body + (r.registration_number ? ' ' + r.registration_number : '');
       var connection = (PRO_CONNECTION_NAMES[r.lincoln_connection] || r.lincoln_connection) + (r.graduation_year ? ' (' + r.graduation_year + ')' : '');
       var ways = (r.ways_to_help || []).map(function (w) { return PRO_HELP_NAMES[w] || w; }).join(', ');
       var linkedin = safeUrl(r.linkedin_url);
@@ -6920,9 +6899,7 @@
         appCardField('Job title', r.job_title) +
         appCardField('Where they work', r.organisation) +
         appCardField('Specialty', r.specialty) +
-        appCardField('Registration (check on the public register)', reg) +
         appCardField('Link to Lincoln', connection) +
-        appCardField('Invited by / programme', r.invited_by) +
         appCardField('Would like to help by', ways) +
         (linkedin ? '<div class="app-card-field"><div class="app-card-field-label">LinkedIn</div><div class="app-card-field-value"><a href="' + escapeHtml(linkedin) + '" target="_blank" rel="noopener noreferrer" style="color: var(--color-gold-light);">' + escapeHtml(linkedin) + '</a></div></div>' : '') +
         appCardField('Short bio (for their Network card)', r.bio) +
@@ -6939,7 +6916,7 @@
         subject: 'Your LACMS professional account is approved',
         message: 'Hi ' + first + ',\n\nThank you for offering to support the Lincoln African Caribbean Medical Society. Your professional account has been approved.\n\n' +
           'You can log in at ' + window.location.origin + '/member-login.html with the email address and password you chose when you made your request.\n\n' +
-          (r.lincoln_connection === 'invited' ? 'As you were invited to join one of our programmes' + (r.invited_by ? ' (' + r.invited_by + ')' : '') + ', the team running it will be in touch with you directly about the next steps.\n\n' : '') +
+          (r.lincoln_connection === 'invited' ? 'As you were invited to join one of our programmes, the team running it will be in touch with you directly about the next steps.\n\n' : '') +
           'Once you are in, you can add or update your profile, and we will be in touch about the ways you said you would like to help. If anything looks wrong, just reply to this email.\n\nThe LACMS committee'
       };
     }
@@ -8151,7 +8128,7 @@
       if (proApproveBtn) {
         var proReq = proRequestsAll.filter(function (r) { return r.id === proApproveBtn.getAttribute('data-id'); })[0];
         if (!proReq) return;
-        if (!window.confirm('Approve ' + proReq.full_name + ' and add them to the Network?\n\nHave you checked their ' + (proReq.registration_body && proReq.registration_body !== 'None' ? proReq.registration_body + ' registration' : 'details') + '? They will be emailed, and they can log in straight away.')) return;
+        if (!window.confirm('Approve ' + proReq.full_name + ' and add them to the Network?\n\nThey will be emailed, and they can log in straight away.')) return;
         proApproveBtn.disabled = true;
         proApproveBtn.textContent = 'Adding…';
         approveProfessionalRequest(proReq, function (errorMessage, emailError) {
