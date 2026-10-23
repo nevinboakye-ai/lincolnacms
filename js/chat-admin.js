@@ -134,8 +134,13 @@
   if (card) card.addEventListener('click', function () { load(); });
   supabaseClient.auth.getSession().then(function (result) {
     if (!result.data || !result.data.session) return;
-    supabaseClient.rpc('is_president').then(function (r) {
-      if (r.error || r.data !== true) { if (card) card.style.display = 'none'; return; }
+    // Whoever has the Chat Reports tile (the president always does). Falls back to "the president only"
+    // if the database hasn't had migration 098 yet.
+    supabaseClient.rpc('dash_access', { p_feature: 'dash_chatreports' }).then(function (r) {
+      if (r.error) return supabaseClient.rpc('is_president');
+      return r;
+    }).then(function (r) {
+      if (!r || r.error || r.data !== true) { if (card) card.style.display = 'none'; return; }
       load();
     }, function () { /* leave it */ });
   });

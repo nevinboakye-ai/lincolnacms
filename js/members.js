@@ -5021,8 +5021,15 @@
     var dashboardRole = null;
     // The five sections non-presidents can be given (by Hub Access rules),
     // and which rule feature controls each.
-    var DASH_SHARED_SECTIONS = ['mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery'];
-    var DASH_FEATURE_FOR = { mmg: 'dash_mmg', sankofa: 'dash_sankofa', sankofahub: 'sankofa_hub', motm: 'dash_motm', events: 'dash_events', gallery: 'dash_gallery' };
+    var DASH_SHARED_SECTIONS = ['mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery',
+      'activity', 'webactivity', 'requests', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email'];
+    // The original five, which the Executive Committee got by default; used only if Hub Access can't be loaded.
+    var DASH_LEGACY_SECTIONS = ['mmg', 'sankofa', 'motm', 'events', 'gallery'];
+    var DASH_FEATURE_FOR = {
+      mmg: 'dash_mmg', sankofa: 'dash_sankofa', sankofahub: 'sankofa_hub', motm: 'dash_motm', events: 'dash_events', gallery: 'dash_gallery',
+      activity: 'dash_activity', webactivity: 'dash_webactivity', requests: 'dash_requests', pending: 'dash_pending', chatreports: 'dash_chatreports',
+      sitestats: 'dash_sitestats', create: 'dash_create', manage: 'dash_manage', email: 'dash_email'
+    };
     var dashAllowed = {};
     // President: everything. Anyone else: only the shared sections the
     // rules allow - never the president-only ones (accounts, activity,
@@ -5031,7 +5038,8 @@
       if (dashboardRole === 'president') return true;
       return DASH_SHARED_SECTIONS.indexOf(section) !== -1 && !!dashAllowed[section];
     }
-    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email'];
+    // Never shareable: whoever could edit Hub Access could give themselves everything.
+    var PRESIDENT_ONLY_SECTIONS = ['access'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
@@ -5113,7 +5121,7 @@
           .maybeSingle()
           .then(function (memberResult) {
             var isExec = !!(memberResult.data && memberResult.data.member_type === 'executive_committee');
-            if (isExec) DASH_SHARED_SECTIONS.forEach(function (sec) { dashAllowed[sec] = true; });
+            if (isExec) DASH_LEGACY_SECTIONS.forEach(function (sec) { dashAllowed[sec] = true; });
             dashAllowed.sankofahub = managesSankofa;
             if (isExec || managesSankofa) {
               enterDashboard(session, 'exec_committee');
@@ -5158,7 +5166,7 @@
           window.history.replaceState(null, '', '#' + section);
           if (section === 'webactivity') loadWebActivity();
           if (section === 'access' && dashboardRole === 'president') loadHubAccess();
-          if (section === 'pending' && dashboardRole === 'president') loadPendingMembers();
+          if (section === 'pending' && dashCan('pending')) loadPendingMembers();
         });
       });
       document.querySelectorAll('[data-dash-back]').forEach(function (btn) {
@@ -5177,7 +5185,7 @@
         showDashSection(initialSection);
         if (initialSection === 'webactivity') loadWebActivity();
         if (initialSection === 'access' && dashboardRole === 'president') loadHubAccess();
-        if (initialSection === 'pending' && dashboardRole === 'president') loadPendingMembers();
+        if (initialSection === 'pending' && dashCan('pending')) loadPendingMembers();
       }
     }
     function setDashCount(section, text) {
@@ -5227,18 +5235,22 @@
       // results array the same shape either way, so every index below
       // still lines up regardless of role.
       var isPresident = dashboardRole === 'president';
+      // What this person may load (the president may load everything).
+      var canActivity = dashCan('activity'), canManage = dashCan('manage'), canPending = dashCan('pending'), canRequests = dashCan('requests');
+      var needPeople = canActivity || canManage;
+      var needPending = canActivity || canManage || canPending;
       beatOwnPresence.then(function () {
         return Promise.all([
-          isPresident ? supabaseClient.rpc('president_get_members') : Promise.resolve({ data: [], error: null }),
-          isPresident ? supabaseClient.rpc('president_get_pending_members') : Promise.resolve({ data: [], error: null }),
-          isPresident ? supabaseClient.rpc('president_get_professionals') : Promise.resolve({ data: [], error: null }),
+          needPeople ? supabaseClient.rpc('president_get_members') : Promise.resolve({ data: [], error: null }),
+          needPending ? supabaseClient.rpc('president_get_pending_members') : Promise.resolve({ data: [], error: null }),
+          needPeople ? supabaseClient.rpc('president_get_professionals') : Promise.resolve({ data: [], error: null }),
           dashCan('mmg') ? supabaseClient.rpc('president_get_mmg_guests') : Promise.resolve({ data: [], error: null }),
           dashCan('sankofa') ? supabaseClient.rpc('president_get_sankofa_applications') : Promise.resolve({ data: [], error: null }),
           dashCan('sankofa') ? supabaseClient.rpc('president_get_sankofa_mentor_applications') : Promise.resolve({ data: [], error: null }),
           dashCan('motm') ? supabaseClient.rpc('president_get_motm_nominations') : Promise.resolve({ data: [], error: null }),
           dashCan('events') ? supabaseClient.rpc('president_get_event_registrations') : Promise.resolve({ data: [], error: null }),
-          isPresident ? supabaseClient.rpc('president_get_account_requests') : Promise.resolve({ data: [], error: null }),
-          isPresident
+          canRequests ? supabaseClient.rpc('president_get_account_requests') : Promise.resolve({ data: [], error: null }),
+          canRequests
             ? supabaseClient.from('account_request_emails').select('*').order('created_at', { ascending: false })
             : Promise.resolve({ data: [], error: null }),
           isPresident
@@ -5251,7 +5263,7 @@
       }).then(function (results) {
         if (presidentAuthGate) presidentAuthGate.style.display = 'none';
 
-        if ((isPresident && (results[0].error || results[1].error || results[2].error)) || (dashCan('mmg') && results[3].error)) {
+        if (((needPeople && (results[0].error || results[2].error)) || (needPending && results[1].error)) || (dashCan('mmg') && results[3].error)) {
           showMessage(presidentHubError, "Couldn't load the dashboard right now - try refreshing, or email acms@lincolnsu.com if this doesn't resolve soon.");
           return;
         }
@@ -5260,21 +5272,27 @@
 
         var mmgGuests = results[3].data || [];
 
-        if (isPresident) {
+        if (needPeople || needPending) {
           var members = results[0].data || [];
           var pendingMembers = results[1].data || [];
           var professionals = results[2].data || [];
           var courseAccent = buildCourseAccentMap(members);
-
-          renderOnlineNow(members, professionals, mmgGuests, courseAccent);
-          renderStats(members, pendingMembers, professionals, mmgGuests);
-          renderAttentionList(members, pendingMembers, professionals, mmgGuests);
-          renderPeopleSection(members, professionals, courseAccent);
           var activityTotal = members.length + professionals.length + mmgGuests.length + pendingMembers.length;
-          setDashCount('activity', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
-          renderManageAccountsList(members, professionals, mmgGuests);
-          setDashCount('pending', pendingMembers.length + (pendingMembers.length === 1 ? ' without an account' : ' without accounts'));
-          setDashCount('manage', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
+
+          if (canActivity) {
+            renderOnlineNow(members, professionals, mmgGuests, courseAccent);
+            renderStats(members, pendingMembers, professionals, mmgGuests);
+            renderAttentionList(members, pendingMembers, professionals, mmgGuests);
+            renderPeopleSection(members, professionals, courseAccent);
+            setDashCount('activity', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
+          }
+          if (canManage) {
+            renderManageAccountsList(members, professionals, mmgGuests);
+            setDashCount('manage', activityTotal + (activityTotal === 1 ? ' account' : ' accounts'));
+          }
+          if (canPending || canActivity || canManage) {
+            setDashCount('pending', pendingMembers.length + (pendingMembers.length === 1 ? ' without an account' : ' without accounts'));
+          }
         }
 
         if (dashCan('mmg')) {
@@ -5343,7 +5361,7 @@
           renderEventRegistrations(eventsList);
           setDashCount('events', eventsList.length + (eventsList.length === 1 ? ' registration' : ' registrations'));
         }
-        if (isPresident) {
+        if (canRequests) {
           if (results[8].error) {
             console.error('Account requests failed to load:', results[8].error.message);
             showSectionLoadError('account-requests-list', 'account-requests-empty', 'requests', results[8].error.message);
@@ -7058,7 +7076,16 @@
       { key: 'dash_sankofa', label: 'Dashboard: Sankofa', short: 'Sankofa', desc: 'Sankofa mentee and mentor applications on the dashboard.', dash: true },
       { key: 'dash_motm', label: 'Dashboard: Nominations', short: 'Nominations', desc: 'Member of the Month nominations on the dashboard.', dash: true },
       { key: 'dash_events', label: 'Dashboard: Events', short: 'Events', desc: 'Who has registered for which event.', dash: true },
-      { key: 'dash_gallery', label: 'Dashboard: Gallery', short: 'Gallery', desc: 'Member gallery submissions and the live gallery.', dash: true }
+      { key: 'dash_gallery', label: 'Dashboard: Gallery', short: 'Gallery', desc: 'Member gallery submissions and the live gallery.', dash: true },
+      { key: 'dash_activity', label: 'Dashboard: User Activity', short: 'User activity', desc: 'Who is online, who has set up their account, and who needs a nudge. Shows every member and professional\'s name, course and email.', dash: true },
+      { key: 'dash_webactivity', label: 'Dashboard: Website Activity', short: 'Web activity', desc: 'Traffic across the whole website: today, this week and this year.', dash: true },
+      { key: 'dash_requests', label: 'Dashboard: Account Requests', short: 'Requests', desc: 'Review, approve and email student and professional account requests. Approving creates their account.', dash: true },
+      { key: 'dash_pending', label: 'Dashboard: Pending Members', short: 'Pending', desc: 'People added to the Network before they have an account.', dash: true },
+      { key: 'dash_chatreports', label: 'Dashboard: Chat Reports', short: 'Chat reports', desc: 'Reports of messages and the ability to pause someone\'s chat.', dash: true },
+      { key: 'dash_sitestats', label: 'Dashboard: Site numbers', short: 'Site numbers', desc: 'The headline numbers on the homepage and About page.', dash: true },
+      { key: 'dash_create', label: 'Dashboard: Create Accounts', short: 'Create', desc: 'Create a member, professional or guest login directly. Sensitive: they can add anyone.', dash: true },
+      { key: 'dash_manage', label: 'Dashboard: Manage Accounts', short: 'Manage', desc: 'Edit or remove any member, professional or guest account. Sensitive: they can change or delete anyone.', dash: true },
+      { key: 'dash_email', label: 'Dashboard: Email', short: 'Email', desc: 'Write emails to groups or people you choose and see what has been sent. They can email any member, professional or applicant.', dash: true }
     ];
     var HUB_ROLE_ORDER = ['member', 'executive_committee', 'supporting_committee', 'senior_sankofa_mentor', 'junior_sankofa_mentor'];
     var hubRules = [];
@@ -7242,7 +7269,7 @@
         }
         if (isDash && !addedDashHeading) {
           addedDashHeading = true;
-          nodes.push(hubGroupHeading('Platform Activity Dashboard', 'Which dashboard sections each committee member sees. Only the president ever sees Activity, Account Requests, Create/Manage Accounts and this page.'));
+          nodes.push(hubGroupHeading('Platform Activity Dashboard', 'Which dashboard tiles each person sees, and what they can do in them. Tiles are closed to everyone but you until you give them to someone (click a cell below). Only you can ever open this page or View site as.'));
         }
         nodes.push(hubKeepOrNew(card, key, dirty));
       });

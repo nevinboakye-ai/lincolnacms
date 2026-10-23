@@ -1,4 +1,4 @@
-// Dashboard > Email (president only): write an email from the website and send it to exactly
+// Dashboard > Email (the president, or anyone given the Email tile): write an email from the website and send it to exactly
 // the people you choose - for example only the students who applied to Sankofa, only one
 // phase, only those already placed in a Circle, one named person, or a mix - and keep a record
 // of everything that was sent.

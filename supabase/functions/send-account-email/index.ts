@@ -203,8 +203,17 @@ Deno.serve(async (req: Request) => {
       global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } }
     });
 
-    const { data: isPresident, error: authError } = await supabase.rpc('is_president');
-    if (authError || !isPresident) {
+    // The president, or anyone given the Email, Account Requests or Sankofa tile (migration 098).
+    // If the database doesn't have that yet, it stays "the president only".
+    let allowed = false;
+    const { data: canSend, error: canSendError } = await supabase.rpc('can_send_dashboard_email');
+    if (!canSendError) {
+      allowed = canSend === true;
+    } else {
+      const { data: isPresident } = await supabase.rpc('is_president');
+      allowed = isPresident === true;
+    }
+    if (!allowed) {
       return jsonResponse({ error: 'Not authorized' }, 403);
     }
 
