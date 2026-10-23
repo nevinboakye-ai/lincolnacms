@@ -6319,7 +6319,7 @@
     // filled in for that person. It goes out through the same Edge Function as
     // the other two emails (type 'custom', see supabase/functions/
     // send-account-email/index.ts), is logged with its subject and message
-    // (migration 077), and replies come back to the committee address.
+    // (migration 077); it tells people to email the committee address rather than reply.
     var BUILT_IN_EMAIL_TEMPLATES = [
       {
         id: 'uni-email', name: 'Sign up with your university email',
@@ -6329,12 +6329,12 @@
       {
         id: 'student-number', name: 'Check your student number',
         subject: 'A quick check on your LACMS account request',
-        message: 'Hi {first_name},\n\nThanks for requesting a LACMS account. We couldn\'t match the student number on your request to a University of Lincoln student, so we haven\'t been able to approve it yet.\n\nCould you reply to this email with your correct student number (the one on your student card)? As soon as we have it, we\'ll get your account approved.\n\nThanks,\nThe LACMS Committee'
+        message: 'Hi {first_name},\n\nThanks for requesting a LACMS account. We couldn\'t match the student number on your request to a University of Lincoln student, so we haven\'t been able to approve it yet.\n\nCould you email us at acms@lincolnsu.com with your correct student number (the one on your student card)? As soon as we have it, we\'ll get your account approved.\n\nThanks,\nThe LACMS Committee'
       },
       {
         id: 'course-year', name: 'Confirm your course and year',
         subject: 'Can you confirm your course and year of study?',
-        message: 'Hi {first_name},\n\nThanks for requesting a LACMS account! Before we approve it, could you reply to this email and confirm which course you\'re studying and what year you\'re in? That\'s how we place you in the right part of the Network.\n\nThanks,\nThe LACMS Committee'
+        message: 'Hi {first_name},\n\nThanks for requesting a LACMS account! Before we approve it, could you email us at acms@lincolnsu.com and confirm which course you\'re studying and what year you\'re in? That\'s how we place you in the right part of the Network.\n\nThanks,\nThe LACMS Committee'
       },
       {
         id: 'blank', name: 'Blank message', subject: '', message: 'Hi {first_name},\n\n\n\nThanks,\nThe LACMS Committee'
@@ -6386,7 +6386,7 @@
         '<button type="button" class="guide-close" data-ce-close aria-label="Close">&times;</button>' +
         '<span class="guide-eyebrow">' + escapeHtml(ctx.eyebrow || 'Account request') + '</span>' +
         '<h2 class="guide-title" id="ce-title">Email ' + escapeHtml(r.full_name) + '</h2>' +
-        '<p class="guide-text">To <strong>' + escapeHtml(r.email) + '</strong>. Replies go to acms@lincolnsu.com.</p>' +
+        '<p class="guide-text">To <strong>' + escapeHtml(r.email) + '</strong>. The email tells them to write to acms@lincolnsu.com, not to reply.</p>' +
         '<form class="guide-form" id="ce-form" novalidate>' +
         '<div class="field"><label for="ce-template">Start from</label><select id="ce-template"></select></div>' +
         '<div class="field"><label for="ce-subject">Subject</label><input type="text" id="ce-subject" maxlength="150" autocomplete="off" data-autofocus></div>' +
@@ -6595,7 +6595,7 @@
       {
         id: 'received', name: 'Application received (confirmation)',
         subject: "We've received your Sankofa application",
-        message: 'Hi {first_name},\n\nThanks for applying for a Sankofa Circle ({phase}) - we\'ve got your application.\n\nWhat happens next:\n1. The committee reviews every application.\n2. We pair Circles around what you have in common, ahead of the coming cycle.\n3. We\'ll email you as soon as there\'s an update.\n\nThere\'s nothing more you need to do. If you\'d like to add anything to your application, just reply to this email.\n\nThanks,\nThe LACMS Committee'
+        message: 'Hi {first_name},\n\nThanks for applying for a Sankofa Circle ({phase}) - we\'ve got your application.\n\nWhat happens next:\n1. The committee reviews every application.\n2. We pair Circles around what you have in common, ahead of the coming cycle.\n3. We\'ll email you as soon as there\'s an update.\n\nThere\'s nothing more you need to do. If you\'d like to add anything to your application, just email us at acms@lincolnsu.com.\n\nThanks,\nThe LACMS Committee'
       },
       {
         id: 'reviewing', name: 'Still reviewing - update',
@@ -6605,12 +6605,12 @@
       {
         id: 'matched', name: "You've been matched into a Circle",
         subject: "You've been matched into a Sankofa Circle",
-        message: 'Hi {first_name},\n\nGreat news - you\'ve been matched into a Sankofa Circle!\n\n[Add the details here: who\'s in your Circle, when and where you\'ll first meet, and how to get in touch.]\n\nWe\'re really looking forward to seeing what you get out of it. If anything doesn\'t work for you, just reply to this email.\n\nThanks,\nThe LACMS Committee'
+        message: 'Hi {first_name},\n\nGreat news - you\'ve been matched into a Sankofa Circle!\n\n[Add the details here: who\'s in your Circle, when and where you\'ll first meet, and how to get in touch.]\n\nWe\'re really looking forward to seeing what you get out of it. If anything doesn\'t work for you, just email us at acms@lincolnsu.com.\n\nThanks,\nThe LACMS Committee'
       },
       {
         id: 'more-info', name: 'We need a bit more information',
         subject: 'A quick question about your Sankofa application',
-        message: 'Hi {first_name},\n\nThanks for applying to Sankofa. Before we can place you in a Circle, could you reply to this email and tell us:\n\n[Add what you need - e.g. your year of study, your availability or your specialty interests.]\n\nThanks,\nThe LACMS Committee'
+        message: 'Hi {first_name},\n\nThanks for applying to Sankofa. Before we can place you in a Circle, could you email us at acms@lincolnsu.com and tell us:\n\n[Add what you need - e.g. your year of study, your availability or your specialty interests.]\n\nThanks,\nThe LACMS Committee'
       },
       {
         id: 'not-this-phase', name: 'Not placed this phase',
@@ -6623,12 +6623,12 @@
       {
         id: 'mentor-received', name: 'Thanks for offering to mentor',
         subject: 'Thank you for offering to mentor with LACMS Sankofa',
-        message: 'Hi {first_name},\n\nThank you for applying to mentor with Sankofa - it means a great deal that you\'d give your time to students who are following in your footsteps.\n\nWe\'ve got your application and a member of the committee will be in touch soon about next steps. If there\'s anything you\'d like to add in the meantime, just reply to this email.\n\nWith thanks,\nThe LACMS Committee'
+        message: 'Hi {first_name},\n\nThank you for applying to mentor with Sankofa - it means a great deal that you\'d give your time to students who are following in your footsteps.\n\nWe\'ve got your application and a member of the committee will be in touch soon about next steps. If there\'s anything you\'d like to add in the meantime, just email us at acms@lincolnsu.com.\n\nWith thanks,\nThe LACMS Committee'
       },
       {
         id: 'mentor-next', name: 'Next steps - arrange a chat',
         subject: 'Next steps for mentoring with Sankofa',
-        message: 'Hi {first_name},\n\nThank you again for offering to mentor with Sankofa. We\'d love to arrange a short chat to talk through how it works and find the right Circle for you.\n\nCould you reply with a few times that suit you over the next couple of weeks?\n\nThanks,\nThe LACMS Committee'
+        message: 'Hi {first_name},\n\nThank you again for offering to mentor with Sankofa. We\'d love to arrange a short chat to talk through how it works and find the right Circle for you.\n\nCould you email us at acms@lincolnsu.com with a few times that suit you over the next couple of weeks?\n\nThanks,\nThe LACMS Committee'
       },
       { id: 'blank', name: 'Blank message', subject: '', message: 'Hi {first_name},\n\n\n\nThanks,\nThe LACMS Committee' }
     ];
@@ -6921,12 +6921,12 @@
       {
         id: 'received', name: 'We have your request',
         subject: 'We have received your LACMS professional account request',
-        message: 'Hi {first_name},\n\nThank you for asking to join the Lincoln African Caribbean Medical Society as a healthcare professional. We have received your request and the committee will review it shortly.\n\nWe will email you again once it has been looked at. If you have any questions in the meantime, just reply to this email.\n\nThe LACMS Committee'
+        message: 'Hi {first_name},\n\nThank you for asking to join the Lincoln African Caribbean Medical Society as a healthcare professional. We have received your request and the committee will review it shortly.\n\nWe will email you again once it has been looked at. If you have any questions in the meantime, just email us at acms@lincolnsu.com.\n\nThe LACMS Committee'
       },
       {
         id: 'more-info', name: 'A quick question about your request',
         subject: 'A quick question about your LACMS request',
-        message: 'Hi {first_name},\n\nThank you for your LACMS professional account request. Before we approve it, could you reply to this email and tell us a little more about [what you need to know]?\n\nThank you,\nThe LACMS Committee'
+        message: 'Hi {first_name},\n\nThank you for your LACMS professional account request. Before we approve it, could you email us at acms@lincolnsu.com and tell us a little more about [what you need to know]?\n\nThank you,\nThe LACMS Committee'
       },
       { id: 'blank', name: 'Blank message', subject: '', message: 'Hi {first_name},\n\n\n\nThanks,\nThe LACMS Committee' }
     ];
@@ -7007,7 +7007,7 @@
         message: 'Hi ' + first + ',\n\nThank you for offering to support the Lincoln African Caribbean Medical Society. Your professional account has been approved.\n\n' +
           'You can log in at ' + window.location.origin + '/member-login.html with the email address and password you chose when you made your request.\n\n' +
           (r.lincoln_connection === 'invited' ? 'As you were invited to join one of our programmes, the team running it will be in touch with you directly about the next steps.\n\n' : '') +
-          'Once you are in, you can add or update your profile, and we will be in touch about the ways you said you would like to help. If anything looks wrong, just reply to this email.\n\nThe LACMS committee'
+          'Once you are in, you can add or update your profile, and we will be in touch about the ways you said you would like to help. If anything looks wrong, just email us at acms@lincolnsu.com.\n\nThe LACMS committee'
       };
     }
     // The login already exists (they set their own password when they asked), so this adds their

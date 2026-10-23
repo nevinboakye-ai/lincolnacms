@@ -1674,3 +1674,10 @@ No database changes. The long lanes of names are gone.
 - **Sent:** every batch is recorded - who it went to, the message, and sent or failed for each person. **Retry the ones that failed**, or **use this message again**.
 - Shortcut: on the Sankofa applications page, **Email applicants** opens this with the Sankofa applicants group already chosen.
 - Only you can use this section.
+
+
+## 150. Emails now say "email us at acms@lincolnsu.com", never "reply"
+
+The emails come from a no-reply address, so none of them ask people to reply any more. Every email template (account requests, professional requests, Sankofa, the Email section's templates, and the confirmation emails) now says to email acms@lincolnsu.com, and the footer of every email says the message was sent from an address we don't read and points to acms@lincolnsu.com. (Replies still reach acms@lincolnsu.com through the Reply-To header if someone does hit reply.)
+
+**To make the footers go live:** redeploy the two Edge Functions from the Supabase dashboard (Edge Functions -> the function -> paste its latest code from `supabase/functions/` -> Deploy): `send-account-email` and `send-member-email`. And paste the five files in `email-templates/` over the matching templates under Authentication -> Email Templates (invite, confirm signup, magic link, change email, reset password). The wording inside the website's own templates is already live.

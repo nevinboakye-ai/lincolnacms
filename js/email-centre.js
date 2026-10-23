@@ -10,8 +10,8 @@
 //     send.
 //   * Sending: one email per person through the same send-account-email Edge Function the
 //     account-request emails use (type "custom"), so each person gets their own personalised
-//     message ({first_name}, {name}, {email}, {phase}, {circle}) and replies go to the committee
-//     address. There is no "reply all" and nobody sees anyone else's address.
+//     message ({first_name}, {name}, {email}, {phase}, {circle}) and each email tells people to write to the committee
+//     address (acms@lincolnsu.com) rather than reply. There is no "reply all" and nobody sees anyone else's address.
 //   * Record: every send is written to email_log (migration 097), grouped into a batch, and shown
 //     under "Sent" with who it went to, when, and whether it worked. Failed ones can be retried.
 (function () {
@@ -127,7 +127,7 @@
     {
       id: 'sk-launch', name: 'Sankofa launch - meeting link',
       subject: 'Sankofa Circles launches soon - join us',
-      message: 'Hi {first_name},\n\nSankofa Circles is officially launching and we would love you to be there.\n\nWhen: [date and time]\nWhere: [location or meeting link]\n\nWe will introduce the Circles, how mentoring works and what happens next. If you cannot make it, just reply to this email and let us know.\n\nThe LACMS Committee'
+      message: 'Hi {first_name},\n\nSankofa Circles is officially launching and we would love you to be there.\n\nWhen: [date and time]\nWhere: [location or meeting link]\n\nWe will introduce the Circles, how mentoring works and what happens next. If you cannot make it, just email us at acms@lincolnsu.com and let us know.\n\nThe LACMS Committee'
     },
     {
       id: 'sk-welcome', name: 'Sankofa - welcome to your Circle',
@@ -137,7 +137,7 @@
     {
       id: 'sk-update', name: 'Sankofa - an update',
       subject: 'An update on Sankofa Circles',
-      message: 'Hi {first_name},\n\nA quick update on Sankofa Circles: [your update here].\n\nIf you have any questions, just reply to this email.\n\nThe LACMS Committee'
+      message: 'Hi {first_name},\n\nA quick update on Sankofa Circles: [your update here].\n\nIf you have any questions, just email us at acms@lincolnsu.com.\n\nThe LACMS Committee'
     },
     {
       id: 'general', name: 'General message',
@@ -472,7 +472,7 @@
     }
     var a = audienceById(state.audience);
     html += '<div class="ec-card ec-send"><h3><span class="ec-step">3</span> Send</h3>' +
-      '<p class="sh-muted">Each person gets their own email, from the LACMS address, with their name filled in. Nobody sees anyone else. Replies go to acms@lincolnsu.com.</p>' +
+      '<p class="sh-muted">Each person gets their own email, from the LACMS address, with their name filled in. Nobody sees anyone else. The email tells them to write to acms@lincolnsu.com, not to reply.</p>' +
       '<button type="button" class="btn btn-primary ec-send-btn" data-ec-send' + (n ? '' : ' disabled') + '>' + (n ? 'Send to ' + plural(n, 'person', 'people') : 'Choose who to send to') + '</button>' +
       (n > MAX_PER_BATCH ? '<p class="ec-bad">That is more than ' + MAX_PER_BATCH + ' people - untick some, or send in more than one go.</p>' : '') +
       (a && a.big ? '<p class="ec-warn">This group is everyone with a member account.</p>' : '') + '</div>';

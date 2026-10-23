@@ -83,8 +83,9 @@ function renderEmailShell(preheader: string, bodyHtml: string) {
     bodyHtml +
     '</div>' +
     '<div style="padding:20px 32px 28px; border-top:1px solid rgba(255,255,255,0.08); margin-top:12px; text-align:center; font-family:' + SANS + '; font-size:12px; color:#837e73;">' +
-    'University of Lincoln, Brayford Pool, Lincoln<br>' +
-    '<a href="mailto:' + REPLY_TO + '" style="color:' + GOLD + '; text-decoration:none;">' + REPLY_TO + '</a>' +
+    'This message was sent from an address we don\'t read, so please don\'t reply to it - email us at ' +
+    '<a href="mailto:' + REPLY_TO + '" style="color:' + GOLD + '; text-decoration:none;">' + REPLY_TO + '</a> instead.<br>' +
+    'University of Lincoln, Brayford Pool, Lincoln' +
     '</div>' +
     '</div>' +
     '</div>' +
@@ -109,7 +110,7 @@ function sankofaEmail(first: string, phase: string) {
       '<li><strong>You hear from us.</strong> We\'ll email you as soon as there\'s an update.</li>' +
       '</ol>' +
       emailButton(SITE + '/member-hub.html', 'Open the Members Hub') +
-      '<p style="' + MUTED + '">Questions or something to add? Just reply to this email.</p>' +
+      '<p style="' + MUTED + '">Questions or something to add? Just email us at acms@lincolnsu.com.</p>' +
       '<p style="' + MUTED + ' margin-bottom:0;">- The LACMS Committee</p>'
     )
   };

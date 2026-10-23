@@ -117,8 +117,9 @@ function renderEmailShell(preheader: string, bodyHtml: string) {
     bodyHtml +
     '</div>' +
     '<div style="padding:20px 32px 28px; border-top:1px solid rgba(255,255,255,0.08); margin-top:12px; text-align:center; font-family:' + SANS + '; font-size:12px; color:#837e73;">' +
-    'University of Lincoln, Brayford Pool, Lincoln<br>' +
-    '<a href="mailto:acms@lincolnsu.com" style="color:' + GOLD + '; text-decoration:none;">acms@lincolnsu.com</a>' +
+    'This message was sent from an address we don\'t read, so please don\'t reply to it - email us at ' +
+    '<a href="mailto:acms@lincolnsu.com" style="color:' + GOLD + '; text-decoration:none;">acms@lincolnsu.com</a> instead.<br>' +
+    'University of Lincoln, Brayford Pool, Lincoln' +
     '</div>' +
     '</div>' +
     '</div>' +
