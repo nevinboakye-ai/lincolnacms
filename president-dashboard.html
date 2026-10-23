@@ -8,7 +8,7 @@
 <meta name="description" content="For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-142">
+<link rel="stylesheet" href="css/styles.css?v=20260824-144">
 </head>
 <body>
 
@@ -199,6 +199,12 @@
               <span class="dash-nav-card-desc">Edit or remove any member, professional or MMG guest</span>
               <span class="dash-nav-card-count" id="dash-count-manage">&nbsp;</span>
             </button>
+            <button type="button" class="dash-nav-card" data-dash-section="email">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+              <span class="dash-nav-card-title">Email</span>
+              <span class="dash-nav-card-desc">Write an email to exactly the people you choose, and see what's been sent</span>
+              <span class="dash-nav-card-count" id="dash-count-email">&nbsp;</span>
+            </button>
             <button type="button" class="dash-nav-card" data-open-view-as style="display:none;">
               <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></span>
               <span class="dash-nav-card-title">View site as&hellip;</span>
@@ -332,7 +338,7 @@
                 <button type="button" class="dash-filter-tab" data-sankofa-filter="mentor">Mentors</button>
               </div>
             </div>
-            <p class="sk-hub-link">Accepted someone? Place them in a Circle and match them with a mentor in the <button type="button" class="link-button" data-open-hub-manager>Sankofa Hub Circle manager</button>.</p>
+            <p class="sk-hub-link">Accepted someone? Place them in a Circle and match them with a mentor in the <button type="button" class="link-button" data-open-hub-manager>Sankofa Hub Circle manager</button>. <span data-email-sankofa-wrap>Want to write to the people who applied? <button type="button" class="link-button" data-email-sankofa>Email applicants</button>.</span></p>
             <section class="sk-rounds-box" id="sankofa-rounds" aria-label="Application phases" hidden></section>
             <div class="app-card-list" id="sankofa-applications-list"></div>
             <p id="sankofa-applications-empty" style="display:none; color: var(--color-text-faint);">No Sankofa applications yet.</p>
@@ -689,6 +695,19 @@
             </form>
           </div>
 
+          <div class="dash-panel" id="dash-panel-email" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Email</span>
+              <h2>Write to the people you choose</h2>
+              <p>Pick a group (for example only the students who applied to Sankofa, or one phase) or a single person, write your message, and send. Each person gets their own email with their name filled in, and everything sent is recorded.</p>
+            </div>
+            <div id="email-centre-root"><p class="sh-muted">Loading…</p></div>
+          </div>
+
           <div class="dash-panel" id="dash-panel-manage" style="display:none;">
             <button type="button" class="dash-panel-back" data-dash-back>
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -779,17 +798,18 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/view-as.js?v=20260824-142"></script>
+<script src="js/view-as.js?v=20260824-144"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-142"></script>
-<script src="js/members.js?v=20260824-142"></script>
-<script src="js/notifications.js?v=20260824-142"></script>
-<script src="js/guidance.js?v=20260824-142"></script>
-<script src="js/chat.js?v=20260824-142"></script>
-<script src="js/chat-admin.js?v=20260824-142"></script>
-<script src="js/site-stats-admin.js?v=20260824-142"></script>
-<script src="js/sankofa-rounds.js?v=20260824-142"></script>
-<script src="js/sankofa-common.js?v=20260824-142"></script>
-<script src="js/sankofa-admin.js?v=20260824-142"></script>
+<script src="js/main.js?v=20260824-144"></script>
+<script src="js/members.js?v=20260824-144"></script>
+<script src="js/notifications.js?v=20260824-144"></script>
+<script src="js/guidance.js?v=20260824-144"></script>
+<script src="js/chat.js?v=20260824-144"></script>
+<script src="js/chat-admin.js?v=20260824-144"></script>
+<script src="js/site-stats-admin.js?v=20260824-144"></script>
+<script src="js/sankofa-rounds.js?v=20260824-144"></script>
+<script src="js/sankofa-common.js?v=20260824-144"></script>
+<script src="js/sankofa-admin.js?v=20260824-144"></script>
+<script src="js/email-centre.js?v=20260824-144"></script>
 </body>
 </html>

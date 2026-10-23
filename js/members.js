@@ -5031,7 +5031,7 @@
       if (dashboardRole === 'president') return true;
       return DASH_SHARED_SECTIONS.indexOf(section) !== -1 && !!dashAllowed[section];
     }
-    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage'];
+    var PRESIDENT_ONLY_SECTIONS = ['activity', 'webactivity', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
@@ -5129,7 +5129,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {
@@ -6820,6 +6820,7 @@
     // asked, so approving just adds their professional profile to that login. Shown in the same
     // "Account requests" section, under the Professionals tab.
     var proRequestsAll = [];
+    var proRequestEmailsAll = [];      // rows of professional_request_emails (migration 097), newest first
     var requestsKind = 'member';
     var PRO_CATEGORY_NAMES = { senior_doctor: 'Senior doctor', alumni_doctor: 'Doctor / alumni doctor', pharmacist: 'Pharmacist', other: 'Other healthcare professional' };
     var PRO_CONNECTION_NAMES = { lincoln_graduate: 'University of Lincoln graduate', other_university: 'Studied elsewhere', invited: 'Invited to join a LACMS programme', none: 'No connection yet' };
@@ -6834,13 +6835,18 @@
       setDashCount('requests', (m + p) + ' pending');
     }
     function loadProfessionalRequests() {
-      return supabaseClient.rpc('president_get_professional_requests').then(function (res) {
-        if (res.error) {
-          console.warn('Professional requests failed to load (has migration 096 been run?):', res.error.message);
+      return Promise.all([
+        supabaseClient.rpc('president_get_professional_requests'),
+        supabaseClient.from('professional_request_emails').select('*').order('created_at', { ascending: false })
+      ]).then(function (res) {
+        if (res[0].error) {
+          console.warn('Professional requests failed to load (has migration 096 been run?):', res[0].error.message);
           proRequestsAll = [];
         } else {
-          proRequestsAll = res.data || [];
+          proRequestsAll = res[0].data || [];
         }
+        if (res[1].error) { console.warn('Professional request email log failed to load (has migration 097 been run?):', res[1].error.message); proRequestEmailsAll = []; }
+        else proRequestEmailsAll = res[1].data || [];
         renderProfessionalRequests();
         updateRequestCounts();
       });
@@ -6871,7 +6877,7 @@
         return;
       }
       if (emptyEl) emptyEl.style.display = 'none';
-      listEl.innerHTML = filtered.map(renderProfessionalRequestCard).join('');
+      listEl.innerHTML = '<div id="pro-requests-bulk">' + renderProBulkBar() + '</div>' + filtered.map(renderProfessionalRequestCard).join('');
     }
     function renderProfessionalRequestCard(r) {
       var statusLabel = r.status.charAt(0).toUpperCase() + r.status.slice(1);
@@ -6904,10 +6910,94 @@
         (linkedin ? '<div class="app-card-field"><div class="app-card-field-label">LinkedIn</div><div class="app-card-field-value"><a href="' + escapeHtml(linkedin) + '" target="_blank" rel="noopener noreferrer" style="color: var(--color-gold-light);">' + escapeHtml(linkedin) + '</a></div></div>' : '') +
         appCardField('Short bio (for their Network card)', r.bio) +
         appCardField('Anything else', r.note) +
+        '<div class="app-card-field" data-pro-emails data-id="' + escapeHtml(r.id) + '">' + renderProEmailsInner(r) + '</div>' +
         actionsHtml +
         (r.status !== 'pending' ? '<button type="button" class="app-card-delete-btn" data-pro-delete data-id="' + escapeHtml(r.id) + '">Remove this request</button>' : '') +
         '</div></div>';
     }
+    // ---- Emails about a professional's request: what's been sent, a one-click "request received"
+    // confirmation and approval email, and anything you want to write (migration 097). ----
+    var PRO_EMAIL_TEMPLATES = [
+      {
+        id: 'received', name: 'We have your request',
+        subject: 'We have received your LACMS professional account request',
+        message: 'Hi {first_name},\n\nThank you for asking to join the Lincoln African Caribbean Medical Society as a healthcare professional. We have received your request and the committee will review it shortly.\n\nWe will email you again once it has been looked at. If you have any questions in the meantime, just reply to this email.\n\nThe LACMS Committee'
+      },
+      {
+        id: 'more-info', name: 'A quick question about your request',
+        subject: 'A quick question about your LACMS request',
+        message: 'Hi {first_name},\n\nThank you for your LACMS professional account request. Before we approve it, could you reply to this email and tell us a little more about [what you need to know]?\n\nThank you,\nThe LACMS Committee'
+      },
+      { id: 'blank', name: 'Blank message', subject: '', message: 'Hi {first_name},\n\n\n\nThanks,\nThe LACMS Committee' }
+    ];
+    function proLog(r, type) {
+      return function (row) {
+        return supabaseClient.from('professional_request_emails').insert({
+          request_id: r.id, email_type: type || 'custom', recipient: row.recipient, status: row.status, error: row.error,
+          subject: row.subject || null, message: row.message || null
+        }).select().single().then(function (lr) {
+          if (lr.error) console.error('Logging the email failed (has migration 097 been run?):', lr.error.message);
+          else proRequestEmailsAll.unshift(lr.data);
+          refreshProEmails(r.id);
+        });
+      };
+    }
+    var PRO_EMAIL_CATEGORIES = [
+      { type: 'received', label: 'Request received', eligible: ['pending', 'approved', 'rejected'], sendLabel: 'Send confirmation', resendLabel: 'Resend confirmation' },
+      { type: 'approved', label: 'Approval email', eligible: ['approved'], sendLabel: 'Send', resendLabel: 'Resend' }
+    ];
+    function renderProEmailsInner(r) {
+      function status(latest) {
+        if (!latest) return '<span class="request-email-status">Not sent yet</span>';
+        return latest.status === 'sent'
+          ? '<span class="request-email-status is-sent">Sent ' + escapeHtml(timeAgo(latest.created_at)) + '</span>'
+          : '<span class="request-email-status is-failed">Failed ' + escapeHtml(timeAgo(latest.created_at)) + '</span>';
+      }
+      function history(list, withSubject) {
+        if (!(list.length > 1 || (list[0] && list[0].status === 'failed') || withSubject)) return '';
+        return '<div class="request-email-history">' + list.slice(0, 5).map(function (m) {
+          return '<div>' + (m.status === 'sent' ? 'Sent' : 'Failed') + ' - ' + escapeHtml(new Date(m.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) +
+            (withSubject && m.subject ? ' - &ldquo;' + escapeHtml(m.subject) + '&rdquo;' : '') + (m.status === 'failed' && m.error ? ' - ' + escapeHtml(m.error) : '') + '</div>';
+        }).join('') + '</div>';
+      }
+      var rows = PRO_EMAIL_CATEGORIES.map(function (cat) {
+        var list = proRequestEmailsAll.filter(function (m) { return m.request_id === r.id && m.email_type === cat.type; });
+        var canSend = cat.eligible.indexOf(r.status) !== -1;
+        if (!list.length && !canSend) return '';
+        var btn = canSend ? '<button type="button" class="btn btn-outline request-email-btn" data-pro-email-send data-type="' + cat.type + '" data-id="' + escapeHtml(r.id) + '">' + (list.length ? cat.resendLabel : cat.sendLabel) + '</button>' : '';
+        return '<div class="request-email-row"><div class="request-email-info"><strong>' + cat.label + '</strong>' + status(list[0]) + '</div>' + btn + '</div>' + history(list, false);
+      }).join('');
+      var custom = proRequestEmailsAll.filter(function (m) { return m.request_id === r.id && m.email_type === 'custom'; });
+      rows += '<div class="request-email-row"><div class="request-email-info"><strong>Custom email</strong>' +
+        (custom.length ? status(custom[0]) : '<span class="request-email-status">Write your own message</span>') + '</div>' +
+        '<button type="button" class="btn btn-outline request-email-btn" data-pro-email-compose data-id="' + escapeHtml(r.id) + '">Write email…</button></div>' + history(custom, true);
+      return '<div class="app-card-field-label">Emails</div>' + rows;
+    }
+    function refreshProEmails(requestId) {
+      var r = proRequestsAll.filter(function (x) { return x.id === requestId; })[0];
+      if (!r) return;
+      Array.prototype.forEach.call(document.querySelectorAll('[data-pro-emails][data-id="' + requestId + '"]'), function (el) { el.innerHTML = renderProEmailsInner(r); });
+      var bar = document.getElementById('pro-requests-bulk'); if (bar) bar.innerHTML = renderProBulkBar();
+    }
+    // Approved professionals with no successful approval email on record.
+    function renderProBulkBar() {
+      var missing = proRequestsAll.filter(function (r) {
+        return r.status === 'approved' && !proRequestEmailsAll.some(function (m) { return m.request_id === r.id && m.email_type === 'approved' && m.status === 'sent'; });
+      });
+      if (!missing.length) return '';
+      return '<div class="app-card" style="padding: var(--space-3); display:flex; align-items:center; justify-content:space-between; gap: var(--space-2); flex-wrap:wrap;">' +
+        '<span style="font-size:0.88rem;">' + missing.length + (missing.length === 1 ? ' approved professional has' : ' approved professionals have') + ' no approval email sent yet.</span>' +
+        '<button type="button" class="btn btn-primary request-email-btn" data-pro-email-bulk>Send approval email to ' + (missing.length === 1 ? 'them' : 'all ' + missing.length) + '</button></div>';
+    }
+    function sendProEmail(r, type, btn) {
+      var tpl = type === 'approved' ? proApprovalEmail(r) : PRO_EMAIL_TEMPLATES[0];
+      // "Dr Ada Okoye" -> "Dr Okoye", anyone else by first name (filled in here rather than by the email function).
+      var parts = String(r.full_name || '').trim().split(/\s+/).filter(Boolean);
+      var greet = parts.length > 1 && /^(dr|prof|professor)\.?$/i.test(parts[0]) ? parts[0] + ' ' + parts[parts.length - 1] : (parts[0] || 'there');
+      if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+      return deliverCustomEmail({ id: r.id, email: r.email, full_name: r.full_name }, tpl.subject, tpl.message.replace(/\{first_name\}/gi, greet), { log: proLog(r, type) });
+    }
+
     function proApprovalEmail(r) {
       // "Dr Ada Okoye" -> "Dr Okoye"; anyone else by first name.
       var parts = String(r.full_name || '').trim().split(/\s+/).filter(Boolean);
@@ -6942,7 +7032,7 @@
         supabaseClient.rpc('president_mark_professional_request_approved', { target_id: r.id, new_professional_id: ins.data.id }).then(function (mark) {
           if (mark.error) { onDone('Their profile was added, but marking the request approved failed: ' + mark.error.message); return; }
           var mail = proApprovalEmail(r);
-          deliverCustomEmail({ id: r.id, email: r.email, full_name: r.full_name }, mail.subject, mail.message, { log: function () { return Promise.resolve(); } }).then(function (emailError) {
+          deliverCustomEmail({ id: r.id, email: r.email, full_name: r.full_name }, mail.subject, mail.message, { log: proLog(r, 'approved') }).then(function (emailError) {
             onDone(null, emailError);
           });
         });
@@ -8123,6 +8213,44 @@
 
       var requestsKindTab = e.target.closest('[data-requests-kind]');
       if (requestsKindTab) { setRequestsKind(requestsKindTab.getAttribute('data-requests-kind')); return; }
+
+      var proEmailSend = e.target.closest('[data-pro-email-send]');
+      if (proEmailSend) {
+        var peReq = proRequestsAll.filter(function (r) { return r.id === proEmailSend.getAttribute('data-id'); })[0];
+        if (!peReq) return;
+        var peType = proEmailSend.getAttribute('data-type');
+        var already = proRequestEmailsAll.some(function (m) { return m.request_id === peReq.id && m.email_type === peType && m.status === 'sent'; });
+        if (already && !window.confirm('They have already been sent this. Send it again to ' + peReq.email + '?')) return;
+        sendProEmail(peReq, peType, proEmailSend).then(function (err) {
+          refreshProEmails(peReq.id);
+          if (err) window.alert("Couldn't send that email: " + err);
+        });
+        return;
+      }
+
+      var proEmailCompose = e.target.closest('[data-pro-email-compose]');
+      if (proEmailCompose) {
+        var pcReq = proRequestsAll.filter(function (r) { return r.id === proEmailCompose.getAttribute('data-id'); })[0];
+        if (pcReq) openEmailComposer({ id: pcReq.id, email: pcReq.email, full_name: pcReq.full_name }, { templates: PRO_EMAIL_TEMPLATES, eyebrow: 'Professional request', noun: 'request', log: proLog(pcReq, 'custom') });
+        return;
+      }
+
+      var proEmailBulk = e.target.closest('[data-pro-email-bulk]');
+      if (proEmailBulk) {
+        var todo = proRequestsAll.filter(function (r) {
+          return r.status === 'approved' && !proRequestEmailsAll.some(function (m) { return m.request_id === r.id && m.email_type === 'approved' && m.status === 'sent'; });
+        });
+        if (!todo.length || !window.confirm('Send the approval email to ' + todo.length + (todo.length === 1 ? ' professional?' : ' professionals?'))) return;
+        proEmailBulk.disabled = true;
+        var bi = 0, failedCount = 0;
+        (function nextOne() {
+          if (bi >= todo.length) { if (failedCount) window.alert(failedCount + ' could not be sent - see each request\'s Emails section.'); refreshProEmails(todo[0].id); return; }
+          var cur = todo[bi++];
+          proEmailBulk.textContent = 'Sending ' + bi + ' of ' + todo.length + '…';
+          sendProEmail(cur, 'approved', null).then(function (err) { if (err) failedCount++; setTimeout(nextOne, 450); });
+        })();
+        return;
+      }
 
       var proApproveBtn = e.target.closest('[data-pro-approve]');
       if (proApproveBtn) {

@@ -1657,3 +1657,20 @@ No database changes. The long lanes of names are gone.
 - They choose their own password when they ask (as students do), so approving needs no password email. Until you approve, they can sign in but see nothing.
 - **To approve:** Dashboard -> Account requests -> the **Healthcare professionals** tab. Open a request, then **Approve & add to the Network** (adds their professional profile to their login and emails them) or **Reject**. Approved and rejected requests can be removed. Pending requests also count on the dashboard tile.
 - Their approval email uses the existing `send-account-email` function's custom message, so no redeploy is needed.
+
+
+## 149. Email from the website: track professional emails, and write to the people you choose
+
+**Run in Supabase (safe to repeat):** `097-email-logs.sql`. No Edge Function change - it uses the existing `send-account-email` function.
+
+### Professional account requests: emails and a record of them
+- Each request card (Dashboard -> Account requests -> Healthcare professionals) now has an **Emails** section like the student one: **Request received** (a one-click confirmation, Send / Resend), **Approval email** (Send / Resend once approved), and **Custom email** (Write email... with templates). It shows what's been sent, when, and why anything failed.
+- Approving still emails them automatically, now recorded too. If any approved professionals have no approval email on record, a bar above the list offers **Send approval email to all**.
+
+### Dashboard -> Email: write to exactly the people you choose
+- **Who:** pick a group - students who applied to Sankofa, mentors who applied, mentees or mentors in the Hub, the Executive or Supporting Committee, approved professionals, people with account requests waiting, or every member (asks twice) - and narrow it. For Sankofa applicants you can choose the **phase**, **application status**, **Medicine only / not Medicine**, and **placed in a Circle or not yet**; for people in the Hub, a particular **Circle**. Add anyone by name or email, and untick anyone you don't want in the list. Each person shows when they were last emailed from here, so you don't double up.
+- **What:** start from a template (Sankofa launch with a meeting link, welcome to your Circle, an update, or your own saved templates), or write from scratch. Fill in {first_name}, {name}, {phase} and {circle} and each person gets their own version. "Dr" names are greeted as "Hi Dr Okoye". You see a live preview, and **Send me a test** sends one to yourself. A half-written email is kept in this browser.
+- **Send:** one email per person (nobody sees anyone else), up to 200 at a time, with a progress bar and a stop button. If text in [square brackets] is left in the message, it checks before sending.
+- **Sent:** every batch is recorded - who it went to, the message, and sent or failed for each person. **Retry the ones that failed**, or **use this message again**.
+- Shortcut: on the Sankofa applications page, **Email applicants** opens this with the Sankofa applicants group already chosen.
+- Only you can use this section.
