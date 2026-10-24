@@ -1718,3 +1718,5 @@ No SQL and no Edge Function change. On the Network page, click a person (member 
 ## 154. Network: committee cards use their course's colour
 
 No SQL. Committee cards on the Network page (and the "just joined" ticker) keep their course's colour instead of always being gold: the card is filled with a deeper shade of that course's colour, with a matching glow and solid badge (Medicine stays gold, as before). **Executive Committee** cards get the full treatment; **Supporting Committee** cards are the same colour but quieter: a lighter fill, no glow, and an outlined badge instead of a solid one.
+
+Update: Executive Committee cards are now a much deeper, richer fill with a thicker left edge and a solid avatar, so they stand out clearly from the lighter Supporting Committee cards.
