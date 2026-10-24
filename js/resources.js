@@ -1399,12 +1399,18 @@
     });
   }
 
+  // "Say thanks": nominate the person who shared this for Member of the Month (js/nominate.js).
+  function thanksHtml(r) {
+    if (r.status !== 'approved' || !r.uploader_id || r.uploader_id === userId || !window.lacmsNominate) return '';
+    return '<div class="res-thanks"><button type="button" class="res-thanks-btn" data-nominate-user="' + escapeHtml(r.uploader_id) + '" data-nominate-name="' + escapeHtml(r.uploader_name || '') + '"><span aria-hidden="true">\u2605</span> Helpful? Nominate ' + escapeHtml(uploaderFirst(r)) + ' for Member of the Month</button></div>';
+  }
+
   function previewResource(r, opts) {
     opts = opts || {};
     if (insights()) insights().record(r, 'view');
     var head = '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
       '<span class="guide-eyebrow">' + escapeHtml(TYPES[r.resource_type] || 'Resource') + ' · ' + escapeHtml(coursesLabel(r)) + (yearsOf(r).length ? ' · ' + escapeHtml(yearsLabel(yearsOf(r))) : '') + '</span>' +
-      '<h2 class="guide-title">' + escapeHtml(r.title) + '</h2>' + bylineHtml(r, 'lg');
+      '<h2 class="guide-title">' + escapeHtml(r.title) + '</h2>' + bylineHtml(r, 'lg') + thanksHtml(r);
     var social = r.status === 'approved'
       ? '<div class="res-pv-social">' + socialHtml(r.id) + '</div>' +
         '<section class="res-comments" aria-labelledby="pv-comments-title"><h3 id="pv-comments-title" class="res-comments-title">Comments</h3>' +

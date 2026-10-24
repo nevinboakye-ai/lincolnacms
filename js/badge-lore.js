@@ -20,6 +20,8 @@
       supporter: '"Big up" is Jamaican Patois for giving someone respect and praise. It spread through reggae and dancehall, and from there into British slang.',
       conversationalist: 'A kgotla is the traditional community meeting place of the Tswana people of Botswana, where a chief and elders hear everyone and anyone may speak. It is often named as one root of Botswana\'s tradition of open discussion.',
       nominator: 'Griots (jeli in Mandinka) are West African storytellers, praise-singers and historians who keep family histories and great epics alive in song, often with the kora. To be praised by a griot was a real honour.',
+      kingmaker: 'Among the Asante of Ghana, the Queen Mother (Ohemaa) holds a very real power: she nominates the candidate for the stool, and the kingmakers then confirm the choice. Choosing well is one of the oldest forms of leadership.',
+      praise_streak: 'Or\u00ECk\u00EC are Yoruba praise poems from Nigeria, sung about a person\'s character, family and deeds. Every Yoruba person has them, and hearing yours recited is a moment of pride.',
       connector: 'Jambo is a Swahili greeting, widely heard in Kenya and Tanzania. Swahili is spoken right across East Africa and is an official language of the African Union.',
       pathfinder: 'Sankofa comes from the Akan people of Ghana: "se wo were fi na wosankofa a yenkyi" - it is not wrong to go back and fetch what you forgot. It is shown as a bird looking backwards with an egg in its beak, and it gave our mentoring programme its name.',
       consistent: 'The djembe is a goblet-shaped drum from the Mandinka people of West Africa, traditionally Guinea and Mali. Its name is often explained by a saying, "anke djé, anke bé" - everyone gather together in peace.',

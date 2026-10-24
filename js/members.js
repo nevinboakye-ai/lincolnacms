@@ -2637,6 +2637,8 @@
     });
 
     nominateForm.addEventListener('submit', function (e) {
+      // The chips, the choices and the sending now live in js/nominate.js; this is only the older plain form.
+      if (nominateForm.getAttribute('data-nominate-mounted')) return;
       e.preventDefault();
       var statusEl = document.getElementById('nominate-status');
       hideMessage(statusEl);
@@ -4964,6 +4966,14 @@
           linkedinBtn(record.linkedin_url);
       }
 
+      // One-tap Member of the Month nomination (js/nominate.js, migration 099).
+      var nominateTarget = networkChatTarget(type, record);
+      if (nominateTarget && window.lacmsNominate) {
+        body.insertAdjacentHTML('beforeend', '<div class="network-modal-nominate" hidden><button type="button" class="btn btn-outline" data-nominate-user="' + escapeHtml(nominateTarget) + '" data-nominate-name="' + escapeHtml(record.full_name) + '"><span aria-hidden="true">\u2605</span> Nominate for Member of the Month</button></div>');
+        var nominateBox = body.querySelector('.network-modal-nominate');
+        window.lacmsNominate.allowed().then(function (ok) { if (ok && nominateBox) nominateBox.hidden = false; });
+      }
+
       var modalChatTarget = networkContent.classList.contains('chat-on') ? networkChatTarget(type, record) : null;
       if (modalChatTarget) {
         body.insertAdjacentHTML('beforeend', '<div class="network-modal-chat"><button type="button" class="btn btn-primary" data-nm-message>' + NETWORK_CHAT_ICON + 'Send a message</button></div>');
@@ -5349,6 +5359,7 @@
         } else {
           var motmList = results[6].data || [];
           renderMotmNominations(motmList);
+          renderMotmGoal();
           setDashCount('motm', motmList.length + (motmList.length === 1 ? ' nomination' : ' nominations'));
         }
         if (!dashCan('events')) {
@@ -6126,12 +6137,30 @@
     }
 
     // ---- MoTM nominations ----
+    var MOTM_REASON_LABELS = {
+      welcoming: 'Made me feel welcome', helped_study: 'Helped me with my studies', showed_up: 'Always shows up',
+      led: 'Led from the front', listened: 'Listened when I needed it', energy: 'Brought great energy',
+      went_extra: 'Went above and beyond', mentor: 'A mentor to others'
+    };
+    // Words (or a Kind words wall entry) that no one on the committee has looked at yet.
+    function motmNeedsReview(n) { return n.share_status === 'pending' && (n.reason_custom || n.wall_ok); }
+
     function renderMotmNominations(list) {
       var listEl = document.getElementById('motm-nominations-list');
       var emptyEl = document.getElementById('motm-nominations-empty');
       var countEl = document.getElementById('motm-count-line');
+      var bulkEl = document.getElementById('motm-bulk');
       if (!listEl) return;
-      if (countEl) countEl.textContent = list.length + (list.length === 1 ? ' nomination' : ' nominations');
+      var thisMonth = new Date().toISOString().slice(0, 7);
+      var monthCount = list.filter(function (n) { return n.nomination_month === thisMonth; }).length;
+      if (countEl) countEl.textContent = list.length + (list.length === 1 ? ' nomination' : ' nominations') + (list.length ? ' · ' + monthCount + ' this month' : '');
+      var review = list.filter(motmNeedsReview);
+      if (bulkEl) {
+        bulkEl.innerHTML = review.length
+          ? '<div class="motm-bulk"><span><strong>' + review.length + '</strong> ' + (review.length === 1 ? 'nomination has' : 'nominations have') + ' words waiting for you to read. Nominees only see the words once you approve them.</span>' +
+            '<button type="button" class="btn btn-outline" data-motm-share-all data-ids="' + escapeHtml(review.map(function (n) { return n.id; }).join(',')) + '">Approve all ' + review.length + '</button></div>'
+          : '';
+      }
       if (!list.length) {
         if (emptyEl) emptyEl.style.display = 'block';
         listEl.innerHTML = '';
@@ -6139,19 +6168,75 @@
       }
       if (emptyEl) emptyEl.style.display = 'none';
       listEl.innerHTML = list.map(function (n) {
+        var hasNew = n.share_status !== undefined;
+        var tags = (n.reason_tags || []).map(function (t) { return MOTM_REASON_LABELS[t] || t; });
+        var pills = '';
+        if (hasNew) {
+          pills += n.nominee_matched ? '<span class="motm-pill motm-pill--ok">Nominee told</span>' : '<span class="motm-pill motm-pill--warn">Name not matched to an account</span>';
+          if (n.show_name_to_nominee) pills += '<span class="motm-pill">Name shared with nominee</span>';
+          if (n.wall_ok) pills += '<span class="motm-pill motm-pill--gold">OK for Kind words wall</span>';
+          pills += n.share_status === 'approved' ? '<span class="motm-pill motm-pill--ok">Words approved</span>'
+            : n.share_status === 'hidden' ? '<span class="motm-pill motm-pill--warn">Words hidden</span>'
+            : (motmNeedsReview(n) ? '<span class="motm-pill motm-pill--gold">Words to review</span>' : '');
+        }
+        var shareBtns = '';
+        if (hasNew && (n.reason_custom || n.wall_ok)) {
+          shareBtns = '<div class="motm-share-row">' +
+            (n.share_status !== 'approved' ? '<button type="button" class="btn btn-outline" data-motm-share data-id="' + escapeHtml(n.id) + '" data-status="approved">Approve to share</button>' : '') +
+            (n.share_status !== 'hidden' ? '<button type="button" class="btn btn-outline" data-motm-share data-id="' + escapeHtml(n.id) + '" data-status="hidden">Hide the words</button>' : '') +
+            '</div>';
+        }
         return '<div class="app-card">' +
           '<div class="app-card-head" data-app-card-toggle>' +
           '<div class="app-card-head-main">' +
           '<span class="app-card-name">' + escapeHtml(n.nominee_name || 'Unnamed') + '</span>' +
-          '<span class="app-card-meta">Nominated by ' + escapeHtml(n.nominator_name || 'someone') + ' · ' + escapeHtml(timeAgo(n.created_at)) + '</span>' +
+          '<span class="app-card-meta">Nominated by ' + escapeHtml(n.nominator_name || 'someone') + ' · ' + escapeHtml(timeAgo(n.created_at)) + (motmNeedsReview(n) ? ' · words to review' : '') + '</span>' +
           '</div>' +
           '<svg class="icon app-card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>' +
           '</div>' +
-          '<div class="app-card-body">' + appCardField('Reason', n.reason) + appCardField('Nominator email', n.nominator_email) +
+          '<div class="app-card-body">' +
+          (tags.length ? appCardField('What stood out', tags.join(' · ')) : '') +
+          (n.reason_custom === false ? '' : appCardField('Their words', n.reason)) +
+          (pills ? '<div class="motm-pills">' + pills + '</div>' : '') +
+          appCardField('Nominator email', n.nominator_email) +
+          shareBtns +
           '<button type="button" class="app-card-delete-btn" data-motm-delete data-id="' + escapeHtml(n.id) + '">Delete &amp; let them nominate again</button>' +
           '</div>' +
           '</div>';
       }).join('');
+    }
+
+    // The monthly goal: on/off, how many nominations, and what it unlocks.
+    function renderMotmGoal() {
+      var host = document.getElementById('motm-goal-card');
+      if (!host) return;
+      supabaseClient.rpc('motm_community_goal').then(function (r) {
+        var g = r && r.data;
+        if (!g || r.error || g.target === undefined) { host.innerHTML = ''; return; }
+        host.innerHTML = '<div class="motm-goal-card">' +
+          '<h3>Monthly nominations goal</h3>' +
+          '<p>Members see a meter on the Members Hub and the Member of the Month page: how many nominations so far this month, and what you unlock when it\'s reached. <strong>' + (g.count || 0) + '</strong> so far in ' + escapeHtml(g.month || 'this month') + '.</p>' +
+          '<label class="motm-goal-switch"><input type="checkbox" id="motm-goal-enabled"' + (g.enabled ? ' checked' : '') + '> Show the goal to members</label>' +
+          '<div class="motm-goal-grid"><div><label for="motm-goal-target">Target</label><input type="number" id="motm-goal-target" min="1" max="1000" value="' + escapeHtml(g.target || 20) + '"></div>' +
+          '<div><label for="motm-goal-reward">What it unlocks <span class="guide-optional">(optional)</span></label><input type="text" id="motm-goal-reward" maxlength="160" placeholder="e.g. a free pizza night" value="' + escapeHtml(g.reward || '') + '"></div></div>' +
+          '<div class="motm-goal-actions"><button type="button" class="btn btn-primary" id="motm-goal-save">Save goal</button><span class="motm-goal-status" id="motm-goal-status" role="status"></span></div>' +
+          '</div>';
+        var save = document.getElementById('motm-goal-save');
+        var status = document.getElementById('motm-goal-status');
+        save.addEventListener('click', function () {
+          var target = parseInt(document.getElementById('motm-goal-target').value, 10);
+          var on = document.getElementById('motm-goal-enabled').checked;
+          if (on && !(target >= 1)) { status.textContent = 'Enter a target of 1 or more.'; return; }
+          save.disabled = true;
+          status.textContent = 'Saving…';
+          supabaseClient.rpc('motm_set_goal', {
+            p_enabled: on, p_target: target >= 1 ? target : 20, p_reward: document.getElementById('motm-goal-reward').value.trim()
+          }).then(function (res) {
+            save.disabled = false;
+            status.textContent = res.error ? 'Couldn\'t save: ' + res.error.message : (on ? 'Saved - members can see it now.' : 'Saved - hidden from members.');
+          });
+        });
+      }, function () { host.innerHTML = ''; });
     }
 
     // ---- Event registrations, grouped by event ----
@@ -8166,6 +8251,24 @@
             }
             loadPresidentDashboard();
           });
+        return;
+      }
+
+      var motmShareBtn = e.target.closest('[data-motm-share], [data-motm-share-all]');
+      if (motmShareBtn) {
+        var shareAll = motmShareBtn.hasAttribute('data-motm-share-all');
+        var shareIds = shareAll ? (motmShareBtn.getAttribute('data-ids') || '').split(',').filter(Boolean) : [motmShareBtn.getAttribute('data-id')];
+        var shareStatus = shareAll ? 'approved' : motmShareBtn.getAttribute('data-status');
+        if (shareAll && !window.confirm('Approve all ' + shareIds.length + '? Nominees will see these words, and any marked for the Kind words wall will be shown there (without the nominator\'s name). Only do this once you\'ve read them.')) return;
+        motmShareBtn.disabled = true;
+        supabaseClient.rpc('president_set_motm_share', { p_ids: shareIds, p_status: shareStatus }).then(function (result) {
+          if (result.error) {
+            motmShareBtn.disabled = false;
+            console.error('Updating nominations failed:', result.error.message);
+            return;
+          }
+          loadPresidentDashboard();
+        });
         return;
       }
 

@@ -117,7 +117,9 @@
     openBatch: '',
     sending: null,           // { done, total, sent, failed, cancelled, batch }
     result: null,            // summary after a batch
-    myEmail: ''
+    myEmail: '',
+    motmUnavailable: true,   // true until the Member of the Month lists (migration 099) have loaded
+    motmNominators: {}       // lower(email) -> true: has nominated this month
   };
 
   // ---------------------------------------------------------------------
@@ -138,6 +140,21 @@
       id: 'sk-update', name: 'Sankofa - an update',
       subject: 'An update on Sankofa Circles',
       message: 'Hi {first_name},\n\nA quick update on Sankofa Circles: [your update here].\n\nIf you have any questions, just email us at acms@lincolnsu.com.\n\nThe LACMS Committee'
+    },
+    {
+      id: 'motm-nudge', name: 'Member of the Month - who stood out?',
+      subject: 'Who stood out for you lately?',
+      message: 'Hi {first_name},\n\nIs there someone who made a difference to you recently? Maybe they helped you revise, made you feel welcome, or showed up when it counted.\n\nNominating them for Member of the Month takes about ten seconds: tick a few reasons that fit and you are done. They will hear that someone thinks they are making a difference.\n\nhttps://lincolnacms.uk/motm.html#nominate\n\nThe LACMS Committee'
+    },
+    {
+      id: 'motm-close', name: 'Member of the Month - nominations close soon',
+      subject: 'Member of the Month nominations close soon',
+      message: 'Hi {first_name},\n\nNominations for this month\'s Member of the Month close on [date]. If someone deserves a thank you, there is still time.\n\nWe are [number] nominations away from [the goal and what it unlocks].\n\nhttps://lincolnacms.uk/motm.html#nominate\n\nThe LACMS Committee'
+    },
+    {
+      id: 'motm-thanks', name: 'Member of the Month - thank you for nominating',
+      subject: 'Thank you for nominating',
+      message: 'Hi {first_name},\n\nThank you for nominating someone for Member of the Month. Recognising the people around us is what makes this community what it is.\n\nThe LACMS Committee'
     },
     {
       id: 'general', name: 'General message',
@@ -179,11 +196,15 @@
       supabaseClient.rpc('sankofa_admin_overview').then(function (r) { return r.error ? null : r.data; }, function () { return null; }),
       rpcSafe('president_get_account_requests', {}, 'Student requests'),
       supabaseClient.rpc('president_get_professional_requests').then(function (r) { return r.error ? [] : (r.data || []); }, function () { return []; }),
-      supabaseClient.auth.getSession().then(function (r) { return r && r.data && r.data.session ? r.data.session.user.email : ''; }, function () { return ''; })
+      supabaseClient.auth.getSession().then(function (r) { return r && r.data && r.data.session ? r.data.session.user.email : ''; }, function () { return ''; }),
+      supabaseClient.rpc('email_motm_nominators').then(function (r) { return r.error ? null : (r.data || []); }, function () { return null; })
     ]).then(function (res) {
       state.people = {};
       var members = res[0], pros = res[1], apps = res[2], appRounds = res[3], rounds = res[4], mentorForms = res[5], overview = res[6], studentReqs = res[7], proReqs = res[8];
       state.myEmail = res[9] || '';
+      state.motmUnavailable = res[10] === null;
+      state.motmNominators = {};
+      (res[10] || []).forEach(function (x) { if (x && x.email) state.motmNominators[lc(x.email)] = true; });
       state.rounds = rounds.map(function (r) { return { id: r.id, name: r.name }; });
       var roundName = {}; state.rounds.forEach(function (r) { roundName[r.id] = r.name; });
       var roundOfApp = {}; appRounds.forEach(function (x) { roundOfApp[x.application_id] = x.round_id; });
@@ -218,6 +239,7 @@
           if (x.circle_id) { p.circleId = x.circle_id; p.circle = circleName[x.circle_id] || ''; }
         });
       }
+      Object.keys(state.people).forEach(function (k) { state.people[k].nominatedThisMonth = !!state.motmNominators[k]; });
       studentReqs.forEach(function (r) { if (r.status !== 'pending') return; var p = personFor(r.email, r.full_name); if (p) p.reqStudent = true; });
       proReqs.forEach(function (r) { if (r.status !== 'pending') return; var p = personFor(r.email, r.full_name); if (p) p.reqPro = true; });
       Object.keys(state.people).forEach(function (k) {
@@ -266,6 +288,10 @@
       match: function (p) { return p.hubRole === 'mentee'; } },
     { id: 'sk_hub_mentors', group: 'Sankofa', label: 'Mentors in the Sankofa Hub', refine: ['circle'],
       match: function (p) { return p.hubRole === 'mentor'; } },
+    { id: 'motm_not_yet', group: 'Member of the Month', label: 'Members who haven\'t nominated this month', refine: [], needs: 'motm',
+      match: function (p) { return !!p.kinds.member && !p.nominatedThisMonth; } },
+    { id: 'motm_done', group: 'Member of the Month', label: 'Members who nominated this month', refine: [], needs: 'motm',
+      match: function (p) { return !!p.kinds.member && !!p.nominatedThisMonth; } },
     { id: 'exec', group: 'People', label: 'Executive Committee', refine: [],
       match: function (p) { return p.member_type === 'executive_committee'; } },
     { id: 'supp', group: 'People', label: 'Supporting Committee', refine: [],
@@ -383,7 +409,10 @@
 
   function audienceHtml() {
     var groups = {};
-    AUDIENCES.forEach(function (a) { (groups[a.group] = groups[a.group] || []).push(a); });
+    AUDIENCES.forEach(function (a) {
+      if (a.needs === 'motm' && state.motmUnavailable) return;   // migration 099 not run yet
+      (groups[a.group] = groups[a.group] || []).push(a);
+    });
     var html = '<div class="ec-card"><h3><span class="ec-step">1</span> Who is it for?</h3><div class="ec-aud">';
     Object.keys(groups).forEach(function (g) {
       html += '<div class="ec-aud-group"><span class="ec-label">' + esc(g) + '</span><div class="ec-chips">' + groups[g].map(function (a) {

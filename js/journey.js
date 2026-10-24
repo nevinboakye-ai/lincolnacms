@@ -35,7 +35,7 @@
   var KIND_LABEL = {
     join: 'Joined LACMS', visit: 'Visited the Members Hub', bio: 'Added a bio', linkedin: 'Added your LinkedIn',
     event_reg: 'Registered for an event', disc_reveal: 'Tried a discount', disc_used: 'Used a discount',
-    motm_nominate: 'Nominated for Member of the Month', news_like: 'Liked a news post', news_comment: 'Commented on news',
+    motm_nominate: 'Nominated for Member of the Month', motm_kingmaker: 'Your nominee became Member of the Month', news_like: 'Liked a news post', news_comment: 'Commented on news',
     sankofa_apply: 'Applied for Sankofa', resource_shared: 'Shared a resource', resource_like: 'Liked a resource',
     resource_comment: 'Commented on a resource', resource_download: 'Used a resource', chat_first: 'Sent your first message',
     tenure: 'Another month with LACMS'
@@ -194,7 +194,7 @@
       var mo = a.motm || { nominations: 0, this_month: false };
       icon = '⭐';
       title = mo.this_month ? 'You\'ve nominated someone this month' : 'You haven\'t nominated anyone this month';
-      hint = mo.this_month ? 'Thank you for celebrating someone' : 'Nominating earns +15 XP';
+      hint = mo.this_month ? 'Thank you - if they win, you earn +20 XP and a badge' : 'Nominating earns +15 XP';
       bar = mo.this_month ? 1 : 0;
     } else if (area === 'network') {
       var nw = a.network || { bio: false, linkedin: false, messaged: false };

@@ -7,7 +7,7 @@
 <title>ACMS Member of the Month - LACMS</title>
 <meta name="description" content="ACMS Member of the Month: celebrating a LACMS member who's gone above and beyond this month.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-146">
+<link rel="stylesheet" href="css/styles.css?v=20260824-147">
 </head>
 <body>
 
@@ -213,17 +213,24 @@
         <span><strong>You've used this month's nomination.</strong> Everyone gets one MoTM nomination per calendar month - yours resets on the 1st.</span>
       </div>
 
+      <div data-motm-meter data-cta="false" hidden></div>
+
       <div id="nominate-form-wrap" class="form-panel" style="display:none;">
-        <p class="hint" style="margin-top:0; margin-bottom: var(--space-4);">One nomination per member, per calendar month.</p>
+        <p class="hint" style="margin-top:0; margin-bottom: var(--space-4);">One nomination per member, per calendar month. It takes about ten seconds.</p>
         <form id="nominate-form">
           <div class="field">
             <label for="nominate-name">Who are you nominating?</label>
             <input type="text" id="nominate-name" name="nominate-name" placeholder="Full name" required>
           </div>
           <div class="field">
-            <label for="nominate-reason">Why do they deserve it?</label>
-            <textarea id="nominate-reason" name="nominate-reason" placeholder="What have they done that stood out this month?" required></textarea>
+            <span class="field-label" id="nominate-chips-label">What stood out? <span class="guide-optional">Pick up to three</span></span>
+            <div data-nominate-chips></div>
           </div>
+          <div class="field">
+            <label for="nominate-reason">Add a few words <span class="guide-optional">(optional if you picked a reason)</span></label>
+            <textarea id="nominate-reason" name="nominate-reason" maxlength="1000" placeholder="What have they done that stood out this month?"></textarea>
+          </div>
+          <div class="motm-consents" data-nominate-consents></div>
           <button type="submit" class="btn btn-primary btn-block">Submit nomination</button>
           <p id="nominate-status" class="auth-error" role="status" style="display:none;"></p>
         </form>
@@ -231,10 +238,13 @@
 
       <div id="nominate-confirmation" class="form-panel" style="display:none;">
         <h3 style="margin-top:0;">Nomination submitted</h3>
+        <p data-nominate-linked></p>
         <p style="margin-bottom:0;">Thanks - the committee reviews nominations each month when picking the next Member of the Month. You'll be able to nominate again next month.</p>
       </div>
     </div>
   </section>
+
+  <section class="section motm-wall-section" data-motm-hub hidden aria-label="Kind words"><div class="container"><div data-motm-wall hidden></div></div></section>
 
   <section class="cta-band">
     <div class="container">
@@ -301,15 +311,16 @@
   </div>
 </footer>
 
-<script src="js/main.js?v=20260824-146"></script>
+<script src="js/main.js?v=20260824-147"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/view-as.js?v=20260824-146"></script>
+<script src="js/view-as.js?v=20260824-147"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/members.js?v=20260824-146"></script>
-<script src="js/notifications.js?v=20260824-146"></script>
-<script src="js/badge-lore.js?v=20260824-146"></script>
-<script src="js/journey.js?v=20260824-146"></script>
-<script src="js/guidance.js?v=20260824-146"></script>
-<script src="js/chat.js?v=20260824-146"></script>
+<script src="js/members.js?v=20260824-147"></script>
+<script src="js/notifications.js?v=20260824-147"></script>
+<script src="js/badge-lore.js?v=20260824-147"></script>
+<script src="js/journey.js?v=20260824-147"></script>
+<script src="js/nominate.js?v=20260824-147"></script>
+<script src="js/guidance.js?v=20260824-147"></script>
+<script src="js/chat.js?v=20260824-147"></script>
 </body>
 </html>

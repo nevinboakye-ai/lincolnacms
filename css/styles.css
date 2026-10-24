@@ -10849,3 +10849,131 @@ html.va-modal body { overflow: hidden; }
   .ec-batch-rows li { flex-direction: column; gap: 2px; }
   .ec-recipient-list { max-height: 300px; }
 }
+
+/* =====================================================================
+   Member of the Month, made easy (js/nominate.js, migration 099)
+   ===================================================================== */
+.field-label { display: block; margin-bottom: 6px; font-size: 0.88rem; font-weight: 600; color: var(--color-text); }
+
+/* ---- Community goal meter ---- */
+.motm-meter { padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-left: 3px solid var(--color-gold); border-radius: var(--radius-md); background: var(--color-surface); }
+.motm-meter-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.motm-meter-count { font-size: 0.92rem; color: var(--color-text-muted); }
+.motm-meter-count strong { color: var(--color-text); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.motm-meter-flag { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-gold-light); }
+.motm-meter-bar { height: 10px; border-radius: 99px; background: var(--color-border); overflow: hidden; }
+.motm-meter-bar span { display: block; height: 100%; min-width: 4px; border-radius: 99px; background: linear-gradient(90deg, var(--color-gold-fill), var(--color-gold-fill-hover)); transition: width 0.7s var(--ease-standard); }
+.motm-meter-reward { margin: 10px 0 0; font-size: 0.88rem; color: var(--color-text-muted); }
+.motm-meter-reward strong { color: var(--color-text); }
+.motm-meter.is-unlocked { border-color: rgba(var(--green-rgb), 0.55); border-left-color: var(--color-green); background: rgba(var(--green-rgb), 0.07); }
+.motm-meter.is-unlocked .motm-meter-flag { color: #6fcf97; }
+.motm-meter.is-unlocked .motm-meter-bar span { background: linear-gradient(90deg, var(--color-green), #3aa66a); }
+.motm-meter-btn { margin-top: var(--space-3); }
+.motm-meter-done { margin: var(--space-3) 0 0; font-size: 0.85rem; color: var(--color-text-faint); }
+[data-motm-meter] .motm-meter-btn + .motm-meter-done { margin-top: 8px; }
+.motm-hub-top { padding: var(--space-3) 0 0; }
+.motm-hub-top .container > [data-motm-praise]:not([hidden]) + [data-motm-meter] { margin-top: var(--space-3); }
+.motm-hub-top .container > [data-motm-meter]:not([hidden]) { padding-bottom: var(--space-3); }
+#nominate [data-motm-meter]:not([hidden]) { margin-bottom: var(--space-4); }
+
+/* ---- "Someone thinks you've been making a difference" ---- */
+.motm-praise { display: flex; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid rgba(var(--gold-rgb), 0.45); background: linear-gradient(135deg, rgba(var(--gold-rgb), 0.14), rgba(var(--gold-rgb), 0.04)); }
+.motm-praise-star { flex: none; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 1.2rem; background: var(--color-gold-fill); color: #1a1405; }
+.motm-praise-body { min-width: 0; }
+.motm-praise-body h3 { margin: 0 0 4px; font-family: var(--font-display); font-size: 1.15rem; }
+.motm-praise-body p { margin: 0 0 var(--space-2); color: var(--color-text-muted); font-size: 0.92rem; }
+.motm-praise-tags { list-style: none; margin: 0 0 var(--space-2); padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.motm-praise-tags li, .motm-wall-tags li { padding: 3px 10px; border-radius: 99px; font-size: 0.78rem; background: rgba(var(--gold-rgb), 0.14); border: 1px solid rgba(var(--gold-rgb), 0.35); color: var(--color-text); }
+.motm-praise-quote { margin: 0 0 var(--space-2); padding: 8px 12px; border-left: 3px solid var(--color-gold); font-style: italic; color: var(--color-text); font-size: 0.92rem; overflow-wrap: anywhere; }
+.motm-praise-quote cite { display: block; margin-top: 4px; font-style: normal; font-size: 0.8rem; color: var(--color-text-faint); }
+.motm-praise-ok { margin-top: 4px; }
+
+/* ---- Kind words wall ---- */
+.motm-wall-head h3 { margin: 0; font-family: var(--font-display); font-size: 1.25rem; }
+.motm-wall-head p { margin: 2px 0 var(--space-3); color: var(--color-text-faint); font-size: 0.88rem; }
+.motm-wall-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-3); }
+.motm-wall-card { margin: 0; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); display: flex; flex-direction: column; gap: 8px; }
+.motm-wall-card[hidden] { display: none; }
+.motm-wall-card blockquote { margin: 0; font-size: 0.93rem; line-height: 1.5; color: var(--color-text); overflow-wrap: anywhere; }
+.motm-wall-about { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--color-gold-light); }
+.motm-wall-tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.motm-wall-more { display: block; margin: var(--space-3) auto 0; }
+.motm-wall-section { padding-top: 0; }
+
+/* ---- Reason chips + choices ---- */
+.motm-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.motm-chip { position: relative; display: inline-flex; }
+.motm-chip input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.motm-chip span { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--color-border-strong); background: var(--color-bg-alt); color: var(--color-text-muted); font-size: 0.9rem; line-height: 1.2; transition: background var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard); }
+.motm-chip:hover span { border-color: var(--color-gold); color: var(--color-text); }
+.motm-chip.is-on span { background: rgba(var(--gold-rgb), 0.2); border-color: var(--color-gold); color: var(--color-text); font-weight: 600; }
+.motm-chip.is-on span::before { content: "\2713"; margin-right: 6px; color: var(--color-gold-light); }
+.motm-chip input:focus-visible + span { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+.motm-chip.is-blocked { opacity: 0.45; }
+.motm-chip.is-blocked input { cursor: not-allowed; }
+.motm-chips-note { min-height: 1.2em; margin: 6px 0 0; font-size: 0.8rem; color: var(--color-gold-light); }
+.motm-words-toggle { display: inline-flex; align-items: center; margin: 0 0 var(--space-2); padding: 6px 0; background: none; border: 0; font: inherit; font-size: 0.9rem; color: var(--color-gold-light); cursor: pointer; }
+.motm-words-toggle:hover, .motm-words-toggle:focus-visible { text-decoration: underline; }
+.motm-words[hidden] { display: none; }
+.motm-consents { display: flex; flex-direction: column; gap: 10px; margin: var(--space-3) 0; }
+.motm-consent { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.motm-consent input { flex: none; width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--color-gold); }
+.motm-consent span { display: flex; flex-direction: column; font-size: 0.9rem; }
+.motm-consent small { color: var(--color-text-faint); font-size: 0.78rem; line-height: 1.4; }
+
+/* ---- Dialog ---- */
+.motm-nom-backdrop { z-index: 420; }
+.motm-nom-dialog { max-width: 520px; }
+.motm-nom-wait { display: flex; justify-content: center; padding: var(--space-4) 0; }
+.motm-nom-meter { margin: var(--space-3) 0; }
+.motm-nom-done { text-align: center; }
+.motm-nom-tick { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin-bottom: var(--space-2); border-radius: 50%; font-size: 1.6rem; background: var(--color-gold-fill); color: #1a1405; animation: motm-pop 0.5s var(--ease-standard); }
+.motm-nom-unlock { margin: 0 0 var(--space-2); font-weight: 700; color: #6fcf97; }
+@keyframes motm-pop { 0% { transform: scale(0.4); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .motm-nom-tick { animation: none; } .motm-meter-bar span { transition: none; } }
+.network-modal-nominate { margin-top: var(--space-3); text-align: center; }
+.network-modal-nominate[hidden] { display: none; }
+.res-thanks { margin: 0 0 var(--space-2); }
+.res-thanks-btn { padding: 6px 12px; border-radius: 99px; border: 1px solid rgba(var(--gold-rgb), 0.5); background: rgba(var(--gold-rgb), 0.1); color: var(--color-text); font: inherit; font-size: 0.82rem; cursor: pointer; }
+.res-thanks-btn:hover, .res-thanks-btn:focus-visible { background: rgba(var(--gold-rgb), 0.22); border-color: var(--color-gold); }
+
+@media (max-width: 520px) {
+  .motm-praise { flex-direction: column; padding: var(--space-3); }
+  .motm-meter { padding: var(--space-3); }
+  .motm-chips { gap: 6px; }
+  .motm-chip span { min-height: 40px; padding: 6px 12px; font-size: 0.86rem; }
+  .motm-nom-dialog textarea, .motm-nom-dialog input[type="text"] { font-size: 16px; }
+  .motm-wall-list { grid-template-columns: 1fr; }
+}
+
+/* ---- Dashboard: Nominations ---- */
+.motm-goal-card { margin-bottom: var(--space-4); padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.motm-goal-card h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.motm-goal-card > p { margin: 0 0 var(--space-3); color: var(--color-text-muted); font-size: 0.88rem; }
+.motm-goal-grid { display: grid; grid-template-columns: 110px 1fr; gap: var(--space-3); align-items: end; margin-bottom: var(--space-3); }
+.motm-goal-grid label { display: block; font-size: 0.8rem; margin-bottom: 4px; color: var(--color-text-muted); }
+.motm-goal-grid input[type="number"], .motm-goal-grid input[type="text"] { width: 100%; }
+.motm-goal-switch { display: flex; align-items: center; gap: 8px; margin-bottom: var(--space-3); font-size: 0.9rem; }
+.motm-goal-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.motm-goal-status { font-size: 0.85rem; color: var(--color-text-muted); }
+.motm-bulk { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--color-bg-alt); font-size: 0.88rem; }
+.motm-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.motm-pill { padding: 2px 9px; border-radius: 99px; font-size: 0.72rem; border: 1px solid var(--color-border-strong); color: var(--color-text-muted); background: var(--color-bg-alt); }
+.motm-pill--gold { border-color: rgba(var(--gold-rgb), 0.5); color: var(--color-text); background: rgba(var(--gold-rgb), 0.14); }
+.motm-pill--ok { border-color: rgba(var(--green-rgb), 0.55); color: #6fcf97; background: rgba(var(--green-rgb), 0.1); }
+.motm-pill--warn { border-color: rgba(var(--red-rgb), 0.5); color: var(--accent-red); background: rgba(var(--red-rgb), 0.08); }
+.motm-share-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+@media (max-width: 640px) {
+  .motm-goal-grid { grid-template-columns: 1fr; }
+  .motm-goal-grid input { font-size: 16px; }
+}
+
+.motm-hub-wall { margin-top: var(--space-5); }
+.motm-hub-wall[hidden] { display: none; }
+.motm-hub-wall .motm-wall-list { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+@media (max-width: 520px) {
+  /* Keep the nominate button on screen without scrolling: the meter and fine print wait for the "done" step. */
+  .motm-nom-form .motm-nom-meter, .motm-nom-form .guide-fine { display: none; }
+  .motm-nom-dialog { padding: var(--space-3); }
+  .motm-consents { margin: var(--space-2) 0; }
+}
