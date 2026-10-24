@@ -3970,11 +3970,13 @@
       var base = networkCourseBase(trimmed);
       return (base && NETWORK_PREFERRED_COURSE_NAMES[base]) || raw;
     }
+    // rgb = the deep version of the colour (committee cards are filled with it);
+    // fill/on = the solid badge colour and the text that sits on it.
     var NETWORK_ACCENT_COLORS = {
-      gold: { accent: 'var(--color-gold)', light: 'var(--color-gold-light)', bg: 'rgba(212, 166, 43, 0.18)' },
-      green: { accent: '#6fcf97', light: '#6fcf97', bg: 'rgba(30, 122, 70, 0.2)' },
-      red: { accent: '#ef8b8f', light: '#ef8b8f', bg: 'rgba(193, 39, 45, 0.2)' },
-      purple: { accent: '#b28ff0', light: '#b28ff0', bg: 'rgba(107, 70, 193, 0.22)' }
+      gold: { accent: 'var(--color-gold)', light: 'var(--color-gold-light)', bg: 'rgba(212, 166, 43, 0.18)', rgb: '212, 166, 43', fill: 'var(--color-gold-fill)', on: 'var(--color-on-gold)' },
+      green: { accent: '#6fcf97', light: '#6fcf97', bg: 'rgba(30, 122, 70, 0.2)', rgb: '30, 122, 70', fill: '#1e7a46', on: '#ffffff' },
+      red: { accent: '#ef8b8f', light: '#ef8b8f', bg: 'rgba(193, 39, 45, 0.2)', rgb: '193, 39, 45', fill: '#c1272d', on: '#ffffff' },
+      purple: { accent: '#b28ff0', light: '#b28ff0', bg: 'rgba(107, 70, 193, 0.22)', rgb: '107, 70, 193', fill: '#6b46c1', on: '#ffffff' }
     };
     var NETWORK_TYPE_LABELS = {
       supporting_committee: 'Supporting Committee',
@@ -4067,9 +4069,8 @@
         colors = networkCourseAccents[courseKey] || NETWORK_ACCENT_COLORS.gold;
         isCommittee = row.member_type === 'executive_committee' || row.member_type === 'supporting_committee';
       }
-      if (isCommittee) colors = NETWORK_ACCENT_COLORS.gold;
 
-      return '<div class="network-ticker-item" data-accent="' + colors.accent + '" data-accent-light="' + colors.light + '" data-accent-bg="' + colors.bg + '" data-committee="' + (isCommittee ? '1' : '0') + '">' +
+      return '<div class="network-ticker-item" data-accent="' + colors.accent + '" data-accent-light="' + colors.light + '" data-accent-bg="' + colors.bg + '" data-rgb="' + colors.rgb + '" data-committee="' + (isCommittee ? '1' : '0') + '">' +
         '<span class="network-ticker-item-title">' + escapeHtml(row.full_name) + ' just joined the Network</span>' +
         '<span class="network-ticker-item-time">' + escapeHtml(timeAgo(row.created_at)) + '</span>' +
         (detail ? '<span class="network-ticker-item-meta">' + escapeHtml(detail) + '</span>' : '') +
@@ -4093,6 +4094,7 @@
           ticker.style.setProperty('--ticker-item-accent', current.getAttribute('data-accent'));
           ticker.style.setProperty('--ticker-item-accent-light', current.getAttribute('data-accent-light'));
           ticker.style.setProperty('--ticker-item-accent-bg', current.getAttribute('data-accent-bg'));
+          ticker.style.setProperty('--network-accent-rgb', current.getAttribute('data-rgb') || '212, 166, 43');
           ticker.classList.toggle('is-committee', current.getAttribute('data-committee') === '1');
         }
       }
@@ -4352,7 +4354,7 @@
             '</div>';
         }).join('');
 
-        return '<div class="network-course-section" style="--network-accent:' + colors.accent + '; --network-accent-light:' + colors.light + '; --network-accent-bg:' + colors.bg + ';">' +
+        return '<div class="network-course-section" style="--network-accent:' + colors.accent + '; --network-accent-light:' + colors.light + '; --network-accent-bg:' + colors.bg + '; --network-accent-rgb:' + colors.rgb + '; --network-accent-fill:' + colors.fill + '; --network-accent-on:' + colors.on + ';">' +
           '<div class="network-course-head"><h2>' + escapeHtml(course) + '</h2><span class="network-course-count">' + courseMembers.length + (courseMembers.length === 1 ? ' member' : ' members') + '</span></div>' +
           yearGroupsHtml +
           '</div>';
@@ -4384,7 +4386,9 @@
       var badgeHtml = roleLabel ? '<span class="network-card-badge">' + escapeHtml(roleLabel) + '</span>' : '';
       var linkedinHtml = safeUrl(m.linkedin_url) ? '<span class="network-card-linkedin" aria-hidden="true">' + NETWORK_LINKEDIN_ICON + '</span>' : '';
       var isCommittee = !m.is_pending && (m.member_type === 'executive_committee' || m.member_type === 'supporting_committee');
-      var cardClass = 'network-card' + (isCommittee ? ' network-card--committee' : '') + (m.is_pending ? ' network-card--pending' : '');
+      // Executive Committee: the full treatment. Supporting Committee: the same colour, softer
+      // (no glow, lighter fill, outlined badge) so the two read differently at a glance.
+      var cardClass = 'network-card' + (isCommittee ? ' network-card--committee' + (m.member_type === 'supporting_committee' ? ' network-card--supporting' : '') : '') + (m.is_pending ? ' network-card--pending' : '');
       var chatTarget = networkChatTarget('member', m);
       var chatHtml = chatTarget ? '<span class="network-card-msg" data-chat-user="' + escapeHtml(chatTarget) + '" title="Message ' + escapeHtml(m.full_name) + '" aria-hidden="true">' + NETWORK_CHAT_ICON + '</span>' : '';
       return '<button type="button" class="' + cardClass + '" data-network-type="member" data-network-id="' + m.id + '">' +

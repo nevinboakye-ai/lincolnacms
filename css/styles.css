@@ -6148,19 +6148,29 @@ body.intro-active { overflow: hidden; }
   border-left-width: 4px;
 }
 .network-card--committee {
-  --network-accent: var(--color-gold);
-  --network-accent-light: var(--color-gold-light);
-  --network-accent-bg: rgba(var(--gold-rgb), calc(0.18 * var(--tint-boost)));
-  background: linear-gradient(160deg, rgba(var(--gold-rgb), calc(0.32 * var(--tint-boost))), rgba(var(--gold-rgb), calc(0.08 * var(--tint-boost))) 60%, var(--color-surface) 100%);
+  /* Keeps the card's own course colour (set on the course section); gold is only the fallback. */
+  --cm-rgb: var(--network-accent-rgb, var(--gold-rgb));
+  background: linear-gradient(160deg, rgba(var(--cm-rgb), calc(0.32 * var(--tint-boost))), rgba(var(--cm-rgb), calc(0.08 * var(--tint-boost))) 60%, var(--color-surface) 100%);
   animation: network-committee-glow 3.2s ease-in-out infinite;
 }
 .network-card--committee .network-card-badge {
-  color: var(--color-on-gold);
-  background: var(--color-gold-fill);
+  color: var(--network-accent-on, var(--color-on-gold));
+  background: var(--network-accent-fill, var(--color-gold-fill));
 }
 @keyframes network-committee-glow {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(var(--gold-rgb), calc(0.2 * var(--tint-boost))); }
-  50% { box-shadow: 0 0 0 1px rgba(var(--gold-rgb), calc(0.4 * var(--tint-boost))), 0 0 16px rgba(var(--gold-rgb), calc(0.35 * var(--tint-boost))); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(var(--network-accent-rgb, var(--gold-rgb)), calc(0.2 * var(--tint-boost))); }
+  50% { box-shadow: 0 0 0 1px rgba(var(--network-accent-rgb, var(--gold-rgb)), calc(0.4 * var(--tint-boost))), 0 0 16px rgba(var(--network-accent-rgb, var(--gold-rgb)), calc(0.35 * var(--tint-boost))); }
+}
+/* Supporting Committee: same colour family, quieter than the Executive. */
+.network-card--supporting {
+  background: linear-gradient(160deg, rgba(var(--cm-rgb), calc(0.15 * var(--tint-boost))), rgba(var(--cm-rgb), calc(0.04 * var(--tint-boost))) 60%, var(--color-surface) 100%);
+  animation: none;
+  border-left-width: 3px;
+}
+.network-card--supporting .network-card-badge {
+  color: var(--network-accent-light, var(--color-gold-light));
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(var(--cm-rgb), 0.7);
 }
 
 .network-card--professional {

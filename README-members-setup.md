@@ -1713,3 +1713,8 @@ The emails come from a no-reply address, so none of them ask people to reply any
 ## 153. Edit someone's account from the Network page
 
 No SQL and no Edge Function change. On the Network page, click a person (member or professional) to open their profile, then click **Edit account details** (or click their name). It opens the same form as Dashboard -> Manage accounts: name, course, year, status, member type, committee role and the Sankofa/MMG flags for members; title, organisation, category, bio, LinkedIn and visibility for professionals. **Remove this account from LACMS** is in the same form. The Network refreshes after saving. This is for the president only on the Network page; the database still applies the usual Manage Accounts rules. The shared form now lives in `js/account-edit.js` (the dashboard uses it too).
+
+
+## 154. Network: committee cards use their course's colour
+
+No SQL. Committee cards on the Network page (and the "just joined" ticker) keep their course's colour instead of always being gold: the card is filled with a deeper shade of that course's colour, with a matching glow and solid badge (Medicine stays gold, as before). **Executive Committee** cards get the full treatment; **Supporting Committee** cards are the same colour but quieter: a lighter fill, no glow, and an outlined badge instead of a solid one.
