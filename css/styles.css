@@ -10977,3 +10977,9 @@ html.va-modal body { overflow: hidden; }
   .motm-nom-dialog { padding: var(--space-3); }
   .motm-consents { margin: var(--space-2) 0; }
 }
+
+/* President: click a name on the Network to edit the account (js/account-edit.js) */
+.network-modal-name.is-editable { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 4px; }
+.network-modal-name.is-editable:hover { color: var(--color-gold-light); }
+.network-modal-admin .btn-primary { width: 100%; }
+#account-edit-modal { z-index: 450; }

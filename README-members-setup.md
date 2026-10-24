@@ -1708,3 +1708,8 @@ The emails come from a no-reply address, so none of them ask people to reply any
 - **Nominating yourself isn't allowed**, by account or by typing your own name. Typing someone's exact name links it to their account when only one person has that name; otherwise the committee still sees it but the person can't be notified (the dashboard says "Name not matched to an account").
 - **Nudges from Dashboard -> Email.** Two new groups: **Members who haven't nominated this month** and **Members who nominated this month** (to say thank you), and three templates: "who stood out?", "nominations close soon" and "thank you for nominating". Anyone with the Nominations or Email tile can use the groups.
 - If you ever re-run 094 (Journey preview), run 099 again afterwards so the rewards stay in the journey.
+
+
+## 153. Edit someone's account from the Network page
+
+No SQL and no Edge Function change. On the Network page, click a person (member or professional) to open their profile, then click **Edit account details** (or click their name). It opens the same form as Dashboard -> Manage accounts: name, course, year, status, member type, committee role and the Sankofa/MMG flags for members; title, organisation, category, bio, LinkedIn and visibility for professionals. **Remove this account from LACMS** is in the same form. The Network refreshes after saving. This is for the president only on the Network page; the database still applies the usual Manage Accounts rules. The shared form now lives in `js/account-edit.js` (the dashboard uses it too).
