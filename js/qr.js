@@ -1,9 +1,15 @@
 // QR codes made right here in the browser: no outside service, nothing sent anywhere.
 //
-//   lacmsQR.svg(text, { size: 320, margin: 4, ecc: 'M' })    -> an <svg> string (sharp at any size)
-//   lacmsQR.png(text, { size: 640, margin: 4, ecc: 'M' })    -> a PNG data: URL
-//   lacmsQR.download(text, 'name', 'png' | 'svg', opts)      -> saves a file
-//   lacmsQR.matrix(text, 'M')                                 -> the raw grid of dark/light squares
+//   lacmsQR.svg(text, design)                  -> an <svg> string (sharp at any size)
+//   lacmsQR.render(text, design)               -> { svg, width, height, modules, ecc, version }
+//   lacmsQR.pngBlob(text, design, px)          -> a Promise of a PNG file (Blob)
+//   lacmsQR.download(text, 'name', 'png'|'svg', design) -> saves a file
+//   lacmsQR.check(text, design)                -> will it scan? advice on contrast, logo size, density
+//   lacmsQR.matrix(text, 'M')                  -> the raw grid of dark/light squares
+//
+// A design can set: ecc, margin, size, fg / fg2 (+ gradient), bg, shape (square | rounded | dots),
+// eyeFrame / eyePupil (square | rounded | circle), eyeColor, pupilColor, logo (a data: URL) and
+// logoSize, caption, captionPos, captionColor, frame (none | line | band) and frameColor.
 //
 // Standard QR (ISO 18004) in byte mode, any text (UTF-8), versions 1 to 40, error correction
 // L / M / Q / H, with automatic mask choice. The block layout tables were taken from a
@@ -231,48 +237,223 @@
   }
 
   // ---- Pictures ----------------------------------------------------------------------------
-  function svg(text, opts) {
-    opts = opts || {};
-    var m = matrix(text, opts.ecc), n = m.length, margin = opts.margin == null ? 4 : opts.margin, size = opts.size || 320;
-    var dark = opts.dark || '#000000', light = opts.light || '#ffffff', d = '';
-    for (var y = 0; y < n; y++) {
-      var x = 0;
-      while (x < n) {
-        if (m[y][x]) { var s = x; while (x < n && m[y][x]) x++; d += 'M' + (s + margin) + ' ' + (y + margin) + 'h' + (x - s) + 'v1h-' + (x - s) + 'z'; } else x++;
+  var DEFAULTS = {
+    ecc: 'M', margin: 4, size: 320,
+    fg: '#000000', fg2: '', gradient: 'diagonal', bg: '#ffffff',
+    shape: 'square', eyeFrame: 'square', eyePupil: 'square', eyeColor: '', pupilColor: '',
+    logo: '', logoSize: 0.2,
+    caption: '', captionPos: 'below', captionColor: '', frame: 'none', frameColor: '#000000'
+  };
+  var uid = 0;
+  function merge(o) {
+    var d = {}, k;
+    for (k in DEFAULTS) d[k] = DEFAULTS[k];
+    o = o || {};
+    // the older simple options
+    if (o.dark && !o.fg) d.fg = o.dark;
+    if (o.light && !o.bg) d.bg = o.light;
+    for (k in o) if (o[k] !== undefined && o[k] !== null && k !== 'dark' && k !== 'light') d[k] = o[k];
+    d.margin = Math.max(0, Math.min(10, +d.margin));
+    d.logoSize = Math.max(0.1, Math.min(0.3, +d.logoSize));
+    return d;
+  }
+  function esc(str) { return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function f(n) { return Math.round(n * 1000) / 1000; }
+  function rrect(x, y, w, h, tl, tr, br, bl) {
+    var p = 'M' + f(x + tl) + ' ' + f(y) + 'H' + f(x + w - tr);
+    if (tr) p += 'a' + tr + ' ' + tr + ' 0 0 1 ' + tr + ' ' + tr;
+    p += 'V' + f(y + h - br);
+    if (br) p += 'a' + br + ' ' + br + ' 0 0 1 ' + (-br) + ' ' + br;
+    p += 'H' + f(x + bl);
+    if (bl) p += 'a' + bl + ' ' + bl + ' 0 0 1 ' + (-bl) + ' ' + (-bl);
+    p += 'V' + f(y + tl);
+    if (tl) p += 'a' + tl + ' ' + tl + ' 0 0 1 ' + tl + ' ' + (-tl);
+    return p + 'z';
+  }
+  function circle(cx, cy, r) { return 'M' + f(cx - r) + ' ' + f(cy) + 'a' + r + ' ' + r + ' 0 1 0 ' + 2 * r + ' 0a' + r + ' ' + r + ' 0 1 0 ' + (-2 * r) + ' 0z'; }
+
+  // Which modules a logo takes over (they are left blank; error correction covers the loss).
+  function logoBox(n, d) {
+    if (!d.logo) return null;
+    var side = n * d.logoSize, plate = side + 1.4, c = n / 2;
+    return { side: side, plate: plate, x0: c - plate / 2, x1: c + plate / 2 };
+  }
+
+  function render(text, opts) {
+    var d = merge(opts);
+    var ecc = ECC_INDEX[d.ecc] !== undefined ? d.ecc : 'M';
+    if (d.logo && (ecc === 'L' || ecc === 'M')) ecc = 'Q';        // a logo needs the stronger levels
+    var m = matrix(text, ecc), n = m.length, lb = logoBox(n, d);
+    var id = 'lqg' + (++uid);
+    function inEye(x, y) { return (x < 7 && y < 7) || (x >= n - 7 && y < 7) || (x < 7 && y >= n - 7); }
+    function inLogo(x, y) { return lb && x + 1 > lb.x0 && x < lb.x1 && y + 1 > lb.x0 && y < lb.x1; }
+    function dark(x, y) { return x >= 0 && y >= 0 && x < n && y < n && m[y][x] && !inEye(x, y) && !inLogo(x, y); }
+
+    // The little squares.
+    var path = '', x, y;
+    if (d.shape === 'dots') {
+      for (y = 0; y < n; y++) for (x = 0; x < n; x++) if (dark(x, y)) path += circle(x + 0.5, y + 0.5, 0.46);
+    } else if (d.shape === 'rounded') {
+      for (y = 0; y < n; y++) for (x = 0; x < n; x++) if (dark(x, y)) {
+        var up = dark(x, y - 1), dn = dark(x, y + 1), lf = dark(x - 1, y), rt = dark(x + 1, y), r = 0.5;
+        path += rrect(x, y, 1, 1, !up && !lf ? r : 0, !up && !rt ? r : 0, !dn && !rt ? r : 0, !dn && !lf ? r : 0);
+      }
+    } else {
+      for (y = 0; y < n; y++) {
+        x = 0;
+        while (x < n) {
+          if (dark(x, y)) { var st = x; while (x < n && dark(x, y)) x++; path += 'M' + st + ' ' + y + 'h' + (x - st) + 'v1h-' + (x - st) + 'z'; } else x++;
+        }
       }
     }
-    var total = n + margin * 2;
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + total + ' ' + total + '" width="' + size + '" height="' + size + '" shape-rendering="crispEdges" role="img" aria-label="QR code">' +
-      '<rect width="' + total + '" height="' + total + '" fill="' + light + '"/><path d="' + d + '" fill="' + dark + '"/></svg>';
+
+    // The three big corner squares, drawn on their own so they can be styled.
+    var eyeCol = d.eyeColor || d.fg, pupCol = d.pupilColor || d.eyeColor || d.fg, ring = '', pupil = '';
+    [[0, 0], [n - 7, 0], [0, n - 7]].forEach(function (e) {
+      var ex = e[0], ey = e[1];
+      if (d.eyeFrame === 'circle') ring += circle(ex + 3.5, ey + 3.5, 3.5) + circle(ex + 3.5, ey + 3.5, 2.5);
+      else if (d.eyeFrame === 'rounded') ring += rrect(ex, ey, 7, 7, 2, 2, 2, 2) + rrect(ex + 1, ey + 1, 5, 5, 1, 1, 1, 1);
+      else ring += rrect(ex, ey, 7, 7, 0, 0, 0, 0) + rrect(ex + 1, ey + 1, 5, 5, 0, 0, 0, 0);
+      if (d.eyePupil === 'circle') pupil += circle(ex + 3.5, ey + 3.5, 1.5);
+      else if (d.eyePupil === 'rounded') pupil += rrect(ex + 2, ey + 2, 3, 3, 0.9, 0.9, 0.9, 0.9);
+      else pupil += rrect(ex + 2, ey + 2, 3, 3, 0, 0, 0, 0);
+    });
+
+    // Layout: the code with its quiet zone, then (optionally) a caption and a frame around it.
+    var qz = n + d.margin * 2;
+    var caption = String(d.caption || '').trim().slice(0, 60);
+    var framed = d.frame !== 'none';
+    var fpad = framed ? Math.max(1.6, qz * 0.045) : 0;
+    var capH = caption ? Math.max(5, Math.round(qz * 0.17)) : 0;
+    var W = qz + fpad * 2, H = qz + fpad * 2 + capH;
+    var top = fpad + (caption && d.captionPos === 'above' ? capH : 0);
+    var capY = caption ? (d.captionPos === 'above' ? fpad : fpad + qz) : 0;
+    var parts = [], body = '';
+    var bgFill = d.bg ? d.bg : 'none';
+    var radius = Math.min(W, H) * 0.045;
+    if (d.frame === 'band') {
+      body += '<rect width="' + f(W) + '" height="' + f(H) + '" rx="' + f(radius * 1.4) + '" fill="' + esc(d.frameColor) + '"/>';
+      body += '<rect x="' + f(fpad) + '" y="' + f(top) + '" width="' + f(qz) + '" height="' + f(qz) + '" rx="' + f(radius) + '" fill="' + esc(d.bg || '#ffffff') + '"/>';
+    } else {
+      if (d.bg) body += '<rect width="' + f(W) + '" height="' + f(H) + '" rx="' + (framed ? f(radius * 1.4) : 0) + '" fill="' + esc(d.bg) + '"/>';
+      if (d.frame === 'line') body += '<rect x="' + f(fpad * 0.35) + '" y="' + f(fpad * 0.35) + '" width="' + f(W - fpad * 0.7) + '" height="' + f(H - fpad * 0.7) + '" rx="' + f(radius * 1.2) + '" fill="none" stroke="' + esc(d.frameColor) + '" stroke-width="' + f(Math.max(0.5, fpad * 0.28)) + '"/>';
+    }
+    var fill = d.fg2 ? 'url(#' + id + ')' : esc(d.fg);
+    var defs = '';
+    if (d.fg2) {
+      var gx = d.gradient === 'vertical' ? [0, 0, 0, n] : d.gradient === 'horizontal' ? [0, 0, n, 0] : [0, 0, n, n];
+      defs = '<defs><linearGradient id="' + id + '" gradientUnits="userSpaceOnUse" x1="' + gx[0] + '" y1="' + gx[1] + '" x2="' + gx[2] + '" y2="' + gx[3] + '"><stop offset="0" stop-color="' + esc(d.fg) + '"/><stop offset="1" stop-color="' + esc(d.fg2) + '"/></linearGradient></defs>';
+    }
+    body += '<g transform="translate(' + f(fpad + d.margin) + ' ' + f(top + d.margin) + ')"' + (d.shape === 'square' ? ' shape-rendering="crispEdges"' : '') + '>' +
+      '<path d="' + path + '" fill="' + fill + '"/>' +
+      '<path d="' + ring + '" fill="' + esc(eyeCol) + '" fill-rule="evenodd"' + (d.eyeFrame === 'square' ? ' shape-rendering="crispEdges"' : '') + '/>' +
+      '<path d="' + pupil + '" fill="' + esc(pupCol) + '"/>';
+    if (lb) {
+      var pad = (lb.plate - lb.side) / 2;
+      body += '<rect x="' + f(lb.x0) + '" y="' + f(lb.x0) + '" width="' + f(lb.plate) + '" height="' + f(lb.plate) + '" rx="' + f(lb.plate * 0.16) + '" fill="' + esc(d.bg || '#ffffff') + '"/>' +
+        '<image href="' + esc(d.logo) + '" x="' + f(lb.x0 + pad) + '" y="' + f(lb.x0 + pad) + '" width="' + f(lb.side) + '" height="' + f(lb.side) + '" preserveAspectRatio="xMidYMid meet"/>';
+    }
+    body += '</g>';
+    if (caption) {
+      var chars = caption.length, fs = Math.min(capH * 0.52, (qz * 0.92) / (chars * 0.6));
+      var tcol = d.captionColor || (d.frame === 'band' ? contrastText(d.frameColor) : d.frame === 'line' ? d.frameColor : d.fg);
+      body += '<text x="' + f(W / 2) + '" y="' + f(capY + capH / 2 + fs * 0.35) + '" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="' + f(fs) + '" fill="' + esc(tcol) + '">' + esc(caption) + '</text>';
+    }
+    var px = Math.max(64, +d.size || 320), hpx = Math.round(px * H / W);
+    var svgText = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + f(W) + ' ' + f(H) + '" width="' + px + '" height="' + hpx + '" role="img" aria-label="QR code">' + defs + body + '</svg>';
+    return { svg: svgText, width: px, height: hpx, modules: n, ecc: ecc, version: (n - 17) / 4, units: { w: W, h: H } };
   }
-  function png(text, opts) {
+
+  function svg(text, opts) { return render(text, opts).svg; }
+
+  // A PNG file (a Blob) of the code at the width asked for, drawn from the same picture as the SVG.
+  function pngBlob(text, opts, px) {
+    px = Math.max(128, Math.min(4096, +px || (opts && opts.size) || 1024));
+    var r = render(text, Object.assign({}, opts, { size: px }));
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement('canvas');
+        canvas.width = r.width; canvas.height = r.height;
+        canvas.getContext('2d').drawImage(img, 0, 0, r.width, r.height);
+        canvas.toBlob(function (b) { b ? resolve(b) : reject(new Error('Could not make the image.')); }, 'image/png');
+      };
+      img.onerror = function () { reject(new Error('Could not draw the code.')); };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(r.svg);
+    });
+  }
+  function png(text, opts) {                                 // a data: URL, for the simple cases
     opts = opts || {};
     var m = matrix(text, opts.ecc), n = m.length, margin = opts.margin == null ? 4 : opts.margin;
     var total = n + margin * 2, scale = Math.max(1, Math.round((opts.size || 640) / total));
     var canvas = document.createElement('canvas');
     canvas.width = canvas.height = total * scale;
     var ctx = canvas.getContext('2d');
-    ctx.fillStyle = opts.light || '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = opts.dark || '#000000';
+    ctx.fillStyle = opts.light || opts.bg || '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = opts.dark || opts.fg || '#000000';
     for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) if (m[y][x]) ctx.fillRect((x + margin) * scale, (y + margin) * scale, scale, scale);
     return canvas.toDataURL('image/png');
   }
-  function download(text, name, kind, opts) {
-    var a = document.createElement('a'), url;
-    name = String(name || 'qr-code').replace(/[^a-z0-9._-]+/gi, '-').replace(/^-+|-+$/g, '') || 'qr-code';
-    if (kind === 'svg') {
-      url = URL.createObjectURL(new Blob([svg(text, opts)], { type: 'image/svg+xml' }));
-      a.download = name + '.svg';
-    } else {
-      url = png(text, opts);
-      a.download = name + '.png';
-    }
-    a.href = url;
+  function saveBlob(blob, filename) {
+    var a = document.createElement('a'), url = URL.createObjectURL(blob);
+    a.href = url; a.download = filename;
     document.body.appendChild(a); a.click();
-    setTimeout(function () { if (kind === 'svg') URL.revokeObjectURL(url); a.remove(); }, 500);
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 800);
+  }
+  function fileName(name) { return String(name || 'qr-code').replace(/[^a-z0-9._-]+/gi, '-').replace(/^-+|-+$/g, '') || 'qr-code'; }
+  function download(text, name, kind, opts) {
+    name = fileName(name);
+    if (kind === 'svg') { saveBlob(new Blob([svg(text, opts)], { type: 'image/svg+xml' }), name + '.svg'); return Promise.resolve(); }
+    return pngBlob(text, opts, opts && opts.size).then(function (b) { saveBlob(b, name + '.png'); });
   }
 
-  var api = { matrix: matrix, svg: svg, png: png, download: download };
+  // ---- Will it scan? -----------------------------------------------------------------------------
+  function rgb(hex) {
+    var h = String(hex || '').replace('#', '');
+    if (h.length === 3) h = h.replace(/(.)/g, '$1$1');
+    if (!/^[0-9a-f]{6}$/i.test(h)) return null;
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  function luminance(hex) {
+    var c = rgb(hex); if (!c) return null;
+    var v = c.map(function (x) { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+  }
+  function contrast(a, b) {
+    var la = luminance(a), lb = luminance(b);
+    if (la === null || lb === null) return null;
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+  function contrastText(bg) { var l = luminance(bg); return l !== null && l > 0.45 ? '#111111' : '#ffffff'; }
+
+  // Advice on a design: { level: 'good' | 'warn' | 'bad', notes: [...], modules, printCm }
+  function check(text, opts) {
+    var d = merge(opts), notes = [], level = 'good';
+    function warn(msg, bad) { notes.push(msg); if (bad) level = 'bad'; else if (level === 'good') level = 'warn'; }
+    var info;
+    try { info = render(text || ' ', Object.assign({}, d, { size: 64 })); } catch (e) { return { level: 'bad', notes: ['That is too long for a QR code. Shorten the text or link.'], modules: 0, printCm: 0 }; }
+    var bg = d.bg || '#ffffff', cols = [d.fg].concat(d.fg2 ? [d.fg2] : []).concat(d.eyeColor ? [d.eyeColor] : []).concat(d.pupilColor ? [d.pupilColor] : []);
+    var worst = 21;
+    cols.forEach(function (c) { var r = contrast(c, bg); if (r !== null && r < worst) worst = r; });
+    var lf = luminance(d.fg), lbg = luminance(bg);
+    if (lf !== null && lbg !== null && lf > lbg) warn('The code is lighter than its background. Many phone cameras can’t read light-on-dark codes, so keep the code darker than the background.', true);
+    else if (worst < 3) warn('Not enough contrast between the code and the background. Use a much darker code or a lighter background.', true);
+    else if (worst < 4.5) warn('The contrast is a little low. It may be hard to scan in poor light or when printed small; consider a darker colour.');
+    if (!d.bg) warn('Transparent background: it only scans if it sits on a plain light surface.');
+    if (d.logo) {
+      var share = (d.logoSize * d.logoSize);
+      if (d.logoSize > 0.26) warn('The logo is big. Keep it under about a quarter of the code’s width.', true);
+      else if (d.logoSize > 0.22) warn('The logo is on the large side. Test that it scans before printing.');
+      if (share > 0.07 && info.ecc === 'Q' && d.logoSize > 0.2) warn('For a bigger logo choose the highest error correction.');
+    }
+    if (info.modules > 61) warn('This code is dense (' + info.modules + ' squares across). Print it larger, or use a shorter link (the tracked option gives a very short code).');
+    if (d.shape === 'dots' && d.eyeFrame === 'circle' && d.eyePupil === 'circle') warn('Round everything looks lovely but is a little harder for some scanners. Test it.');
+    var printCm = Math.max(2.5, Math.ceil((info.modules + d.margin * 2) * 0.09 * 10) / 10);
+    if (!notes.length) notes.push('Looks good. Print it at least ' + printCm + ' cm wide and give it a quick scan with your phone before it goes on a poster.');
+    return { level: level, notes: notes, modules: info.modules, printCm: printCm, contrast: Math.round(worst * 10) / 10, version: info.version };
+  }
+
+  var api = { matrix: matrix, render: render, svg: svg, png: png, pngBlob: pngBlob, download: download, check: check, contrast: contrast, contrastText: contrastText, defaults: DEFAULTS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.lacmsQR = api;
 })(typeof window !== 'undefined' ? window : this);

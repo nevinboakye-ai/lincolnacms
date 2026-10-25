@@ -112,7 +112,7 @@
       '<label class="fba-select"><span class="visually-hidden">Event</span><select data-fba-event>' + opts + '</select></label>' +
       '<div class="fba-tools">' +
       (ev ? '<button type="button" class="btn btn-outline" data-fba-copy="' + esc(link) + '">Copy feedback link</button>' +
-            '<button type="button" class="btn btn-outline" data-fba-qr="' + esc(link) + '" data-name="' + esc(ev.name) + '">QR code</button>' +
+            '<button type="button" class="btn btn-outline" data-fba-qr="' + esc(link) + '" data-name="' + esc(ev.name) + '" data-slug="' + esc(ev.slug) + '">QR code</button>' +
             (canEmail ? '<button type="button" class="btn btn-outline" data-fba-ask="' + esc(ev.slug) + '">Ask people who registered</button>' : '') : '') +
       (canEmail ? '<button type="button" class="btn btn-outline" data-fba-guests>Email guests</button>' : '') +
       (state.rows.length ? '<button type="button" class="btn btn-outline" data-fba-csv>Download CSV</button>' : '') +
@@ -208,7 +208,7 @@
       '<h3>' + esc(state.qr.name) + '</h3><div class="fba-qr-img">' + code + '</div>' +
       '<p>Show it on the last slide or print it on a poster. Scanning opens the feedback form for this event.</p>' +
       '<p class="fba-link">' + esc(state.qr.link) + '</p>' +
-      '<div class="fba-tools" style="justify-content:center;"><button type="button" class="btn btn-primary" data-fba-qr-save="png">Download PNG</button><button type="button" class="btn btn-outline" data-fba-qr-save="svg">Download SVG</button><button type="button" class="btn btn-outline" data-fba-qr-close>Close</button></div>' +
+      '<div class="fba-tools" style="justify-content:center;"><button type="button" class="btn btn-primary" data-fba-qr-save="png">Download PNG</button><button type="button" class="btn btn-outline" data-fba-qr-save="svg">Download SVG</button>' + (window.lacmsQRStudio && (function () { var tl = document.querySelector('[data-dash-section="qr"]'); return tl && tl.style.display !== 'none'; })() ? '<button type="button" class="btn btn-outline" data-fba-qr-studio>Customise &amp; save</button>' : '') + '<button type="button" class="btn btn-outline" data-fba-qr-close>Close</button></div>' +
       '<p class="guide-fine">Made right here in your browser. PNG is for slides, SVG is sharp at any poster size.</p></div></div>';
   }
 
@@ -244,7 +244,12 @@
       (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(v) : Promise.reject()).then(function () { say('Link copied: ' + v); }, function () { window.prompt('Copy this link:', v); });
       return;
     }
-    if ((v = t.getAttribute('data-fba-qr')) !== null) { state.qr = { link: v, name: t.getAttribute('data-name') }; render(); return; }
+    if ((v = t.getAttribute('data-fba-qr')) !== null) { state.qr = { link: v, name: t.getAttribute('data-name'), slug: t.getAttribute('data-slug') }; render(); return; }
+    if (t.hasAttribute('data-fba-qr-studio') && state.qr) {
+      var qs = state.qr; state.qr = null; render();
+      window.lacmsQRStudio.open({ kind: 'event', eventSlug: qs.slug, name: qs.name + ' feedback', caption: 'Scan to give feedback' });
+      return;
+    }
     if ((v = t.getAttribute('data-fba-qr-save')) !== null && state.qr) { window.lacmsQR.download(state.qr.link, 'feedback-qr-' + state.qr.name, v, { size: 1024 }); return; }
     if (t.hasAttribute('data-fba-qr-close')) { state.qr = null; render(); return; }
     if (t.hasAttribute('data-fba-csv')) { csv(); return; }

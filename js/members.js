@@ -5067,13 +5067,13 @@
     // The five sections non-presidents can be given (by Hub Access rules),
     // and which rule feature controls each.
     var DASH_SHARED_SECTIONS = ['mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery',
-      'activity', 'webactivity', 'requests', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners'];
+      'activity', 'webactivity', 'requests', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners', 'qr'];
     // The original five, which the Executive Committee got by default; used only if Hub Access can't be loaded.
     var DASH_LEGACY_SECTIONS = ['mmg', 'sankofa', 'motm', 'events', 'gallery'];
     var DASH_FEATURE_FOR = {
       mmg: 'dash_mmg', sankofa: 'dash_sankofa', sankofahub: 'sankofa_hub', motm: 'dash_motm', events: 'dash_events', gallery: 'dash_gallery',
       activity: 'dash_activity', webactivity: 'dash_webactivity', requests: 'dash_requests', pending: 'dash_pending', chatreports: 'dash_chatreports',
-      sitestats: 'dash_sitestats', create: 'dash_create', manage: 'dash_manage', email: 'dash_email', feedback: 'dash_feedback', partners: 'dash_partners'
+      sitestats: 'dash_sitestats', create: 'dash_create', manage: 'dash_manage', email: 'dash_email', feedback: 'dash_feedback', partners: 'dash_partners', qr: 'dash_qr'
     };
     var dashAllowed = {};
     // President: everything. Anyone else: only the shared sections the
@@ -5182,7 +5182,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners', 'qr'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {
@@ -7205,6 +7205,7 @@
       { key: 'dash_sitestats', label: 'Dashboard: Site numbers', short: 'Site numbers', desc: 'The headline numbers on the homepage and About page.', dash: true },
       { key: 'dash_create', label: 'Dashboard: Create Accounts', short: 'Create', desc: 'Create a member, professional or guest login directly. Sensitive: they can add anyone.', dash: true },
       { key: 'dash_manage', label: 'Dashboard: Manage Accounts', short: 'Manage', desc: 'Edit or remove any member, professional or guest account. Sensitive: they can change or delete anyone.', dash: true },
+      { key: 'dash_qr', label: 'Dashboard: QR codes', short: 'QR codes', desc: 'Design QR codes (colours, logo, caption), put any link behind them, track scans, and keep a library. The Executive Committee has it by default.', dash: true },
       { key: 'dash_partners', label: 'Dashboard: Partners', short: 'Partners', desc: 'Create private, read-only spaces so collaborating partners can follow the feedback and numbers for shared events. Closed by default: it shares information outside LACMS.', dash: true },
       { key: 'dash_feedback', label: 'Dashboard: Feedback', short: 'Feedback', desc: 'What people said about each event: ratings, comments, the feedback link and QR code. Guests\' emails are visible. Anonymous members show no name.', dash: true },
       { key: 'dash_email', label: 'Dashboard: Email', short: 'Email', desc: 'Write emails to groups or people you choose and see what has been sent. They can email any member, professional or applicant.', dash: true }

@@ -1,0 +1,7 @@
+<!doctype html><meta charset=utf-8><body><div id=o></div><script src="http://localhost:8126/js/qr.js"></script><script>
+var link='https://lincolnacms.uk/go.html?c=a1b2c3d';
+var designs=[{name:'dots',shape:'dots'},{name:'gradient rounded vertical',shape:'rounded',fg:'#0b3d2e',fg2:'#1e5a8a',gradient:'vertical'},{name:'all round + gradient + band',shape:'dots',eyeFrame:'circle',eyePupil:'circle',fg:'#0b3d2e',fg2:'#1e5a8a',caption:'Scan me',frame:'band',frameColor:'#a97e14'}];
+var q=new URLSearchParams(location.search), from=+q.get('from');
+var d=designs[from];
+lacmsQR.pngBlob(link,d,700).then(function(b){var fr=new FileReader(); fr.onload=function(){var e=document.createElement('pre'); e.className='res'; e.textContent=JSON.stringify({idx:from,name:d.name,text:link,url:fr.result}); document.getElementById('o').appendChild(e)}; fr.readAsDataURL(b)});
+</script>

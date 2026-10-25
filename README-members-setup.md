@@ -1768,3 +1768,21 @@ Update: the partner page layout was reworked: clear sections (From the event, At
 `js/qr.js` is a small QR code generator that runs in the browser, so nothing is sent to an outside service and it works offline. It replaces api.qrserver.com in Dashboard -> Feedback and on the partner page, which now offer **Download PNG** (for slides) and **Download SVG** (sharp at any poster size).
 
 To make a QR code anywhere else on the site, load `js/qr.js` and call `lacmsQR.svg('https://...', { size: 320 })` (an `<svg>` string), `lacmsQR.png(text)` (a PNG data URL) or `lacmsQR.download(text, 'name', 'png' | 'svg')`. It handles any text, all four error-correction levels and codes up to the maximum size. It was checked against an established QR library: its output was identical for 164 test codes (every length from 1 to 120 characters, plus longer ones, at all four levels), and codes were also read back with an independent scanner.
+
+
+## 158. QR code studio (Dashboard -> QR codes) and event-specific QR codes
+
+**Run in Supabase (safe to repeat):** `102-qr-codes.sql`. No Edge Function change.
+
+**Event QR codes now go straight to that event.** Scanning an event's QR code (or opening its feedback link) takes you directly to that event's feedback form, with no "which event?" step. If the event hasn't started yet, the page says so ("Feedback opens when the event starts") instead of showing a picker, and an event that's long over says feedback has closed.
+
+**The studio** (Hub Access -> *Dashboard: QR codes*, on for the Executive Committee by default; you can share or remove it):
+- **What it can hold:** a link, an event's feedback form, Wi-Fi details, an email, a phone number, or text.
+- **Design it:** six ready-made styles (Classic, LACMS gold, Forest, Crimson, Midnight, Poster), square / rounded / dotted squares, three styles each for the corner squares and their centres, any colours, a fade to a second colour, a transparent or coloured background, a logo in the middle (upload one, or the LACMS crest in one tap), a caption above or below, and a frame (outline or solid). Error correction is raised automatically when there's a logo.
+- **"Will it scan?" advice** updates as you design: contrast, light-on-dark codes, logo size, how dense the code is, and the smallest sensible print size.
+- **Two kinds of link code.** *Trackable* (recommended): the code holds a short LACMS address (`go.html?c=xxxxxxx`). You can change where it goes or pause it after it's printed, and see scans per day for the last 60 days and by device (iPhone, Android, computer). A scan stores only the time and the device type, nothing about the person. *Direct*: the code holds the link itself, so it works forever, but it can't be changed or counted. Trackable codes only ever go to web (http/https) links.
+- **Library:** every code you save is kept with its design, so you can edit it, duplicate it, download it again, pause it or delete it. Deleting a trackable code stops any printed copies working.
+- **Downloads:** PNG at 512 / 1024 / 2048 / 4096 px, SVG (sharp at any size), copy the image, or print a poster page.
+- **From Dashboard -> Feedback:** the QR dialog has *Customise & save* to open the studio with that event's code ready.
+
+Good to know: trackable codes depend on the website staying up (and keeping the go.html page); use *Direct* for something that must outlive the website. The generator (`js/qr.js`) draws everything in the browser. It was checked against an established QR library (identical output for 164 test codes) and the styled versions (rounded, dotted, gradient, logo, caption and frame) were read back with an independent scanner. Always give a printed code a quick test scan with your phone first.

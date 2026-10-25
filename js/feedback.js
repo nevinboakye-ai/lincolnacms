@@ -202,6 +202,8 @@
       html = stepsHtml() + eventHead() + whoStep();
     } else if (S.step === 'form') {
       html = stepsHtml() + eventHead() + formStep();
+    } else if (S.step === 'unavailable') {
+      html = unavailableStep();
     } else if (S.step === 'already') {
       html = alreadyStep();
     } else if (S.step === 'done') {
@@ -223,6 +225,21 @@
     }
   }
 
+  // A link or QR code for one event, opened before it has happened (or long after): say so,
+  // rather than asking which event they meant.
+  function unavailableStep() {
+    var e = S.event, why = S.why;
+    var title = why === 'soon' ? 'Feedback opens when the event starts' : 'Feedback for this event has closed';
+    var text = why === 'soon'
+      ? 'Come back on <strong>' + esc(niceDate(e.date)) + '</strong> (or after the event) and tell us how it went.'
+      : 'We stopped collecting feedback for <strong>' + esc(e.name) + '</strong> a few months after it happened. You can still tell us about LACMS in general.';
+    return '<div class="fb-card fb-card--center"><span class="fb-big" aria-hidden="true">' + (why === 'soon' ? '\u23F3' : '\u2713') + '</span>' +
+      '<h2 data-fb-focus tabindex="-1">' + title + '</h2>' +
+      '<p class="fb-sub"><strong>' + esc(e.name) + '</strong>' + (e.date ? ' \u00B7 ' + esc(niceDate(e.date)) : '') + '</p><p class="fb-sub">' + text + '</p>' +
+      '<div class="fb-actions"><a class="btn btn-primary" href="events.html">See events</a>' +
+      '<button type="button" class="btn btn-outline" data-fb-pick="general">Feedback about LACMS in general</button></div></div>';
+  }
+
   function eventStep() {
     var list = S.events.map(function (e) {
       var done = S.done[e.slug];
@@ -232,7 +249,8 @@
         '<span class="fb-event-date">' + esc(e.date ? niceDate(e.date) : (e.dateText || '')) + '</span>' +
         (done ? '<span class="fb-event-done">✓ You’ve sent feedback</span>' : '') + '</button>';
     }).join('');
-    return '<div class="fb-card"><h2 data-fb-focus tabindex="-1">Which event?</h2><p class="fb-sub">Pick the one you were at. If it isn’t here, choose “LACMS in general”.</p>' +
+    return (S.notice ? '<div class="form-note fb-notice"><span>' + esc(S.notice) + '</span></div>' : '') +
+      '<div class="fb-card"><h2 data-fb-focus tabindex="-1">Which event?</h2><p class="fb-sub">Pick the one you were at. If it isn’t here, choose “LACMS in general”.</p>' +
       '<div class="fb-event-list">' + list +
       '<button type="button" class="fb-event-card fb-event-card--general" data-fb-pick="general"><span class="fb-event-tag">Anything</span><strong>LACMS in general</strong><span class="fb-event-date">Not about one event</span></button>' +
       '</div>' + (S.events.length ? '' : '<p class="fb-sub">Events show up here once they’ve happened.</p>') + '</div>';
@@ -437,7 +455,7 @@
     var t = e.target.closest ? e.target.closest('button') : null;
     if (!t) return;
     var v;
-    if ((v = t.getAttribute('data-fb-pick')) !== null) { chooseEvent(v); return; }
+    if ((v = t.getAttribute('data-fb-pick')) !== null) { S.notice = ''; chooseEvent(v); return; }
     if (t.hasAttribute('data-fb-change-event') || t.hasAttribute('data-fb-another')) { S.event = null; go('event'); return; }
     if ((v = t.getAttribute('data-fb-who')) !== null) {
       if (v === 'member') {
@@ -544,9 +562,19 @@
     var wanted = p.get('event');
     if (wanted && (wanted === 'general' || S.events.some(function (e) { return e.slug === wanted; }))) {
       chooseEvent(wanted, true);
-    } else {
-      S.step = 'event';
-      render();
+      return;
     }
+    if (!wanted) { S.step = 'event'; render(); return; }
+    // A link for one event that isn't in the "open" list: find out why instead of asking which event.
+    return supabaseClient.from('site_events').select('slug, name, tag, starts_on, ends_on, date_text').eq('slug', wanted).eq('is_active', true).maybeSingle().then(function (r) {
+      var e = r && r.data;
+      if (!e) { S.notice = 'We couldn\u2019t find that event \u2013 choose it below.'; S.step = 'event'; render(); return; }
+      var start = e.starts_on || parseDateText(e.date_text), end = e.ends_on || start, today = todayKey();
+      S.event = { slug: e.slug, name: e.name, tag: e.tag || '', date: start, dateText: e.date_text };
+      if (start && start > today) { S.why = 'soon'; S.step = 'unavailable'; render(); return; }
+      if (end && end < dayBefore(today, 120)) { S.why = 'closed'; S.step = 'unavailable'; render(); return; }
+      S.events.unshift(S.event);                       // open after all (e.g. no date on file)
+      chooseEvent(wanted, true);
+    }, function () { S.step = 'event'; render(); });
   });
 })();
