@@ -134,22 +134,38 @@
       }).join('') + '</div></div>';
   }
 
+  function section(title, sub) { return '<div class="fba-section"><h3>' + esc(title) + '</h3>' + (sub ? '<span>' + esc(sub) + '</span>' : '') + '</div>'; }
+  function tile(label, value, note, cls, extra) {
+    return '<div class="fba-tile' + (cls ? ' ' + cls : '') + '"><span class="fba-tile-label">' + label + '</span><span class="fba-big">' + value + '</span>' + (extra || '') + (note ? '<small>' + note + '</small>' : '') + '</div>';
+  }
+
   function summaryHtml(rows, ev) {
     var n = rows.length, a = avg(rows);
     var dist = [5, 4, 3, 2, 1].map(function (v) { return { v: v, n: rows.filter(function (r) { return r.rating === v; }).length }; });
-    var yes = rows.filter(function (r) { return r.would_return === 'yes'; }).length;
-    var answered = rows.filter(function (r) { return r.would_return; }).length;
-    var members = rows.filter(function (r) { return r.respondent !== 'guest'; }).length;
+    var w = { yes: 0, maybe: 0, no: 0 };
+    rows.forEach(function (r) { if (r.would_return) w[r.would_return]++; });
+    var answered = w.yes + w.maybe + w.no;
+    var kinds = { member: 0, professional: 0, guest: 0 };
+    rows.forEach(function (r) { kinds[r.respondent] = (kinds[r.respondent] || 0) + 1; });
     var anon = rows.filter(function (r) { return r.anonymous; }).length;
     var reg = ev ? state.regs[ev.slug] : Object.keys(state.regs).reduce(function (t, k) { return t + state.regs[k]; }, 0);
     var low = rows.filter(function (r) { return r.rating <= 2; }).length;
-    return '<div class="fba-tiles">' +
-      '<div class="fba-tile"><span class="fba-big">' + n + '</span><span>' + (n === 1 ? 'response' : 'responses') + '</span>' +
-      (ev && reg ? '<small>' + pct(n, reg) + '% of the ' + reg + ' who registered</small>' : '<small>' + members + ' members · ' + (n - members) + ' guests' + (anon ? ' · ' + anon + ' anonymous' : '') + '</small>') + '</div>' +
-      '<div class="fba-tile"><span class="fba-big">' + a.toFixed(1) + '</span><span class="fba-stars">' + stars(a) + '</span>' +
-      '<ul class="fba-dist">' + dist.map(function (d) { return '<li><span>' + d.v + '★</span><span class="fba-bar"><span style="width:' + pct(d.n, n) + '%"></span></span><span>' + d.n + '</span></li>'; }).join('') + '</ul></div>' +
-      '<div class="fba-tile"><span class="fba-big">' + pct(yes, answered) + '%</span><span>would come again</span><small>' + answered + ' answered' + (low ? ' · ' + plural(low, 'low rating', 'low ratings') : '') + '</small></div>' +
-      '</div>';
+    var seg = [['member', 'Members', kinds.member], ['professional', 'Professionals', kinds.professional], ['guest', 'Guests', kinds.guest]].filter(function (x) { return x[2] > 0; });
+    var tiles = tile('Replies', n, ev && reg ? pct(n, reg) + '% of the ' + reg + ' who registered' : (n === 1 ? 'reply so far' : 'replies so far')) +
+      tile('Average rating', a.toFixed(1) + '<small> / 5</small>', 'from ' + plural(n, 'reply', 'replies'), 'fba-tile--rating', '<span class="fba-stars" aria-hidden="true">' + stars(a) + '</span>') +
+      tile('Would come again', answered ? pct(w.yes, answered) + '%' : '\u2013', answered ? pct(w.maybe, answered) + '% maybe \u00B7 ' + pct(w.no, answered) + '% not really' : 'No answers yet') +
+      tile('Low ratings', low, low ? '1 or 2 stars: worth a look' : 'None: nice', low ? 'fba-tile--warn' : '');
+    var rated = '<div class="fba-card"><h3>How people rated it</h3><ul class="fba-dist">' + dist.map(function (d) {
+      return '<li><span>' + d.v + ' \u2605</span><span class="fba-bar"><span style="width:' + pct(d.n, n) + '%"></span></span><span class="fba-bar-n">' + d.n + '</span></li>';
+    }).join('') + '</ul></div>';
+    var who = '<div class="fba-card"><h3>Who replied</h3><div class="fba-split" role="img" aria-label="' + esc(seg.map(function (x) { return x[1] + ' ' + x[2]; }).join(', ')) + '">' +
+      seg.map(function (x, i) { return '<span class="fba-split-' + (i % 3) + '" style="width:' + pct(x[2], n) + '%"></span>'; }).join('') + '</div>' +
+      '<ul class="fba-legend">' + seg.map(function (x, i) { return '<li><i class="fba-split-' + (i % 3) + '"></i>' + esc(x[1]) + ' <strong>' + x[2] + '</strong></li>'; }).join('') + '</ul>' +
+      (anon ? '<p class="fba-note">' + plural(anon, 'member chose', 'members chose') + ' to reply anonymously.</p>' : '') +
+      (answered ? '<h4>Would they come again?</h4><div class="fba-split"><span class="fba-split-g" style="width:' + pct(w.yes, answered) + '%"></span><span class="fba-split-0" style="width:' + pct(w.maybe, answered) + '%"></span><span class="fba-split-m" style="width:' + pct(w.no, answered) + '%"></span></div>' +
+        '<ul class="fba-legend"><li><i class="fba-split-g"></i>Yes <strong>' + w.yes + '</strong></li><li><i class="fba-split-0"></i>Maybe <strong>' + w.maybe + '</strong></li><li><i class="fba-split-m"></i>Probably not <strong>' + w.no + '</strong></li></ul>' : '') + '</div>';
+    return section('At a glance', ev ? '' : 'All events') + '<div class="fba-tiles">' + tiles + '</div>' +
+      section('How it went') + '<div class="fba-two">' + rated + who + '</div>';
   }
 
   function detailHtml(rows) {
@@ -157,7 +173,7 @@
     var heard = {}; rows.forEach(function (r) { if (r.heard_from) heard[r.heard_from] = (heard[r.heard_from] || 0) + 1; });
     var heardList = Object.keys(heard).map(function (k) { return { k: k, n: heard[k] }; }).sort(function (a, b) { return b.n - a.n; });
     var ideas = rows.filter(function (r) { return r.suggestion; }).slice(0, 10);
-    return '<div class="fba-two">' +
+    return section('What people said') + '<div class="fba-two">' +
       '<div class="fba-card"><h3>What went well</h3>' + bars(counts(rows, 'liked'), LIKED, n, 'is-good') + '</div>' +
       '<div class="fba-card"><h3>What could be better</h3>' + bars(counts(rows, 'improve'), IMPROVE, n, 'is-warn') + '</div></div>' +
       (heardList.length || ideas.length ? '<div class="fba-two">' +
@@ -184,7 +200,7 @@
       return true;
     });
     var tabs = [['all', 'All'], ['comments', 'With comments'], ['low', 'Low ratings'], ['quote', 'OK to quote'], ['members', 'Members'], ['guests', 'Guests']];
-    return '<div class="fba-card"><div class="fba-card-head"><h3>Responses <small>' + list.length + '</small></h3>' +
+    return section('Every response') + '<div class="fba-card"><div class="fba-card-head"><h3>Responses <small>' + list.length + '</small></h3>' +
       '<div class="fba-tabs" role="tablist">' + tabs.map(function (t) { return '<button type="button" class="fba-tab' + (f === t[0] ? ' is-on' : '') + '" data-fba-filter="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div></div>' +
       (list.length ? '<ul class="fba-list">' + list.slice(0, 200).map(function (r) {
         var chips = (r.liked || []).map(function (k) { return '<span class="fba-chip is-good">' + esc(LIKED[k] || k) + '</span>'; }).concat((r.improve || []).map(function (k) { return '<span class="fba-chip is-warn">' + esc(IMPROVE[k] || k) + '</span>'; })).join('');

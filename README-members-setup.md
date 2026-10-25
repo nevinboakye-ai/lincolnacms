@@ -1786,3 +1786,6 @@ To make a QR code anywhere else on the site, load `js/qr.js` and call `lacmsQR.s
 - **From Dashboard -> Feedback:** the QR dialog has *Customise & save* to open the studio with that event's code ready.
 
 Good to know: trackable codes depend on the website staying up (and keeping the go.html page); use *Direct* for something that must outlive the website. The generator (`js/qr.js`) draws everything in the browser. It was checked against an established QR library (identical output for 164 test codes) and the styled versions (rounded, dotted, gradient, logo, caption and frame) were read back with an independent scanner. Always give a printed code a quick test scan with your phone first.
+
+Update: Dashboard -> Feedback was missing its styling entirely (it showed as unstyled blocks). It now has a toolbar, clear sections (At a glance, How it went, What people said, Every response), matching tiles and charts, a tidier "By event" table, and readable response cards, on desktop and phone.
+
