@@ -60,27 +60,33 @@
   }
 
   // ---- Drawing --------------------------------------------------------------------------------
-  function bars(map, labels, total, cls) {
-    var list = Object.keys(map || {}).map(function (k) { return { k: k, n: map[k] }; }).sort(function (a, b) { return b.n - a.n; });
-    if (!list.length) return '<p class="pt-muted">Nothing picked yet.</p>';
-    return '<ul class="pt-bars">' + list.slice(0, 8).map(function (x) {
-      return '<li><span class="pt-bar-label">' + esc(labels[x.k] || x.k) + '</span><span class="pt-bar ' + (cls || '') + '"><span style="width:' + Math.max(4, pct(x.n, total)) + '%"></span></span><span class="pt-bar-n">' + x.n + '</span></li>';
-    }).join('') + '</ul>';
+  function section(title, sub) {
+    return '<div class="pt-section-title"><h2>' + esc(title) + '</h2>' + (sub ? '<span>' + esc(sub) + '</span>' : '') + '</div>';
   }
 
-  function sparkline(daily) {
+  // Replies per day: a few days read best as columns, a long run as a line.
+  function timeCard(daily) {
     if (!daily || daily.length < 2) return '';
-    var w = 560, h = 90, pad = 6;
     var max = Math.max.apply(null, daily.map(function (d) { return d.n; }));
-    var step = (w - pad * 2) / (daily.length - 1);
-    var pts = daily.map(function (d, i) { return [pad + i * step, h - pad - (d.n / max) * (h - pad * 2)]; });
-    var line = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
-    var area = line + ' L' + pts[pts.length - 1][0].toFixed(1) + ' ' + (h - pad) + ' L' + pts[0][0].toFixed(1) + ' ' + (h - pad) + ' Z';
-    return '<div class="pt-card"><h3>Replies over time</h3>' +
-      '<svg class="pt-spark" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Replies per day from ' + esc(shortDate(daily[0].d)) + ' to ' + esc(shortDate(daily[daily.length - 1].d)) + '" preserveAspectRatio="none">' +
-      '<path d="' + area + '" class="pt-spark-area"/><path d="' + line + '" class="pt-spark-line"/>' +
-      pts.map(function (p) { return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" class="pt-spark-dot"/>'; }).join('') + '</svg>' +
-      '<div class="pt-spark-axis"><span>' + esc(shortDate(daily[0].d)) + '</span><span>Busiest day: ' + max + ' ' + (max === 1 ? 'reply' : 'replies') + '</span><span>' + esc(shortDate(daily[daily.length - 1].d)) + '</span></div></div>';
+    var body;
+    if (daily.length <= 14) {
+      body = '<div class="pt-cols" role="img" aria-label="Replies per day">' + daily.map(function (d) {
+        return '<div class="pt-col"><span class="pt-col-n">' + d.n + '</span><span class="pt-col-bar"><span style="height:' + Math.max(6, Math.round(d.n / max * 100)) + '%"></span></span><span class="pt-col-d">' + esc(shortDate(d.d)) + '</span></div>';
+      }).join('') + '</div>';
+    } else {
+      var w = 560, h = 90, pad = 6;
+      var step = (w - pad * 2) / (daily.length - 1);
+      var pts = daily.map(function (d, i) { return [pad + i * step, h - pad - (d.n / max) * (h - pad * 2)]; });
+      var line = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
+      var area = line + ' L' + pts[pts.length - 1][0].toFixed(1) + ' ' + (h - pad) + ' L' + pts[0][0].toFixed(1) + ' ' + (h - pad) + ' Z';
+      body = '<svg class="pt-spark" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Replies per day" preserveAspectRatio="none"><path d="' + area + '" class="pt-spark-area"/><path d="' + line + '" class="pt-spark-line"/></svg>' +
+        '<div class="pt-spark-axis"><span>' + esc(shortDate(daily[0].d)) + '</span><span>Busiest day: ' + max + '</span><span>' + esc(shortDate(daily[daily.length - 1].d)) + '</span></div>';
+    }
+    return '<div class="pt-card pt-card--wide"><h3>Replies over time</h3>' + body + '</div>';
+  }
+
+  function tile(label, value, note, cls, extra) {
+    return '<div class="pt-tile' + (cls ? ' ' + cls : '') + '"><span class="pt-tile-label">' + label + '</span><span class="pt-big">' + value + '</span>' + (extra || '') + (note ? '<small>' + note + '</small>' : '') + '</div>';
   }
 
   function tilesHtml(c) {
@@ -88,72 +94,85 @@
     var would = s.would || { yes: 0, maybe: 0, no: 0 };
     var answered = would.yes + would.maybe + would.no;
     var memberReplies = s.respondents ? (s.respondents.member || 0) + (s.respondents.professional || 0) : 0;
-    var tiles = '';
-    // The numbers the committee typed in, first (they belong to the whole space).
-    if (view === 'all' || D.events.length === 1) {
-      (D.space.custom_metrics || []).forEach(function (m) {
-        tiles += '<div class="pt-tile pt-tile--custom"><span class="pt-big">' + esc(m.value) + '</span><span class="pt-tile-label">' + esc(m.label) + '</span>' + (m.note ? '<small>' + esc(m.note) + '</small>' : '') + '</div>';
-      });
+    var html = '';
+    var custom = (view === 'all' || D.events.length === 1) ? (D.space.custom_metrics || []) : [];
+    if (custom.length) {
+      html += section('From the event') + '<div class="pt-tiles pt-tiles--custom">' + custom.map(function (m) {
+        return tile(esc(m.label), esc(m.value), m.note ? esc(m.note) : '', 'pt-tile--custom');
+      }).join('') + '</div>';
     }
-    if (c.registered !== null && c.registered !== undefined) {
-      tiles += '<div class="pt-tile"><span class="pt-big">' + c.registered + '</span><span class="pt-tile-label">LACMS members registered</span><small>Registrations through the LACMS website</small></div>';
-    }
-    tiles += '<div class="pt-tile"><span class="pt-big">' + n + '</span><span class="pt-tile-label">' + (n === 1 ? 'feedback reply' : 'feedback replies') + '</span>' +
-      (c.registered ? '<small>' + pct(memberReplies, c.registered) + '% of registered members replied</small>' : '') + '</div>';
+    var glance = '';
+    if (c.registered !== null && c.registered !== undefined) glance += tile('Members registered', c.registered, 'LACMS members who registered on the website');
+    glance += tile('Feedback replies', n, c.registered ? pct(memberReplies, c.registered) + '% of registered members replied' : (n === 1 ? 'reply so far' : 'replies so far'));
     if (n) {
-      tiles += '<div class="pt-tile pt-tile--rating"><span class="pt-big">' + Number(s.avg_rating).toFixed(1) + '<small> / 5</small></span><span class="pt-stars" aria-hidden="true">' + stars(s.avg_rating) + '</span><span class="pt-tile-label">average rating</span></div>';
-      if (answered) tiles += '<div class="pt-tile"><span class="pt-big">' + pct(would.yes, answered) + '%</span><span class="pt-tile-label">would come again</span><small>' + pct(would.maybe, answered) + '% maybe</small></div>';
+      glance += tile('Average rating', Number(s.avg_rating).toFixed(1) + '<small> / 5</small>', n === 1 ? 'from 1 reply' : 'from ' + n + ' replies', 'pt-tile--rating', '<span class="pt-stars" aria-hidden="true">' + stars(s.avg_rating) + '</span>');
+      if (answered) glance += tile('Would come again', pct(would.yes, answered) + '%', pct(would.maybe, answered) + '% maybe · ' + pct(would.no, answered) + '% not really');
     }
-    if (s.via_partner) tiles += '<div class="pt-tile pt-tile--partner"><span class="pt-big">' + s.via_partner + '</span><span class="pt-tile-label">replies through your link</span><small>' + pct(s.via_partner, n) + '% of all replies</small></div>';
-    return '<div class="pt-tiles">' + tiles + '</div>';
+    html += section('At a glance', c.name === 'All events' && D.events.length > 1 ? 'Across ' + D.events.length + ' events' : '') + '<div class="pt-tiles">' + glance + '</div>';
+    if (s.via_partner) {
+      html += '<div class="pt-via"><span class="pt-via-n">' + s.via_partner + '</span><span><strong>' + (s.via_partner === 1 ? 'reply' : 'replies') + ' came through your feedback link</strong> – ' + pct(s.via_partner, n) + '% of all replies. Thank you for sharing it.</span></div>';
+    }
+    return html;
   }
 
   function distHtml(s) {
     var n = s.responses, d = s.rating_dist || [0, 0, 0, 0, 0];
+    var w = s.would || { yes: 0, maybe: 0, no: 0 };
+    var a = w.yes + w.maybe + w.no;
+    var again = a ? '<h4>Would they come again?</h4>' +
+      '<div class="pt-split" role="img" aria-label="Yes ' + w.yes + ', maybe ' + w.maybe + ', no ' + w.no + '"><span class="pt-split-g" style="width:' + pct(w.yes, a) + '%"></span><span class="pt-split-0" style="width:' + pct(w.maybe, a) + '%"></span><span class="pt-split-m" style="width:' + pct(w.no, a) + '%"></span></div>' +
+      '<ul class="pt-legend"><li><i class="pt-split-g"></i>Yes <strong>' + w.yes + '</strong></li><li><i class="pt-split-0"></i>Maybe <strong>' + w.maybe + '</strong></li><li><i class="pt-split-m"></i>Probably not <strong>' + w.no + '</strong></li></ul>' : '';
     return '<div class="pt-card"><h3>How people rated it</h3><ul class="pt-dist">' + [5, 4, 3, 2, 1].map(function (v) {
       return '<li><span>' + v + ' ★</span><span class="pt-bar"><span style="width:' + pct(d[v - 1], n) + '%"></span></span><span class="pt-bar-n">' + d[v - 1] + '</span></li>';
-    }).join('') + '</ul></div>';
+    }).join('') + '</ul>' + again + '</div>';
   }
 
   function audienceHtml(s) {
     var r = s.respondents || {}, n = s.responses;
-    var seg = [['member', 'LACMS members', r.member || 0], ['professional', 'Professionals in our network', r.professional || 0], ['guest', 'Guests', r.guest || 0]].filter(function (x) { return x[2] > 0; });
+    var seg = [['member', 'LACMS members', r.member || 0], ['professional', 'Professionals', r.professional || 0], ['guest', 'Guests', r.guest || 0]].filter(function (x) { return x[2] > 0; });
     var html = '<div class="pt-card"><h3>Who replied</h3>' +
       '<div class="pt-split" role="img" aria-label="' + esc(seg.map(function (x) { return x[1] + ' ' + x[2]; }).join(', ')) + '">' + seg.map(function (x, i) { return '<span class="pt-split-' + (i % 3) + '" style="width:' + pct(x[2], n) + '%"></span>'; }).join('') + '</div>' +
       '<ul class="pt-legend">' + seg.map(function (x, i) { return '<li><i class="pt-split-' + (i % 3) + '"></i>' + esc(x[1]) + ' <strong>' + x[2] + '</strong></li>'; }).join('') + '</ul>';
     if (s.guest_kinds && s.guest_kinds.length) {
-      html += '<h4>Guests are</h4><ul class="pt-bars">' + s.guest_kinds.map(function (x) {
-        return '<li><span class="pt-bar-label">' + esc(L.kind[x.k] || x.k) + '</span><span class="pt-bar"><span style="width:' + Math.max(4, pct(x.n, r.guest || 1)) + '%"></span></span><span class="pt-bar-n">' + x.n + '</span></li>';
-      }).join('') + '</ul>';
+      html += '<h4>Guests are</h4>' + barList(s.guest_kinds.map(function (x) { return { label: L.kind[x.k] || x.k, n: x.n }; }), r.guest || 1, '');
     }
     if (s.courses && s.courses.length) {
-      var mem = (r.member || 0) + (r.professional || 0);
-      html += '<h4>Members’ courses</h4><ul class="pt-bars">' + s.courses.map(function (x) {
-        return '<li><span class="pt-bar-label">' + esc(x.label) + '</span><span class="pt-bar"><span style="width:' + Math.max(4, pct(x.n, mem || 1)) + '%"></span></span><span class="pt-bar-n">' + x.n + '</span></li>';
-      }).join('') + '</ul>';
+      html += '<h4>Members’ courses</h4>' + barList(s.courses.map(function (x) { return { label: x.label, n: x.n }; }), (r.member || 0) + (r.professional || 0) || 1, '');
     } else if (n < 5) {
-      html += '<p class="pt-muted">A breakdown by course and type of guest appears once there are 5 replies, so no one can be picked out.</p>';
+      html += '<p class="pt-note">A breakdown by course and type of guest appears once there are 5 replies, so no one can be picked out.</p>';
     }
     return html + '</div>';
+  }
+
+  function barList(list, total, cls) {
+    return '<ul class="pt-bars">' + list.slice(0, 8).map(function (x) {
+      return '<li><span class="pt-bar-label">' + esc(x.label) + '</span><span class="pt-bar ' + (cls || '') + '"><span style="width:' + Math.max(4, pct(x.n, total)) + '%"></span></span><span class="pt-bar-n">' + x.n + '</span></li>';
+    }).join('') + '</ul>';
+  }
+  function bars(map, labels, total, cls) {
+    var list = Object.keys(map || {}).map(function (k) { return { label: labels[k] || k, n: map[k] }; }).sort(function (a, b) { return b.n - a.n; });
+    return list.length ? barList(list, total, cls) : '<p class="pt-note">Nothing picked yet.</p>';
   }
 
   function commentsHtml(s) {
     var list = s.comments || [];
     if (D.space.shows.comments === 'none') return '';
-    var mode = D.space.shows.comments === 'all' ? 'All comments, with no names' : 'Comments people were happy for us to quote, with no names';
-    if (!list.length) return '<div class="pt-card"><h3>Comments</h3><p class="pt-muted">No comments to show yet.</p></div>';
+    var mode = D.space.shows.comments === 'all' ? 'All comments, shown without names' : 'Comments people were happy for us to quote, shown without names';
+    var head = '<div class="pt-card-head"><h3>Comments <small>' + list.length + '</small></h3><span class="pt-muted">' + esc(mode) + '</span></div>';
+    if (!list.length) return '<div class="pt-card pt-card--wide">' + head + '<p class="pt-note">No comments to show yet.</p></div>';
     var shown = showAllComments ? list : list.slice(0, 6);
-    return '<div class="pt-card pt-card--wide"><div class="pt-card-head"><h3>Comments <small>' + list.length + '</small></h3><span class="pt-muted">' + esc(mode) + '</span></div>' +
+    return '<div class="pt-card pt-card--wide">' + head +
       '<ul class="pt-comments">' + shown.map(function (c) {
         var who = c.who === 'guest' ? 'Guest' : c.who === 'professional' ? 'Professional' : 'LACMS member';
-        return '<li class="pt-comment"><div class="pt-comment-top"><span class="pt-stars" aria-label="' + c.rating + ' out of 5">' + stars(c.rating) + '</span><span class="pt-muted">' + esc(who) + ' · ' + esc(niceDate(c.at)) + '</span></div><p>“' + esc(c.text) + '”</p></li>';
+        return '<li class="pt-comment"><div class="pt-comment-top"><span class="pt-stars" aria-label="' + c.rating + ' out of 5">' + stars(c.rating) + '</span><time class="pt-muted">' + esc(niceDate(c.at)) + '</time></div>' +
+          '<p>“' + esc(c.text) + '”</p><span class="pt-comment-who">' + esc(who) + '</span></li>';
       }).join('') + '</ul>' +
-      (list.length > 6 ? '<button type="button" class="pt-link" data-pt-more>' + (showAllComments ? 'Show fewer' : 'Show all ' + list.length) + '</button>' : '') + '</div>';
+      (list.length > 6 ? '<div class="pt-more"><button type="button" class="pt-btn" data-pt-more>' + (showAllComments ? 'Show fewer' : 'Show all ' + list.length + ' comments') + '</button></div>' : '') + '</div>';
   }
 
   function shareHtml() {
     var events = view === 'all' ? D.events : D.events.filter(function (e) { return e.slug === view; });
-    return '<div class="pt-card pt-card--wide pt-share"><h3>Help us hear from more people</h3>' +
+    return section('Help us hear from more people') + '<div class="pt-card pt-card--wide pt-share">' +
       '<p>Share the feedback form with your own members or attendees. Replies that come through these links are counted for you above.</p>' +
       '<ul class="pt-links">' + events.map(function (e) {
         var link = feedbackLink(e.slug);
@@ -178,23 +197,27 @@
     if (!n) {
       body = tilesHtml(c) + '<div class="pt-card pt-card--wide pt-empty"><h3>No feedback yet</h3><p>Replies will appear here as soon as people send them. You can speed things up by sharing the feedback link below.</p></div>';
     } else {
+      var heard = s.heard && Object.keys(s.heard).length;
+      var ideas = s.ideas && s.ideas.length;
       body = tilesHtml(c) +
-        '<div class="pt-grid">' + distHtml(s) + (s.responses > 0 ? audienceHtml(s) : '') + '</div>' +
-        sparkline(s.daily) +
+        section('How it went') + '<div class="pt-grid">' + distHtml(s) + audienceHtml(s) + '</div>' + timeCard(s.daily) +
+        section('What people said') +
         '<div class="pt-grid"><div class="pt-card"><h3>What went well</h3>' + bars(s.liked, L.liked, n, 'is-good') + '</div>' +
         '<div class="pt-card"><h3>What could be better</h3>' + bars(s.improve, L.improve, n, 'is-warn') + '</div></div>' +
-        ((s.heard && Object.keys(s.heard).length) || (s.ideas && s.ideas.length) ? '<div class="pt-grid">' +
-          (s.heard && Object.keys(s.heard).length ? '<div class="pt-card"><h3>How people heard about it</h3>' + bars(s.heard, L.heard, Object.keys(s.heard).reduce(function (t, k) { return t + s.heard[k]; }, 0)) + '</div>' : '') +
-          (s.ideas && s.ideas.length ? '<div class="pt-card"><h3>Events people would love</h3><ul class="pt-ideas">' + s.ideas.map(function (i) { return '<li>' + esc(i) + '</li>'; }).join('') + '</ul></div>' : '') + '</div>' : '') +
+        (heard || ideas ? '<div class="pt-grid">' +
+          (heard ? '<div class="pt-card"><h3>How people heard about it</h3>' + bars(s.heard, L.heard, Object.keys(s.heard).reduce(function (t, k) { return t + s.heard[k]; }, 0)) + '</div>' : '') +
+          (ideas ? '<div class="pt-card"><h3>Events people would love</h3><ul class="pt-ideas">' + s.ideas.map(function (i) { return '<li>' + esc(i) + '</li>'; }).join('') + '</ul></div>' : '') + '</div>' : '') +
         commentsHtml(s);
     }
+    var viewSub = view === 'all' ? (D.events.length > 1 ? 'Combined across ' + D.events.length + ' events' : '') : (c.event ? (c.event.date_text || niceDate(c.event.starts_on)) : '');
     root.innerHTML =
       (D.preview ? '<div class="pt-preview">Committee preview: you’re seeing exactly what the partner sees. Views from here aren’t counted.</div>' : '') +
       '<header class="pt-hero"><div class="pt-hero-top"><span class="pt-eyebrow">Partner space' + (sp.partner_name ? ' · ' + esc(sp.partner_name) : '') + '</span>' +
       '<div class="pt-hero-actions"><button type="button" class="pt-btn" data-pt-print>Print or save as PDF</button><button type="button" class="pt-btn" data-pt-csv>Download summary (CSV)</button></div></div>' +
       '<h1>' + esc(sp.name) + '</h1>' + (sp.message ? '<div class="pt-message">' + paragraphs(sp.message) + '</div>' : '') + evCards +
       '<p class="pt-muted pt-live">Live numbers, updated whenever someone replies.' + (sp.expires_on ? ' This link is open until ' + esc(niceDate(sp.expires_on)) + '.' : '') + '</p></header>' +
-      tabs + '<div class="pt-view-title"><h2>' + esc(c.name) + '</h2></div>' + body + shareHtml() +
+      '<div class="pt-viewbar">' + tabs + '<div class="pt-view-title"><h2>' + esc(c.name) + '</h2>' + (viewSub ? '<span>' + esc(viewSub) + '</span>' : '') + '</div></div>' +
+      body + shareHtml() +
       '<footer class="pt-foot"><p>Names and email addresses are never shown here, and comments carry the day only. Breakdowns appear once an event has at least 5 replies. Questions about this page? <a href="mailto:acms@lincolnsu.com">acms@lincolnsu.com</a></p></footer>' +
       qrHtml();
   }
