@@ -226,10 +226,11 @@
   var qr = null;
   function qrHtml() {
     if (!qr) return '';
-    var img = 'https://api.qrserver.com/v1/create-qr-code/?size=420x420&margin=12&data=' + encodeURIComponent(qr.link);
+    var code = '';
+    try { code = window.lacmsQR.svg(qr.link, { size: 280, ecc: 'M' }); } catch (e) { code = ''; }
     return '<div class="pt-qr" data-pt-qr-close><div class="pt-qr-box" role="dialog" aria-modal="true" aria-label="QR code"><button type="button" class="pt-qr-x" data-pt-qr-close aria-label="Close">&times;</button>' +
-      '<h3>' + esc(qr.name) + '</h3><img src="' + esc(img) + '" alt="QR code for the feedback form" width="280" height="280"><p>Scanning opens the feedback form for this event.</p>' +
-      '<div class="pt-link-actions" style="justify-content:center;"><a class="pt-btn pt-btn--solid" href="' + esc(img) + '" target="_blank" rel="noopener">Open image to save</a><button type="button" class="pt-btn" data-pt-qr-close>Close</button></div></div></div>';
+      '<h3>' + esc(qr.name) + '</h3><div class="pt-qr-img">' + code + '</div><p>Scanning opens the feedback form for this event.</p>' +
+      '<div class="pt-link-actions" style="justify-content:center;"><button type="button" class="pt-btn pt-btn--solid" data-pt-qr-save="png">Download PNG</button><button type="button" class="pt-btn" data-pt-qr-save="svg">Download SVG</button><button type="button" class="pt-btn" data-pt-qr-close>Close</button></div></div></div>';
   }
   function csv() {
     var q = function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
@@ -275,6 +276,7 @@
       return;
     }
     if ((v = t.getAttribute('data-pt-qr')) !== null) { qr = { link: v, name: t.getAttribute('data-name') }; render(); return; }
+    if ((v = t.getAttribute('data-pt-qr-save')) !== null && qr) { window.lacmsQR.download(qr.link, 'feedback-qr-' + qr.name, v, { size: 1024 }); return; }
     if (t.hasAttribute('data-pt-qr-close')) { qr = null; render(); }
   });
   root.addEventListener('mousedown', function (e) { if (e.target.classList && e.target.classList.contains('pt-qr')) { qr = null; render(); } });

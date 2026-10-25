@@ -11392,3 +11392,7 @@ fieldset.fb-card > legend + * { clear: both; }
 }
 
 .pt-crest { flex: none; width: 40px; height: 40px; border-radius: 50%; object-fit: contain; background: #0a0a0c; }
+
+/* QR codes drawn in the browser */
+.fba-qr-img, .pt-qr-img { display: flex; justify-content: center; margin: var(--space-2) auto; }
+.fba-qr-img svg, .pt-qr-img svg { display: block; width: 100%; max-width: 280px; height: auto; border-radius: 8px; }

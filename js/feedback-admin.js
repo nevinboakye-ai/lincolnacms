@@ -201,14 +201,15 @@
 
   function qrHtml() {
     if (!state.qr) return '';
-    var img = 'https://api.qrserver.com/v1/create-qr-code/?size=420x420&margin=12&data=' + encodeURIComponent(state.qr.link);
+    var code = '';
+    try { code = window.lacmsQR.svg(state.qr.link, { size: 300, ecc: 'M' }); } catch (e) { code = '<p class="sh-muted">Couldn\u2019t make the code.</p>'; }
     return '<div class="fba-qr" data-fba-qr-close><div class="fba-qr-box" role="dialog" aria-modal="true" aria-label="QR code">' +
       '<button type="button" class="guide-close" data-fba-qr-close aria-label="Close">&times;</button>' +
-      '<h3>' + esc(state.qr.name) + '</h3><img src="' + esc(img) + '" alt="QR code for the feedback form" width="300" height="300">' +
+      '<h3>' + esc(state.qr.name) + '</h3><div class="fba-qr-img">' + code + '</div>' +
       '<p>Show it on the last slide or print it on a poster. Scanning opens the feedback form for this event.</p>' +
       '<p class="fba-link">' + esc(state.qr.link) + '</p>' +
-      '<div class="fba-tools" style="justify-content:center;"><a class="btn btn-primary" href="' + esc(img) + '" target="_blank" rel="noopener">Open image to save</a><button type="button" class="btn btn-outline" data-fba-qr-close>Close</button></div>' +
-      '<p class="guide-fine">The QR image is made by api.qrserver.com from the link above (nothing else is sent).</p></div></div>';
+      '<div class="fba-tools" style="justify-content:center;"><button type="button" class="btn btn-primary" data-fba-qr-save="png">Download PNG</button><button type="button" class="btn btn-outline" data-fba-qr-save="svg">Download SVG</button><button type="button" class="btn btn-outline" data-fba-qr-close>Close</button></div>' +
+      '<p class="guide-fine">Made right here in your browser. PNG is for slides, SVG is sharp at any poster size.</p></div></div>';
   }
 
   // ---- Actions ------------------------------------------------------------------------
@@ -244,6 +245,7 @@
       return;
     }
     if ((v = t.getAttribute('data-fba-qr')) !== null) { state.qr = { link: v, name: t.getAttribute('data-name') }; render(); return; }
+    if ((v = t.getAttribute('data-fba-qr-save')) !== null && state.qr) { window.lacmsQR.download(state.qr.link, 'feedback-qr-' + state.qr.name, v, { size: 1024 }); return; }
     if (t.hasAttribute('data-fba-qr-close')) { state.qr = null; render(); return; }
     if (t.hasAttribute('data-fba-csv')) { csv(); return; }
     if ((v = t.getAttribute('data-fba-ask')) !== null) {
