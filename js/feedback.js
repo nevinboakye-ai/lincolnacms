@@ -84,6 +84,10 @@
   }
   function dayBefore(key, n) { var p = key.split('-'); var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] - n)); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }
   function niceDate(key) { if (!key) return ''; var p = key.split('-'); return (+p[2]) + ' ' + MONTHS[+p[1] - 1] + ' ' + p[0]; }
+  // This page's address for an event, keeping the partner's link code (?src=) if there was one.
+  function pageUrl(slug, guest) {
+    return 'feedback.html?event=' + encodeURIComponent(slug) + (guest ? '&as=guest' : '') + (S.src ? '&src=' + encodeURIComponent(S.src) : '');
+  }
   function inPreview() { return !!(window.lacmsViewAs && window.lacmsViewAs.active && window.lacmsViewAs.active()); }
 
   // ---- State -------------------------------------------------------------------
@@ -94,6 +98,7 @@
     event: null,             // the chosen event
     me: null,                // { id, name, kind: 'member'|'professional'|'guest', email }
     guest: false,            // chose the guest route
+    src: '',                 // a partner's link code, if they came from a partner's link
     a: blank()               // the answers
   };
   function blank() {
@@ -286,9 +291,9 @@
 
       '<fieldset class="fb-card"><legend class="fb-q"><span class="fb-n">5</span> Anything else? <span class="guide-optional">(optional)</span></legend>' +
       '<div class="fb-starters">' + STARTERS.map(function (t, i) { return '<button type="button" class="fb-starter" data-fb-starter="' + i + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
-      '<label class="visually-hidden" for="fb-comment">Your comments</label>' +
+      '<div class="field fb-comment-field"><label class="visually-hidden" for="fb-comment">Your comments</label>' +
       '<textarea id="fb-comment" rows="4" maxlength="1500" placeholder="A sentence or two is plenty.">' + esc(a.comment) + '</textarea>' +
-      '<span class="guide-count" data-fb-count>' + a.comment.length + ' / 1500</span>' +
+      '<span class="guide-count" data-fb-count>' + a.comment.length + ' / 1500</span></div>' +
       '<label class="motm-consent"><input type="checkbox" id="fb-quote"' + (a.quote ? ' checked' : '') + '><span><strong>We may quote this (without your name)</strong><small>On social media or when we tell people what our events are like.</small></span></label>' +
       '</fieldset>' +
 
@@ -437,10 +442,10 @@
     if ((v = t.getAttribute('data-fb-who')) !== null) {
       if (v === 'member') {
         saveDraft();
-        window.location.href = 'member-login.html?next=' + encodeURIComponent('feedback.html?event=' + (S.event ? S.event.slug : ''));
+        window.location.href = 'member-login.html?next=' + encodeURIComponent(pageUrl(S.event ? S.event.slug : '', false));
       } else {
         S.guest = true;
-        try { window.history.replaceState(null, '', 'feedback.html?event=' + encodeURIComponent(S.event ? S.event.slug : '') + '&as=guest'); } catch (err) { /* ignore */ }
+        try { window.history.replaceState(null, '', pageUrl(S.event ? S.event.slug : '', true)); } catch (err) { /* ignore */ }
         go('form');
       }
       return;
@@ -452,6 +457,7 @@
     if ((v = t.getAttribute('data-fb-starter')) !== null) {
       var ta = document.getElementById('fb-comment');
       var add = STARTERS[+v];
+      if (ta.value.indexOf(add) !== -1) { ta.focus(); return; }       // already started that sentence
       ta.value = (ta.value && !/\s$/.test(ta.value) ? ta.value + ' ' : ta.value) + add + ' ';
       ta.dispatchEvent(new Event('input'));
       ta.focus();
@@ -472,7 +478,7 @@
     if (!S.event) { go('event', !initial); return; }
     S.a = blank();
     restoreDraft(S.event.slug);
-    try { window.history.replaceState(null, '', 'feedback.html?event=' + encodeURIComponent(S.event.slug) + (S.guest && !(S.me && S.me.kind !== 'guest') ? '&as=guest' : '')); } catch (e) { /* ignore */ }
+    try { window.history.replaceState(null, '', pageUrl(S.event.slug, S.guest && !(S.me && S.me.kind !== 'guest'))); } catch (e) { /* ignore */ }
     if (S.done[S.event.slug]) { go('already', !initial); return; }
     afterEventChosen(initial);
   }
@@ -503,7 +509,8 @@
       p_suggestion: a.suggestion.trim() || null, p_anonymous: !!a.anonymous, p_quote_ok: !!a.quote,
       p_guest_email: guestMode ? a.email : null, p_guest_name: guestMode ? (a.name || null) : null,
       p_guest_kind: guestMode ? (a.kind || null) : null, p_wants_updates: guestMode ? !!a.updates : false,
-      p_website: (document.getElementById('fb-website') || {}).value || null
+      p_website: (document.getElementById('fb-website') || {}).value || null,
+      p_source: S.src || null
     }).then(function (res) {
       if (res.error) {
         btn.disabled = false; btn.textContent = 'Send feedback';
@@ -532,6 +539,8 @@
     S.done = done || {};
     var p = params();
     if (p.get('as') === 'guest') S.guest = true;
+    var src = String(p.get('src') || '').toLowerCase();
+    if (/^[a-z0-9]{4,16}$/.test(src)) S.src = src;
     var wanted = p.get('event');
     if (wanted && (wanted === 'general' || S.events.some(function (e) { return e.slug === wanted; }))) {
       chooseEvent(wanted, true);

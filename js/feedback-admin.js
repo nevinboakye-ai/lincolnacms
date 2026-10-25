@@ -16,19 +16,8 @@
   if (!root) return;
   if (typeof supabaseIsConfigured === 'undefined' || !supabaseIsConfigured || typeof supabaseClient === 'undefined' || !supabaseClient) return;
 
-  var LIKED = {
-    atmosphere: 'Great atmosphere', organised: 'Well organised', value: 'Good value', people: 'Lovely people', welcome: 'Felt welcome',
-    fun: 'Fun activities', food: 'Food & drink', venue: 'Great venue', content: 'Interesting content', speakers: 'Brilliant speakers',
-    practical: 'Practical & useful', mentor: 'Supportive mentors', cause: 'A cause worth backing', learned: 'Learned something new'
-  };
-  var IMPROVE = {
-    venue: 'Venue or location', timing: 'Date or time', communication: 'Communication beforehand', crowded: 'Too crowded', length: 'Length or pacing',
-    cost: 'Cost', food: 'Food & drink', access: 'Accessibility', organisation: 'Organisation on the day', content: 'Content or format',
-    av: 'Sound or screens', activities: 'More to do'
-  };
-  var HEARD = { instagram: 'Instagram', groupchat: 'A group chat', friend: 'A friend', email: 'Email', poster: 'Poster or flyer', committee: 'A committee member', website: 'This website', other: 'Somewhere else' };
-  var KIND = { lincoln_student: 'Lincoln student', other_student: 'Student elsewhere', professional: 'Healthcare professional', other: 'Other' };
-  var RETURN = { yes: 'Would come again', maybe: 'Might come again', no: 'Probably not' };
+  var L = window.LACMS_FEEDBACK_LABELS || { liked: {}, improve: {}, heard: {}, kind: {}, returning: {} };
+  var LIKED = L.liked, IMPROVE = L.improve, HEARD = L.heard, KIND = L.kind, RETURN = L.returning;
 
   var state = { loaded: false, loading: false, error: '', rows: [], regs: {}, events: [], event: 'all', filter: 'all', qr: null };
 
@@ -202,10 +191,11 @@
         return '<li class="fba-item"><div class="fba-item-top"><span class="fba-stars' + (r.rating <= 2 ? ' is-low' : '') + '" aria-label="' + r.rating + ' out of 5">' + stars(r.rating) + '</span>' +
           '<span class="fba-meta">' + (showEvent ? '<strong>' + esc(r.event_name) + '</strong> · ' : '') + esc(when(r.created_at)) + '</span></div>' +
           '<div class="fba-who">' + who(r) + '</div>' +
-          (r.comment ? '<p class="fba-comment">“' + esc(r.comment) + '”</p>' : '') +
+          (r.comment ? '<p class="fba-comment">“' + esc(r.comment) + '”' + (r.partner_hidden ? ' <span class="fba-chip is-warn">Hidden from partners</span>' : '') + '</p>' : '') +
           (chips ? '<div class="fba-chips">' + chips + '</div>' : '') +
           '<div class="fba-item-foot"><span>' + [r.would_return ? esc(RETURN[r.would_return]) : '', r.quote_ok && r.comment ? 'OK to quote' : '', r.wants_updates ? 'Wants updates' : ''].filter(Boolean).join(' · ') + '</span>' +
-          '<button type="button" class="guide-linkbtn" data-fba-delete="' + esc(r.id) + '">Delete</button></div></li>';
+          '<span class="fba-item-actions">' + (r.comment ? '<button type="button" class="guide-linkbtn" data-fba-hide="' + esc(r.id) + '" data-hidden="' + (r.partner_hidden ? '1' : '0') + '">' + (r.partner_hidden ? 'Show to partners' : 'Hide from partners') + '</button>' : '') +
+          '<button type="button" class="guide-linkbtn" data-fba-delete="' + esc(r.id) + '">Delete</button></span></div></li>';
       }).join('') + '</ul>' + (list.length > 200 ? '<p class="sh-muted">Showing the latest 200 – download the CSV for everything.</p>' : '') : '<p class="sh-muted">Nothing matches that filter.</p>') + '</div>';
   }
 
@@ -261,6 +251,16 @@
       return;
     }
     if (t.hasAttribute('data-fba-guests')) { if (window.lacmsEmailCentre) window.lacmsEmailCentre.open('fb_guests'); return; }
+    if ((v = t.getAttribute('data-fba-hide')) !== null) {
+      var hide = t.getAttribute('data-hidden') !== '1';
+      t.disabled = true;
+      supabaseClient.rpc('feedback_set_partner_hidden', { p_id: v, p_hidden: hide }).then(function (res) {
+        if (res.error) { t.disabled = false; say('Couldn\u2019t update: ' + res.error.message); return; }
+        state.rows.forEach(function (r) { if (r.id === v) r.partner_hidden = hide; });
+        render();
+      });
+      return;
+    }
     if ((v = t.getAttribute('data-fba-delete')) !== null) {
       if (!window.confirm('Delete this response? This can’t be undone (the person can then send feedback again).')) return;
       t.disabled = true;
