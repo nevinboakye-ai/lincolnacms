@@ -35,7 +35,7 @@
   var KIND_LABEL = {
     join: 'Joined LACMS', visit: 'Visited the Members Hub', bio: 'Added a bio', linkedin: 'Added your LinkedIn',
     event_reg: 'Registered for an event', disc_reveal: 'Tried a discount', disc_used: 'Used a discount',
-    motm_nominate: 'Nominated for Member of the Month', motm_kingmaker: 'Your nominee became Member of the Month', news_like: 'Liked a news post', news_comment: 'Commented on news',
+    motm_nominate: 'Nominated for Member of the Month', motm_kingmaker: 'Your nominee became Member of the Month', event_feedback: 'Gave event feedback', news_like: 'Liked a news post', news_comment: 'Commented on news',
     sankofa_apply: 'Applied for Sankofa', resource_shared: 'Shared a resource', resource_like: 'Liked a resource',
     resource_comment: 'Commented on a resource', resource_download: 'Used a resource', chat_first: 'Sent your first message',
     tenure: 'Another month with LACMS'
@@ -366,7 +366,7 @@
   // Notice writes the site already makes (events, likes, comments, discount
   // reveals, nominations, profile, messages, downloads) and re-check shortly after.
   var WATCH_TABLES = { event_registrations: 1, resource_likes: 1, resource_comments: 1, motm_nominations: 1, member_profiles: 1, news_likes: 1, news_comments: 1, sankofa_applications: 1, discount_usage: 1 };
-  var WATCH_RPCS = { record_discount_reveal: 1, record_discount_used: 1, record_resource_event: 1, chat_send_message: 1 };
+  var WATCH_RPCS = { submit_event_feedback: 1, record_discount_reveal: 1, record_discount_used: 1, record_resource_event: 1, chat_send_message: 1 };
   function watch() {
     try {
       var origFrom = supabaseClient.from.bind(supabaseClient);

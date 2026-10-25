@@ -67,7 +67,9 @@
       .replace(/\{name\}/gi, p.name || '')
       .replace(/\{email\}/gi, p.email || '')
       .replace(/\{phase\}/gi, p.phase || 'this phase')
-      .replace(/\{circle\}/gi, p.circle || 'your Circle');
+      .replace(/\{circle\}/gi, p.circle || 'your Circle')
+      .replace(/\{event\}/gi, (state.refine.event !== 'all' && eventName(state.refine.event)) || (p.lastFeedbackEvent) || '[event name]')
+      .replace(/\{feedback_link\}/gi, state.refine.event !== 'all' ? feedbackLink(state.refine.event) : '[feedback link]');
   }
   // Same rules as the Edge Function's textToHtml, so the preview matches what is sent.
   function previewHtml(text) {
@@ -94,6 +96,8 @@
   // ---------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------
+  function freshRefine() { return { phase: 'all', status: 'all', course: 'all', placed: 'all', circle: 'all', event: 'all', updates: 'asked' }; }
+
   var state = {
     tab: 'write',
     loaded: false,
@@ -103,7 +107,7 @@
     rounds: [],              // [{ id, name }]
     circles: [],             // [{ id, name }]
     audience: '',            // chosen group id
-    refine: { phase: 'all', status: 'all', course: 'all', placed: 'all', circle: 'all' },
+    refine: freshRefine(),
     manual: {},              // lower(email) -> true: people added by search
     excluded: {},            // lower(email) -> true: unticked in the list
     search: '',
@@ -118,6 +122,8 @@
     sending: null,           // { done, total, sent, failed, cancelled, batch }
     result: null,            // summary after a batch
     myEmail: '',
+    siteEvents: [],          // [{ slug, name }] for the event pickers
+    fbUnavailable: true,     // true until the feedback lists (migration 100) have loaded
     motmUnavailable: true,   // true until the Member of the Month lists (migration 099) have loaded
     motmNominators: {}       // lower(email) -> true: has nominated this month
   };
@@ -155,6 +161,16 @@
       id: 'motm-thanks', name: 'Member of the Month - thank you for nominating',
       subject: 'Thank you for nominating',
       message: 'Hi {first_name},\n\nThank you for nominating someone for Member of the Month. Recognising the people around us is what makes this community what it is.\n\nThe LACMS Committee'
+    },
+    {
+      id: 'fb-request', name: 'Event feedback - how was it?',
+      subject: 'How was {event}?',
+      message: 'Hi {first_name},\n\nThanks for being part of {event}. We would love to know how it went. It takes about a minute, and what you tell us decides what we run next.\n\n{feedback_link}\n\nThe LACMS Committee'
+    },
+    {
+      id: 'fb-join', name: 'Event guests - come and join us',
+      subject: 'Thanks for your feedback - come and join LACMS',
+      message: 'Hi {first_name},\n\nThank you for telling us how {event} went. We hope to see you at the next one.\n\nIf you are a student at the University of Lincoln, membership is only \u00A37.50 for the year and gets you first access to events, Sankofa mentoring, local discounts and our Network. You can join through the Students\' Union here:\nhttps://lincolnsu.com/activities/view/acs-medical\n\nOnce you have joined, request your account at https://lincolnacms.uk/request-account.html and we will set up your login.\n\nThe LACMS Committee'
     },
     {
       id: 'general', name: 'General message',
@@ -197,11 +213,24 @@
       rpcSafe('president_get_account_requests', {}, 'Student requests'),
       supabaseClient.rpc('president_get_professional_requests').then(function (r) { return r.error ? [] : (r.data || []); }, function () { return []; }),
       supabaseClient.auth.getSession().then(function (r) { return r && r.data && r.data.session ? r.data.session.user.email : ''; }, function () { return ''; }),
-      supabaseClient.rpc('email_motm_nominators').then(function (r) { return r.error ? null : (r.data || []); }, function () { return null; })
+      supabaseClient.rpc('email_motm_nominators').then(function (r) { return r.error ? null : (r.data || []); }, function () { return null; }),
+      supabaseClient.rpc('email_event_registrants').then(function (r) { return r.error ? null : (r.data || []); }, function () { return null; }),
+      supabaseClient.rpc('email_feedback_guests').then(function (r) { return r.error ? null : (r.data || []); }, function () { return null; }),
+      supabaseClient.from('site_events').select('slug, name, starts_on').order('starts_on', { ascending: false, nullsFirst: false }).then(function (r) { return r.error ? [] : (r.data || []); }, function () { return []; })
     ]).then(function (res) {
       state.people = {};
       var members = res[0], pros = res[1], apps = res[2], appRounds = res[3], rounds = res[4], mentorForms = res[5], overview = res[6], studentReqs = res[7], proReqs = res[8];
       state.myEmail = res[9] || '';
+      state.fbUnavailable = res[11] === null && res[12] === null;
+      state.siteEvents = (res[13] || []).map(function (e) { return { slug: e.slug, name: e.name }; });
+      (res[11] || []).forEach(function (x) {
+        var p = state.people[lc(x.email)] || personFor(x.email, '');
+        if (p) { p.eventSlugs = p.eventSlugs || {}; p.eventSlugs[x.event_slug] = true; }
+      });
+      (res[12] || []).forEach(function (x) {
+        var p = personFor(x.email, x.full_name);
+        if (p) { p.fbGuest = true; if (x.wants_updates) p.fbWantsUpdates = true; if (!p.lastFeedbackEvent) p.lastFeedbackEvent = x.event_name; }
+      });
       state.motmUnavailable = res[10] === null;
       state.motmNominators = {};
       (res[10] || []).forEach(function (x) { if (x && x.email) state.motmNominators[lc(x.email)] = true; });
@@ -292,6 +321,10 @@
       match: function (p) { return !!p.kinds.member && !p.nominatedThisMonth; } },
     { id: 'motm_done', group: 'Member of the Month', label: 'Members who nominated this month', refine: [], needs: 'motm',
       match: function (p) { return !!p.kinds.member && !!p.nominatedThisMonth; } },
+    { id: 'ev_registrants', group: 'Event feedback', label: 'People registered for an event', refine: ['event'], needs: 'fb',
+      match: function (p) { return !!p.eventSlugs && Object.keys(p.eventSlugs).length > 0; } },
+    { id: 'fb_guests', group: 'Event feedback', label: 'Guests who left feedback', refine: ['updates'], needs: 'fb',
+      match: function (p) { return !!p.fbGuest && !p.kinds.member; } },
     { id: 'exec', group: 'People', label: 'Executive Committee', refine: [],
       match: function (p) { return p.member_type === 'executive_committee'; } },
     { id: 'supp', group: 'People', label: 'Supporting Committee', refine: [],
@@ -305,6 +338,8 @@
     { id: 'all_members', group: 'Everyone', label: 'Every member (use with care)', refine: [], big: true,
       match: function (p) { return !!p.kinds.member; } }
   ];
+  function eventName(slug) { return (state.siteEvents.filter(function (e) { return e.slug === slug; })[0] || {}).name || ''; }
+  function feedbackLink(slug) { try { return new URL('feedback.html?event=' + encodeURIComponent(slug), window.location.origin + window.location.pathname.replace(/[^/]*$/, '')).href; } catch (e) { return ''; } }
   function audienceById(id) { for (var i = 0; i < AUDIENCES.length; i++) if (AUDIENCES[i].id === id) return AUDIENCES[i]; return null; }
   function isMedicine(p) { return /medicine/i.test(p.course || ''); }
 
@@ -325,6 +360,8 @@
         if (rf.placed === 'unplaced' && p.circleId) return false;
       }
       if (a.refine.indexOf('circle') !== -1 && rf.circle !== 'all' && p.circleId !== rf.circle) return false;
+      if (a.refine.indexOf('event') !== -1 && rf.event !== 'all' && !(p.eventSlugs && p.eventSlugs[rf.event])) return false;
+      if (a.refine.indexOf('updates') !== -1 && rf.updates === 'asked' && !p.fbWantsUpdates) return false;
       return true;
     });
   }
@@ -346,6 +383,8 @@
       if (a.refine.indexOf('status') !== -1 && rf.status !== 'all') bits.push(rf.status);
       if (a.refine.indexOf('course') !== -1 && rf.course !== 'all') bits.push(rf.course === 'medicine' ? 'Medicine only' : 'not Medicine');
       if (a.refine.indexOf('placed') !== -1 && rf.placed !== 'all') bits.push(rf.placed === 'placed' ? 'placed in a Circle' : 'not placed yet');
+      if (a.refine.indexOf('event') !== -1 && rf.event !== 'all') bits.push(eventName(rf.event) || 'one event');
+      if (a.refine.indexOf('updates') !== -1 && rf.updates === 'asked') bits.push('asked for updates');
       if (a.refine.indexOf('circle') !== -1 && rf.circle !== 'all') bits.push((state.circles.filter(function (c) { return c.id === rf.circle; })[0] || {}).name || 'one Circle');
     }
     var extra = Object.keys(state.manual).length;
@@ -411,6 +450,7 @@
     var groups = {};
     AUDIENCES.forEach(function (a) {
       if (a.needs === 'motm' && state.motmUnavailable) return;   // migration 099 not run yet
+      if (a.needs === 'fb' && state.fbUnavailable) return;       // migration 100 not run yet
       (groups[a.group] = groups[a.group] || []).push(a);
     });
     var html = '<div class="ec-card"><h3><span class="ec-step">1</span> Who is it for?</h3><div class="ec-aud">';
@@ -430,6 +470,8 @@
       if (a.refine.indexOf('course') !== -1) html += '<label class="ec-field"><span>Course</span><select data-ec-refine="course">' + selectOptions([['all', 'Any course'], ['medicine', 'Medicine only'], ['other', 'Not medicine']], rf.course) + '</select></label>';
       if (a.refine.indexOf('placed') !== -1) html += '<label class="ec-field"><span>In a Circle</span><select data-ec-refine="placed">' + selectOptions([['all', 'Either'], ['placed', 'Placed in a Circle'], ['unplaced', 'Not placed yet']], rf.placed) + '</select></label>';
       if (a.refine.indexOf('circle') !== -1) html += '<label class="ec-field"><span>Circle</span><select data-ec-refine="circle">' + selectOptions([['all', 'Every Circle']].concat(state.circles.map(function (c) { return [c.id, c.name]; })), rf.circle) + '</select></label>';
+      if (a.refine.indexOf('event') !== -1) html += '<label class="ec-field"><span>Event</span><select data-ec-refine="event">' + selectOptions([['all', 'Any event']].concat(state.siteEvents.map(function (e) { return [e.slug, e.name]; })), rf.event) + '</select></label>';
+      if (a.refine.indexOf('updates') !== -1) html += '<label class="ec-field"><span>Which guests</span><select data-ec-refine="updates">' + selectOptions([['asked', 'Only those who asked for updates'], ['all', 'Every guest who left feedback']], rf.updates) + '</select></label>';
       html += '</div>';
     }
     // Add anyone by name
@@ -654,7 +696,7 @@
     if ((el = e.target.closest('[data-ec-aud]'))) {
       var id = el.getAttribute('data-ec-aud');
       state.audience = state.audience === id ? '' : id;
-      state.refine = { phase: 'all', status: 'all', course: 'all', placed: 'all', circle: 'all' };
+      state.refine = freshRefine();
       state.excluded = {};
       render(); return;
     }
@@ -766,8 +808,10 @@
 
   window.lacmsEmailCentre = {
     // Opens the Email section with a group already chosen (used by shortcuts elsewhere on the dashboard).
-    open: function (audienceId) {
-      if (audienceById(audienceId)) { state.audience = audienceId; state.tab = 'write'; state.excluded = {}; state.refine = { phase: 'all', status: 'all', course: 'all', placed: 'all', circle: 'all' }; }
+    open: function (audienceId, opts) {
+      if (audienceById(audienceId)) { state.audience = audienceId; state.tab = 'write'; state.excluded = {}; state.refine = freshRefine(); }
+      if (opts && opts.event) state.refine.event = opts.event;
+      if (opts && opts.template) applyTemplate('b:' + opts.template);
       var card = document.querySelector('[data-dash-section="email"]');
       if (card) card.click();
       if (state.loaded) render();
