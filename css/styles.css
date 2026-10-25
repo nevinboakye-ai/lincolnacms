@@ -11670,3 +11670,23 @@ button.fba-tr:hover, button.fba-tr:focus-visible { border-color: var(--color-gol
 .qs-modal-box h3 { margin: 0 var(--space-4) var(--space-2) 0; text-align: left; }
 .qs-modal-box p { margin: 0 0 var(--space-3); text-align: left; font-size: 0.9rem; line-height: 1.5; color: var(--color-text-muted); }
 .qs-modal-box img { display: block; width: 100%; max-width: 320px; height: auto; margin: 0 auto var(--space-3); border-radius: 8px; background: #fff; }
+
+.fb-q-help { margin: -4px 0 var(--space-2); font-size: 0.86rem; line-height: 1.45; color: var(--color-text-muted); }
+.fb-other-box { margin-top: var(--space-2); }
+.fb-other-field { margin: 0; }
+.fb-other-field[hidden] { display: none; }
+.fb-other-field textarea { display: block; width: 100%; min-height: 64px; line-height: 1.45; }
+.fb-other-box .motm-words-toggle { padding: 4px 0; }
+
+.fba-typed { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fba-typed li { padding: 8px 12px; border-radius: var(--radius-sm); background: var(--color-bg-alt); border-left: 3px solid rgba(var(--gold-rgb), 0.55); font-size: 0.88rem; line-height: 1.45; overflow-wrap: anywhere; }
+.fba-typed-line { margin: 0; font-size: 0.88rem; line-height: 1.5; color: var(--color-text-muted); overflow-wrap: anywhere; }
+.fba-typed-line b { color: var(--color-text); font-weight: 600; }
+.fba-thanks { padding: 6px 10px; border-radius: var(--radius-sm); background: rgba(var(--green-rgb), 0.1); border: 1px solid rgba(var(--green-rgb), 0.35); }
+
+.pt-typed, .pt-thanks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pt-typed li { padding: 8px 12px; border-radius: var(--radius-sm); background: var(--color-bg-alt); border-left: 3px solid rgba(var(--gold-rgb), 0.55); font-size: 0.9rem; line-height: 1.45; overflow-wrap: anywhere; }
+.pt-thanks { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.pt-thanks li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-sm); background: rgba(var(--green-rgb), 0.1); border: 1px solid rgba(var(--green-rgb), 0.35); font-size: 0.92rem; line-height: 1.4; overflow-wrap: anywhere; }
+.pt-thanks li span { color: var(--color-gold-light); flex: none; }
+.motm-words-toggle .guide-optional { margin-left: 6px; }

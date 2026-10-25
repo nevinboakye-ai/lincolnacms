@@ -84,7 +84,7 @@
         '<div class="pa-events">' + sp.event_slugs.map(function (s) { return '<span class="pa-chip">' + esc(eventName(s)) + '</span>'; }).join('') + '</div>' +
         '<p class="pa-meta">' + plural(Number(sp.responses), 'feedback reply', 'feedback replies') + ' · viewed ' + plural(sp.view_count, 'time', 'times') + (sp.view_count ? ' (last ' + esc(ago(sp.last_viewed_at)) + ')' : '') +
         (sp.expires_on ? ' · ' + (st.k === 'expired' ? 'expired ' : 'open until ') + esc(niceDate(sp.expires_on)) : '') + '</p>' +
-        '<p class="pa-shows">Shows: ' + [sp.show_registrations ? 'registrations' : '', 'ratings', sp.show_heard ? 'how people heard' : '', sp.show_audience ? 'audience' : '', sp.show_ideas ? 'event ideas' : '',
+        '<p class="pa-shows">Shows: ' + [sp.show_registrations ? 'registrations' : '', 'ratings', sp.show_heard ? 'how people heard' : '', sp.show_audience ? 'audience' : '', sp.show_ideas ? 'event ideas' : '', sp.show_shoutouts ? 'thank-yous' : '',
           sp.show_comments === 'all' ? 'all comments' : sp.show_comments === 'quotable' ? 'quotable comments' : 'no comments', sp.custom_metrics.length ? plural(sp.custom_metrics.length, 'headline number', 'headline numbers') : ''].filter(Boolean).join(', ') + '</p>' +
         '<div class="pa-actions">' +
         '<button type="button" class="btn btn-primary" data-pa-share="' + esc(sp.id) + '">Share link</button>' +
@@ -97,11 +97,11 @@
 
   // ---- The form ----------------------------------------------------------------------------
   function blankForm() {
-    return { id: null, name: '', partner_name: '', message: '', event_slugs: [], show_comments: 'quotable', show_ideas: false, show_heard: true, show_audience: true, show_registrations: true, custom_metrics: [{ label: '', value: '', note: '' }], expires_on: '' };
+    return { id: null, name: '', partner_name: '', message: '', event_slugs: [], show_comments: 'quotable', show_ideas: false, show_heard: true, show_audience: true, show_registrations: true, show_shoutouts: false, custom_metrics: [{ label: '', value: '', note: '' }], expires_on: '' };
   }
   function formFrom(sp) {
     return { id: sp.id, name: sp.name, partner_name: sp.partner_name, message: sp.message, event_slugs: sp.event_slugs.slice(), show_comments: sp.show_comments, show_ideas: sp.show_ideas,
-      show_heard: sp.show_heard, show_audience: sp.show_audience, show_registrations: sp.show_registrations,
+      show_heard: sp.show_heard, show_audience: sp.show_audience, show_registrations: sp.show_registrations, show_shoutouts: !!sp.show_shoutouts,
       custom_metrics: (sp.custom_metrics || []).map(function (m) { return { label: m.label, value: m.value, note: m.note || '' }; }).concat((sp.custom_metrics || []).length ? [] : [{ label: '', value: '', note: '' }]), expires_on: sp.expires_on || '' };
   }
 
@@ -130,6 +130,7 @@
       '<label class="pa-check"><input type="checkbox" data-pa-flag="show_registrations"' + (f.show_registrations ? ' checked' : '') + '><span><strong>How many LACMS members registered</strong><small>And the share of them who replied. Members only; we don’t hold your own registrations.</small></span></label>' +
       '<label class="pa-check"><input type="checkbox" data-pa-flag="show_heard"' + (f.show_heard ? ' checked' : '') + '><span><strong>How people heard about it</strong><small>Instagram, a friend, a poster… useful for their own promotion.</small></span></label>' +
       '<label class="pa-check"><input type="checkbox" data-pa-flag="show_audience"' + (f.show_audience ? ' checked' : '') + '><span><strong>Who replied</strong><small>Members, guests and courses. Only once an event has 5 replies; small groups are folded into “Other”.</small></span></label>' +
+      '<label class="pa-check"><input type="checkbox" data-pa-flag="show_shoutouts"' + (f.show_shoutouts ? ' checked' : '') + '><span><strong>Thank-yous: who made the night valuable</strong><small>Names people typed (a person or a team). Off by default because they name individuals. Follows the comments setting below.</small></span></label>' +
       '<label class="pa-check"><input type="checkbox" data-pa-flag="show_ideas"' + (f.show_ideas ? ' checked' : '') + '><span><strong>Event ideas people suggested</strong><small>Off by default: these can be about LACMS rather than the partnership.</small></span></label>' +
       '<div class="pa-radios" role="radiogroup" aria-label="Comments">' +
       [['quotable', 'Comments people said we may quote', 'Recommended. Without names.'], ['all', 'All comments', 'Without names. You can hide single comments in Dashboard → Feedback.'], ['none', 'No comments', 'Numbers only.']].map(function (o) {
@@ -256,7 +257,7 @@
     var btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
     var payload = {
       name: f.name.trim(), partner_name: f.partner_name.trim(), message: f.message.trim(), event_slugs: f.event_slugs, show_comments: f.show_comments,
-      show_ideas: f.show_ideas, show_heard: f.show_heard, show_audience: f.show_audience, show_registrations: f.show_registrations,
+      show_ideas: f.show_ideas, show_shoutouts: f.show_shoutouts, show_heard: f.show_heard, show_audience: f.show_audience, show_registrations: f.show_registrations,
       custom_metrics: f.custom_metrics.filter(function (m) { return m.label.trim() || m.value.trim(); }), expires_on: f.expires_on || null
     };
     supabaseClient.rpc('partner_space_save', { p_id: f.id, p_data: payload }).then(function (res) {

@@ -154,6 +154,18 @@
     return list.length ? barList(list, total, cls) : '<p class="pt-note">Nothing picked yet.</p>';
   }
 
+  // What people typed for "what went well" and "what could be better", as short quotes.
+  function typedBlock(list) {
+    if (!list || !list.length) return '';
+    return '<h4>In their own words</h4><ul class="pt-typed">' + list.slice(0, 6).map(function (t) { return '<li>\u201C' + esc(t) + '\u201D</li>'; }).join('') + '</ul>' +
+      (list.length > 6 ? '<p class="pt-note">And ' + (list.length - 6) + ' more.</p>' : '');
+  }
+  function thanksCard(s) {
+    if (!s.shoutouts || !s.shoutouts.length) return '';
+    return '<div class="pt-card pt-card--wide"><h3>Thank-yous <small>' + s.shoutouts.length + '</small></h3><p class="pt-muted" style="margin:0 0 12px;">People attendees named as making the night valuable.</p>' +
+      '<ul class="pt-thanks">' + s.shoutouts.slice(0, 12).map(function (t) { return '<li><span aria-hidden="true">\u2605</span>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+  }
+
   function commentsHtml(s) {
     var list = s.comments || [];
     if (D.space.shows.comments === 'none') return '';
@@ -202,12 +214,12 @@
       body = tilesHtml(c) +
         section('How it went') + '<div class="pt-grid">' + distHtml(s) + audienceHtml(s) + '</div>' + timeCard(s.daily) +
         section('What people said') +
-        '<div class="pt-grid"><div class="pt-card"><h3>What went well</h3>' + bars(s.liked, L.liked, n, 'is-good') + '</div>' +
-        '<div class="pt-card"><h3>What could be better</h3>' + bars(s.improve, L.improve, n, 'is-warn') + '</div></div>' +
+        '<div class="pt-grid"><div class="pt-card"><h3>What went well</h3>' + bars(s.liked, L.liked, n, 'is-good') + typedBlock(s.typed_liked) + '</div>' +
+        '<div class="pt-card"><h3>What could be better</h3>' + bars(s.improve, L.improve, n, 'is-warn') + typedBlock(s.typed_improve) + '</div></div>' +
         (heard || ideas ? '<div class="pt-grid">' +
           (heard ? '<div class="pt-card"><h3>How people heard about it</h3>' + bars(s.heard, L.heard, Object.keys(s.heard).reduce(function (t, k) { return t + s.heard[k]; }, 0)) + '</div>' : '') +
           (ideas ? '<div class="pt-card"><h3>Events people would love</h3><ul class="pt-ideas">' + s.ideas.map(function (i) { return '<li>' + esc(i) + '</li>'; }).join('') + '</ul></div>' : '') + '</div>' : '') +
-        commentsHtml(s);
+        thanksCard(s) + commentsHtml(s);
     }
     var viewSub = view === 'all' ? (D.events.length > 1 ? 'Combined across ' + D.events.length + ' events' : '') : (c.event ? (c.event.date_text || niceDate(c.event.starts_on)) : '');
     root.innerHTML =
@@ -248,6 +260,9 @@
         Object.keys(s.liked || {}).forEach(function (k) { rows.push([name, 'What went well', L.liked[k] || k, s.liked[k]]); });
         Object.keys(s.improve || {}).forEach(function (k) { rows.push([name, 'What could be better', L.improve[k] || k, s.improve[k]]); });
         Object.keys(s.heard || {}).forEach(function (k) { rows.push([name, 'How people heard', L.heard[k] || k, s.heard[k]]); });
+        (s.typed_liked || []).forEach(function (t) { rows.push([name, 'Went well (typed)', '', t]); });
+        (s.typed_improve || []).forEach(function (t) { rows.push([name, 'Could be better (typed)', '', t]); });
+        (s.shoutouts || []).forEach(function (t) { rows.push([name, 'Thank-you', '', t]); });
         (s.comments || []).forEach(function (cm) { rows.push([name, 'Comment', cm.at + ' | ' + cm.rating + ' stars | ' + cm.who, cm.text]); });
       }
     }

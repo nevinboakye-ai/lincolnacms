@@ -134,6 +134,22 @@
       }).join('') + '</div></div>';
   }
 
+  // "Ama and the welcome team, Dr Okoye" -> ["Ama", "the welcome team", "Dr Okoye"] (counted case-insensitively).
+  function thanked(rows) {
+    var map = {};
+    rows.forEach(function (r) {
+      if (!r.shoutouts) return;
+      String(r.shoutouts).split(/\s*(?:,|;|&|\+|\n|\band\b)\s*/i).forEach(function (raw) {
+        var name = raw.replace(/^(?:and|the)\s+/i, function (m) { return /^the\s/i.test(m) ? m : ''; }).replace(/[.!]+$/, '').trim();
+        if (name.length < 2 || name.length > 60) return;
+        var key = name.toLowerCase();
+        if (!map[key]) map[key] = { label: name, n: 0 };
+        map[key].n++;
+      });
+    });
+    return Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) { return b.n - a.n || a.label.localeCompare(b.label); });
+  }
+
   function section(title, sub) { return '<div class="fba-section"><h3>' + esc(title) + '</h3>' + (sub ? '<span>' + esc(sub) + '</span>' : '') + '</div>'; }
   function tile(label, value, note, cls, extra) {
     return '<div class="fba-tile' + (cls ? ' ' + cls : '') + '"><span class="fba-tile-label">' + label + '</span><span class="fba-big">' + value + '</span>' + (extra || '') + (note ? '<small>' + note + '</small>' : '') + '</div>';
@@ -174,11 +190,28 @@
     var heardList = Object.keys(heard).map(function (k) { return { k: k, n: heard[k] }; }).sort(function (a, b) { return b.n - a.n; });
     var ideas = rows.filter(function (r) { return r.suggestion; }).slice(0, 10);
     return section('What people said') + '<div class="fba-two">' +
-      '<div class="fba-card"><h3>What went well</h3>' + bars(counts(rows, 'liked'), LIKED, n, 'is-good') + '</div>' +
-      '<div class="fba-card"><h3>What could be better</h3>' + bars(counts(rows, 'improve'), IMPROVE, n, 'is-warn') + '</div></div>' +
+      '<div class="fba-card"><h3>What went well</h3>' + bars(counts(rows, 'liked'), LIKED, n, 'is-good') + typedList(rows, 'liked_other') + '</div>' +
+      '<div class="fba-card"><h3>What could be better</h3>' + bars(counts(rows, 'improve'), IMPROVE, n, 'is-warn') + typedList(rows, 'improve_other') + '</div></div>' +
+      thankedCard(rows) +
       (heardList.length || ideas.length ? '<div class="fba-two">' +
         '<div class="fba-card"><h3>How people heard</h3>' + (heardList.length ? bars(heardList, HEARD, heardList.reduce(function (t, x) { return t + x.n; }, 0)) : '<p class="sh-muted">Not answered yet.</p>') + '</div>' +
         '<div class="fba-card"><h3>Events people would love</h3>' + (ideas.length ? '<ul class="fba-ideas">' + ideas.map(function (r) { return '<li>' + esc(r.suggestion) + '</li>'; }).join('') + '</ul>' : '<p class="sh-muted">No ideas yet.</p>') + '</div></div>' : '');
+  }
+
+  function typedList(rows, field) {
+    var list = rows.filter(function (r) { return r[field]; });
+    if (!list.length) return '';
+    return '<h4>In their own words</h4><ul class="fba-typed">' + list.slice(0, 12).map(function (r) { return '<li>\u201C' + esc(r[field]) + '\u201D</li>'; }).join('') + '</ul>' +
+      (list.length > 12 ? '<p class="fba-note">And ' + (list.length - 12) + ' more in the responses below.</p>' : '');
+  }
+  function thankedCard(rows) {
+    var list = thanked(rows);
+    if (!list.length) return '';
+    var max = list[0].n;
+    return '<div class="fba-card"><h3>Who made the night valuable</h3><ul class="fba-bars">' + list.slice(0, 12).map(function (x) {
+      return '<li><span class="fba-bar-label">' + esc(x.label) + '</span><span class="fba-bar is-good"><span style="width:' + Math.max(8, Math.round(x.n / max * 100)) + '%"></span></span><span class="fba-bar-n">' + x.n + '</span></li>';
+    }).join('') + '</ul>' + (list.length > 12 ? '<p class="fba-note">And ' + (list.length - 12) + ' more names in the responses below.</p>' : '') +
+      '<p class="fba-note">Names are counted as typed (a person or a team). Worth a thank-you.</p></div>';
   }
 
   function who(r) {
@@ -193,13 +226,14 @@
     var f = state.filter;
     var list = rows.filter(function (r) {
       if (f === 'comments') return !!r.comment;
+      if (f === 'thanks') return !!r.shoutouts;
       if (f === 'low') return r.rating <= 2;
       if (f === 'quote') return r.quote_ok && r.comment;
       if (f === 'members') return r.respondent !== 'guest';
       if (f === 'guests') return r.respondent === 'guest';
       return true;
     });
-    var tabs = [['all', 'All'], ['comments', 'With comments'], ['low', 'Low ratings'], ['quote', 'OK to quote'], ['members', 'Members'], ['guests', 'Guests']];
+    var tabs = [['all', 'All'], ['comments', 'With comments'], ['thanks', 'Thank-yous'], ['low', 'Low ratings'], ['quote', 'OK to quote'], ['members', 'Members'], ['guests', 'Guests']];
     return section('Every response') + '<div class="fba-card"><div class="fba-card-head"><h3>Responses <small>' + list.length + '</small></h3>' +
       '<div class="fba-tabs" role="tablist">' + tabs.map(function (t) { return '<button type="button" class="fba-tab' + (f === t[0] ? ' is-on' : '') + '" data-fba-filter="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div></div>' +
       (list.length ? '<ul class="fba-list">' + list.slice(0, 200).map(function (r) {
@@ -209,8 +243,11 @@
           '<div class="fba-who">' + who(r) + '</div>' +
           (r.comment ? '<p class="fba-comment">“' + esc(r.comment) + '”' + (r.partner_hidden ? ' <span class="fba-chip is-warn">Hidden from partners</span>' : '') + '</p>' : '') +
           (chips ? '<div class="fba-chips">' + chips + '</div>' : '') +
+          (r.liked_other ? '<p class="fba-typed-line"><b>Also went well:</b> ' + esc(r.liked_other) + '</p>' : '') +
+          (r.improve_other ? '<p class="fba-typed-line"><b>Could be better:</b> ' + esc(r.improve_other) + '</p>' : '') +
+          (r.shoutouts ? '<p class="fba-typed-line fba-thanks"><b>Thanked:</b> ' + esc(r.shoutouts) + '</p>' : '') +
           '<div class="fba-item-foot"><span>' + [r.would_return ? esc(RETURN[r.would_return]) : '', r.quote_ok && r.comment ? 'OK to quote' : '', r.wants_updates ? 'Wants updates' : ''].filter(Boolean).join(' · ') + '</span>' +
-          '<span class="fba-item-actions">' + (r.comment ? '<button type="button" class="guide-linkbtn" data-fba-hide="' + esc(r.id) + '" data-hidden="' + (r.partner_hidden ? '1' : '0') + '">' + (r.partner_hidden ? 'Show to partners' : 'Hide from partners') + '</button>' : '') +
+          '<span class="fba-item-actions">' + ((r.comment || r.liked_other || r.improve_other || r.shoutouts) ? '<button type="button" class="guide-linkbtn" data-fba-hide="' + esc(r.id) + '" data-hidden="' + (r.partner_hidden ? '1' : '0') + '">' + (r.partner_hidden ? 'Show to partners' : 'Hide from partners') + '</button>' : '') +
           '<button type="button" class="guide-linkbtn" data-fba-delete="' + esc(r.id) + '">Delete</button></span></div></li>';
       }).join('') + '</ul>' + (list.length > 200 ? '<p class="sh-muted">Showing the latest 200 – download the CSV for everything.</p>' : '') : '<p class="sh-muted">Nothing matches that filter.</p>') + '</div>';
   }
@@ -232,12 +269,12 @@
   function say(msg) { var el = root.querySelector('[data-fba-status]'); if (el) el.textContent = msg; }
 
   function csv() {
-    var cols = ['Event', 'Date', 'Who', 'Name', 'Email', 'Course', 'Year', 'Guest type', 'Rating', 'Would come again', 'Went well', 'Could be better', 'Comment', 'How they heard', 'Event idea', 'OK to quote', 'Wants updates', 'Anonymous'];
+    var cols = ['Event', 'Date', 'Who', 'Name', 'Email', 'Course', 'Year', 'Guest type', 'Rating', 'Would come again', 'Went well', 'Could be better', 'Also went well (typed)', 'Could be better (typed)', 'Who made the night valuable', 'Comment', 'How they heard', 'Event idea', 'OK to quote', 'Wants updates', 'Anonymous'];
     var q = function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     var lines = [cols.join(',')].concat(selected().map(function (r) {
       return [r.event_name, r.created_at ? r.created_at.slice(0, 10) : '', r.respondent, r.person_name, r.person_email, r.course, r.year_of_study, r.guest_kind ? KIND[r.guest_kind] : '',
         r.rating, r.would_return, (r.liked || []).map(function (k) { return LIKED[k] || k; }).join('; '), (r.improve || []).map(function (k) { return IMPROVE[k] || k; }).join('; '),
-        r.comment, r.heard_from ? HEARD[r.heard_from] || r.heard_from : '', r.suggestion, r.quote_ok ? 'yes' : '', r.wants_updates ? 'yes' : '', r.anonymous ? 'yes' : ''].map(q).join(',');
+        r.liked_other, r.improve_other, r.shoutouts, r.comment, r.heard_from ? HEARD[r.heard_from] || r.heard_from : '', r.suggestion, r.quote_ok ? 'yes' : '', r.wants_updates ? 'yes' : '', r.anonymous ? 'yes' : ''].map(q).join(',');
     }));
     var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a');

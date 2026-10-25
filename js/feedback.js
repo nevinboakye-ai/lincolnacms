@@ -102,7 +102,7 @@
     a: blank()               // the answers
   };
   function blank() {
-    return { rating: 0, liked: [], improve: [], would: '', comment: '', heard: '', suggestion: '', anonymous: false, quote: false, updates: false, email: '', name: '', kind: '' };
+    return { rating: 0, liked: [], improve: [], likedOther: '', improveOther: '', shoutouts: '', would: '', comment: '', heard: '', suggestion: '', anonymous: false, quote: false, updates: false, email: '', name: '', kind: '' };
   }
 
   // ---- Loading ------------------------------------------------------------------
@@ -159,6 +159,15 @@
   }
 
   // ---- Small pieces -----------------------------------------------------------------
+  // "Something else?": a few typed words to go with the tap-to-pick reasons.
+  function otherBox(key, id, label, placeholder) {
+    var val = S.a[key] || '';
+    return '<div class="fb-other-box"><button type="button" class="motm-words-toggle" data-fb-other-toggle="' + key + '" aria-expanded="' + (val ? 'true' : 'false') + '">+ ' + label + ' <span class="guide-optional">(optional)</span></button>' +
+      '<div class="field fb-other-field"' + (val ? '' : ' hidden') + '><label class="visually-hidden" for="' + id + '">' + label + '</label>' +
+      '<textarea id="' + id + '" data-fb-other="' + key + '" rows="2" maxlength="300" placeholder="' + esc(placeholder) + '">' + esc(val) + '</textarea>' +
+      '<span class="guide-count" data-fb-other-count="' + key + '">' + val.length + ' / 300</span></div></div>';
+  }
+
   function stepsHtml() {
     var order = ['event', 'who', 'form'];
     var labels = { event: 'Event', who: 'You', form: 'Feedback' };
@@ -297,17 +306,24 @@
       }).join('') + '</div></fieldset>' +
 
       '<fieldset class="fb-card"><legend class="fb-q"><span class="fb-n">2</span> What went well? <span class="guide-optional">Tap any (up to ' + MAX_LIKED + ')</span></legend>' +
-      '<div class="motm-chips fb-chips" data-fb-group="liked">' + chipsFor('liked') + '</div></fieldset>' +
+      '<div class="motm-chips fb-chips" data-fb-group="liked">' + chipsFor('liked') + '</div>' +
+      otherBox('likedOther', 'fb-liked-other', 'Something else that went well?', 'e.g. the quiz round, the music, the way the room was set up') + '</fieldset>' +
 
       '<fieldset class="fb-card"><legend class="fb-q"><span class="fb-n">3</span> What could be better? <span class="guide-optional">Tap any (up to ' + MAX_IMPROVE + ')</span></legend>' +
-      '<div class="motm-chips fb-chips" data-fb-group="improve">' + chipsFor('improve') + '</div></fieldset>' +
+      '<div class="motm-chips fb-chips" data-fb-group="improve">' + chipsFor('improve') + '</div>' +
+      otherBox('improveOther', 'fb-improve-other', 'Something else we could improve?', 'e.g. more seating, a clearer start time, quieter music') + '</fieldset>' +
 
       '<fieldset class="fb-card"><legend class="fb-q"><span class="fb-n">4</span> Would you come to another one?</legend>' +
       '<div class="fb-pills" role="radiogroup" aria-label="Would you come again">' + RETURN.map(function (r) {
         return '<button type="button" class="fb-pill' + (a.would === r.v ? ' is-on' : '') + '" role="radio" aria-checked="' + (a.would === r.v) + '" data-fb-would="' + r.v + '">' + r.label + '</button>';
       }).join('') + '</div></fieldset>' +
 
-      '<fieldset class="fb-card"><legend class="fb-q"><span class="fb-n">5</span> Anything else? <span class="guide-optional">(optional)</span></legend>' +
+      '<fieldset class="fb-card"><legend class="fb-q"><span class="fb-n">5</span> Who made the night valuable? <span class="guide-optional">(optional)</span></legend>' +
+      '<p class="fb-q-help">Name anyone or any team you\u2019d like to thank: a person, the welcome desk, a speaker, a volunteer.</p>' +
+      '<div class="field fb-comment-field"><label class="visually-hidden" for="fb-shoutouts">People who made the night valuable</label>' +
+      '<input type="text" id="fb-shoutouts" maxlength="300" placeholder="e.g. Ama, the welcome team, Dr Okoye" value="' + esc(a.shoutouts) + '" autocomplete="off"></div></fieldset>' +
+
+      '<fieldset class="fb-card"><legend class="fb-q"><span class="fb-n">6</span> Anything else? <span class="guide-optional">(optional)</span></legend>' +
       '<div class="fb-starters">' + STARTERS.map(function (t, i) { return '<button type="button" class="fb-starter" data-fb-starter="' + i + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
       '<div class="field fb-comment-field"><label class="visually-hidden" for="fb-comment">Your comments</label>' +
       '<textarea id="fb-comment" rows="4" maxlength="1500" placeholder="A sentence or two is plenty.">' + esc(a.comment) + '</textarea>' +
@@ -419,6 +435,15 @@
     var q = document.getElementById('fb-quote'); if (q) q.addEventListener('change', function () { S.a.quote = q.checked; saveDraft(); });
     var an = document.getElementById('fb-anon'); if (an) an.addEventListener('change', function () { S.a.anonymous = an.checked; saveDraft(); });
     var up = document.getElementById('fb-updates'); if (up) up.addEventListener('change', function () { S.a.updates = up.checked; saveDraft(); });
+    var so = document.getElementById('fb-shoutouts'); if (so) so.addEventListener('input', function () { S.a.shoutouts = so.value; saveDraft(); });
+    Array.prototype.forEach.call(form.querySelectorAll('[data-fb-other]'), function (ta) {
+      ta.addEventListener('input', function () {
+        var key = ta.getAttribute('data-fb-other');
+        S.a[key] = ta.value;
+        var cnt = form.querySelector('[data-fb-other-count="' + key + '"]'); if (cnt) cnt.textContent = ta.value.length + ' / 300';
+        saveDraft();
+      });
+    });
     var sg = document.getElementById('fb-suggestion'); if (sg) sg.addEventListener('input', function () { S.a.suggestion = sg.value; saveDraft(); });
     var em = document.getElementById('fb-email'); if (em) em.addEventListener('input', function () { S.a.email = em.value; });
     var nm = document.getElementById('fb-name'); if (nm) nm.addEventListener('input', function () { S.a.name = nm.value; saveDraft(); });
@@ -472,6 +497,13 @@
     if ((v = t.getAttribute('data-fb-would')) !== null) { S.a.would = S.a.would === v ? '' : v; setOn('[data-fb-would]', 'data-fb-would', S.a.would); saveDraft(); return; }
     if ((v = t.getAttribute('data-fb-heard')) !== null) { S.a.heard = S.a.heard === v ? '' : v; setOn('[data-fb-heard]', 'data-fb-heard', S.a.heard, 'aria-pressed'); saveDraft(); return; }
     if ((v = t.getAttribute('data-fb-kind')) !== null) { S.a.kind = S.a.kind === v ? '' : v; setOn('[data-fb-kind]', 'data-fb-kind', S.a.kind); saveDraft(); return; }
+    if ((v = t.getAttribute('data-fb-other-toggle')) !== null) {
+      var box = t.parentNode.querySelector('.fb-other-field'), opening = box.hidden;
+      box.hidden = !opening;
+      t.setAttribute('aria-expanded', opening ? 'true' : 'false');
+      if (opening) box.querySelector('textarea').focus();
+      return;
+    }
     if ((v = t.getAttribute('data-fb-starter')) !== null) {
       var ta = document.getElementById('fb-comment');
       var add = STARTERS[+v];
@@ -521,7 +553,7 @@
     if (inPreview()) { showError('You’re previewing someone’s account, so nothing can be sent.'); return; }
     var btn = root.querySelector('.fb-send');
     btn.disabled = true; btn.textContent = 'Sending…';
-    supabaseClient.rpc('submit_event_feedback', {
+    var params = {
       p_event_slug: S.event.slug, p_rating: a.rating, p_liked: a.liked, p_improve: a.improve,
       p_comment: a.comment.trim() || null, p_would_return: a.would || null, p_heard_from: a.heard || null,
       p_suggestion: a.suggestion.trim() || null, p_anonymous: !!a.anonymous, p_quote_ok: !!a.quote,
@@ -529,6 +561,18 @@
       p_guest_kind: guestMode ? (a.kind || null) : null, p_wants_updates: guestMode ? !!a.updates : false,
       p_website: (document.getElementById('fb-website') || {}).value || null,
       p_source: S.src || null
+    };
+    // The typed answers are only sent when there is something to send.
+    var typed = {};
+    if (a.likedOther.trim()) typed.p_liked_other = a.likedOther.trim();
+    if (a.improveOther.trim()) typed.p_improve_other = a.improveOther.trim();
+    if (a.shoutouts.trim()) typed.p_shoutouts = a.shoutouts.trim();
+    supabaseClient.rpc('submit_event_feedback', Object.assign({}, params, typed)).then(function (res) {
+      // Before migration 103 the typed answers aren't understood: send the rest so nothing breaks.
+      if (res.error && Object.keys(typed).length && /Could not find the function|schema cache/i.test(res.error.message || '')) {
+        return supabaseClient.rpc('submit_event_feedback', params);
+      }
+      return res;
     }).then(function (res) {
       if (res.error) {
         btn.disabled = false; btn.textContent = 'Send feedback';

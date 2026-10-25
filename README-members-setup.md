@@ -1791,3 +1791,13 @@ Update: Dashboard -> Feedback was missing its styling entirely (it showed as uns
 
 Update: **Copy image** in the QR studio now works everywhere it should. It is on every saved code in your library as well as in the editor, it works in Safari and Chrome, and a trackable code that hasn't been saved yet is saved to your library automatically the first time you download, copy or print it (it needs a name). If a browser won't let the page copy images, a window opens with the code to copy by hand or save.
 
+
+
+## 159. Typed answers and "who made the night valuable?" on the feedback form
+
+**Run in Supabase (safe to repeat):** `103-feedback-typed-answers.sql` (after 100 and 101). Until it's run, the form still works: the typed answers are simply not saved.
+
+- **Type as well as tap.** Under "What went well?" and "What could be better?" there is now a "+ Something else?" box for a few typed words (up to 300 characters), alongside the tap-to-pick reasons.
+- **New optional question: "Who made the night valuable?"** Attendees can name a person or a team they'd like to thank (up to 300 characters). It sits before "Anything else?", which is now question 6.
+- **Dashboard -> Feedback:** typed answers show on each response ("Also went well", "Could be better", "Thanked") and gather under "In their own words". A new **Who made the night valuable** chart counts the names people typed (a simple count of the names as written, so "Ama" and "ama" are one, but "Ama" and "Ama S." are two). There is a **Thank-yous** filter, and the CSV has three new columns. "Hide from partners" now also covers typed answers.
+- **Partner spaces:** typed answers appear with the comments, under the same rules (only what people said we may quote, unless the space shows all comments; never anything you've hidden). The thank-you names show only if the space has **Thank-yous** ticked (off by default, because they name individuals).
