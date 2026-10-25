@@ -218,6 +218,7 @@
         '<div class="qs-actions"><button type="button" class="btn btn-outline" data-qs-edit="' + esc(c.id) + '">Edit</button>' +
         '<button type="button" class="btn btn-outline" data-qs-dl="' + esc(c.id) + '">PNG</button>' +
         '<button type="button" class="btn btn-outline" data-qs-dl-svg="' + esc(c.id) + '">SVG</button>' +
+        '<button type="button" class="btn btn-outline" data-qs-copy-img="' + esc(c.id) + '">Copy</button>' +
         (tracked ? '<button type="button" class="btn btn-outline" data-qs-stats="' + esc(c.id) + '">' + (S.statsOpen === c.id ? 'Hide scans' : 'Scans') + '</button>' : '') + '</div>' +
         '<div class="qs-more">' + (tracked ? '<button type="button" class="guide-linkbtn" data-qs-copy="' + esc(link) + '">Copy short link</button><button type="button" class="guide-linkbtn" data-qs-toggle="' + esc(c.id) + '">' + (c.is_active ? 'Pause' : 'Resume') + '</button>' : '') +
         '<button type="button" class="guide-linkbtn" data-qs-dup="' + esc(c.id) + '">Duplicate</button><button type="button" class="guide-linkbtn" data-qs-del="' + esc(c.id) + '">Delete</button></div>' +
@@ -345,8 +346,7 @@
     box.innerHTML = '<div class="qs-verdict qs-verdict--' + chk.level + '"><strong>' + labels[chk.level] + '</strong><span>' + chk.modules + ' squares across · print at least ' + chk.printCm + ' cm wide</span></div>' +
       '<ul class="qs-notes">' + chk.notes.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>' +
       (out.ecc !== f.design.ecc ? '<p class="qs-hint">Error correction raised to ' + out.ecc + ' for the logo.</p>' : '');
-    if (note) note.textContent = blocked ? 'Save it first. Trackable codes can only be downloaded once they have their own short address.' : '';
-    Array.prototype.forEach.call(root.querySelectorAll('[data-qs-act="png"],[data-qs-act="svg"],[data-qs-act="copy"],[data-qs-act="print"]'), function (b) { b.disabled = blocked; });
+    if (note) note.textContent = blocked ? 'Downloading, copying or printing saves this code to your library first, so it gets its own short address.' : '';
   }
 
   // ---- Logo --------------------------------------------------------------------------------------------
@@ -378,9 +378,38 @@
 
   function sizeValue() { var s = root.querySelector('[data-qs-size]'); return s ? +s.value : 1024; }
 
-  function copyImage(text, design) {
-    if (!(navigator.clipboard && window.ClipboardItem)) { return Promise.reject(new Error('Your browser can’t copy images. Use Download PNG instead.')); }
-    return Q.pngBlob(text, design, 1024).then(function (b) { return navigator.clipboard.write([new window.ClipboardItem({ 'image/png': b })]); });
+  // Puts the picture on the clipboard. The picture is passed as a promise so it is still allowed
+  // when it has to be made (or the code saved) first. Browsers that can't copy images, or that
+  // block it, get a window with the picture to copy by hand (or download).
+  function copyPicture(blobPromise, button) {
+    var label = button ? button.textContent : '';
+    function done() {
+      if (button) { button.textContent = 'Copied \u2713'; setTimeout(function () { button.textContent = label; }, 1800); }
+      var fl = root.querySelector('[data-qs-flash]'); if (fl) fl.textContent = 'Image copied. Paste it into your slides, document or message.';
+    }
+    function fallback() {
+      return blobPromise.then(function (b) { showPictureDialog(b); }, function (e) { if (e && e.message !== 'SAVE') showError(e.message || 'Could not make the image.'); });
+    }
+    if (!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) return fallback();
+    var item;
+    try { item = new window.ClipboardItem({ 'image/png': blobPromise }); } catch (e) { return fallback(); }
+    return navigator.clipboard.write([item]).then(done, function (e) {
+      // Only offer the manual route when the picture itself was fine.
+      return blobPromise.then(function (b) { showPictureDialog(b); }, function (er) { if (er && er.message !== 'SAVE') showError(er.message || 'Could not copy the image.'); });
+    });
+  }
+  function showPictureDialog(blob) {
+    var url = URL.createObjectURL(blob);
+    var el = document.createElement('div');
+    el.className = 'qs-modal';
+    el.innerHTML = '<div class="qs-modal-box" role="dialog" aria-modal="true" aria-label="Copy the image"><button type="button" class="guide-close" data-close aria-label="Close">&times;</button>' +
+      '<h3>Copy the image</h3><p>Your browser doesn\u2019t let this page copy images automatically. <strong>Right-click the code (or press and hold on a phone) and choose \u201CCopy image\u201D</strong>, or save it.</p>' +
+      '<img src="' + url + '" alt="Your QR code"><div class="qs-dl-btns" style="grid-template-columns:1fr 1fr"><a class="btn btn-primary" href="' + url + '" download="qr-code.png">Save the image</a><button type="button" class="btn btn-outline" data-close>Close</button></div></div>';
+    function close() { el.remove(); URL.revokeObjectURL(url); document.removeEventListener('keydown', onKey, true); }
+    function onKey(ev) { if (ev.key === 'Escape') close(); }
+    el.addEventListener('click', function (ev) { if (ev.target === el || ev.target.hasAttribute('data-close')) close(); });
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(el);
   }
 
   function printCode(text, design, title, line) {
@@ -394,22 +423,29 @@
     setTimeout(function () { fr.contentWindow.focus(); fr.contentWindow.print(); setTimeout(function () { fr.remove(); }, 2000); }, 300);
   }
 
+  // Saves the code in the library. Resolves true when it worked (so callers can carry on).
   function save() {
     var f = S.f; clearError();
     var p = payloadOf(f);
-    if (!f.name.trim()) { showError('Give the code a name so you can find it later.'); var n = root.querySelector('#qs-name'); if (n) n.focus(); return; }
-    if (p.error) { showError(p.error); return; }
+    if (!f.name.trim()) { showError('Give the code a name so you can find it later.'); var n = root.querySelector('#qs-name'); if (n) n.focus(); return Promise.resolve(false); }
+    if (p.error) { showError(p.error); return Promise.resolve(false); }
     var design = clone(f.design); design.fields = fieldsToSave(f);
     var btn = root.querySelector('.qs-save-btn'); if (btn) btn.disabled = true;
-    supabaseClient.rpc('qr_save', { p_id: f.id, p_data: { name: f.name.trim(), kind: f.kind, mode: canTrack(f) ? f.mode : 'direct', payload: p.text, design: design } }).then(function (res) {
+    return supabaseClient.rpc('qr_save', { p_id: f.id, p_data: { name: f.name.trim(), kind: f.kind, mode: canTrack(f) ? f.mode : 'direct', payload: p.text, design: design } }).then(function (res) {
       if (btn) btn.disabled = false;
-      if (res.error) { showError(res.error.message); return; }
+      if (res.error) { showError(res.error.message); return false; }
       f.id = res.data.id; f.code = res.data.code;
       if (!canTrack(f)) f.mode = 'direct';
       S.flash = 'Saved to your library.' + (isTracked(f) ? ' This code is live: you can print it now.' : '');
       S.loaded = false; S.loading = false;
-      load().then(function () { S.view = 'edit'; render(); });
-    });
+      return load().then(function () { S.view = 'edit'; render(); return true; });
+    }, function () { if (btn) btn.disabled = false; showError('Couldn\u2019t save. Check your connection and try again.'); return false; });
+  }
+  // A trackable code needs its short address before it can be downloaded, copied or printed:
+  // the first time, it is saved to the library automatically.
+  function ensureSaved(f) {
+    if (isTracked(f) && !f.code) return save();
+    return Promise.resolve(true);
   }
 
   root.addEventListener('input', function (e) {
@@ -469,6 +505,12 @@
       Q.download(text, fileBase(row.name), t.hasAttribute('data-qs-dl-svg') ? 'svg' : 'png', Object.assign({}, BASE, dg, { size: 2048 }));
       return;
     }
+    if ((v = t.getAttribute('data-qs-copy-img')) !== null) {
+      var cr = byId(v); if (!cr) return;
+      var cdg = clone(cr.design || {}); delete cdg.fields;
+      copyPicture(Q.pngBlob(cr.mode === 'tracked' ? shortLink(cr.code) : cr.payload, Object.assign({}, BASE, cdg), 1024), t);
+      return;
+    }
     if ((v = t.getAttribute('data-qs-copy')) !== null) {
       (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(v) : Promise.reject()).then(function () { t.textContent = 'Copied'; setTimeout(function () { t.textContent = 'Copy short link'; }, 1500); }, function () { window.prompt('Copy this link:', v); });
       return;
@@ -510,14 +552,26 @@
       return;
     }
     if ((v = t.getAttribute('data-qs-act')) !== null) {
-      var enc = encoded(f);
       if (v === 'save') { save(); return; }
-      if (enc.error) { showError(enc.error); return; }
+      var first = encoded(f);
+      if (first.error) { showError(first.error); return; }
       clearError();
-      if (v === 'png') Q.download(enc.text, fileBase(f.name || 'code'), 'png', Object.assign({}, f.design, { size: sizeValue() })).then(null, function (er) { showError(er.message); });
-      else if (v === 'svg') Q.download(enc.text, fileBase(f.name || 'code'), 'svg', Object.assign({}, f.design, { size: 1024 }));
-      else if (v === 'copy') copyImage(enc.text, f.design).then(function () { var fl = root.querySelector('[data-qs-flash]'); if (fl) fl.textContent = 'Image copied.'; }, function (er) { showError(er.message); });
-      else if (v === 'print') printCode(enc.text, f.design, f.name || (f.design.caption || 'QR code'), enc.final && f.kind !== 'wifi' ? enc.final : '');
+      if (v === 'copy') {
+        // Made inside the click so Safari and Chrome still allow the clipboard.
+        var ready = ensureSaved(f).then(function (ok) {
+          if (!ok) throw new Error('SAVE');
+          return Q.pngBlob(encoded(f).text, f.design, 1024);
+        });
+        copyPicture(ready, t);
+        return;
+      }
+      ensureSaved(f).then(function (ok) {
+        if (!ok) return;
+        var enc = encoded(f);
+        if (v === 'png') Q.download(enc.text, fileBase(f.name || 'code'), 'png', Object.assign({}, f.design, { size: sizeValue() })).then(null, function (er) { showError(er.message); });
+        else if (v === 'svg') Q.download(enc.text, fileBase(f.name || 'code'), 'svg', Object.assign({}, f.design, { size: 1024 }));
+        else if (v === 'print') printCode(enc.text, f.design, f.name || (f.design.caption || 'QR code'), enc.final && f.kind !== 'wifi' ? enc.final : '');
+      });
     }
   });
 

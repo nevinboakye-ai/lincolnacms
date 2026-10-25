@@ -1789,3 +1789,5 @@ Good to know: trackable codes depend on the website staying up (and keeping the 
 
 Update: Dashboard -> Feedback was missing its styling entirely (it showed as unstyled blocks). It now has a toolbar, clear sections (At a glance, How it went, What people said, Every response), matching tiles and charts, a tidier "By event" table, and readable response cards, on desktop and phone.
 
+Update: **Copy image** in the QR studio now works everywhere it should. It is on every saved code in your library as well as in the editor, it works in Safari and Chrome, and a trackable code that hasn't been saved yet is saved to your library automatically the first time you download, copy or print it (it needs a name). If a browser won't let the page copy images, a window opens with the code to copy by hand or save.
+
