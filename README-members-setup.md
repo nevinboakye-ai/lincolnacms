@@ -1801,3 +1801,29 @@ Update: **Copy image** in the QR studio now works everywhere it should. It is on
 - **New optional question: "Who made the night valuable?"** Attendees can name a person or a team they'd like to thank (up to 300 characters). It sits before "Anything else?", which is now question 6.
 - **Dashboard -> Feedback:** typed answers show on each response ("Also went well", "Could be better", "Thanked") and gather under "In their own words". A new **Who made the night valuable** chart counts the names people typed (a simple count of the names as written, so "Ama" and "ama" are one, but "Ama" and "Ama S." are two). There is a **Thank-yous** filter, and the CSV has three new columns. "Hide from partners" now also covers typed answers.
 - **Partner spaces:** typed answers appear with the comments, under the same rules (only what people said we may quote, unless the space shows all comments; never anything you've hidden). The thank-you names show only if the space has **Thank-yous** ticked (off by default, because they name individuals).
+
+
+## 160. Customise the feedback forms (Dashboard -> Feedback -> Forms)
+
+**Run in Supabase (safe to repeat):** `104-feedback-forms.sql` (after 100, 101 and 103). Until it is run the website carries on with the original fixed form, and the Forms tab says it needs the migration.
+
+**Where:** Dashboard -> Feedback now has two tabs, **Results** and **Forms**. The Forms tab lists the *default form* (used by every event that has none of its own) and each event. Press **Customise** / **Give it its own form** / **Edit**.
+
+**Build a form** (like the editor on a phone or a computer):
+- **Sections and questions.** Add as many sections (up to 10) and questions (up to 40 in total) as you like. Question types: *Pick one*, *Pick several* (with a limit), *Scale or rating* (1 to 5 as numbers, stars or faces, or 0 to 10 for a "how likely to recommend" score), *Yes or no*, *Short answer*, *Long answer*, and *Heading or note* (text on the page). The built-in questions (overall rating, what went well, what could be better, would you come again, who made the night valuable, anything else, how did you hear, an event idea) can be kept, reworded, made required or removed and added back.
+- **Polls.** Switch **Make it a live poll** on a pick-one, pick-several or yes/no question: after answering, people see how everyone is voting. Results only show once **5 people** have answered, so nobody is picked out.
+- **"Other".** Pick-one and pick-several questions can offer an "Other" with a text box.
+- **Show only if...** A question can appear only when an earlier answer matches (for example ask "What made it your favourite?" only if they picked Mario Kart, or "What went wrong?" only if the rating is 2 or below). Answers hidden again are cleared, not sent.
+- **Required**, helper text, a **partner page** switch per question (see below), duplicate, remove (with Undo), reorder by dragging the handle or with the up/down arrows, and move between sections.
+- **Templates.** *Templates* offers ready-made whole forms (Standard, Quick pulse, Social night, Workshop or talk, Mentoring session, Charity or fundraiser, Collaboration with a partner, "Would you recommend us?" NPS), and you can copy another event's form. Inside a section there are ready-made questions (venue, organisation, value, food, recommend 0 to 10, polls for the next theme and the best day, yes/no, favourite moment...), and *Ready-made section* adds a whole group (the venue, the speakers, looking ahead, about you, follow-up).
+- **Settings tab.** Form heading, welcome message, thank-you message, the text on the send button, **who can answer** (everyone, or LACMS members only), an optional **closing date**, whether members may reply anonymously, whether to ask permission to quote comments, and whether guests are invited to join LACMS afterwards.
+
+**Draft, preview, publish.** Nothing changes for the public until you press **Publish**. *Save draft* keeps your work; *Preview* shows exactly how the draft looks on a phone or a computer (you can fill it in to test it; nothing is sent); *Publish* shows a short summary first. A small bar at the bottom of the screen keeps Save and Publish in reach while you work, and a copy of unsaved changes is kept in your browser in case the page is closed. The **History** tab keeps the last 30 published versions: restore one as your draft, then publish if you want it. You can also throw away a draft or send an event back to the default form.
+
+**Past answers are safe.** Changing a form never changes what people already sent. A question you remove is remembered, so its answers still show in Results ("Removed from the form").
+
+**Who can edit the forms.** The president always can. To let others, open **Hub Access** and give **Dashboard: Edit feedback forms** to a role or to named people. It is closed by default. Seeing the results stays separate (**Dashboard: Feedback**); someone who may edit forms but not read results sees only the Forms tab.
+
+**Results.** Dashboard -> Feedback shows a card for each of your own questions on the event you pick (counts for choices and yes/no, a distribution and average for scales, typed answers as quotes), each response card shows its answers, and the CSV gets one column per question. A form that leaves out the overall rating simply has no average. **Partner pages** show the questions you marked *Show on the partner page* (counts, averages and typed answers under the same quote rules as comments).
+
+**Safety.** The database checks every form when it is saved (types, options, limits, "show only if" rules that point at earlier questions) and every answer when it is sent against the form that is live, including required questions, option lists, the "pick up to" limit, the closing date, and members-only forms.

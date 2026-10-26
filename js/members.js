@@ -5151,6 +5151,8 @@
           DASH_SHARED_SECTIONS.forEach(function (sec) {
             dashAllowed[sec] = !!(access[DASH_FEATURE_FOR[sec]] && access[DASH_FEATURE_FOR[sec]].allowed);
           });
+          // Being allowed to edit the feedback forms opens the Feedback section too (it shows just the Forms tab).
+          if (access.dash_feedback_edit && access.dash_feedback_edit.allowed) dashAllowed.feedback = true;
           dashAllowed.sankofahub = managesSankofa;
           if (DASH_SHARED_SECTIONS.some(function (sec) { return dashAllowed[sec]; })) {
             enterDashboard(session, 'exec_committee');
@@ -7208,6 +7210,7 @@
       { key: 'dash_qr', label: 'Dashboard: QR codes', short: 'QR codes', desc: 'Design QR codes (colours, logo, caption), put any link behind them, track scans, and keep a library. The Executive Committee has it by default.', dash: true },
       { key: 'dash_partners', label: 'Dashboard: Partners', short: 'Partners', desc: 'Create private, read-only spaces so collaborating partners can follow the feedback and numbers for shared events. Closed by default: it shares information outside LACMS.', dash: true },
       { key: 'dash_feedback', label: 'Dashboard: Feedback', short: 'Feedback', desc: 'What people said about each event: ratings, comments, the feedback link and QR code. Guests\' emails are visible. Anonymous members show no name.', dash: true },
+      { key: 'dash_feedback_edit', label: 'Dashboard: Edit feedback forms', short: 'Edit forms', desc: 'Build and change the feedback forms: add sections, questions and polls, use templates, preview and publish. Closed by default: the president can always do it. Results are controlled separately by Dashboard: Feedback.', dash: true },
       { key: 'dash_email', label: 'Dashboard: Email', short: 'Email', desc: 'Write emails to groups or people you choose and see what has been sent. They can email any member, professional or applicant.', dash: true }
     ];
     var HUB_ROLE_ORDER = ['member', 'executive_committee', 'supporting_committee', 'senior_sankofa_mentor', 'junior_sankofa_mentor'];

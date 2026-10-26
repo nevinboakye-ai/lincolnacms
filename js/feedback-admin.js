@@ -19,12 +19,15 @@
   var L = window.LACMS_FEEDBACK_LABELS || { liked: {}, improve: {}, heard: {}, kind: {}, returning: {} };
   var LIKED = L.liked, IMPROVE = L.improve, HEARD = L.heard, KIND = L.kind, RETURN = L.returning;
 
-  var state = { loaded: false, loading: false, error: '', rows: [], regs: {}, events: [], event: 'all', filter: 'all', qr: null };
+  var FBD = window.LACMS_FB;
+  var state = { loaded: false, loading: false, error: '', rows: [], regs: {}, events: [], event: 'all', filter: 'all', qr: null, view: 'results', canEdit: false, noResults: false, custom: {} };
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
   function pct(n, d) { return d ? Math.round(n / d * 100) : 0; }
-  function avg(rows) { return rows.length ? rows.reduce(function (t, r) { return t + r.rating; }, 0) / rows.length : 0; }
+  // A form can leave out the overall rating, so some replies have none.
+  function rated(rows) { return rows.filter(function (r) { return typeof r.rating === 'number'; }); }
+  function avg(rows) { var rr = rated(rows); return rr.length ? rr.reduce(function (t, r) { return t + r.rating; }, 0) / rr.length : 0; }
   function when(iso) {
     var d = new Date(iso); if (isNaN(d)) return '';
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -39,9 +42,17 @@
     Promise.all([
       supabaseClient.rpc('president_get_feedback'),
       supabaseClient.rpc('president_feedback_registrations'),
-      supabaseClient.from('site_events').select('slug, name, starts_on, date_text').order('starts_on', { ascending: false, nullsFirst: false })
+      supabaseClient.from('site_events').select('slug, name, starts_on, date_text').order('starts_on', { ascending: false, nullsFirst: false }),
+      Promise.resolve(supabaseClient.rpc('feedback_forms_can_edit')).then(function (r) { return r; }, function () { return { error: { message: 'x' } }; })
     ]).then(function (res) {
       state.loading = false;
+      var ce = res[3] || {};
+      // The Forms tab is for people who may edit forms (it also shows if migration 104 isn't run yet, to say so).
+      state.canEdit = ce.data === true || !!(ce.error && /Could not find the function|schema cache|does not exist/i.test(ce.error.message || ''));
+      if (res[0].error && /Not authorized/i.test(res[0].error.message || '') && state.canEdit) {
+        // allowed to edit forms but not to read the results
+        state.noResults = true; state.view = 'forms'; state.error = ''; state.rows = []; state.loaded = true; render(); return;
+      }
       if (res[0].error) {
         state.error = /Could not find the function|schema cache|does not exist/i.test(res[0].error.message || '')
           ? 'Feedback needs migration 100 to be run in Supabase (see README-members-setup.md, section 155).'
@@ -84,19 +95,31 @@
   }
 
   // ---- Drawing ------------------------------------------------------------------------
+  function viewTabs() {
+    if (!state.canEdit || state.noResults) return '';
+    return '<div class="fbb-tabs fba-viewtabs" role="tablist">' + [['results', 'Results'], ['forms', 'Forms']].map(function (t) {
+      return '<button type="button" role="tab" class="fbb-tab' + (state.view === t[0] ? ' is-on' : '') + '" data-fba-view="' + t[0] + '">' + t[1] + '</button>';
+    }).join('') + '</div>';
+  }
   function render() {
     if (!state.loaded) return;
     if (state.error) { root.innerHTML = '<div class="form-note"><span>' + esc(state.error) + '</span></div>'; return; }
+    if (state.view === 'forms' && state.canEdit && window.lacmsFeedbackBuilder) {
+      root.innerHTML = viewTabs() + '<div id="fbb-root"></div>';
+      window.lacmsFeedbackBuilder.mount(document.getElementById('fbb-root'));
+      return;
+    }
     var rows = selected();
+    rows.forEach(function (r) { if (hasAnswers(r)) loadCustom(r.event_slug); });
     var ev = state.event === 'all' ? null : state.events.filter(function (e) { return e.slug === state.event; })[0];
-    var html = toolbarHtml(ev);
+    var html = viewTabs() + toolbarHtml(ev);
     if (!state.rows.length) {
       html += '<div class="fba-empty"><h3>No feedback yet</h3><p>Share an event’s feedback link (or its QR code) at the end of the night and replies will appear here. People who registered are also nudged on their Members Hub.</p></div>';
       root.innerHTML = html + qrHtml();
       return;
     }
     if (!ev) html += eventsTable();
-    html += rows.length ? summaryHtml(rows, ev) + detailHtml(rows) + commentsHtml(rows, !ev) : '<div class="fba-empty"><p>No responses for this event yet.</p></div>';
+    html += rows.length ? summaryHtml(rows, ev) + detailHtml(rows) + (ev ? customHtml(ev, rows) : '') + commentsHtml(rows, !ev) : '<div class="fba-empty"><p>No responses for this event yet.</p></div>';
     root.innerHTML = html + qrHtml();
   }
 
@@ -123,14 +146,14 @@
   function eventsTable() {
     var list = state.events.map(function (e) {
       var rs = state.rows.filter(function (r) { return r.event_slug === e.slug; });
-      return { e: e, n: rs.length, avg: avg(rs), back: pct(rs.filter(function (r) { return r.would_return === 'yes'; }).length, rs.length), reg: state.regs[e.slug] || 0 };
+      return { e: e, n: rs.length, avg: avg(rs), nr: rated(rs).length, back: pct(rs.filter(function (r) { return r.would_return === 'yes'; }).length, rs.length), reg: state.regs[e.slug] || 0 };
     }).filter(function (x) { return x.n > 0; });
     if (!list.length) return '';
     return '<div class="fba-card"><h3>By event</h3><div class="fba-table" role="table">' +
       '<div class="fba-tr fba-th" role="row"><span role="columnheader">Event</span><span role="columnheader">Replies</span><span role="columnheader">Rating</span><span role="columnheader">Come again</span></div>' +
       list.map(function (x) {
         return '<button type="button" class="fba-tr" role="row" data-fba-open="' + esc(x.e.slug) + '"><span class="fba-name">' + esc(x.e.name) + '</span>' +
-          '<span>' + x.n + (x.reg ? ' <small>of ' + x.reg + '</small>' : '') + '</span><span><strong>' + x.avg.toFixed(1) + '</strong> <small class="fba-stars">' + stars(x.avg) + '</small></span><span>' + x.back + '%</span></button>';
+          '<span>' + x.n + (x.reg ? ' <small>of ' + x.reg + '</small>' : '') + '</span><span>' + (x.nr ? '<strong>' + x.avg.toFixed(1) + '</strong> <small class="fba-stars">' + stars(x.avg) + '</small>' : '\u2013') + '</span><span>' + x.back + '%</span></button>';
       }).join('') + '</div></div>';
   }
 
@@ -156,7 +179,7 @@
   }
 
   function summaryHtml(rows, ev) {
-    var n = rows.length, a = avg(rows);
+    var n = rows.length, a = avg(rows), nr = rated(rows).length;
     var dist = [5, 4, 3, 2, 1].map(function (v) { return { v: v, n: rows.filter(function (r) { return r.rating === v; }).length }; });
     var w = { yes: 0, maybe: 0, no: 0 };
     rows.forEach(function (r) { if (r.would_return) w[r.would_return]++; });
@@ -165,14 +188,14 @@
     rows.forEach(function (r) { kinds[r.respondent] = (kinds[r.respondent] || 0) + 1; });
     var anon = rows.filter(function (r) { return r.anonymous; }).length;
     var reg = ev ? state.regs[ev.slug] : Object.keys(state.regs).reduce(function (t, k) { return t + state.regs[k]; }, 0);
-    var low = rows.filter(function (r) { return r.rating <= 2; }).length;
+    var low = rows.filter(function (r) { return typeof r.rating === 'number' && r.rating <= 2; }).length;
     var seg = [['member', 'Members', kinds.member], ['professional', 'Professionals', kinds.professional], ['guest', 'Guests', kinds.guest]].filter(function (x) { return x[2] > 0; });
     var tiles = tile('Replies', n, ev && reg ? pct(n, reg) + '% of the ' + reg + ' who registered' : (n === 1 ? 'reply so far' : 'replies so far')) +
-      tile('Average rating', a.toFixed(1) + '<small> / 5</small>', 'from ' + plural(n, 'reply', 'replies'), 'fba-tile--rating', '<span class="fba-stars" aria-hidden="true">' + stars(a) + '</span>') +
+      (nr ? tile('Average rating', a.toFixed(1) + '<small> / 5</small>', 'from ' + plural(nr, 'rating', 'ratings'), 'fba-tile--rating', '<span class="fba-stars" aria-hidden="true">' + stars(a) + '</span>') : tile('Average rating', '\u2013', 'This form has no overall rating')) +
       tile('Would come again', answered ? pct(w.yes, answered) + '%' : '\u2013', answered ? pct(w.maybe, answered) + '% maybe \u00B7 ' + pct(w.no, answered) + '% not really' : 'No answers yet') +
       tile('Low ratings', low, low ? '1 or 2 stars: worth a look' : 'None: nice', low ? 'fba-tile--warn' : '');
-    var rated = '<div class="fba-card"><h3>How people rated it</h3><ul class="fba-dist">' + dist.map(function (d) {
-      return '<li><span>' + d.v + ' \u2605</span><span class="fba-bar"><span style="width:' + pct(d.n, n) + '%"></span></span><span class="fba-bar-n">' + d.n + '</span></li>';
+    var ratedCard = '<div class="fba-card"><h3>How people rated it</h3><ul class="fba-dist">' + dist.map(function (d) {
+      return '<li><span>' + d.v + ' \u2605</span><span class="fba-bar"><span style="width:' + pct(d.n, nr) + '%"></span></span><span class="fba-bar-n">' + d.n + '</span></li>';
     }).join('') + '</ul></div>';
     var who = '<div class="fba-card"><h3>Who replied</h3><div class="fba-split" role="img" aria-label="' + esc(seg.map(function (x) { return x[1] + ' ' + x[2]; }).join(', ')) + '">' +
       seg.map(function (x, i) { return '<span class="fba-split-' + (i % 3) + '" style="width:' + pct(x[2], n) + '%"></span>'; }).join('') + '</div>' +
@@ -181,7 +204,7 @@
       (answered ? '<h4>Would they come again?</h4><div class="fba-split"><span class="fba-split-g" style="width:' + pct(w.yes, answered) + '%"></span><span class="fba-split-0" style="width:' + pct(w.maybe, answered) + '%"></span><span class="fba-split-m" style="width:' + pct(w.no, answered) + '%"></span></div>' +
         '<ul class="fba-legend"><li><i class="fba-split-g"></i>Yes <strong>' + w.yes + '</strong></li><li><i class="fba-split-0"></i>Maybe <strong>' + w.maybe + '</strong></li><li><i class="fba-split-m"></i>Probably not <strong>' + w.no + '</strong></li></ul>' : '') + '</div>';
     return section('At a glance', ev ? '' : 'All events') + '<div class="fba-tiles">' + tiles + '</div>' +
-      section('How it went') + '<div class="fba-two">' + rated + who + '</div>';
+      section('How it went') + '<div class="fba-two">' + ratedCard + who + '</div>';
   }
 
   function detailHtml(rows) {
@@ -196,6 +219,57 @@
       (heardList.length || ideas.length ? '<div class="fba-two">' +
         '<div class="fba-card"><h3>How people heard</h3>' + (heardList.length ? bars(heardList, HEARD, heardList.reduce(function (t, x) { return t + x.n; }, 0)) : '<p class="sh-muted">Not answered yet.</p>') + '</div>' +
         '<div class="fba-card"><h3>Events people would love</h3>' + (ideas.length ? '<ul class="fba-ideas">' + ideas.map(function (r) { return '<li>' + esc(r.suggestion) + '</li>'; }).join('') + '</ul>' : '<p class="sh-muted">No ideas yet.</p>') + '</div></div>' : '');
+  }
+
+  // ---- The questions you wrote yourself ----------------------------------------------------------
+  function hasAnswers(r) { return r.answers && typeof r.answers === 'object' && Object.keys(r.answers).length > 0; }
+  function loadCustom(slug) {
+    if (state.custom[slug]) return;
+    state.custom[slug] = { loading: true, items: [] };
+    Promise.resolve(supabaseClient.rpc('feedback_form_results', { p_slug: slug })).then(function (res) {
+      state.custom[slug] = res.error ? { error: true, items: [] } : { items: res.data || [] };
+      if (state.view === 'results') render();
+    }, function () { state.custom[slug] = { error: true, items: [] }; });
+  }
+  function customCard(it) {
+    var list = FBD ? FBD.resultList(it) : [];
+    var head = '<h3>' + esc(it.title) + (it.archived ? ' <span class="fba-chip is-warn">Removed from the form</span>' : '') + '</h3><p class="fba-note">' + plural(it.total, 'answer', 'answers') + '</p>';
+    var body = '';
+    if (it.type === 'scale') {
+      body += (it.avg !== null && it.avg !== undefined ? '<p class="fba-avg"><strong>' + Number(it.avg).toFixed(1) + '</strong><small> average, out of ' + it.max + '</small></p>' : '');
+    }
+    if (list.length) {
+      body += '<ul class="fba-bars">' + list.map(function (x) {
+        return '<li><span class="fba-bar-label">' + esc(x.label) + '</span><span class="fba-bar"><span style="width:' + (x.n ? Math.max(4, pct(x.n, it.total)) : 0) + '%"></span></span><span class="fba-bar-n">' + x.n + '</span></li>';
+      }).join('') + '</ul>';
+    }
+    var texts = it.texts || [];
+    if (texts.length) {
+      body += '<h4>' + (it.type === 'text' || it.type === 'longtext' ? 'In their own words' : 'Typed under \u201COther\u201D') + '</h4><ul class="fba-typed">' + texts.slice(0, 12).map(function (t) { return '<li>\u201C' + esc(t) + '\u201D</li>'; }).join('') + '</ul>' +
+        (texts.length > 12 ? '<p class="fba-note">And ' + (texts.length - 12) + ' more in the responses below.</p>' : '');
+    }
+    if (!body) body = '<p class="sh-muted">No answers yet.</p>';
+    return '<div class="fba-card">' + head + body + '</div>';
+  }
+  function customHtml(ev, rows) {
+    if (!rows.some(hasAnswers)) return '';
+    loadCustom(ev.slug);
+    var c = state.custom[ev.slug];
+    if (!c || !c.items || !c.items.length) return '';
+    var items = c.items.filter(function (it) { return it.total > 0 || !it.archived; });
+    if (!items.length) return '';
+    return section('Your own questions', 'Questions added to this event\u2019s form') + '<div class="fba-two">' + items.map(customCard).join('') + '</div>';
+  }
+  // The answers to your own questions inside one response card.
+  function customLines(r) {
+    if (!hasAnswers(r)) return '';
+    var c = state.custom[r.event_slug];
+    if (!c || !c.items || !c.items.length) return '';
+    var lines = c.items.filter(function (it) { return r.answers[it.id]; }).map(function (it) {
+      var t = FBD ? FBD.answerText(it, r.answers[it.id]) : '';
+      return t ? '<p class="fba-typed-line"><b>' + esc(it.title) + '</b> ' + esc(t) + '</p>' : '';
+    }).join('');
+    return lines;
   }
 
   function typedList(rows, field) {
@@ -227,7 +301,7 @@
     var list = rows.filter(function (r) {
       if (f === 'comments') return !!r.comment;
       if (f === 'thanks') return !!r.shoutouts;
-      if (f === 'low') return r.rating <= 2;
+      if (f === 'low') return typeof r.rating === 'number' && r.rating <= 2;
       if (f === 'quote') return r.quote_ok && r.comment;
       if (f === 'members') return r.respondent !== 'guest';
       if (f === 'guests') return r.respondent === 'guest';
@@ -238,7 +312,8 @@
       '<div class="fba-tabs" role="tablist">' + tabs.map(function (t) { return '<button type="button" class="fba-tab' + (f === t[0] ? ' is-on' : '') + '" data-fba-filter="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div></div>' +
       (list.length ? '<ul class="fba-list">' + list.slice(0, 200).map(function (r) {
         var chips = (r.liked || []).map(function (k) { return '<span class="fba-chip is-good">' + esc(LIKED[k] || k) + '</span>'; }).concat((r.improve || []).map(function (k) { return '<span class="fba-chip is-warn">' + esc(IMPROVE[k] || k) + '</span>'; })).join('');
-        return '<li class="fba-item"><div class="fba-item-top"><span class="fba-stars' + (r.rating <= 2 ? ' is-low' : '') + '" aria-label="' + r.rating + ' out of 5">' + stars(r.rating) + '</span>' +
+        var hasRating = typeof r.rating === 'number';
+        return '<li class="fba-item"><div class="fba-item-top">' + (hasRating ? '<span class="fba-stars' + (r.rating <= 2 ? ' is-low' : '') + '" aria-label="' + r.rating + ' out of 5">' + stars(r.rating) + '</span>' : '<span class="fba-stars is-none">No rating</span>') +
           '<span class="fba-meta">' + (showEvent ? '<strong>' + esc(r.event_name) + '</strong> · ' : '') + esc(when(r.created_at)) + '</span></div>' +
           '<div class="fba-who">' + who(r) + '</div>' +
           (r.comment ? '<p class="fba-comment">“' + esc(r.comment) + '”' + (r.partner_hidden ? ' <span class="fba-chip is-warn">Hidden from partners</span>' : '') + '</p>' : '') +
@@ -246,6 +321,7 @@
           (r.liked_other ? '<p class="fba-typed-line"><b>Also went well:</b> ' + esc(r.liked_other) + '</p>' : '') +
           (r.improve_other ? '<p class="fba-typed-line"><b>Could be better:</b> ' + esc(r.improve_other) + '</p>' : '') +
           (r.shoutouts ? '<p class="fba-typed-line fba-thanks"><b>Thanked:</b> ' + esc(r.shoutouts) + '</p>' : '') +
+          customLines(r) +
           '<div class="fba-item-foot"><span>' + [r.would_return ? esc(RETURN[r.would_return]) : '', r.quote_ok && r.comment ? 'OK to quote' : '', r.wants_updates ? 'Wants updates' : ''].filter(Boolean).join(' · ') + '</span>' +
           '<span class="fba-item-actions">' + ((r.comment || r.liked_other || r.improve_other || r.shoutouts) ? '<button type="button" class="guide-linkbtn" data-fba-hide="' + esc(r.id) + '" data-hidden="' + (r.partner_hidden ? '1' : '0') + '">' + (r.partner_hidden ? 'Show to partners' : 'Hide from partners') + '</button>' : '') +
           '<button type="button" class="guide-linkbtn" data-fba-delete="' + esc(r.id) + '">Delete</button></span></div></li>';
@@ -269,12 +345,33 @@
   function say(msg) { var el = root.querySelector('[data-fba-status]'); if (el) el.textContent = msg; }
 
   function csv() {
-    var cols = ['Event', 'Date', 'Who', 'Name', 'Email', 'Course', 'Year', 'Guest type', 'Rating', 'Would come again', 'Went well', 'Could be better', 'Also went well (typed)', 'Could be better (typed)', 'Who made the night valuable', 'Comment', 'How they heard', 'Event idea', 'OK to quote', 'Wants updates', 'Anonymous'];
+    var slugs = [];
+    selected().forEach(function (r) { if (hasAnswers(r) && slugs.indexOf(r.event_slug) === -1) slugs.push(r.event_slug); });
+    var need = slugs.filter(function (sl) { return !state.custom[sl] || state.custom[sl].loading; });
+    if (!need.length) { return csvNow(); }
+    say('Getting the answers to your own questions\u2026');
+    Promise.all(need.map(function (sl) {
+      return Promise.resolve(supabaseClient.rpc('feedback_form_results', { p_slug: sl })).then(function (res) { state.custom[sl] = res.error ? { error: true, items: [] } : { items: res.data || [] }; });
+    })).then(function () { say(''); csvNow(); }, function () { csvNow(); });
+  }
+  function csvNow() {
+    var customCols = [];            // the questions that got an answer in the selected replies
+    selected().forEach(function (r) {
+      var c = state.custom[r.event_slug];
+      if (!c || !c.items) return;
+      c.items.forEach(function (it) {
+        if (r.answers && r.answers[it.id] && !customCols.some(function (x) { return x.it.id === it.id && x.slug === r.event_slug; })) customCols.push({ it: it, slug: r.event_slug });
+      });
+    });
+    var multiEvent = state.event === 'all';
+    var cols = ['Event', 'Date', 'Who', 'Name', 'Email', 'Course', 'Year', 'Guest type', 'Rating', 'Would come again', 'Went well', 'Could be better', 'Also went well (typed)', 'Could be better (typed)', 'Who made the night valuable', 'Comment', 'How they heard', 'Event idea', 'OK to quote', 'Wants updates', 'Anonymous'].concat(customCols.map(function (x) { return (multiEvent ? x.slug + ': ' : '') + x.it.title; }));
     var q = function (v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     var lines = [cols.join(',')].concat(selected().map(function (r) {
       return [r.event_name, r.created_at ? r.created_at.slice(0, 10) : '', r.respondent, r.person_name, r.person_email, r.course, r.year_of_study, r.guest_kind ? KIND[r.guest_kind] : '',
         r.rating, r.would_return, (r.liked || []).map(function (k) { return LIKED[k] || k; }).join('; '), (r.improve || []).map(function (k) { return IMPROVE[k] || k; }).join('; '),
-        r.liked_other, r.improve_other, r.shoutouts, r.comment, r.heard_from ? HEARD[r.heard_from] || r.heard_from : '', r.suggestion, r.quote_ok ? 'yes' : '', r.wants_updates ? 'yes' : '', r.anonymous ? 'yes' : ''].map(q).join(',');
+        r.liked_other, r.improve_other, r.shoutouts, r.comment, r.heard_from ? HEARD[r.heard_from] || r.heard_from : '', r.suggestion, r.quote_ok ? 'yes' : '', r.wants_updates ? 'yes' : '', r.anonymous ? 'yes' : ''].concat(customCols.map(function (x) {
+          return x.slug === r.event_slug && r.answers && r.answers[x.it.id] && FBD ? FBD.answerText(x.it, r.answers[x.it.id]) : '';
+        })).map(q).join(',');
     }));
     var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a');
@@ -291,6 +388,11 @@
     var t = e.target.closest ? e.target.closest('button') : null;
     if (!t) return;
     var v;
+    if ((v = t.getAttribute('data-fba-view')) !== null) {
+      state.view = v; render();
+      if (v === 'forms') { var tb = root.querySelector('.fba-viewtabs'); if (tb && tb.scrollIntoView) tb.scrollIntoView({ block: 'nearest' }); }
+      return;
+    }
     if ((v = t.getAttribute('data-fba-open')) !== null) { state.event = v; state.filter = 'all'; render(); return; }
     if ((v = t.getAttribute('data-fba-filter')) !== null) { state.filter = v; render(); return; }
     if ((v = t.getAttribute('data-fba-copy')) !== null) {

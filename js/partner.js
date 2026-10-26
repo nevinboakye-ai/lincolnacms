@@ -104,10 +104,10 @@
     var glance = '';
     if (c.registered !== null && c.registered !== undefined) glance += tile('Members registered', c.registered, 'LACMS members who registered on the website');
     glance += tile('Feedback replies', n, c.registered ? pct(memberReplies, c.registered) + '% of registered members replied' : (n === 1 ? 'reply so far' : 'replies so far'));
-    if (n) {
+    if (n && s.avg_rating !== null && s.avg_rating !== undefined) {
       glance += tile('Average rating', Number(s.avg_rating).toFixed(1) + '<small> / 5</small>', n === 1 ? 'from 1 reply' : 'from ' + n + ' replies', 'pt-tile--rating', '<span class="pt-stars" aria-hidden="true">' + stars(s.avg_rating) + '</span>');
-      if (answered) glance += tile('Would come again', pct(would.yes, answered) + '%', pct(would.maybe, answered) + '% maybe · ' + pct(would.no, answered) + '% not really');
     }
+    if (n && answered) glance += tile('Would come again', pct(would.yes, answered) + '%', pct(would.maybe, answered) + '% maybe · ' + pct(would.no, answered) + '% not really');
     html += section('At a glance', c.name === 'All events' && D.events.length > 1 ? 'Across ' + D.events.length + ' events' : '') + '<div class="pt-tiles">' + glance + '</div>';
     if (s.via_partner) {
       html += '<div class="pt-via"><span class="pt-via-n">' + s.via_partner + '</span><span><strong>' + (s.via_partner === 1 ? 'reply' : 'replies') + ' came through your feedback link</strong> – ' + pct(s.via_partner, n) + '% of all replies. Thank you for sharing it.</span></div>';
@@ -116,7 +116,8 @@
   }
 
   function distHtml(s) {
-    var n = s.responses, d = s.rating_dist || [0, 0, 0, 0, 0];
+    var d = s.rating_dist || [0, 0, 0, 0, 0];
+    var n = d.reduce(function (t, x) { return t + x; }, 0);
     var w = s.would || { yes: 0, maybe: 0, no: 0 };
     var a = w.yes + w.maybe + w.no;
     var again = a ? '<h4>Would they come again?</h4>' +
@@ -144,8 +145,8 @@
     return html + '</div>';
   }
 
-  function barList(list, total, cls) {
-    return '<ul class="pt-bars">' + list.slice(0, 8).map(function (x) {
+  function barList(list, total, cls, all) {
+    return '<ul class="pt-bars">' + list.slice(0, all ? 40 : 8).map(function (x) {
       return '<li><span class="pt-bar-label">' + esc(x.label) + '</span><span class="pt-bar ' + (cls || '') + '"><span style="width:' + Math.max(4, pct(x.n, total)) + '%"></span></span><span class="pt-bar-n">' + x.n + '</span></li>';
     }).join('') + '</ul>';
   }
@@ -160,6 +161,22 @@
     return '<h4>In their own words</h4><ul class="pt-typed">' + list.slice(0, 6).map(function (t) { return '<li>\u201C' + esc(t) + '\u201D</li>'; }).join('') + '</ul>' +
       (list.length > 6 ? '<p class="pt-note">And ' + (list.length - 6) + ' more.</p>' : '');
   }
+  // Questions the committee added to this event's form and chose to share (migration 104).
+  function customBlock(c) {
+    var items = (c.event && c.event.custom) || (D.events.length === 1 && D.events[0].custom) || [];
+    items = items.filter(function (it) { return it.total > 0; });
+    if (!items.length || !window.LACMS_FB) return '';
+    return section('More from this event', 'Questions we added to the form') + '<div class="pt-grid">' + items.map(function (it) {
+      var list = window.LACMS_FB.resultList(it);
+      var body = '';
+      if (it.type === 'scale' && it.avg !== null && it.avg !== undefined) body += '<p class="pt-avg"><strong>' + Number(it.avg).toFixed(1) + '</strong><small> average, out of ' + it.max + '</small></p>';
+      if (list.length) body += barList(list.map(function (x) { return { label: x.label, n: x.n }; }), it.total, '', true);
+      var texts = it.texts || [];
+      if (texts.length) body += '<h4>In their own words</h4><ul class="pt-typed">' + texts.slice(0, 6).map(function (t) { return '<li>\u201C' + esc(t) + '\u201D</li>'; }).join('') + '</ul>' + (texts.length > 6 ? '<p class="pt-note">And ' + (texts.length - 6) + ' more.</p>' : '');
+      return '<div class="pt-card"><h3>' + esc(it.title) + '</h3><p class="pt-note" style="margin:0 0 10px;">' + it.total + (it.total === 1 ? ' answer' : ' answers') + '</p>' + body + '</div>';
+    }).join('') + '</div>';
+  }
+
   function thanksCard(s) {
     if (!s.shoutouts || !s.shoutouts.length) return '';
     return '<div class="pt-card pt-card--wide"><h3>Thank-yous <small>' + s.shoutouts.length + '</small></h3><p class="pt-muted" style="margin:0 0 12px;">People attendees named as making the night valuable.</p>' +
@@ -176,7 +193,7 @@
     return '<div class="pt-card pt-card--wide">' + head +
       '<ul class="pt-comments">' + shown.map(function (c) {
         var who = c.who === 'guest' ? 'Guest' : c.who === 'professional' ? 'Professional' : 'LACMS member';
-        return '<li class="pt-comment"><div class="pt-comment-top"><span class="pt-stars" aria-label="' + c.rating + ' out of 5">' + stars(c.rating) + '</span><time class="pt-muted">' + esc(niceDate(c.at)) + '</time></div>' +
+        return '<li class="pt-comment"><div class="pt-comment-top">' + (typeof c.rating === 'number' ? '<span class="pt-stars" aria-label="' + c.rating + ' out of 5">' + stars(c.rating) + '</span>' : '<span></span>') + '<time class="pt-muted">' + esc(niceDate(c.at)) + '</time></div>' +
           '<p>“' + esc(c.text) + '”</p><span class="pt-comment-who">' + esc(who) + '</span></li>';
       }).join('') + '</ul>' +
       (list.length > 6 ? '<div class="pt-more"><button type="button" class="pt-btn" data-pt-more>' + (showAllComments ? 'Show fewer' : 'Show all ' + list.length + ' comments') + '</button></div>' : '') + '</div>';
@@ -219,7 +236,7 @@
         (heard || ideas ? '<div class="pt-grid">' +
           (heard ? '<div class="pt-card"><h3>How people heard about it</h3>' + bars(s.heard, L.heard, Object.keys(s.heard).reduce(function (t, k) { return t + s.heard[k]; }, 0)) + '</div>' : '') +
           (ideas ? '<div class="pt-card"><h3>Events people would love</h3><ul class="pt-ideas">' + s.ideas.map(function (i) { return '<li>' + esc(i) + '</li>'; }).join('') + '</ul></div>' : '') + '</div>' : '') +
-        thanksCard(s) + commentsHtml(s);
+        customBlock(c) + thanksCard(s) + commentsHtml(s);
     }
     var viewSub = view === 'all' ? (D.events.length > 1 ? 'Combined across ' + D.events.length + ' events' : '') : (c.event ? (c.event.date_text || niceDate(c.event.starts_on)) : '');
     root.innerHTML =
@@ -263,12 +280,18 @@
         (s.typed_liked || []).forEach(function (t) { rows.push([name, 'Went well (typed)', '', t]); });
         (s.typed_improve || []).forEach(function (t) { rows.push([name, 'Could be better (typed)', '', t]); });
         (s.shoutouts || []).forEach(function (t) { rows.push([name, 'Thank-you', '', t]); });
-        (s.comments || []).forEach(function (cm) { rows.push([name, 'Comment', cm.at + ' | ' + cm.rating + ' stars | ' + cm.who, cm.text]); });
+        (s.comments || []).forEach(function (cm) { rows.push([name, 'Comment', cm.at + (typeof cm.rating === 'number' ? ' | ' + cm.rating + ' stars' : '') + ' | ' + cm.who, cm.text]); });
+        (c.custom || []).forEach(function (it) {
+          if (!window.LACMS_FB || !it.total) return;
+          window.LACMS_FB.resultList(it).forEach(function (x) { rows.push([name, it.title, x.label, x.n]); });
+          if (it.type === 'scale' && it.avg !== null && it.avg !== undefined) rows.push([name, it.title, 'Average', it.avg]);
+          (it.texts || []).forEach(function (t) { rows.push([name, it.title + ' (typed)', '', t]); });
+        });
       }
     }
     (D.space.custom_metrics || []).forEach(function (m) { rows.push(['All events', 'Headline', m.label, m.value]); });
     add('All events', { stats: D.overall.stats, registered: D.overall.registered });
-    D.events.forEach(function (e) { add(e.name, { stats: e.stats, registered: e.registered }); });
+    D.events.forEach(function (e) { add(e.name, { stats: e.stats, registered: e.registered, custom: e.custom }); });
     var blob = new Blob(['﻿' + rows.map(function (r) { return r.map(q).join(','); }).join('\n')], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
