@@ -3085,10 +3085,24 @@ body.intro-active { overflow: hidden; }
 .intro-remember { display: inline-flex; align-items: center; gap: 8px; font-size: 0.84rem; color: var(--color-text-muted); cursor: pointer; }
 .intro-remember input { accent-color: var(--color-gold); width: 16px; height: 16px; }
 .intro-splash.is-static .intro-particle, .intro-splash.is-static .intro-logo-wrap, .intro-splash.is-static .intro-brand-name, .intro-splash.is-static .intro-brand-full, .intro-splash.is-static .intro-choices { opacity: 1; transform: none; animation: none !important; }
+.intro-card-short { display: none; }
 @media (max-width: 600px) {
-  .intro-cards { grid-template-columns: 1fr; }
-  .intro-card { padding: var(--space-2) var(--space-3); }
-  .intro-card-icon { display: none; }
+  .intro-splash { padding: var(--space-3) var(--space-3); }
+  .intro-content { gap: 6px; }
+  .intro-logo-wrap .brand-mark, .intro-logo-wrap .brand-mark-fallback { width: 64px; height: 64px; font-size: 1rem; }
+  .intro-brand-name { font-size: 1.6rem; }
+  .intro-brand-full { max-width: none; margin-top: 0; font-size: 0.66rem; letter-spacing: 0.08em; }
+  .intro-choices { margin-top: var(--space-3); gap: 10px; }
+  .intro-ask { font-size: 0.72rem; }
+  .intro-cards { grid-template-columns: 1fr; gap: 10px; }
+  .intro-card { grid-template-columns: 1fr auto; align-items: center; column-gap: 8px; row-gap: 0; padding: 12px 16px; }
+  .intro-card-icon, .intro-card-text { display: none; }
+  .intro-card-title { grid-column: 1; font-size: 1.05rem; }
+  .intro-card-short { display: block; grid-column: 1; font-size: 0.8rem; color: var(--color-text-muted); }
+  .intro-card-go { grid-column: 2; grid-row: 1 / span 2; margin: 0; font-size: 0; }
+  .intro-card-go::after { content: "\2192"; font-size: 1.4rem; line-height: 1; }
+  .intro-card:hover, .intro-card:focus-visible { transform: none; }
+  .intro-remember { font-size: 0.78rem; }
 }
 .footer-welcome { color: inherit; text-decoration: underline; text-underline-offset: 3px; opacity: 0.8; }
 .footer-welcome:hover { opacity: 1; }
