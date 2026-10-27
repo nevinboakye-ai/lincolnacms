@@ -12127,5 +12127,3 @@ html.fb-embed main { padding-top: var(--space-3); }
 .nav-cta-desktop.is-signed-in:has(.member-nav-sub) { padding-block: 7px; }
 .mobile-drawer .nav-links a .member-nav-name, .mobile-drawer .nav-links a .member-nav-sub { display: block; margin-left: 0; }
 .mobile-drawer .nav-links a .member-nav-sub { padding-left: 15px; font-size: 0.75rem; }
-.member-nav-avatar-cap { position: absolute; top: calc(100% + 1px); left: 50%; transform: translateX(-50%); font-size: 0.6rem; font-weight: 600; letter-spacing: 0.02em; line-height: 1; white-space: nowrap; color: var(--color-text-muted); pointer-events: none; }
-.member-nav-avatar:hover .member-nav-avatar-cap, .member-nav-avatar:focus-visible .member-nav-avatar-cap { color: var(--color-gold-light); }

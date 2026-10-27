@@ -1223,19 +1223,13 @@
     var target = label || el;
     var greeting = signedIn && /^Hi, /.test(text);
     // "Hi, Name" alone doesn't say it can be clicked, so a small line says where it goes.
-    // (The compact round badge has no room for text, so it gets a short caption under it.)
     var hiddenLabel = label && label.classList.contains('visually-hidden');
     target.innerHTML = signedIn
       ? '<span class="member-nav-dot" aria-hidden="true"></span>' + (greeting && !hiddenLabel
           ? '<span class="member-nav-name">' + text + '</span><span class="member-nav-sub">Open Member Hub &rarr;</span>'
           : text)
       : text;
-    if (el.classList.contains('member-nav-avatar')) {
-      el.title = signedIn ? 'Go to your Member Hub' : '';
-      var cap = el.querySelector('.member-nav-avatar-cap');
-      if (signedIn && !cap) el.insertAdjacentHTML('beforeend', '<span class="member-nav-avatar-cap" aria-hidden="true">My hub</span>');
-      if (!signedIn && cap) cap.remove();
-    }
+    if (el.classList.contains('member-nav-avatar')) el.title = signedIn ? 'Go to your Member Hub' : '';
   }
 
   // ---- Login page: sign-in form + first-time "set your password" form ----
