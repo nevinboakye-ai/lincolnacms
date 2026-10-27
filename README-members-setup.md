@@ -1827,3 +1827,26 @@ Update: **Copy image** in the QR studio now works everywhere it should. It is on
 **Results.** Dashboard -> Feedback shows a card for each of your own questions on the event you pick (counts for choices and yes/no, a distribution and average for scales, typed answers as quotes), each response card shows its answers, and the CSV gets one column per question. A form that leaves out the overall rating simply has no average. **Partner pages** show the questions you marked *Show on the partner page* (counts, averages and typed answers under the same quote rules as comments).
 
 **Safety.** The database checks every form when it is saved (types, options, limits, "show only if" rules that point at earlier questions) and every answer when it is sent against the form that is live, including required questions, option lists, the "pick up to" limit, the closing date, and members-only forms.
+
+
+## 161. Feedback from past events on the public Events page
+
+**Run in Supabase (safe to repeat):** `105-public-event-feedback.sql` (after 100, 101 and 104). Nothing is public until you switch an event on.
+
+**Switch it on:** Dashboard -> Feedback -> pick an event -> **Show on website**. Choose what appears: the average rating, the % who would come again, what people loved, and quotes. A live preview shows exactly what visitors will see. It then appears under that event on the Events page (js/event-reviews.js).
+
+**What can ever be public (enforced in the database):**
+- Only positive, anonymous information. "What went well" yes; "what could be better" never. No names, emails, courses or years.
+- The **rating** only once at least 5 people have given one *and* the average is at least the minimum you set (4.0 by default; you can choose 3.5, 4.5 or "always show it"), so a poor night is never advertised by accident. **Would come again** shows once 5 people answered and at least half said yes. Tags need at least 2 people.
+- **Quotes** only from people who ticked "We may quote this (without your name)", never one you held back from partners. *Only the ones I feature* (default) shows only quotes you pick with **Feature on website** on a response in the list (you can also choose **Keep off website**); *Automatic* shows quotes from 4 and 5 star replies. Each is labelled "LACMS member", "Guest" or "Professional" with the month.
+
+**Who can do it:** Hub Access -> **Dashboard: Publish feedback on the website** (closed by default, because it puts information outside LACMS; the president can always do it). Anyone who can see Feedback can look at the settings and preview.
+
+
+## 162. The welcome screen (Member Hub or the website)
+
+The first time someone opens the homepage in a browser session they see a welcome screen with two choices (it replaces the old "Enter LACMS" splash; `index.html`, `js/main.js`):
+- **Enter the Member Hub** goes to `member-hub.html`, which signs them straight in if they already are, and otherwise sends them to the login page (and back to the hub afterwards).
+- **Visit the website** closes the screen and shows the homepage.
+- **Remember my choice on this device** skips the question next time. A remembered "website" shows the homepage straight away; a remembered "hub" goes straight to the hub (only when someone arrives from outside the site, so clicking the logo always reaches the homepage). The footer's **Welcome screen** link (homepage only), or `index.html?welcome=1`, forgets the choice and shows the screen again.
+- It appears once per browser session, works with the keyboard (Tab stays inside it, Escape chooses the website) and shows without animation for people who prefer reduced motion. It only exists on the homepage; links to other pages (events, news, an event feedback link, a QR code) are not interrupted.

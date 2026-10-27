@@ -157,53 +157,74 @@
       : 'Good evening';
   });
 
-  // Homepage intro splash — plays once per browser session, skips entirely
-  // for prefers-reduced-motion, and stays on screen until the visitor
-  // actively dismisses it (click/tap anywhere, a swipe, or any keypress).
-  // There is deliberately no auto-dismiss timer. The splash markup only
-  // exists on index.html, so this is a no-op elsewhere.
+  // Homepage welcome screen. The first time someone opens the site in a browser session they are
+  // asked where to go: "Enter the Member Hub" (straight in if signed in, otherwise the member hub
+  // sends them to sign in) or "Visit the website" (the homepage). "Remember my choice" skips the
+  // question next time: a remembered website choice goes straight to the homepage, a remembered
+  // hub choice goes straight to the hub, but only when arriving from outside the site, so the logo
+  // never traps anyone away from the homepage. index.html?welcome=1 (the footer's "Welcome
+  // screen" link) forgets the choice and asks again. The markup only exists on index.html, so
+  // this is a no-op elsewhere. Reduced-motion visitors get the same screen without the animation.
   var splash = document.getElementById('intro-splash');
   if (splash) {
-    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var alreadySeen = false;
-    try { alreadySeen = sessionStorage.getItem('lacmsIntroSeen') === '1'; } catch (e) {}
+    var seen = false, pref = '';
+    try { seen = sessionStorage.getItem('lacmsIntroSeen') === '1'; } catch (e) {}
+    try { pref = localStorage.getItem('lacmsEntryPref') || ''; } catch (e) {}
+    try {
+      if (new URLSearchParams(window.location.search).get('welcome') === '1') {
+        try { localStorage.removeItem('lacmsEntryPref'); } catch (e) {}
+        pref = ''; seen = false;
+        window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+      }
+    } catch (e) {}
+    var fromInside = false;
+    try { fromInside = !!document.referrer && document.referrer.indexOf(window.location.origin) === 0; } catch (e) {}
 
-    if (alreadySeen || reduceMotion) {
+    if (seen || pref === 'site' || (pref === 'hub' && fromInside)) {
+      try { sessionStorage.setItem('lacmsIntroSeen', '1'); } catch (e) {}
       splash.remove();
+    } else if (pref === 'hub') {
+      try { sessionStorage.setItem('lacmsIntroSeen', '1'); } catch (e) {}
+      splash.remove();
+      window.location.replace('member-hub.html');
     } else {
       try { sessionStorage.setItem('lacmsIntroSeen', '1'); } catch (e) {}
-
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) splash.classList.add('is-static');
       document.body.classList.add('intro-active');
       splash.classList.add('is-visible');
 
       var dismissed = false;
+      var choices = splash.querySelectorAll('[data-intro-choice], [data-intro-remember]');
 
       function dismissIntro() {
         if (dismissed) return;
         dismissed = true;
         splash.classList.add('is-leaving');
         document.body.classList.remove('intro-active');
-        document.removeEventListener('keydown', dismissIntro);
+        document.removeEventListener('keydown', onKey);
         window.setTimeout(function () { splash.remove(); }, 500);
       }
+      function onKey(e) {
+        if (e.key === 'Escape') { dismissIntro(); return; }
+        // keep Tab inside the welcome screen while it is open
+        if (e.key === 'Tab' && choices.length) {
+          var first = choices[0], last = choices[choices.length - 1];
+          if (!splash.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+          else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      }
+      document.addEventListener('keydown', onKey);
 
-      splash.addEventListener('click', dismissIntro);
-      document.addEventListener('keydown', dismissIntro);
-
-      // Swipe detection (a deliberate drag doesn't always register as a
-      // simple tap/click on touch devices)
-      var touchStartX = 0, touchStartY = 0;
-      splash.addEventListener('touchstart', function (e) {
-        var t = e.changedTouches[0];
-        touchStartX = t.clientX;
-        touchStartY = t.clientY;
-      }, { passive: true });
-      splash.addEventListener('touchend', function (e) {
-        var t = e.changedTouches[0];
-        var dx = t.clientX - touchStartX;
-        var dy = t.clientY - touchStartY;
-        if (Math.abs(dx) > 24 || Math.abs(dy) > 24) dismissIntro();
-      }, { passive: true });
+      splash.addEventListener('click', function (e) {
+        var link = e.target.closest ? e.target.closest('[data-intro-choice]') : null;
+        if (!link) return;
+        var choice = link.getAttribute('data-intro-choice');
+        var remember = splash.querySelector('[data-intro-remember]');
+        if (remember && remember.checked) { try { localStorage.setItem('lacmsEntryPref', choice); } catch (err) {} }
+        if (choice === 'site') { e.preventDefault(); dismissIntro(); }
+        // "hub" follows its link to member-hub.html
+      });
     }
   }
 

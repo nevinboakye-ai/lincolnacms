@@ -7,11 +7,11 @@
 <title>LACMS - Lincoln African Caribbean Medical Society</title>
 <meta name="description" content="LACMS is the student-led community for African and Caribbean heritage students pursuing medicine and healthcare careers at the University of Lincoln.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-162">
+<link rel="stylesheet" href="css/styles.css?v=20260824-163">
 </head>
 <body>
 
-<div class="intro-splash" id="intro-splash">
+<div class="intro-splash" id="intro-splash" role="dialog" aria-modal="true" aria-labelledby="intro-title">
   <div class="intro-particles">
     <span class="intro-particle p1"></span>
     <span class="intro-particle p2"></span>
@@ -25,13 +25,27 @@
       <img class="brand-mark" src="Media/ACMS%20Branding/logo.png" alt="" width="96" height="96">
       <span class="brand-mark-fallback">LACMS</span>
     </div>
-    <span class="intro-brand-name">LACMS</span>
+    <span class="intro-brand-name" id="intro-title">LACMS</span>
     <span class="intro-brand-full">Lincoln African Caribbean Medical Society</span>
   </div>
-  <button type="button" class="btn btn-primary btn-glow intro-skip">
-    Enter LACMS
-    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-  </button>
+  <div class="intro-choices">
+    <p class="intro-ask">Where would you like to go?</p>
+    <div class="intro-cards">
+      <a class="intro-card intro-card--hub" href="member-hub.html" data-intro-choice="hub">
+        <span class="intro-card-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="intro-card-title">Enter the Member Hub</span>
+        <span class="intro-card-text">Perks, the network, Sankofa and your membership. You&rsquo;ll be asked to sign in if you haven&rsquo;t already.</span>
+        <span class="intro-card-go" aria-hidden="true">Continue &rarr;</span>
+      </a>
+      <a class="intro-card" href="index.html" data-intro-choice="site">
+        <span class="intro-card-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+        <span class="intro-card-title">Visit the website</span>
+        <span class="intro-card-text">Events, programmes, news and everything about who we are. No account needed.</span>
+        <span class="intro-card-go" aria-hidden="true">Continue &rarr;</span>
+      </a>
+    </div>
+    <label class="intro-remember"><input type="checkbox" data-intro-remember> Remember my choice on this device</label>
+  </div>
 </div>
 
 <div class="site-topbar">
@@ -492,17 +506,18 @@
       <span>&copy; <span data-year></span> Lincoln African Caribbean Medical Society</span>
       <span>Open to every course and background</span>
       <span>Built by Nevin Boakye</span>
+      <a class="footer-welcome" href="index.html?welcome=1">Welcome screen</a>
     </div>
   </div>
 </footer>
 
-<script src="js/main.js?v=20260824-162"></script>
+<script src="js/main.js?v=20260824-163"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/view-as.js?v=20260824-162"></script>
+<script src="js/view-as.js?v=20260824-163"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/members.js?v=20260824-162"></script>
-<script src="js/notifications.js?v=20260824-162"></script>
-<script src="js/guidance.js?v=20260824-162"></script>
-<script src="js/chat.js?v=20260824-162"></script>
+<script src="js/members.js?v=20260824-163"></script>
+<script src="js/notifications.js?v=20260824-163"></script>
+<script src="js/guidance.js?v=20260824-163"></script>
+<script src="js/chat.js?v=20260824-163"></script>
 </body>
 </html>

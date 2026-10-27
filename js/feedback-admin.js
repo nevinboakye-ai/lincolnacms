@@ -20,7 +20,7 @@
   var LIKED = L.liked, IMPROVE = L.improve, HEARD = L.heard, KIND = L.kind, RETURN = L.returning;
 
   var FBD = window.LACMS_FB;
-  var state = { loaded: false, loading: false, error: '', rows: [], regs: {}, events: [], event: 'all', filter: 'all', qr: null, view: 'results', canEdit: false, noResults: false, custom: {} };
+  var state = { loaded: false, loading: false, error: '', rows: [], regs: {}, events: [], event: 'all', filter: 'all', qr: null, view: 'results', canEdit: false, noResults: false, custom: {}, pubOk: false, pubManage: false, pubOn: {}, pub: null };
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
@@ -43,8 +43,15 @@
       supabaseClient.rpc('president_get_feedback'),
       supabaseClient.rpc('president_feedback_registrations'),
       supabaseClient.from('site_events').select('slug, name, starts_on, date_text').order('starts_on', { ascending: false, nullsFirst: false }),
-      Promise.resolve(supabaseClient.rpc('feedback_forms_can_edit')).then(function (r) { return r; }, function () { return { error: { message: 'x' } }; })
+      Promise.resolve(supabaseClient.rpc('feedback_forms_can_edit')).then(function (r) { return r; }, function () { return { error: { message: 'x' } }; }),
+      Promise.resolve(supabaseClient.rpc('feedback_public_can_manage')).then(function (r) { return r; }, function () { return { error: { message: 'x' } }; }),
+      Promise.resolve(supabaseClient.rpc('feedback_public_list')).then(function (r) { return r; }, function () { return { error: { message: 'x' } }; })
     ]).then(function (res) {
+      // Showing feedback on the public Events page (migration 105)
+      state.pubOk = !!res[5] && !res[5].error;
+      state.pubManage = !!res[4] && res[4].data === true;
+      state.pubOn = {};
+      if (state.pubOk) (res[5].data || []).forEach(function (r) { state.pubOn[r.event_slug] = !!r.enabled; });
       state.loading = false;
       var ce = res[3] || {};
       // The Forms tab is for people who may edit forms (it also shows if migration 104 isn't run yet, to say so).
@@ -115,12 +122,12 @@
     var html = viewTabs() + toolbarHtml(ev);
     if (!state.rows.length) {
       html += '<div class="fba-empty"><h3>No feedback yet</h3><p>Share an event’s feedback link (or its QR code) at the end of the night and replies will appear here. People who registered are also nudged on their Members Hub.</p></div>';
-      root.innerHTML = html + qrHtml();
+      root.innerHTML = html + qrHtml() + pubModalHtml();
       return;
     }
     if (!ev) html += eventsTable();
     html += rows.length ? summaryHtml(rows, ev) + detailHtml(rows) + (ev ? customHtml(ev, rows) : '') + commentsHtml(rows, !ev) : '<div class="fba-empty"><p>No responses for this event yet.</p></div>';
-    root.innerHTML = html + qrHtml();
+    root.innerHTML = html + qrHtml() + pubModalHtml();
   }
 
   function toolbarHtml(ev) {
@@ -136,6 +143,7 @@
       '<div class="fba-tools">' +
       (ev ? '<button type="button" class="btn btn-outline" data-fba-copy="' + esc(link) + '">Copy feedback link</button>' +
             '<button type="button" class="btn btn-outline" data-fba-qr="' + esc(link) + '" data-name="' + esc(ev.name) + '" data-slug="' + esc(ev.slug) + '">QR code</button>' +
+            (state.pubOk ? '<button type="button" class="btn btn-outline' + (state.pubOn[ev.slug] ? ' is-on' : '') + '" data-fba-pub="' + esc(ev.slug) + '" data-name="' + esc(ev.name) + '">' + (state.pubOn[ev.slug] ? 'On the website' : 'Show on website') + '</button>' : '') +
             (canEmail ? '<button type="button" class="btn btn-outline" data-fba-ask="' + esc(ev.slug) + '">Ask people who registered</button>' : '') : '') +
       (canEmail ? '<button type="button" class="btn btn-outline" data-fba-guests>Email guests</button>' : '') +
       (state.rows.length ? '<button type="button" class="btn btn-outline" data-fba-csv>Download CSV</button>' : '') +
@@ -323,9 +331,82 @@
           (r.shoutouts ? '<p class="fba-typed-line fba-thanks"><b>Thanked:</b> ' + esc(r.shoutouts) + '</p>' : '') +
           customLines(r) +
           '<div class="fba-item-foot"><span>' + [r.would_return ? esc(RETURN[r.would_return]) : '', r.quote_ok && r.comment ? 'OK to quote' : '', r.wants_updates ? 'Wants updates' : ''].filter(Boolean).join(' · ') + '</span>' +
-          '<span class="fba-item-actions">' + ((r.comment || r.liked_other || r.improve_other || r.shoutouts) ? '<button type="button" class="guide-linkbtn" data-fba-hide="' + esc(r.id) + '" data-hidden="' + (r.partner_hidden ? '1' : '0') + '">' + (r.partner_hidden ? 'Show to partners' : 'Hide from partners') + '</button>' : '') +
+          '<span class="fba-item-actions">' + publicButtons(r) + ((r.comment || r.liked_other || r.improve_other || r.shoutouts) ? '<button type="button" class="guide-linkbtn" data-fba-hide="' + esc(r.id) + '" data-hidden="' + (r.partner_hidden ? '1' : '0') + '">' + (r.partner_hidden ? 'Show to partners' : 'Hide from partners') + '</button>' : '') +
           '<button type="button" class="guide-linkbtn" data-fba-delete="' + esc(r.id) + '">Delete</button></span></div></li>';
       }).join('') + '</ul>' + (list.length > 200 ? '<p class="sh-muted">Showing the latest 200 – download the CSV for everything.</p>' : '') : '<p class="sh-muted">Nothing matches that filter.</p>') + '</div>';
+  }
+
+  // Featuring a quote on the public Events page (only a comment the person said we may quote).
+  function publicButtons(r) {
+    if (!state.pubOk || !state.pubManage || !r.comment || !r.quote_ok) return '';
+    if (r.public_featured) return '<span class="fba-chip is-good">Featured on website</span><button type="button" class="guide-linkbtn" data-fba-feature="' + esc(r.id) + '" data-mode="clear">Remove</button>';
+    if (r.public_hidden) return '<span class="fba-chip">Kept off website</span><button type="button" class="guide-linkbtn" data-fba-feature="' + esc(r.id) + '" data-mode="clear">Undo</button>';
+    return '<button type="button" class="guide-linkbtn" data-fba-feature="' + esc(r.id) + '" data-mode="feature">Feature on website</button>' +
+      '<button type="button" class="guide-linkbtn" data-fba-feature="' + esc(r.id) + '" data-mode="hide">Keep off website</button>';
+  }
+
+  function pubModalHtml() {
+    var p = state.pub;
+    if (!p) return '';
+    var body;
+    if (p.loading) body = '<p class="sh-muted">Loading\u2026</p>';
+    else if (p.error) body = '<div class="form-note"><span>' + esc(p.error) + '</span></div>';
+    else {
+      var s = p.draft, can = state.pubManage, dis = can ? '' : ' disabled';
+      var preview = window.lacmsEventReviews ? window.lacmsEventReviews.html(p.data.preview, 3) : '';
+      var nq = p.data.quotable, nf = p.data.featured;
+      body = (can ? '' : '<div class="fba-note-box">You can see how this works, but only people with \u201CDashboard: Publish feedback on the website\u201D (Hub Access) can change it.</div>') +
+        '<label class="fba-switch"><input type="checkbox" data-pub-f="enabled"' + (s.enabled ? ' checked' : '') + dis + '><span class="fba-switch-ui" aria-hidden="true"></span><span><strong>Show feedback for this event on the Events page</strong><small>' + (s.enabled ? 'It is live: visitors can see what is ticked below.' : 'Switched off: nothing is public.') + '</small></span></label>' +
+        '<div class="fba-pub-grid"><label class="fba-chk"><input type="checkbox" data-pub-f="show_rating"' + (s.show_rating ? ' checked' : '') + dis + '><span>Average rating</span></label>' +
+        '<label class="fba-chk"><input type="checkbox" data-pub-f="show_return"' + (s.show_return ? ' checked' : '') + dis + '><span>% who would come again</span></label>' +
+        '<label class="fba-chk"><input type="checkbox" data-pub-f="show_liked"' + (s.show_liked ? ' checked' : '') + dis + '><span>What people loved</span></label></div>' +
+        '<div class="fba-pub-row"><label>Quotes<select data-pub-f="quotes"' + dis + '><option value="off"' + (s.quotes === 'off' ? ' selected' : '') + '>None</option><option value="picked"' + (s.quotes === 'picked' ? ' selected' : '') + '>Only the ones I feature (' + nf + ' picked)</option><option value="auto"' + (s.quotes === 'auto' ? ' selected' : '') + '>Automatic: 4 and 5 star replies</option></select></label>' +
+        '<label>Show the rating only if the average is at least<select data-pub-f="min_avg"' + dis + '>' + ['0', '3.5', '4', '4.5'].map(function (v) { return '<option value="' + v + '"' + (Number(s.min_avg) === Number(v) ? ' selected' : '') + '>' + (v === '0' ? 'Always show it' : Number(v).toFixed(1)) + '</option>'; }).join('') + '</select></label></div>' +
+        '<p class="fba-note">Only positive, anonymous information ever leaves LACMS: never names or emails, never \u201Cwhat could be better\u201D. Numbers appear once 5 people have replied, and quotes only from people who agreed to be quoted (' + nq + ' for this event). Pick quotes with \u201CFeature on website\u201D on a response below.</p>' +
+        '<h4>What visitors would see' + (s.enabled ? '' : ' (once switched on)') + '</h4>' +
+        '<div class="fba-pub-preview">' + (preview || '<p class="sh-muted">Nothing to show yet with these settings (it needs at least 5 replies, or a featured quote).</p>') + '</div>' +
+        '<div class="fba-tools" style="justify-content:flex-end;">' + (can ? '<button type="button" class="btn btn-primary" data-fba-pub-save' + (p.saving ? ' disabled' : '') + '>' + (p.saving ? 'Saving\u2026' : 'Save') + '</button>' : '') + '<button type="button" class="btn btn-outline" data-fba-pub-close>Close</button></div>' +
+        '<p class="fba-status" role="status">' + esc(p.msg || '') + '</p>';
+    }
+    return '<div class="fba-qr" data-fba-pub-close><div class="fba-qr-box fba-pub-box" role="dialog" aria-modal="true" aria-label="Show on website">' +
+      '<button type="button" class="guide-close" data-fba-pub-close aria-label="Close">&times;</button><h3>' + esc(p.name) + '</h3><p class="fba-pub-sub">On the website</p>' + body + '</div></div>';
+  }
+  function openPub(slug, name) {
+    state.pub = { slug: slug, name: name, loading: true };
+    render();
+    Promise.resolve(supabaseClient.rpc('feedback_public_get', { p_slug: slug })).then(function (res) {
+      if (!state.pub || state.pub.slug !== slug) return;
+      if (res.error) { state.pub.loading = false; state.pub.error = /Could not find the function|schema cache|does not exist/i.test(res.error.message || '') ? 'This needs migration 105 to be run in Supabase (see README-members-setup.md, section 161).' : res.error.message; }
+      else { state.pub.loading = false; state.pub.data = res.data; state.pub.draft = Object.assign({}, res.data.settings); }
+      render();
+    }, function () { state.pub.loading = false; state.pub.error = 'Could not load.'; render(); });
+  }
+  var previewTimer = null;
+  function previewNow() {
+    // the preview follows what is ticked, without saving
+    var p = state.pub; if (!p || !p.data) return;
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(function () {
+      Promise.resolve(supabaseClient.rpc('feedback_public_get', { p_slug: p.slug, p_preview: p.draft })).then(function (res) {
+        if (res.error || !state.pub || state.pub !== p) return;
+        p.data.preview = res.data.preview;
+        var box = root.querySelector('.fba-pub-preview');
+        var h = window.lacmsEventReviews ? window.lacmsEventReviews.html(p.data.preview, 3) : '';
+        if (box) box.innerHTML = h || '<p class="sh-muted">Nothing to show yet with these settings (it needs at least 5 replies, or a featured quote).</p>';
+      });
+    }, 250);
+  }
+  function savePub() {
+    var p = state.pub; if (!p || p.saving) return;
+    p.saving = true; p.msg = ''; render();
+    var d = p.draft;
+    Promise.resolve(supabaseClient.rpc('feedback_public_save', { p_slug: p.slug, p_enabled: !!d.enabled, p_show_rating: !!d.show_rating, p_show_return: !!d.show_return, p_show_liked: !!d.show_liked, p_quotes: d.quotes, p_min_avg: Number(d.min_avg) })).then(function (res) {
+      p.saving = false;
+      if (res.error) { p.msg = 'Couldn\u2019t save: ' + res.error.message; render(); return; }
+      state.pubOn[p.slug] = !!d.enabled; p.data.settings = Object.assign({}, d);
+      p.msg = d.enabled ? 'Saved. This event\u2019s feedback is now on the Events page.' : 'Saved. Nothing about this event is public.';
+      render();
+    }, function () { p.saving = false; p.msg = 'Couldn\u2019t reach the server.'; render(); });
   }
 
   function qrHtml() {
@@ -382,6 +463,13 @@
   }
 
   root.addEventListener('change', function (e) {
+    var pf = e.target && e.target.getAttribute && e.target.getAttribute('data-pub-f');
+    if (pf && state.pub && state.pub.draft) {
+      var t0 = e.target;
+      state.pub.draft[pf] = t0.type === 'checkbox' ? t0.checked : t0.value;
+      if (pf === 'enabled') render(); else previewNow();
+      return;
+    }
     if (e.target && e.target.hasAttribute('data-fba-event')) { state.event = e.target.value; state.filter = 'all'; render(); }
   });
   root.addEventListener('click', function (e) {
@@ -397,6 +485,19 @@
     if ((v = t.getAttribute('data-fba-filter')) !== null) { state.filter = v; render(); return; }
     if ((v = t.getAttribute('data-fba-copy')) !== null) {
       (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(v) : Promise.reject()).then(function () { say('Link copied: ' + v); }, function () { window.prompt('Copy this link:', v); });
+      return;
+    }
+    if ((v = t.getAttribute('data-fba-pub')) !== null) { openPub(v, t.getAttribute('data-name')); return; }
+    if (t.hasAttribute('data-fba-pub-close')) { state.pub = null; render(); return; }
+    if (t.hasAttribute('data-fba-pub-save')) { savePub(); return; }
+    if ((v = t.getAttribute('data-fba-feature')) !== null) {
+      var mode = t.getAttribute('data-mode');
+      t.disabled = true;
+      Promise.resolve(supabaseClient.rpc('feedback_set_public', { p_id: v, p_featured: mode === 'feature', p_hidden: mode === 'hide' })).then(function (res) {
+        if (res.error) { t.disabled = false; say('Couldn\u2019t update: ' + res.error.message); return; }
+        state.rows.forEach(function (r) { if (r.id === v) { r.public_featured = mode === 'feature'; r.public_hidden = mode === 'hide'; } });
+        render();
+      });
       return;
     }
     if ((v = t.getAttribute('data-fba-qr')) !== null) { state.qr = { link: v, name: t.getAttribute('data-name'), slug: t.getAttribute('data-slug') }; render(); return; }
@@ -433,8 +534,11 @@
       });
     }
   });
-  root.addEventListener('mousedown', function (e) { if (e.target.hasAttribute && e.target.hasAttribute('data-fba-qr-close') && e.target.classList.contains('fba-qr')) { state.qr = null; render(); } });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && state.qr) { state.qr = null; render(); } });
+  root.addEventListener('mousedown', function (e) { if (e.target.hasAttribute && e.target.hasAttribute('data-fba-pub-close') && e.target.classList.contains('fba-qr')) { state.pub = null; render(); return; } if (e.target.hasAttribute && e.target.hasAttribute('data-fba-qr-close') && e.target.classList.contains('fba-qr')) { state.qr = null; render(); } });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && state.pub) { state.pub = null; render(); }
+    else if (e.key === 'Escape' && state.qr) { state.qr = null; render(); }
+  });
 
   // ---- Start: load when the tile is opened (and once at the start for its count) ------------
   var card = document.querySelector('[data-dash-section="feedback"]');

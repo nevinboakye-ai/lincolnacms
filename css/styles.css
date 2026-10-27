@@ -2917,8 +2917,9 @@ body.intro-active { overflow: hidden; }
   align-items: center;
   justify-content: center;
   background: var(--color-bg);
-  overflow: hidden;
-  cursor: pointer;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-3);
   opacity: 1;
   transition: opacity 450ms var(--ease-standard);
 }
@@ -2950,6 +2951,7 @@ body.intro-active { overflow: hidden; }
 .intro-content {
   position: relative;
   z-index: 1;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3041,6 +3043,55 @@ body.intro-active { overflow: hidden; }
 @keyframes intro-name-in { to { opacity: 1; transform: translateY(0); } }
 
 @keyframes intro-skip-in { to { opacity: 1; } }
+@keyframes intro-choices-in { to { opacity: 1; transform: translateY(0); } }
+
+/* The two ways in: Member Hub or the website */
+.intro-choices {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 680px;
+  margin: var(--space-5) auto auto;
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  opacity: 0;
+  transform: translateY(12px);
+}
+.intro-splash.is-visible .intro-choices { animation: intro-choices-in 600ms var(--ease-standard) 800ms forwards; }
+.intro-ask { margin: 0; font-size: 0.82rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); text-align: center; }
+.intro-cards { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.intro-card {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  transition: transform var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard), background var(--dur-base) var(--ease-standard);
+}
+.intro-card:hover, .intro-card:focus-visible { transform: translateY(-3px); border-color: var(--color-gold); background: var(--color-surface-raised); }
+.intro-card:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+.intro-card--hub { border-color: rgba(var(--gold-rgb), 0.6); background: linear-gradient(160deg, rgba(var(--gold-rgb), 0.16), var(--color-surface) 70%); }
+.intro-card-icon { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--color-gold-light); background: rgba(var(--gold-rgb), 0.14); }
+.intro-card-icon .icon { width: 20px; height: 20px; }
+.intro-card-title { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; }
+.intro-card-text { font-size: 0.86rem; line-height: 1.5; color: var(--color-text-muted); }
+.intro-card-go { margin-top: 2px; font-size: 0.84rem; font-weight: 700; color: var(--color-gold-light); }
+.intro-remember { display: inline-flex; align-items: center; gap: 8px; font-size: 0.84rem; color: var(--color-text-muted); cursor: pointer; }
+.intro-remember input { accent-color: var(--color-gold); width: 16px; height: 16px; }
+.intro-splash.is-static .intro-particle, .intro-splash.is-static .intro-logo-wrap, .intro-splash.is-static .intro-brand-name, .intro-splash.is-static .intro-brand-full, .intro-splash.is-static .intro-choices { opacity: 1; transform: none; animation: none !important; }
+@media (max-width: 600px) {
+  .intro-cards { grid-template-columns: 1fr; }
+  .intro-card { padding: var(--space-2) var(--space-3); }
+  .intro-card-icon { display: none; }
+}
+.footer-welcome { color: inherit; text-decoration: underline; text-underline-offset: 3px; opacity: 0.8; }
+.footer-welcome:hover { opacity: 1; }
 
 /* =========================================================
    ACMS Member of the Month
@@ -11992,3 +12043,44 @@ html.fb-embed main { padding-top: var(--space-3); }
 .fbb-list-head .fbb-h4 { margin-top: 0; }
 .fbb-list-head { margin-bottom: var(--space-2); }
 .fbb-search .fbb-input { padding: 7px 12px; font-size: 0.86rem; }
+
+/* ===== Feedback from past events, on the public Events page ===== */
+.evr { display: grid; gap: 10px; margin-top: var(--space-2); padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); border-left: 3px solid var(--color-gold); background: var(--color-surface); }
+.evr-top { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+.evr-rating { display: inline-flex; align-items: baseline; gap: 8px; }
+.evr-stars { color: var(--color-gold); letter-spacing: 2px; font-size: 1.05rem; }
+.evr-rating strong { font-size: 1.15rem; }
+.evr-rating small { font-size: 0.8rem; color: var(--color-text-faint); }
+.evr-pill { display: inline-block; padding: 3px 11px; font-size: 0.8rem; font-weight: 600; border-radius: 99px; color: #6fcf97; border: 1px solid rgba(var(--green-rgb), 0.55); background: rgba(var(--green-rgb), 0.1); }
+.evr-liked { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; font-size: 0.8rem; color: var(--color-text-faint); }
+.evr-liked ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.evr-liked li { padding: 2px 10px; font-size: 0.8rem; color: var(--color-text-muted); border-radius: 99px; border: 1px solid var(--color-border-strong); }
+.evr-quote { margin: 0; padding: 0 0 0 12px; border-left: 2px solid rgba(var(--gold-rgb), 0.5); }
+.evr-quote p { margin: 0 0 2px; font-size: 0.92rem; line-height: 1.5; font-style: italic; color: var(--color-text); }
+.evr-quote cite { font-size: 0.78rem; font-style: normal; color: var(--color-text-faint); }
+
+/* The "Show on website" window in Dashboard -> Feedback */
+.fba-pub-box { max-width: 560px; text-align: left; }
+.fba-pub-box h3 { margin: 0 var(--space-4) 2px; }
+.fba-pub-sub { margin: 0 0 var(--space-3) !important; font-size: 0.78rem !important; text-transform: uppercase; letter-spacing: 0.08em; }
+.fba-pub-box h4 { margin: var(--space-3) 0 var(--space-1); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-faint); }
+.fba-pub-box .fba-note { margin: var(--space-2) 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--color-text-faint); }
+.fba-note-box { margin-bottom: var(--space-3); padding: 10px 12px; font-size: 0.84rem; border-radius: var(--radius-sm); background: var(--color-bg-alt); color: var(--color-text-muted); }
+.fba-switch { display: flex; align-items: flex-start; gap: 12px; margin-bottom: var(--space-3); cursor: pointer; }
+.fba-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.fba-switch-ui { flex: none; position: relative; width: 38px; height: 22px; margin-top: 2px; border-radius: 99px; background: var(--color-border-strong); transition: background 0.15s ease; }
+.fba-switch-ui::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.15s ease; }
+.fba-switch input:checked + .fba-switch-ui { background: var(--color-gold-fill); }
+.fba-switch input:checked + .fba-switch-ui::after { transform: translateX(16px); }
+.fba-switch input:focus-visible + .fba-switch-ui { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.fba-switch span:last-child { display: grid; gap: 2px; }
+.fba-switch small { font-size: 0.8rem; color: var(--color-text-muted); }
+.fba-pub-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--space-3); }
+.fba-chk { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 0.86rem; border-radius: 99px; border: 1px solid var(--color-border-strong); background: var(--color-bg-alt); cursor: pointer; }
+.fba-chk:has(input:checked) { border-color: var(--color-gold); background: rgba(var(--gold-rgb), 0.16); }
+.fba-pub-row { display: grid; gap: var(--space-2); }
+.fba-pub-row label { display: grid; gap: 4px; font-size: 0.82rem; font-weight: 600; color: var(--color-text-muted); }
+.fba-pub-row select { width: 100%; padding: 9px 12px; font: inherit; font-size: 0.9rem; color: var(--color-text); background: var(--color-bg-alt); border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); }
+.fba-pub-preview { padding: var(--space-3); border-radius: var(--radius-sm); border: 1px dashed var(--color-border-strong); background: var(--color-bg); }
+.fba-pub-preview .evr { margin-top: 0; }
+.fba-tools .btn.is-on { border-color: var(--color-gold); color: var(--color-gold-light); }

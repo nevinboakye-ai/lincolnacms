@@ -7211,6 +7211,7 @@
       { key: 'dash_partners', label: 'Dashboard: Partners', short: 'Partners', desc: 'Create private, read-only spaces so collaborating partners can follow the feedback and numbers for shared events. Closed by default: it shares information outside LACMS.', dash: true },
       { key: 'dash_feedback', label: 'Dashboard: Feedback', short: 'Feedback', desc: 'What people said about each event: ratings, comments, the feedback link and QR code. Guests\' emails are visible. Anonymous members show no name.', dash: true },
       { key: 'dash_feedback_edit', label: 'Dashboard: Edit feedback forms', short: 'Edit forms', desc: 'Build and change the feedback forms: add sections, questions and polls, use templates, preview and publish. Closed by default: the president can always do it. Results are controlled separately by Dashboard: Feedback.', dash: true },
+      { key: 'dash_feedback_public', label: 'Dashboard: Publish feedback on the website', short: 'Publish feedback', desc: 'Choose which events show their rating, what people loved and featured quotes on the public Events page, and feature quotes. Closed by default: it puts information outside LACMS. The president can always do it.', dash: true },
       { key: 'dash_email', label: 'Dashboard: Email', short: 'Email', desc: 'Write emails to groups or people you choose and see what has been sent. They can email any member, professional or applicant.', dash: true }
     ];
     var HUB_ROLE_ORDER = ['member', 'executive_committee', 'supporting_committee', 'senior_sankofa_mentor', 'junior_sankofa_mentor'];
