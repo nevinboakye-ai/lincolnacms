@@ -1850,3 +1850,18 @@ The first time someone opens the homepage in a browser session they see a welcom
 - **Visit the website** closes the screen and shows the homepage.
 - **Remember my choice on this device** skips the question next time. A remembered "website" shows the homepage straight away; a remembered "hub" goes straight to the hub (only when someone arrives from outside the site, so clicking the logo always reaches the homepage). The footer's **Welcome screen** link (homepage only), or `index.html?welcome=1`, forgets the choice and shows the screen again.
 - It appears once per browser session, works with the keyboard (Tab stays inside it, Escape chooses the website) and shows without animation for people who prefer reduced motion. It only exists on the homepage; links to other pages (events, news, an event feedback link, a QR code) are not interrupted.
+
+
+## 163. Sankofa guest mentors: put a doctor in a Circle before they have an account
+
+**Run in Supabase (safe to repeat):** `106-sankofa-guest-mentors.sql` (after 084, 085 and 090). Until it is run, the Circle manager works exactly as before and "Add mentor by name" explains that it needs the migration.
+
+**What changed (Dashboard -> Sankofa Hub, the Circle manager):**
+- **Add mentor by name** (toolbar, or inside an open Circle): type a doctor's name, role, organisation and specialty, plus an optional email and private notes, and choose a Circle (or leave them Unplaced). *Add and another* keeps the form open for the next one. Mentors who applied without an account (Add people -> Professionals -> "applied without an account") have an **Add as a guest mentor now** button that fills the form for you.
+- **Guest mentors look like mentors** but with a dashed ring and a "Guest mentor" tag. You can drag them between Circles, place them from the Unplaced list, edit them, or remove them, exactly like other people.
+- **Link account:** when they sign up, open their card -> *They've signed up: link account* -> search -> Link. They become a real mentor in the same Circle (their specialty is carried across) and the name card is retired.
+- **Several mentors and mentees in one Circle** was already possible and still is: a Circle holds as many mentors and mentees as its places allow (you can go over, with a warning), with or without accounts. Several mentors are listed side by side when you open the Circle.
+
+**What a guest mentor is not:** a name card, not an account. They can't log in, message, earn XP, or be paired one-to-one with a mentee (pairing needs a real account; use *Link account* once they have one). A Circle that still has guest mentors can't be deleted, only archived.
+
+**What Circle members see:** on their Sankofa Hub's *My Circle* page the guest mentors appear with the other mentors, with name, role, organisation and specialty. Their **email and your notes are for the committee only** (enforced in the database).

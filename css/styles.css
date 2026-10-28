@@ -12127,3 +12127,13 @@ html.fb-embed main { padding-top: var(--space-3); }
 .nav-cta-desktop.is-signed-in:has(.member-nav-sub) { padding-block: 7px; }
 .mobile-drawer .nav-links a .member-nav-name, .mobile-drawer .nav-links a .member-nav-sub { display: block; margin-left: 0; }
 .mobile-drawer .nav-links a .member-nav-sub { padding-left: 15px; font-size: 0.75rem; }
+
+/* Guest mentors: in a Circle before they have an account */
+.shm-seat.is-guest { border-style: dashed; box-shadow: none; }
+.shm-prow-av.is-guest .sh-av { outline: 2px dashed var(--color-gold); outline-offset: 1px; }
+.shm-mgroup.is-guest { border-top-style: dashed; }
+.shm-guest-tag { padding: 1px 9px; font-size: 0.7rem; font-weight: 700; border-radius: 99px; border: 1px dashed var(--color-gold); color: var(--color-gold-light); white-space: nowrap; }
+.shm-linkbox { margin-top: var(--space-2); padding: var(--space-2); border-radius: var(--radius-sm); border: 1px dashed var(--color-border-strong); }
+.shm-linklist .shm-pick-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 2px; border-top: 1px solid var(--color-border); }
+.shm-linklist .shm-pick li:first-child .shm-pick-row { border-top: 0; }
+.shm-noacct .link-button { margin-left: 6px; }

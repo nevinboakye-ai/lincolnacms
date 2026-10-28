@@ -70,7 +70,11 @@
   function load(quiet) {
     if (loading) return Promise.resolve();
     loading = true;
-    return rpc('sankofa_admin_overview').then(function (ov) {
+    // Guest mentors (migration 106): if it hasn't been run yet, the Hub works exactly as before.
+    var guestsCall = rpc('sankofa_admin_guests').then(function (g) { guestsOk = true; return g || []; }, function () { guestsOk = false; return []; });
+    return Promise.all([rpc('sankofa_admin_overview'), guestsCall]).then(function (res) {
+      var ov = res[0];
+      mergeGuests(ov, res[1]);
       data = ov;
       lastLoad = Date.now();
       loading = false;
@@ -87,6 +91,30 @@
         if (c) { c.textContent = 'Couldn\'t load'; c.style.color = 'var(--accent-red)'; }
       }
     });
+  }
+
+  // ---- Guest mentors: doctors in a Circle who don't have an account yet ----------------------
+  // They are drawn like any other mentor (a dashed seat, a "Guest" tag), but they are name cards:
+  // no login, no messages, no one-to-one pairing. Their ids start with "g:".
+  var guestsOk = false;
+  function isGuestId(id) { return String(id).indexOf('g:') === 0; }
+  function guestAsPerson(g) {
+    return { id: 'g:' + g.id, guest_id: g.id, is_guest: true, name: g.name, role: 'mentor', status: 'active',
+      stage: [g.title, g.organisation].filter(Boolean).join(' \u00B7 ') || 'Guest mentor', title: g.title, organisation: g.organisation,
+      specialty: g.specialty, email: g.email, note: g.note, circle_id: g.circle_id || null, is_lead: false, capacity: null, mentee_ids: [],
+      interests: [], offers: [], profile_done: true, joined_at: g.created_at, xp: 0 };
+  }
+  function mergeGuests(ov, guests) {
+    ov.stats.guests = guests.length;
+    guests.forEach(function (g) {
+      var p = guestAsPerson(g), c = null;
+      for (var i = 0; i < ov.circles.length; i++) if (ov.circles[i].id === g.circle_id) c = ov.circles[i];
+      if (c) c.members.push(p); else { p.circle_id = null; ov.unplaced.push(p); }
+    });
+  }
+  function moveRpc(id, circleId, note) {
+    if (isGuestId(id)) return rpc('sankofa_admin_guest_move', { p_id: id.slice(2), p_circle: circleId || null });
+    return rpc('sankofa_admin_move', { p_user: id, p_circle: circleId || null, p_note: note || null });
   }
 
   function allPeople() {
@@ -123,12 +151,13 @@
     var sel = selectedIds().length;
     var html =
       '<div class="shm-statline" role="list">' +
-        stat(st.participants, 'in the Hub') + stat(st.mentors, 'mentors') + stat(st.mentees, 'mentees') +
+        stat(st.participants, 'in the Hub') + stat(st.mentors, 'mentors') + (st.guests ? stat(st.guests, 'guest mentors') : '') + stat(st.mentees, 'mentees') +
         stat(st.placed, 'in Circles') + stat(data.unplaced.length, 'unplaced', data.unplaced.length ? 'warn' : '') +
         stat(st.pairings, 'pairings') + stat(st.upcoming, 'meetings soon') + (st.need_help ? stat(st.need_help, 'want a check-in', 'bad') : '') +
       '</div>' +
       '<div class="shm-toolbar">' +
         '<button type="button" class="btn btn-primary" data-shm-add>' + ICON.plus + ' Add people</button>' +
+        '<button type="button" class="btn btn-outline" data-shm-addguest>' + ICON.plus + ' Add mentor by name</button>' +
         '<button type="button" class="btn btn-outline" data-shm-newcircle>' + ICON.plus + ' New Circle</button>' +
         '<button type="button" class="btn btn-outline" data-shm-suggest>' + ICON.wand + ' Suggest matches</button>' +
         '<span class="shm-spacer"></span>' +
@@ -147,7 +176,7 @@
       if (archived.length) {
         html += '<details class="shm-archived"><summary>Archived Circles (' + archived.length + ')</summary><div class="shm-circles">' + archived.map(circleCard).join('') + '</div></details>';
       }
-      html += '<p class="sh-fineprint">Tick people in the Unplaced list (or drag them) and place them in a Circle - drag a seat to another Circle to move someone. A <strong>gold ring</strong> marks a mentor. Open a Circle to pair mentors and mentees. Sixth-form members show by name to you, but anonymously to everyone else.</p>';
+      html += '<p class="sh-fineprint">Tick people in the Unplaced list (or drag them) and place them in a Circle - drag a seat to another Circle to move someone. A <strong>gold ring</strong> marks a mentor. Open a Circle to pair mentors and mentees; a Circle can have as many of each as you like. A <strong>dashed ring</strong> is a guest mentor you added by name who hasn\'t signed up yet. Sixth-form members show by name to you, but anonymously to everyone else.</p>';
     }
     var oldPool = root.querySelector('.shm-pool-list');
     var poolTop = oldPool ? oldPool.scrollTop : 0;
@@ -179,11 +208,11 @@
   function poolRow(p) {
     var on = !!selected[p.id];
     var d = inactiveDays(p);
-    var note = p.status !== 'active' ? p.status : (!p.profile_done ? 'no profile yet' : '');
+    var note = p.is_guest ? 'not on LACMS yet' : p.status !== 'active' ? p.status : (!p.profile_done ? 'no profile yet' : '');
     return '<div class="shm-prow' + (on ? ' is-on' : '') + '" draggable="true" data-pcard="' + esc(p.id) + '">' +
       '<label class="shm-check"><input type="checkbox" data-shm-tick="' + esc(p.id) + '"' + (on ? ' checked' : '') + ' aria-label="Select ' + esc(p.name) + '"></label>' +
-      '<span class="shm-prow-av' + (p.role === 'mentor' ? ' is-mentor' : '') + '">' + S.avatar(p, 'sm') + '</span>' +
-      '<span class="shm-prow-main"><strong>' + esc(p.name) + '</strong><small><b class="shm-role-tag' + (p.role === 'mentor' ? ' is-mentor' : '') + '">' + (p.role === 'mentor' ? 'Mentor' : 'Mentee') + '</b>' + (p.stage ? ' · ' + esc(p.stage) : '') + (note ? ' · ' + esc(note) : '') + '</small></span>' +
+      '<span class="shm-prow-av' + (p.role === 'mentor' ? ' is-mentor' : '') + (p.is_guest ? ' is-guest' : '') + '">' + S.avatar(p, 'sm') + '</span>' +
+      '<span class="shm-prow-main"><strong>' + esc(p.name) + '</strong><small><b class="shm-role-tag' + (p.role === 'mentor' ? ' is-mentor' : '') + '">' + (p.is_guest ? 'Guest mentor' : p.role === 'mentor' ? 'Mentor' : 'Mentee') + '</b>' + (p.stage ? ' · ' + esc(p.stage) : '') + (note ? ' · ' + esc(note) : '') + '</small></span>' +
       '<button type="button" class="shm-place" data-shm-place="' + esc(p.id) + '" aria-label="Place ' + esc(p.name) + ' in a Circle">Place</button>' +
       '<button type="button" class="sh-icon-btn" data-shm-person-menu="' + esc(p.id) + '" aria-label="Options for ' + esc(p.name) + '">' + ICON.dots + '</button></div>';
   }
@@ -202,8 +231,8 @@
       var pos = 'left:' + (50 + R * Math.cos(ang)).toFixed(2) + '%;top:' + (50 + R * Math.sin(ang)).toFixed(2) + '%;--d:' + dia.toFixed(1) + ';';
       var m = members[i];
       if (!m) { out += '<span class="shm-seat shm-seat--empty" style="' + pos + '" aria-hidden="true"></span>'; continue; }
-      out += '<button type="button" class="shm-seat' + (m.role === 'mentor' ? ' is-mentor' : '') + (m.is_lead ? ' is-lead' : '') + (matches(m) ? '' : ' is-dim') + (query && matches(m) ? ' is-hit' : '') +
-        '" style="' + pos + '" draggable="true" data-pcard="' + esc(m.id) + '" title="' + esc(m.name + ' · ' + (m.role === 'mentor' ? 'Mentor' : 'Mentee') + (m.is_lead ? ' · Lead' : '')) + '" aria-label="' + esc(m.name) + ', ' + (m.role === 'mentor' ? 'mentor' : 'mentee') + '">' + S.avatar(m, 'seat') + '</button>';
+      out += '<button type="button" class="shm-seat' + (m.role === 'mentor' ? ' is-mentor' : '') + (m.is_guest ? ' is-guest' : '') + (m.is_lead ? ' is-lead' : '') + (matches(m) ? '' : ' is-dim') + (query && matches(m) ? ' is-hit' : '') +
+        '" style="' + pos + '" draggable="true" data-pcard="' + esc(m.id) + '" title="' + esc(m.name + ' · ' + (m.is_guest ? 'Guest mentor' : m.role === 'mentor' ? 'Mentor' : 'Mentee') + (m.is_lead ? ' · Lead' : '')) + '" aria-label="' + esc(m.name) + ', ' + (m.role === 'mentor' ? 'mentor' : 'mentee') + '">' + S.avatar(m, 'seat') + '</button>';
     }
     return out;
   }
@@ -248,11 +277,11 @@
       // Allowed, but the committee should know it is over.
       S.toast(to.name + ' is now over its ' + to.capacity + ' places', {});
     }
-    return rpc('sankofa_admin_move', { p_user: userId, p_circle: circleId || null, p_note: note || null }).then(function () {
+    return moveRpc(userId, circleId, note).then(function () {
       var name = p ? p.name : 'Person';
       return load(true).then(function () {
         S.toast(name + ' moved to ' + (to ? to.name : 'Unplaced'), {
-          action: { label: 'Undo', fn: function () { rpc('sankofa_admin_move', { p_user: userId, p_circle: from, p_note: 'Undo' }).then(function () { return load(true); }, fail); } }
+          action: { label: 'Undo', fn: function () { moveRpc(userId, from, 'Undo').then(function () { return load(true); }, fail); } }
         });
       });
     }, fail);
@@ -267,14 +296,18 @@
     var before = ids.map(function (id) { return { id: id, circle: personById(id).circle_id || null }; });
     var changed = before.filter(function (b) { return b.circle !== (circleId || null); });
     if (!changed.length) return Promise.resolve();
-    return rpc('sankofa_admin_apply_plan', { p_plan: { moves: changed.map(function (b) { return { user: b.id, circle: circleId || '' }; }), pairings: [] } }).then(function () {
+    var realMoves = changed.filter(function (b) { return !isGuestId(b.id); });
+    var guestMoves = changed.filter(function (b) { return isGuestId(b.id); });
+    var calls = guestMoves.map(function (b) { return moveRpc(b.id, circleId); });
+    if (realMoves.length) calls.push(rpc('sankofa_admin_apply_plan', { p_plan: { moves: realMoves.map(function (b) { return { user: b.id, circle: circleId || '' }; }), pairings: [] } }));
+    return Promise.all(calls).then(function () {
       selected = {};
       return load(true).then(function () {
         var over = to && to.members.length + changed.length > to.capacity;
         S.toast(plural(changed.length, 'person', 'people') + ' moved to ' + (to ? to.name : 'Unplaced') + (over ? ' - now over its ' + to.capacity + ' places' : ''), {
           action: { label: 'Undo', fn: function () {
             var chain = Promise.resolve();
-            changed.forEach(function (b) { chain = chain.then(function () { return rpc('sankofa_admin_move', { p_user: b.id, p_circle: b.circle, p_note: 'Undo' }); }); });
+            changed.forEach(function (b) { chain = chain.then(function () { return moveRpc(b.id, b.circle, 'Undo'); }); });
             chain.then(function () { return load(true); }, fail);
           } }
         });
@@ -320,6 +353,7 @@
       var mentorIds = {};
       mentors.forEach(function (m) { mentorIds[m.id] = true; });
       var unpaired = mentees.filter(function (m) { return !m.mentor_id || !mentorIds[m.mentor_id]; });
+      var realMentors = mentors.filter(function (m) { return !m.is_guest; });
       function chip(m, removable) {
         var out = '<span class="shm-pchip" draggable="true" data-dpcard="' + esc(m.id) + '">' + S.avatar(m, 'sm') + '<button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '">' + esc(m.name) + '</button>' +
           (removable ? '<button type="button" class="shm-x" data-unpair="' + esc(m.id) + '" aria-label="Unpair ' + esc(m.name) + '" title="Unpair">&times;</button>' : '') + '</span>';
@@ -328,11 +362,16 @@
       var html = '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
         '<div class="shm-detail-head sh-theme-' + esc(c.theme) + '"><span class="shm-swatch" aria-hidden="true"></span><div><span class="guide-eyebrow">Sankofa Circle</span><h2 class="guide-title" style="margin:0">' + esc(c.name) + '</h2>' +
         '<p class="sh-muted" style="margin:2px 0 0">' + c.members.length + '/' + c.capacity + ' places · ' + plural(mentors.length, 'mentor') + ' · ' + plural(mentees.length, 'mentee') + (c.motto ? ' · “' + esc(c.motto) + '”' : '') + '</p></div></div>' +
-        '<div class="shm-detail-actions"><button type="button" class="btn btn-outline btn-sm" data-d-auto' + (unpaired.length && mentors.length ? '' : ' disabled') + '>' + ICON.wand + ' Suggest pairings</button>' +
+        '<div class="shm-detail-actions"><button type="button" class="btn btn-outline btn-sm" data-d-auto' + (unpaired.length && realMentors.length ? '' : ' disabled') + '>' + ICON.wand + ' Suggest pairings</button>' +
+        '<button type="button" class="btn btn-outline btn-sm" data-d-addguest>' + ICON.plus + ' Add mentor by name</button>' +
         '<button type="button" class="btn btn-outline btn-sm" data-d-menu>Meeting, announcement &amp; settings</button></div>';
       html += '<h3 class="sh-dlg-h">Mentors <span class="sh-muted">drag a mentee onto a mentor, or use the menu</span></h3>';
       if (!mentors.length) html += '<p class="sh-muted">No mentor in this Circle yet. Place a mentor here from the Unplaced list.</p>';
       html += '<div class="shm-mgroups">' + mentors.map(function (m) {
+        if (m.is_guest) {
+          return '<div class="shm-mgroup is-guest"><div class="shm-mgroup-head">' + S.avatar(m, 'sm') + '<button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '"><strong>' + esc(m.name) + '</strong></button>' +
+            '<span class="shm-guest-tag">Guest mentor</span></div><div class="shm-mgroup-body"><span class="shm-lane-empty">' + esc(m.stage) + ' &middot; not on LACMS yet, so mentees can\'t be paired to them one-to-one until they sign up.</span></div></div>';
+        }
         var mine = mentees.filter(function (x) { return x.mentor_id === m.id; });
         var cap = m.capacity;
         return '<div class="shm-mgroup" data-mentor-drop="' + esc(m.id) + '"><div class="shm-mgroup-head">' + S.avatar(m, 'sm') + '<button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '"><strong>' + esc(m.name) + '</strong></button>' +
@@ -343,7 +382,7 @@
         html += '<h3 class="sh-dlg-h">Needs a mentor (' + unpaired.length + ')</h3><ul class="shm-unpaired">' + unpaired.map(function (m) {
           var other = m.mentor_id && !mentorIds[m.mentor_id] ? personById(m.mentor_id) : null;
           return '<li draggable="true" data-dpcard="' + esc(m.id) + '">' + S.avatar(m, 'sm') + '<span class="shm-prow-main"><button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '"><strong>' + esc(m.name) + '</strong></button><small>' + esc(m.stage || '') + (other ? ' · paired with ' + esc(other.name) + ' (other Circle)' : '') + '</small></span>' +
-            (mentors.length ? '<select data-pair-for="' + esc(m.id) + '" aria-label="Choose a mentor for ' + esc(m.name) + '"><option value="">Choose a mentor…</option>' + mentors.map(function (mt) {
+            (realMentors.length ? '<select data-pair-for="' + esc(m.id) + '" aria-label="Choose a mentor for ' + esc(m.name) + '"><option value="">Choose a mentor…</option>' + realMentors.map(function (mt) {
               var n = mentees.filter(function (x) { return x.mentor_id === mt.id; }).length;
               return '<option value="' + esc(mt.id) + '">' + esc(mt.name) + ' (' + n + (mt.capacity != null ? '/' + mt.capacity : '') + ')</option>';
             }).join('') + '</select>' : '') + '</li>';
@@ -369,6 +408,7 @@
       var pm = e.target.closest('[data-shm-person-menu]');
       if (pm) { openPersonMenu(pm.getAttribute('data-shm-person-menu')); return; }
       if (e.target.closest('[data-d-menu]')) { openCircleMenu(id); return; }
+      if (e.target.closest('[data-d-addguest]')) { openGuestForm(null, id); return; }
       if (e.target.closest('[data-d-auto]')) {
         var plan = pairingsForCircle(circleById(id));
         if (!plan.length) { S.toast('No pairings to suggest - check mentor capacity'); return; }
@@ -399,14 +439,14 @@
       e.preventDefault();
       var mid = dragId; dragId = null;
       var p = personById(mid);
-      if (p && p.role === 'mentee' && p.mentor_id !== g.getAttribute('data-mentor-drop')) pair(mid, g.getAttribute('data-mentor-drop'));
+      if (p && !p.is_guest && p.role === 'mentee' && p.mentor_id !== g.getAttribute('data-mentor-drop')) pair(mid, g.getAttribute('data-mentor-drop'));
       else draw();
     });
   }
 
   // Best mentor in the Circle for each mentee who doesn't have one
   function pairingsForCircle(c) {
-    var mentors = c.members.filter(function (m) { return m.role === 'mentor' && m.status === 'active'; });
+    var mentors = c.members.filter(function (m) { return m.role === 'mentor' && m.status === 'active' && !m.is_guest; });
     var mentorIds = {};
     mentors.forEach(function (m) { mentorIds[m.id] = true; });
     var mentees = c.members.filter(function (m) { return m.role === 'mentee' && (!m.mentor_id || !mentorIds[m.mentor_id]); });
@@ -439,8 +479,9 @@
   function openPersonMenu(id) {
     var p = personById(id);
     if (!p) return;
+    if (p.is_guest) { openGuestMenu(p); return; }
     var c = p.circle_id ? circleById(p.circle_id) : null;
-    var mentors = allPeople().filter(function (x) { return x.role === 'mentor' && x.status === 'active'; });
+    var mentors = allPeople().filter(function (x) { return x.role === 'mentor' && x.status === 'active' && !x.is_guest; });
     var detail = [];
     if (p.email) detail.push(['Email', '<a href="mailto:' + esc(p.email) + '">' + esc(p.email) + '</a>']);
     if (p.specialty) detail.push([p.role === 'mentor' ? 'Specialty' : 'Interested in', esc(p.specialty)]);
@@ -492,6 +533,106 @@
       var chain = Promise.resolve();
       steps.forEach(function (s) { chain = chain.then(s); });
       chain.then(function () { dlg.close(); S.toast('Saved'); return load(true); }, function (er) { busy(btn, false); err.textContent = er.message; err.hidden = false; });
+    });
+  }
+
+  // ---- Guest mentors: add, edit, place, link to an account, remove ---------------------------
+  function guestMissing() {
+    if (guestsOk) return false;
+    S.toast('Adding mentors by name needs migration 106 to be run in Supabase (see README-members-setup.md, section 163).', { type: 'err' });
+    return true;
+  }
+  // prefill: { name, title, organisation, email } for a mentor who applied without an account
+  function openGuestForm(g, circleId, prefill) {
+    if (guestMissing()) return;
+    var v = g || prefill || {};
+    var dlg = S.openDialog('<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button><span class="guide-eyebrow">' + (g ? 'Edit mentor' : 'Add a mentor by name') + '</span>' +
+      '<h2 class="guide-title">' + (g ? esc(g.name) : 'A mentor who hasn\'t signed up yet') + '</h2>' +
+      (g ? '' : '<p class="guide-text">Put a doctor in a Circle straight away. Circle members see their name, role and specialty. Their email and your notes stay private to the committee. When they create an account, use <strong>Link account</strong> to turn this into their real profile.</p>') +
+      '<form class="guide-form" novalidate>' +
+      '<div class="field"><label for="shg-name">Full name</label><input type="text" id="shg-name" maxlength="80" placeholder="e.g. Dr Naomi Clarke" value="' + esc(v.name || '') + '" required></div>' +
+      '<div class="sh-field-row"><div class="field"><label for="shg-title">Role <span class="guide-optional">(optional)</span></label><input type="text" id="shg-title" maxlength="100" placeholder="e.g. Consultant Cardiologist" value="' + esc(v.title || v.job_title || '') + '"></div>' +
+      '<div class="field"><label for="shg-org">Organisation <span class="guide-optional">(optional)</span></label><input type="text" id="shg-org" maxlength="100" placeholder="e.g. Lincoln County Hospital" value="' + esc(v.organisation || '') + '"></div></div>' +
+      '<div class="field"><label for="shg-spec">Specialty <span class="guide-optional">(optional)</span></label><input type="text" id="shg-spec" maxlength="100" value="' + esc(v.specialty || '') + '"></div>' +
+      '<div class="field"><label for="shg-email">Email <span class="guide-optional">(committee only)</span></label><input type="email" id="shg-email" maxlength="200" value="' + esc(v.email || '') + '"></div>' +
+      '<div class="field"><label for="shg-note">Notes <span class="guide-optional">(committee only)</span></label><textarea id="shg-note" rows="2" maxlength="500" placeholder="e.g. Met at the careers fair, free on Thursdays">' + esc(v.note || '') + '</textarea></div>' +
+      '<div class="field"><label for="shg-circle">Circle</label><select id="shg-circle">' + circleOptions(g ? g.circle_id : circleId, true) + '</select></div>' +
+      '<p class="guide-error" hidden></p><div class="guide-actions"><button type="submit" class="btn btn-primary" data-go="close">' + (g ? 'Save' : 'Add mentor') + '</button>' +
+      (g ? '' : '<button type="submit" class="btn btn-outline" data-go="again">Add and another</button>') + '<button type="button" class="btn btn-outline" data-dialog-close>Cancel</button></div></form>');
+    var again = false;
+    dlg.el.querySelectorAll('[type=submit]').forEach(function (b) { b.addEventListener('click', function () { again = b.getAttribute('data-go') === 'again'; }); });
+    dlg.el.querySelector('form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = dlg.el.querySelector('.guide-error');
+      var btn = dlg.el.querySelector('[data-go="' + (again ? 'again' : 'close') + '"]');
+      var name = $('shg-name').value.trim();
+      if (name.length < 2) { err.textContent = 'Enter the mentor\'s name.'; err.hidden = false; return; }
+      var circle = $('shg-circle').value || null;
+      busy(btn, true, 'Saving…');
+      rpc('sankofa_admin_guest_save', { p_id: g ? g.guest_id : null, p_name: name, p_title: $('shg-title').value, p_organisation: $('shg-org').value, p_specialty: $('shg-spec').value,
+        p_email: $('shg-email').value, p_note: $('shg-note').value, p_circle: circle }).then(function () {
+        dlg.close();
+        S.toast(g ? 'Saved' : name + ' added' + (circle && circleById(circle) ? ' to ' + circleById(circle).name : ''));
+        return load(true).then(function () { if (again) openGuestForm(null, circle); });
+      }, function (er) { busy(btn, false); err.textContent = er.message; err.hidden = false; });
+    });
+    setTimeout(function () { var n = $('shg-name'); if (n) n.focus(); }, 50);
+  }
+
+  function openGuestMenu(p) {
+    var detail = [];
+    if (p.title) detail.push(['Role', esc(p.title)]);
+    if (p.organisation) detail.push(['Organisation', esc(p.organisation)]);
+    if (p.specialty) detail.push(['Specialty', esc(p.specialty)]);
+    if (p.email) detail.push(['Email', '<a href="mailto:' + esc(p.email) + '">' + esc(p.email) + '</a>']);
+    if (p.note) detail.push(['Notes', esc(p.note)]);
+    var dlg = S.openDialog('<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
+      '<div class="shm-dlg-head">' + S.avatar(p, 'lg') + '<div><span class="guide-eyebrow">Guest mentor &middot; not on LACMS yet</span><h2 class="guide-title" style="margin:0">' + esc(p.name) + '</h2></div></div>' +
+      (detail.length ? '<dl class="shm-detail">' + detail.map(function (d) { return '<div><dt>' + d[0] + '</dt><dd>' + d[1] + '</dd></div>'; }).join('') + '</dl>' : '') +
+      '<div class="guide-form"><div class="field"><label for="shm-move">Circle</label><select id="shm-move">' + circleOptions(p.circle_id, true) + '</select></div>' +
+      '<p class="guide-error" hidden></p>' +
+      '<div class="guide-actions"><button type="button" class="btn btn-primary" data-save>Save changes</button><button type="button" class="btn btn-outline" data-edit>Edit details</button>' +
+      '<button type="button" class="btn btn-outline" data-link>They\'ve signed up: link account</button></div>' +
+      '<div class="shm-linkbox" hidden><div class="field"><label for="shm-linkq">Find their account</label><input type="search" id="shm-linkq" placeholder="Search by name…"></div><div class="shm-linklist" aria-live="polite"></div></div>' +
+      '<div class="guide-actions" style="margin-top:12px"><button type="button" class="btn btn-outline sh-btn-danger" data-remove>Remove</button></div></div>');
+    var err = dlg.el.querySelector('.guide-error');
+    function showErr(er) { err.textContent = er.message; err.hidden = false; }
+    dlg.el.querySelector('[data-edit]').addEventListener('click', function () { dlg.close(); openGuestForm(p, p.circle_id); });
+    dlg.el.querySelector('[data-save]').addEventListener('click', function (e) {
+      var btn = e.currentTarget, to = $('shm-move').value || null;
+      if (to === (p.circle_id || null)) { dlg.close(); return; }
+      busy(btn, true, 'Saving…');
+      moveRpc(p.id, to).then(function () { dlg.close(); S.toast('Saved'); return load(true); }, function (er) { busy(btn, false); showErr(er); });
+    });
+    dlg.el.querySelector('[data-remove]').addEventListener('click', function () {
+      dlg.close();
+      S.confirmDialog('Remove ' + p.name + '?', 'This deletes their name card. If they sign up later you can add them again.', 'Remove', true).then(function (yes) {
+        if (!yes) return;
+        rpc('sankofa_admin_guest_delete', { p_id: p.guest_id }).then(function () { S.toast(p.name + ' removed'); return load(true); }, fail);
+      });
+    });
+    var box = dlg.el.querySelector('.shm-linkbox'), list = dlg.el.querySelector('.shm-linklist'), timer = null;
+    dlg.el.querySelector('[data-link]').addEventListener('click', function () {
+      box.hidden = !box.hidden;
+      if (!box.hidden) { var q = $('shm-linkq'); q.value = p.name.replace(/^(dr|prof|professor|mr|mrs|ms|miss)\.?\s+/i, ''); q.focus(); search(); }
+    });
+    function search() {
+      var q = $('shm-linkq').value.trim();
+      if (q.length < 2) { list.innerHTML = '<p class="sh-muted">Type at least 2 letters.</p>'; return; }
+      rpc('sankofa_admin_search_people', { p_query: q }).then(function (rows) {
+        list.innerHTML = rows.length ? '<ul class="shm-pick">' + rows.map(function (r) {
+          return '<li><div class="shm-pick-row"><span class="shm-pick-main"><strong>' + esc(r.name) + '</strong><small>' + esc(r.detail || '') + '</small></span><button type="button" class="btn btn-outline btn-sm" data-link-user="' + esc(r.user_id) + '" data-n="' + esc(r.name) + '">Link</button></div></li>';
+        }).join('') + '</ul>' : '<p class="sh-muted">No one with an account matches yet. Create their account from Dashboard &rarr; Create account first.</p>';
+      }, showErr);
+    }
+    dlg.el.addEventListener('input', function (e) { if (e.target.id === 'shm-linkq') { clearTimeout(timer); timer = setTimeout(search, 250); } });
+    dlg.el.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-link-user]');
+      if (!b) return;
+      busy(b, true, 'Linking…');
+      rpc('sankofa_admin_guest_link', { p_id: p.guest_id, p_user: b.getAttribute('data-link-user') }).then(function () {
+        dlg.close(); S.toast(b.getAttribute('data-n') + ' is now a Hub mentor' + (p.circle_id ? ' in the same Circle' : '')); return load(true);
+      }, function (er) { busy(b, false); showErr(er); });
     });
   }
 
@@ -675,7 +816,7 @@
           (tab === 'search' ? '<div class="field" style="margin-top:12px"><input type="search" id="shm-find" placeholder="Search members and professionals by name…" aria-label="Search people"></div>' : '') +
           (tab === 'mentee' && cand.mentees.length ? '<p class="sh-muted" style="margin-top:12px"><button type="button" class="link-button" data-all>Select all ' + cand.mentees.length + '</button></p>' : '') +
           '<div class="shm-pick-wrap">' + listFor(tab) + '</div>' +
-          (tab === 'mentor' && cand.no_account.length ? '<details class="shm-noacct"><summary>' + plural(cand.no_account.length, 'mentor') + ' applied without an account</summary><p class="sh-muted">They can\'t be added until they have a LACMS account - create one from Dashboard &rarr; Create account, then they\'ll appear in the list above.</p><ul>' + cand.no_account.map(function (n) { return '<li><strong>' + esc(n.name) + '</strong> <small>' + esc([n.job_title, n.organisation, n.email].filter(Boolean).join(' · ')) + '</small></li>'; }).join('') + '</ul></details>' : '') +
+          (tab === 'mentor' && cand.no_account.length ? '<details class="shm-noacct"><summary>' + plural(cand.no_account.length, 'mentor') + ' applied without an account</summary><p class="sh-muted">They can\'t be added until they have a LACMS account - create one from Dashboard &rarr; Create account, then they\'ll appear in the list above.</p><ul>' + cand.no_account.map(function (n, i) { return '<li><strong>' + esc(n.name) + '</strong> <small>' + esc([n.job_title, n.organisation, n.email].filter(Boolean).join(' · ')) + '</small> <button type="button" class="link-button" data-guest-from="' + i + '">Add as a guest mentor now</button></li>'; }).join('') + '</ul></details>' : '') +
           '<p class="sh-muted shm-preview">Want to see the Hub as a member sees it? <button type="button" class="link-button" data-add-me="mentee">Add me as a mentee</button> or <button type="button" class="link-button" data-add-me="mentor">as a mentor</button> (you can remove yourself from your card afterwards).</p>' +
           '<div class="field" style="margin-top:12px"><label for="shm-addto">Place them in</label><select id="shm-addto"><option value="">No Circle yet (Unplaced)</option>' + circleOptions(null, false) + '</select></div>' +
           '<p class="guide-error" hidden></p><div class="guide-actions"><button type="button" class="btn btn-primary" data-do ' + (count ? '' : 'disabled') + '>Add ' + (count ? plural(count, 'person', 'people') : 'selected') + '</button><button type="button" class="btn btn-outline" data-dialog-close>Cancel</button></div>' +
@@ -684,6 +825,8 @@
       draw();
       var addTo = '';
       dlg.el.addEventListener('click', function (e) {
+        var gf = e.target.closest('[data-guest-from]');
+        if (gf) { var n = cand.no_account[Number(gf.getAttribute('data-guest-from'))]; dlg.close(); openGuestForm(null, null, { name: n.name, title: n.job_title, organisation: n.organisation, email: n.email }); return; }
         var t = e.target.closest('[data-tab]');
         if (t) { addTo = $('shm-addto') ? $('shm-addto').value : ''; tab = t.getAttribute('data-tab'); draw(); $('shm-addto').value = addTo; return; }
         if (e.target.closest('[data-all]')) { cand.mentees.forEach(function (r) { picked[r.user_id] = 'mentee'; }); addTo = $('shm-addto').value; draw(); $('shm-addto').value = addTo; return; }
@@ -993,6 +1136,7 @@
     var t = e.target;
     var el;
     if (t.closest('[data-shm-add]')) { openAdd(); return; }
+    if (t.closest('[data-shm-addguest]')) { openGuestForm(null, null); return; }
     if (t.closest('[data-shm-newcircle]')) { openCircleForm(null); return; }
     if (t.closest('[data-shm-suggest]')) { openSuggest(); return; }
     if (t.closest('[data-shm-event]')) { openEventChooser(); return; }

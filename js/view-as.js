@@ -206,7 +206,7 @@
     journey_sync: 1, journey_community: 1, resource_unlock: 1, has_any_dashboard_access: 1, is_president: 1, is_dashboard_admin: 1, sankofa_can_manage: 1,
     sankofa_hub_status: 1, sankofa_hub_overview: 1, sankofa_people: 1, sankofa_meetings: 1, sankofa_feed: 1, sankofa_goals_list: 1,
     sankofa_leaderboard: 1, sankofa_checkin_history: 1, sankofa_member_snapshot: 1, sankofa_meeting_attendees: 1,
-    sankofa_admin_overview: 1, sankofa_admin_candidates: 1, sankofa_admin_history: 1, sankofa_admin_search_people: 1
+    sankofa_admin_overview: 1, sankofa_admin_candidates: 1, sankofa_admin_history: 1, sankofa_admin_search_people: 1, sankofa_admin_guests: 1, sankofa_circle_guests: 1
   };
   // Background calls the site makes by itself (chat polling, analytics): refused without a warning.
   // journey_sync is allowed for a generic account (it only works out the president's own
