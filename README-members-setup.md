@@ -1867,3 +1867,14 @@ The first time someone opens the homepage in a browser session they see a welcom
 **What a guest mentor is not:** a name card, not an account. They can't log in, message, earn XP, or be paired one-to-one with a mentee (pairing needs a real account; use *Link account* once they have one). A Circle that still has guest mentors can't be deleted, only archived.
 
 **What Circle members see:** on their Sankofa Hub's *My Circle* page the guest mentors appear with the other mentors, with name, role, organisation and specialty. Their **email and your notes are for the committee only** (enforced in the database).
+
+
+## 164. Add any professional to a Sankofa Circle
+
+**Run in Supabase (safe to repeat):** `107-sankofa-any-professional.sql` (after 084, 085 and 096).
+
+Some professionals who had signed up couldn't be added to a Circle, for two reasons: they had asked for an account (the request page creates their login straight away) but weren't approved yet, so they had no professional profile; or their profile was switched off in the Network. Now, in **Dashboard -> Sankofa Hub -> Add people**:
+- **Professionals** lists every professional who has a login: approved, inactive, and awaiting approval (marked with a chip). Rejected requests and people with no login at all are not listed (use *Add mentor by name* for someone with no account).
+- **Find anyone** searches members and professionals by **name or email**, including professionals awaiting approval or inactive.
+- Someone **awaiting approval** can be placed in a Circle straight away. They appear by name with their role (from their request: "Senior doctor", job title, organisation), and the Hub opens for them once their account is approved (the Sankofa Hub access rule still applies as usual).
+- Anyone you add is a normal mentor (or mentee): they can be paired, messaged and so on once they have access.

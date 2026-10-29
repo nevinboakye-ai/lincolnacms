@@ -208,7 +208,7 @@
   function poolRow(p) {
     var on = !!selected[p.id];
     var d = inactiveDays(p);
-    var note = p.is_guest ? 'not on LACMS yet' : p.status !== 'active' ? p.status : (!p.profile_done ? 'no profile yet' : '');
+    var note = p.is_guest ? 'not on LACMS yet' : p.awaiting_approval ? 'awaiting approval' : p.status !== 'active' ? p.status : (!p.profile_done ? 'no profile yet' : '');
     return '<div class="shm-prow' + (on ? ' is-on' : '') + '" draggable="true" data-pcard="' + esc(p.id) + '">' +
       '<label class="shm-check"><input type="checkbox" data-shm-tick="' + esc(p.id) + '"' + (on ? ' checked' : '') + ' aria-label="Select ' + esc(p.name) + '"></label>' +
       '<span class="shm-prow-av' + (p.role === 'mentor' ? ' is-mentor' : '') + (p.is_guest ? ' is-guest' : '') + '">' + S.avatar(p, 'sm') + '</span>' +
@@ -812,7 +812,7 @@
           var key = r.user_id;
           return '<li><label><input type="checkbox" data-pick="' + esc(key) + '" data-role="' + role + '"' + (picked[key] ? ' checked' : '') + '>' +
             '<span class="shm-pick-main"><strong>' + esc(r.name) + '</strong><small>' + esc(r.detail || '') + (r.specialty ? ' · ' + esc(r.specialty) : '') + (r.applied_at ? ' · applied ' + esc(S.fmtDay(r.applied_at)) : '') + '</small></span>' +
-            (r.sixth_form ? '<span class="sh-chip">Sixth form</span>' : '') + (kind === 'search' ? '<select data-role-for="' + esc(key) + '" aria-label="Add ' + esc(r.name) + ' as"><option value="mentee"' + (role === 'mentee' ? ' selected' : '') + '>as mentee</option><option value="mentor"' + (role === 'mentor' ? ' selected' : '') + '>as mentor</option></select>' : '') +
+            (r.sixth_form ? '<span class="sh-chip">Sixth form</span>' : '') + (r.pending_approval ? '<span class="sh-chip" title="They have a login but the committee hasn\'t approved their professional account yet. They can be placed now; the Hub opens for them once approved.">Awaiting approval</span>' : '') + (r.inactive ? '<span class="sh-chip" title="Their profile is switched off in the Network">Inactive profile</span>' : '') + (kind === 'search' ? '<select data-role-for="' + esc(key) + '" aria-label="Add ' + esc(r.name) + ' as"><option value="mentee"' + (role === 'mentee' ? ' selected' : '') + '>as mentee</option><option value="mentor"' + (role === 'mentor' ? ' selected' : '') + '>as mentor</option></select>' : '') +
             '</label></li>';
         }).join('') + '</ul>';
       }
@@ -822,7 +822,7 @@
           '<div class="sh-seg ui-seg" role="tablist">' + [['mentee', 'Student applicants (' + cand.mentees.length + ')'], ['mentor', 'Professionals (' + cand.mentors.length + ')'], ['search', 'Find anyone']].map(function (t) {
             return '<button type="button" role="tab" data-tab="' + t[0] + '" class="' + (tab === t[0] ? 'is-active' : '') + '" aria-selected="' + (tab === t[0]) + '">' + t[1] + '</button>';
           }).join('') + '</div>' +
-          (tab === 'search' ? '<div class="field" style="margin-top:12px"><input type="search" id="shm-find" placeholder="Search members and professionals by name…" aria-label="Search people"></div>' : '') +
+          (tab === 'search' ? '<div class="field" style="margin-top:12px"><input type="search" id="shm-find" placeholder="Search members and professionals by name or email…" aria-label="Search people"></div>' : '') +
           (tab === 'mentee' && cand.mentees.length ? '<p class="sh-muted" style="margin-top:12px"><button type="button" class="link-button" data-all>Select all ' + cand.mentees.length + '</button></p>' : '') +
           '<div class="shm-pick-wrap">' + listFor(tab) + '</div>' +
           (tab === 'mentor' && cand.no_account.length ? '<details class="shm-noacct"><summary>' + plural(cand.no_account.length, 'mentor') + ' applied without an account</summary><p class="sh-muted">They can\'t be added until they have a LACMS account - create one from Dashboard &rarr; Create account, then they\'ll appear in the list above.</p><ul>' + cand.no_account.map(function (n, i) { return '<li><strong>' + esc(n.name) + '</strong> <small>' + esc([n.job_title, n.organisation, n.email].filter(Boolean).join(' · ')) + '</small> <button type="button" class="link-button" data-guest-from="' + i + '">Add as a guest mentor now</button></li>'; }).join('') + '</ul></details>' : '') +
