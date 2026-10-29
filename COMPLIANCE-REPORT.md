@@ -228,6 +228,7 @@ Do not investigate. Listen, do not promise confidentiality, record date/time/wha
 | 10.12 | Medium | Confirm winners' **consent before publishing** Member of the Month entries and committee photos; the notice says winners are shown but does not claim a recorded consent. | Committee |
 | 10.13 | Low | Review the privacy notice, terms and this report every year, or whenever a new feature collects new data (for example update `privacy.html` and bump `PRIVACY_VERSION` in `js/privacy.js`). | Committee |
 | 10.14 | Low | Check the commencement dates of the Data (Use and Access) Act 2025 provisions on legislation.gov.uk before relying on any date mentioned in this report. | Site administrator |
+| 10.15 | **High** | **The Network directory:** every active member is listed (name, course, year, plus any LinkedIn/bio they add) to everyone given Network access, which can include approved external healthcare professionals. Members cannot currently hide themselves (only the committee can). The Network is closed by default and opened by the committee in Hub Access. Before opening it, decide whether it should be opt-in or have a self-service "hide me", and ask ULSU whether it is happy with membership details being used this way. | Committee, with ULSU |
 
 ---
 
