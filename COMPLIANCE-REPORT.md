@@ -11,6 +11,8 @@
 
 **What this document is.** A record of what was checked on the LACMS website, what was changed so that it meets the law and ULSU's rules, and what still has to be done by people (a website can't do everything). It is written so that it can be shown to ULSU.
 
+**Where things stand with ULSU.** The society has **not yet been in contact with ULSU** about any of this. ULSU's published policies are used throughout as a **benchmark and reference**, not because any agreement, approval or arrangement exists. Nothing on the website or in this report should be read as saying ULSU has approved, reviewed or is overseeing it. The website describes ULSU's contacts and policies as options available to members and to the committee. Section 10.1 is the first step: open the conversation.
+
 **What it is not.** It is not legal advice, and it does not certify that the society is compliant. Nobody can honestly say "we comply with every regulation" without a person at ULSU or a data protection adviser confirming the open items in section 10. Where this document says **Done**, that thing exists in the code and was tested. Where it says **Action needed** or **ULSU to confirm**, it is not finished and it says who has to finish it.
 
 **How the work was done.**
@@ -45,9 +47,11 @@
 
 ---
 
-## 2. Lincoln Students' Union requirements and how each is met
+## 2. Lincoln Students' Union's published requirements and how the website lines up with them
 
-| ULSU document | What it requires (as read) | How the website meets it |
+This is a comparison against ULSU's published documents. **No agreement or contact with ULSU has taken place yet.**
+
+| ULSU document | What it says (as read) | How the website lines up |
 |---|---|---|
 | **Privacy Notice (08/26)**: ULSU is data controller for SU activity; DPO is `compliance@lincolnsu.com`; complaints `complaints@lincolnsu.com`; rights include access, correction, deletion, restriction/objection, withdrawing consent, portability; SARs answered within one month; direct right to complain to the controller first, acknowledged within 30 days (DUAA); marketing via consent or charity soft opt-in with free opt-out; children's data minimised; retention: membership records for involvement + up to 6 years, enquiries up to 2 years | Our notice uses the same rights list, the one-month time limit and the 30-day complaint acknowledgement; names the ULSU DPO and complaints contacts; email opt-out in place; children's data not collected knowingly. Our retention periods are shorter than ULSU's for data we hold (ULSU keeps the master membership record). | Done / **ULSU to confirm** the controller wording |
 | **Safeguarding of Children and Vulnerable Adults Policy (04/25)**: committee members are "Student Volunteers" and must report concerns immediately to the Safeguarding Officers (Group Chief Executive and Deputy); do not investigate or promise confidentiality; wellbeing concerns go to University Student Wellbeing (01522 886400); Prevent duty is escalated by the Chief Executive; records kept with restricted access | `safeguarding.html` states this route, the urgent-help numbers and the Prevent escalation; dashboard flags safeguarding requests with a reminder to pass them to ULSU and not investigate; chat reports kept as safeguarding records | Done |
@@ -70,9 +74,9 @@
 | Special category data (Art. 9) | Extra condition needed (e.g. explicit consent) | Heritage (ethnic origin) optional with explicit consent wording; wellbeing mood data optional with notice | Done |
 | Data subject rights (Art. 15 to 22) | Respond within one month, free | Self-service export and request form; dashboard queue with deadlines (section 8 is the procedure) | Done |
 | Processors (Art. 28) and transfers (Ch. V) | Written contracts; safeguards for non-UK transfers | Processors listed (section 5); notice discloses them | **Action needed** (10.3) |
-| Breach reporting (Art. 33 and 34) | ICO within 72 hours if risk; tell individuals if high risk | Procedure in section 8.3; ULSU DPO to be told | **Action needed** to rehearse (10.9) |
+| Breach reporting (Art. 33 and 34) | ICO within 72 hours if risk; tell individuals if high risk | Procedure in section 8.3; telling ULSU's DPO is recommended but not yet agreed | **Action needed** to rehearse (10.9); telling ULSU's DPO is recommended but not yet agreed |
 | DPIA (Art. 35) | Assess high-risk processing | Summary DPIA in Appendix A (wellbeing, heritage, messaging) | Done / **ULSU to confirm** |
-| Children (Art. 8, ICO Children's code) | Care with any child's data | The site is for adults; the notice says we don't knowingly collect children's data and will remove it if found | Done |
+| Children (Art. 8, ICO Children's code) | Care with any child's data | The site is for adults and does not set out to collect children's data; the privacy notice has no separate children's section (at the committee's request), so this is a small residual gap | Done / review |
 | DPO (Art. 37) | Required only for public authorities / large-scale special category | Not required for a society; ULSU's DPO oversees | n/a |
 | **Data (Use and Access) Act 2025** | Controller complaints procedure; SAR "reasonable and proportionate" search and stop-the-clock; new cookie exceptions (statistical, appearance) | Complaints route and 30-day acknowledgement in the notice; SAR procedure reflects it; **cookies stay opt-in** so nothing depends on the new exceptions. Commencement dates of some provisions should be checked on legislation.gov.uk | Done / verify dates |
 | **PECR 2003** (cookies, storage and electronic marketing) | Consent for non-essential storage; identify sender; opt-out for marketing | Banner and settings, opt-in analytics; email sender identification and opt-out | Done |
@@ -177,11 +181,13 @@ ULSU's own notice keeps membership records for the period of involvement plus up
 9. Never put personal data in the Note field.
 
 ### 8.2 Safeguarding
+*Recommended procedure, based on ULSU's published policy. It has not yet been discussed or agreed with ULSU.*
+
 Do not investigate. Listen, do not promise confidentiality, record date/time/what was said, and **report immediately** to ULSU's Safeguarding Officers (Group Chief Executive or Deputy Chief Executive); in an emergency call 999.
 
 ### 8.3 Personal data breach
 1. Contain it (change passwords/keys, remove access, pause the feature).
-2. Tell ULSU's DPO (`compliance@lincolnsu.com`) **immediately**.
+2. Consider telling ULSU's DPO (`compliance@lincolnsu.com`) straight away. This is recommended, not yet agreed with ULSU.
 3. Record what happened, what data, how many people, and what you did.
 4. If there is a risk to people, the ICO must be told **within 72 hours** of becoming aware (ico.org.uk/make-a-complaint, "report a breach", 0303 123 1113). If the risk is high, tell the people affected without undue delay.
 5. Keep the record whether or not you report it.
@@ -208,7 +214,7 @@ Do not investigate. Listen, do not promise confidentiality, record date/time/wha
 
 | # | Priority | Action | Owner |
 |---|---|---|---|
-| 10.1 | **High** | Get ULSU's **written confirmation** of who is the data controller for the society's website (LACMS alone, ULSU, or joint) and that the wording in section 1 of the privacy notice is right. Ask whether ULSU wants a data-sharing or processing agreement with LACMS. | Committee, with ULSU Student Communities and DPO (`compliance@lincolnsu.com`) |
+| 10.1 | **High** | **Make first contact with ULSU** (none has happened yet) and get **written confirmation** of who is the data controller for the society's website (LACMS alone, ULSU, or joint) and that the wording in section 1 of the privacy notice is right. Ask whether ULSU wants a data-sharing or processing agreement with LACMS. | Committee, with ULSU Student Communities and DPO (`compliance@lincolnsu.com`) |
 | 10.2 | **High** | **Deploy:** run migration 110 in Supabase; redeploy the two email edge functions (`send-account-email`, `send-member-email`); publish the site. Until 110 runs, the request form and "My data" tools tell people to email instead. | Site administrator |
 | 10.3 | **High** | Accept the data processing terms with **Supabase**, **Resend** and **GitHub**; note each provider's transfer safeguard; confirm the Supabase project **region**. Decide with ULSU whether the privacy notice should describe recipients and overseas transfers (it currently doesn't). | Site administrator |
 | 10.4 | **High** | Switch on **MFA** for every account behind the site (Supabase, GitHub, Resend, domain registrar, and every committee member with dashboard access). In Supabase enable leaked-password protection. Confirm "Enforce HTTPS" is on in GitHub Pages. | Site administrator |

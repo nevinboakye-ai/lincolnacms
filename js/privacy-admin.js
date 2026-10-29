@@ -79,7 +79,7 @@
       '<header><span class="priv-chip priv-chip--kind">' + esc(KIND[r.kind] || r.kind) + '</span> ' + dueChip(r) + '</header>' +
       '<p class="privreq-who"><strong>' + esc(r.name || '(no name)') + '</strong> &middot; <a href="mailto:' + esc(r.email) + '">' + esc(r.email) + '</a> <small>&middot; received ' + esc(day(r.created_at)) + '</small></p>' +
       (r.details ? '<p class="privreq-details">' + esc(r.details) + '</p>' : '') +
-      (r.kind === 'safeguarding' ? '<p class="privreq-flag">Safeguarding concern: the committee should pass this to ULSU\'s Safeguarding Officers straight away (see the Safeguarding page) rather than investigate it.</p>' : '') +
+      (r.kind === 'safeguarding' ? '<p class="privreq-flag">Safeguarding concern: don\'t investigate it yourselves. Consider passing it to ULSU\'s Safeguarding Officers straight away (see the Safeguarding page).</p>' : '') +
       tools +
       '<div class="privreq-handle"><label>Status <select data-pa-status>' + statusOpts + '</select></label>' +
       '<label class="privreq-note">Note (shown to them if they\'re signed in) <input type="text" maxlength="2000" data-pa-note value="' + esc(r.outcome_note || '') + '"></label>' +
