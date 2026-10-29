@@ -1878,3 +1878,13 @@ Some professionals who had signed up couldn't be added to a Circle, for two reas
 - **Find anyone** searches members and professionals by **name or email**, including professionals awaiting approval or inactive.
 - Someone **awaiting approval** can be placed in a Circle straight away. They appear by name with their role (from their request: "Senior doctor", job title, organisation), and the Hub opens for them once their account is approved (the Sankofa Hub access rule still applies as usual).
 - Anyone you add is a normal mentor (or mentee): they can be paired, messaged and so on once they have access.
+
+
+## 165. A mentee can have several mentors
+
+**Run in Supabase (safe to repeat):** `108-sankofa-multiple-mentors.sql` (after 084, 085 and 086). Until it is run, a mentee still has one mentor and pairing a second one replaces the first, as before.
+
+- **Pairing adds a mentor** instead of replacing one. A mentee can have up to **5** mentors at once, and a mentor can have as many mentees as their capacity allows. Each mentor-mentee pair keeps its own one-to-one meetings and messages.
+- **In the Circle manager:** open a Circle and drag a mentee onto a mentor, then onto another mentor; they appear under each of their mentors, with a small gold number showing how many mentors they have. The **x** on a mentee under a mentor removes just that mentor. A mentee's own menu (click their name) now has a tick-list of mentors to add or remove several at once. "Needs a mentor" lists only mentees with no mentor in the Circle yet.
+- **What the mentee sees:** their Hub home shows **My mentors** with every mentor (message, and "Book a 1:1" for each). A mentee with one mentor still sees "My mentor".
+- **Guest mentors** (added by name, without an account) still can't be paired one-to-one; they're part of the Circle and everyone in it can see them.

@@ -441,14 +441,17 @@
             '<button type="button" class="btn btn-outline sh-btn-sm" data-sh-new-121="' + esc(m.pairing_id) + '" data-name="' + esc(m.name) + '">' + ICON.cal + ' 1:1</button></div></div>';
         }).join('') + '</div>';
     }
-    var mentor = ov.my_mentor;
-    if (mentor) {
-      return '<div class="sh-card"><div class="sh-card-head"><h3>My mentor</h3></div>' +
-        '<div class="sh-person-card">' + personRow(mentor) +
-        (mentor.headline ? '<p class="sh-quote">&ldquo;' + esc(mentor.headline) + '&rdquo;</p>' : '') +
-        ((mentor.offers && mentor.offers.length) ? '<p class="sh-tags">' + mentor.offers.slice(0, 4).map(function (o) { return '<span class="sh-tag">' + esc(o) + '</span>'; }).join('') + '</p>' : '') +
-        '<div class="sh-person-actions">' + msgBtn(mentor) +
-        '<button type="button" class="btn btn-outline sh-btn-sm" data-sh-new-121="' + esc(mentor.pairing_id) + '" data-name="' + esc(mentor.name) + '">' + ICON.cal + ' Book a 1:1</button></div></div></div>';
+    // A mentee can have several mentors (migration 108); older data only has my_mentor.
+    var mine = ov.my_mentors && ov.my_mentors.length ? ov.my_mentors : (ov.my_mentor ? [ov.my_mentor] : []);
+    if (mine.length) {
+      return '<div class="sh-card"><div class="sh-card-head"><h3>' + (mine.length > 1 ? 'My mentors' : 'My mentor') + '</h3>' + (mine.length > 1 ? '<span class="sh-muted">' + mine.length + ' mentors</span>' : '') + '</div>' +
+        mine.map(function (mentor) {
+          return '<div class="sh-person-card">' + personRow(mentor) +
+            (mentor.headline ? '<p class="sh-quote">&ldquo;' + esc(mentor.headline) + '&rdquo;</p>' : '') +
+            ((mentor.offers && mentor.offers.length) ? '<p class="sh-tags">' + mentor.offers.slice(0, 4).map(function (o) { return '<span class="sh-tag">' + esc(o) + '</span>'; }).join('') + '</p>' : '') +
+            '<div class="sh-person-actions">' + msgBtn(mentor) +
+            '<button type="button" class="btn btn-outline sh-btn-sm" data-sh-new-121="' + esc(mentor.pairing_id) + '" data-name="' + esc(mentor.name) + '">' + ICON.cal + ' Book a 1:1</button></div></div>';
+        }).join('') + '</div>';
     }
     var mentors = (ov.members || []).filter(function (m) { return m.role === 'mentor' && !m.is_me; });
     if (!ov.circle) return '';
@@ -1328,7 +1331,7 @@
   }
 
   function findPerson(id) {
-    var pools = [st.ov.members || [], st.people || [], st.ov.my_mentees || [], st.ov.my_mentor ? [st.ov.my_mentor] : []];
+    var pools = [st.ov.members || [], st.people || [], st.ov.my_mentees || [], st.ov.my_mentors && st.ov.my_mentors.length ? st.ov.my_mentors : (st.ov.my_mentor ? [st.ov.my_mentor] : [])];
     for (var i = 0; i < pools.length; i++) for (var j = 0; j < pools[i].length; j++) if (pools[i][j].id === id) return pools[i][j];
     return null;
   }

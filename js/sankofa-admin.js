@@ -98,6 +98,9 @@
   // no login, no messages, no one-to-one pairing. Their ids start with "g:".
   var guestsOk = false;
   function isGuestId(id) { return String(id).indexOf('g:') === 0; }
+  // A mentee can have several mentors (migration 108); older data only has mentor_id.
+  function mentorIdsOf(p) { return p.mentor_ids ? p.mentor_ids : (p.mentor_id ? [p.mentor_id] : []); }
+  function hasMentor(p, id) { return mentorIdsOf(p).indexOf(id) !== -1; }
   function guestAsPerson(g) {
     return { id: 'g:' + g.id, guest_id: g.id, is_guest: true, name: g.name, role: 'mentor', status: 'active',
       stage: [g.title, g.organisation].filter(Boolean).join(' \u00B7 ') || 'Guest mentor', title: g.title, organisation: g.organisation,
@@ -242,7 +245,7 @@
     var mentees = c.members.length - mentors.length;
     var over = c.members.length > c.capacity;
     var full = c.members.length >= c.capacity;
-    var needMentor = c.members.filter(function (m) { return m.role === 'mentee' && !m.mentor_id; }).length;
+    var needMentor = c.members.filter(function (m) { return m.role === 'mentee' && !mentorIdsOf(m).length; }).length;
     var sel = selectedIds().length;
     var names = c.members.slice().sort(function (a, b) { return (b.role === 'mentor') - (a.role === 'mentor') || a.name.localeCompare(b.name); }).map(function (m) { return S.firstName ? S.firstName(m.name) : m.name.split(' ')[0]; });
     var warn = '';
@@ -352,11 +355,13 @@
       var mentees = c.members.filter(function (m) { return m.role === 'mentee'; });
       var mentorIds = {};
       mentors.forEach(function (m) { mentorIds[m.id] = true; });
-      var unpaired = mentees.filter(function (m) { return !m.mentor_id || !mentorIds[m.mentor_id]; });
+      var unpaired = mentees.filter(function (m) { return !mentorIdsOf(m).some(function (id) { return mentorIds[id]; }); });
       var realMentors = mentors.filter(function (m) { return !m.is_guest; });
-      function chip(m, removable) {
+      function chip(m, removeFrom) {
+        var nm = mentorIdsOf(m).length;
         var out = '<span class="shm-pchip" draggable="true" data-dpcard="' + esc(m.id) + '">' + S.avatar(m, 'sm') + '<button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '">' + esc(m.name) + '</button>' +
-          (removable ? '<button type="button" class="shm-x" data-unpair="' + esc(m.id) + '" aria-label="Unpair ' + esc(m.name) + '" title="Unpair">&times;</button>' : '') + '</span>';
+          (nm > 1 ? '<span class="shm-multi" title="Has ' + nm + ' mentors">' + nm + '</span>' : '') +
+          (removeFrom ? '<button type="button" class="shm-x" data-unpair="' + esc(m.id) + '" data-unpair-mentor="' + esc(removeFrom) + '" aria-label="Remove ' + esc(m.name) + ' from this mentor" title="Remove from this mentor">&times;</button>' : '') + '</span>';
         return out;
       }
       var html = '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
@@ -365,25 +370,26 @@
         '<div class="shm-detail-actions"><button type="button" class="btn btn-outline btn-sm" data-d-auto' + (unpaired.length && realMentors.length ? '' : ' disabled') + '>' + ICON.wand + ' Suggest pairings</button>' +
         '<button type="button" class="btn btn-outline btn-sm" data-d-addguest>' + ICON.plus + ' Add mentor by name</button>' +
         '<button type="button" class="btn btn-outline btn-sm" data-d-menu>Meeting, announcement &amp; settings</button></div>';
-      html += '<h3 class="sh-dlg-h">Mentors <span class="sh-muted">drag a mentee onto a mentor, or use the menu</span></h3>';
+      html += '<h3 class="sh-dlg-h">Mentors <span class="sh-muted">drag a mentee onto a mentor, or use the menu. A mentee can have more than one mentor: drop them on another mentor too.</span></h3>';
       if (!mentors.length) html += '<p class="sh-muted">No mentor in this Circle yet. Place a mentor here from the Unplaced list.</p>';
       html += '<div class="shm-mgroups">' + mentors.map(function (m) {
         if (m.is_guest) {
           return '<div class="shm-mgroup is-guest"><div class="shm-mgroup-head">' + S.avatar(m, 'sm') + '<button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '"><strong>' + esc(m.name) + '</strong></button>' +
             '<span class="shm-guest-tag">Guest mentor' + (m.gstatus === 'pending' ? ' &middot; pending' : '') + '</span></div><div class="shm-mgroup-body"><span class="shm-lane-empty">' + esc(m.stage) + ' &middot; not on LACMS yet, so mentees can\'t be paired to them one-to-one until they sign up.</span></div></div>';
         }
-        var mine = mentees.filter(function (x) { return x.mentor_id === m.id; });
+        var mine = mentees.filter(function (x) { return hasMentor(x, m.id); });
         var cap = m.capacity;
         return '<div class="shm-mgroup" data-mentor-drop="' + esc(m.id) + '"><div class="shm-mgroup-head">' + S.avatar(m, 'sm') + '<button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '"><strong>' + esc(m.name) + '</strong></button>' +
           '<span class="' + (cap != null && mine.length > cap ? 'shm-over' : '') + ' shm-mgroup-n">' + mine.length + (cap != null ? '/' + cap : '') + '</span></div>' +
-          '<div class="shm-mgroup-body">' + (mine.length ? mine.map(function (x) { return chip(x, true); }).join('') : '<span class="shm-lane-empty">No mentees yet</span>') + '</div></div>';
+          '<div class="shm-mgroup-body">' + (mine.length ? mine.map(function (x) { return chip(x, m.id); }).join('') : '<span class="shm-lane-empty">No mentees yet</span>') + '</div></div>';
       }).join('') + '</div>';
       if (unpaired.length) {
         html += '<h3 class="sh-dlg-h">Needs a mentor (' + unpaired.length + ')</h3><ul class="shm-unpaired">' + unpaired.map(function (m) {
-          var other = m.mentor_id && !mentorIds[m.mentor_id] ? personById(m.mentor_id) : null;
+          var otherId = mentorIdsOf(m).filter(function (id) { return !mentorIds[id]; })[0];
+          var other = otherId ? personById(otherId) : null;
           return '<li draggable="true" data-dpcard="' + esc(m.id) + '">' + S.avatar(m, 'sm') + '<span class="shm-prow-main"><button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '"><strong>' + esc(m.name) + '</strong></button><small>' + esc(m.stage || '') + (other ? ' · paired with ' + esc(other.name) + ' (other Circle)' : '') + '</small></span>' +
             (realMentors.length ? '<select data-pair-for="' + esc(m.id) + '" aria-label="Choose a mentor for ' + esc(m.name) + '"><option value="">Choose a mentor…</option>' + realMentors.map(function (mt) {
-              var n = mentees.filter(function (x) { return x.mentor_id === mt.id; }).length;
+              var n = mentees.filter(function (x) { return hasMentor(x, mt.id); }).length;
               return '<option value="' + esc(mt.id) + '">' + esc(mt.name) + ' (' + n + (mt.capacity != null ? '/' + mt.capacity : '') + ')</option>';
             }).join('') + '</select>' : '') + '</li>';
         }).join('') + '</ul>';
@@ -404,7 +410,7 @@
     });
     dlg.el.addEventListener('click', function (e) {
       var u = e.target.closest('[data-unpair]');
-      if (u) { rpc('sankofa_admin_unpair', { p_mentee: u.getAttribute('data-unpair') }).then(function () { return after('Unpaired'); }, fail); return; }
+      if (u) { rpc('sankofa_admin_unpair', { p_mentee: u.getAttribute('data-unpair'), p_mentor: u.getAttribute('data-unpair-mentor') || null }).then(function () { return after('Removed from that mentor'); }, fail); return; }
       var pm = e.target.closest('[data-shm-person-menu]');
       if (pm) { openPersonMenu(pm.getAttribute('data-shm-person-menu')); return; }
       if (e.target.closest('[data-d-menu]')) { openCircleMenu(id); return; }
@@ -439,7 +445,7 @@
       e.preventDefault();
       var mid = dragId; dragId = null;
       var p = personById(mid);
-      if (p && !p.is_guest && p.role === 'mentee' && p.mentor_id !== g.getAttribute('data-mentor-drop')) pair(mid, g.getAttribute('data-mentor-drop'));
+      if (p && !p.is_guest && p.role === 'mentee' && !hasMentor(p, g.getAttribute('data-mentor-drop'))) pair(mid, g.getAttribute('data-mentor-drop'));
       else draw();
     });
   }
@@ -449,9 +455,9 @@
     var mentors = c.members.filter(function (m) { return m.role === 'mentor' && m.status === 'active' && !m.is_guest; });
     var mentorIds = {};
     mentors.forEach(function (m) { mentorIds[m.id] = true; });
-    var mentees = c.members.filter(function (m) { return m.role === 'mentee' && (!m.mentor_id || !mentorIds[m.mentor_id]); });
+    var mentees = c.members.filter(function (m) { return m.role === 'mentee' && !mentorIdsOf(m).some(function (id) { return mentorIds[id]; }); });
     var load = {};
-    mentors.forEach(function (m) { load[m.id] = c.members.filter(function (x) { return x.mentor_id === m.id; }).length; });
+    mentors.forEach(function (m) { load[m.id] = c.members.filter(function (x) { return hasMentor(x, m.id); }).length; });
     var cands = [];
     mentees.forEach(function (me) { mentors.forEach(function (mt) { cands.push({ mentee: me, mentor: mt, a: affinity(me, mt) }); }); });
     cands.sort(function (x, y) { return y.a.score - x.a.score || (load[x.mentor.id] || 0) - (load[y.mentor.id] || 0); });
@@ -498,10 +504,10 @@
       '<div class="guide-form">' +
         '<div class="field"><label for="shm-move">Circle</label><select id="shm-move">' + circleOptions(p.circle_id, true) + '</select></div>' +
         (c ? '<label class="sh-check"><input type="checkbox" id="shm-lead"' + (p.is_lead ? ' checked' : '') + '> <span>Circle lead (shown first, helps run the Circle)</span></label>' : '') +
-        (p.role === 'mentee' ? '<div class="field"><label for="shm-mentor">Mentor</label><select id="shm-mentor"><option value="">No mentor paired</option>' + mentors.map(function (m) {
+        (p.role === 'mentee' ? '<fieldset class="field shm-mentors"><legend>Mentors <span class="guide-optional">(tick as many as you like, up to 5)</span></legend>' + (mentors.length ? mentors.map(function (m) {
           var load = (m.mentee_ids || []).length;
-          return '<option value="' + esc(m.id) + '"' + (p.mentor_id === m.id ? ' selected' : '') + '>' + esc(m.name) + ' (' + load + (m.capacity != null ? '/' + m.capacity : '') + ')' + (m.circle_id === p.circle_id && p.circle_id ? ' - same Circle' : '') + '</option>';
-        }).join('') + '</select></div>' : '') +
+          return '<label class="sh-check"><input type="checkbox" data-mentor-pick value="' + esc(m.id) + '"' + (hasMentor(p, m.id) ? ' checked' : '') + '> <span>' + esc(m.name) + ' <small>(' + load + (m.capacity != null ? '/' + m.capacity : '') + ' mentees)' + (m.circle_id === p.circle_id && p.circle_id ? ' &middot; same Circle' : '') + '</small></span></label>';
+        }).join('') : '<p class="sh-muted">No mentors in the Hub yet.</p>') + '</fieldset>' : '') +
         '<div class="field"><label for="shm-status">Status</label><select id="shm-status"><option value="active"' + (p.status === 'active' ? ' selected' : '') + '>Active</option><option value="paused"' + (p.status === 'paused' ? ' selected' : '') + '>Paused (locked out for now)</option><option value="alumni"' + (p.status === 'alumni' ? ' selected' : '') + '>Alumni (finished)</option></select></div>' +
         '<p class="guide-error" hidden></p>' +
         '<div class="guide-actions"><button type="button" class="btn btn-primary" data-save>Save changes</button><button type="button" class="btn btn-outline" data-edit>Edit matching profile</button><button type="button" class="btn btn-outline" data-msg>Message</button></div>' +
@@ -525,9 +531,13 @@
       if (newCircle !== (p.circle_id || null)) steps.push(function () { return rpc('sankofa_admin_move', { p_user: p.id, p_circle: newCircle, p_note: null }); });
       var leadEl = $('shm-lead');
       if (leadEl && newCircle === (p.circle_id || null) && leadEl.checked !== p.is_lead) steps.push(function () { return rpc('sankofa_admin_set_lead', { p_user: p.id, p_lead: leadEl.checked }); });
-      var mentorEl = $('shm-mentor');
-      if (mentorEl && (mentorEl.value || null) !== (p.mentor_id || null)) {
-        steps.push(function () { return mentorEl.value ? rpc('sankofa_admin_pair', { p_mentee: p.id, p_mentor: mentorEl.value, p_note: null }) : rpc('sankofa_admin_unpair', { p_mentee: p.id }); });
+      if (p.role === 'mentee') {
+        var picks = Array.prototype.slice.call(dlg.el.querySelectorAll('[data-mentor-pick]'));
+        var now = picks.filter(function (x) { return x.checked; }).map(function (x) { return x.value; });
+        var was = mentorIdsOf(p);
+        if (now.length > 5) { busy(btn, false); err.textContent = 'A mentee can have up to 5 mentors.'; err.hidden = false; return; }
+        was.filter(function (id) { return now.indexOf(id) === -1; }).forEach(function (id) { steps.push(function () { return rpc('sankofa_admin_unpair', { p_mentee: p.id, p_mentor: id }); }); });
+        now.filter(function (id) { return was.indexOf(id) === -1; }).forEach(function (id) { steps.push(function () { return rpc('sankofa_admin_pair', { p_mentee: p.id, p_mentor: id, p_note: null }); }); });
       }
       if ($('shm-status').value !== p.status) steps.push(function () { return rpc('sankofa_admin_set_status', { p_user: p.id, p_status: $('shm-status').value }); });
       var chain = Promise.resolve();
@@ -1082,7 +1092,7 @@
     var load = {};
     allPeople().forEach(function (p) { if (p.role === 'mentor') load[p.id] = (p.mentee_ids || []).length; });
     circles.forEach(function (c) {
-      var ms = c.mentees.filter(function (m) { return !m.mentor_id; });
+      var ms = c.mentees.filter(function (m) { return !mentorIdsOf(m).length; });
       // mentees that were just placed here are plain objects from `unplaced`, so they have no mentor either
       var seen = {};
       ms = ms.filter(function (m) { if (seen[m.id]) return false; seen[m.id] = true; return true; });
@@ -1103,7 +1113,7 @@
   }
 
   function openSuggest() {
-    if (!data.unplaced.length && !allPeople().some(function (p) { return p.role === 'mentee' && !p.mentor_id && p.circle_id; })) {
+    if (!data.unplaced.length && !allPeople().some(function (p) { return p.role === 'mentee' && !mentorIdsOf(p).length && p.circle_id; })) {
       S.toast('Everyone already has a Circle and a mentor - nothing to suggest');
       return;
     }
