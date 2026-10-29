@@ -1889,3 +1889,14 @@ Some professionals who had signed up couldn't be added to a Circle, for two reas
 - **Whole-Circle mentoring comes first; pairing is optional.** Every mentor in a Circle mentors everyone in it, so a mentee does not need a one-to-one pairing and the manager no longer nags about "mentees without a mentor" (it only warns when a Circle has *no* mentor at all). Open a Circle to see all its mentors and mentees as they are; pair a mentee with a mentor only if you want a one-to-one.
 - **What the mentee sees:** their Hub home shows **Your mentors**: every mentor in their Circle (including guest mentors, marked pending where relevant) with a Message button, plus **Book a 1:1** and a "Your 1:1 mentor" tag on the ones they are paired with.
 - **Guest mentors** (added by name, without an account) still can't be paired one-to-one; they're part of the Circle and everyone in it can see them.
+
+
+## 166. Open a Circle to its members (even with pending mentors)
+
+**Run in Supabase (safe to repeat):** `109-sankofa-open-circle.sql` (after 084, 085, 086 and 106).
+
+The full Sankofa Hub needs Hub Access, so a Circle whose mentors and mentees were still pending could not be seen by anyone in it. Now you can **open a Circle to its members**:
+- Dashboard -> Sankofa Hub -> open a Circle -> **Open to members** (press it again to close). Open Circles show an "Open to members" tag.
+- Everyone placed in that Circle who has a login sees it on their **Members Hub** (a "Your Sankofa Circle" card) and on the Sankofa Hub page: the Circle's name, motto and **who is in it, by name, with role and title**. This works even if the full Hub isn't open to them yet, and even if some mentors are still pending (a guest mentor added by name, or a professional awaiting approval). Pending mentors are marked "Mentor · pending".
+- It is a **read-only roster**: no emails, messages, progress or meetings. Sixth-form members still appear without a name to anyone except the Executive Committee. People who are in another Circle (or none) see nothing.
+- Closed by default, per Circle. When the full Hub opens to them (Hub Access -> Sankofa Hub), they get the whole Hub as before.

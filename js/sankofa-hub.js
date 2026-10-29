@@ -55,6 +55,13 @@
           if (!s.profile_done) bits.unshift('Finish your profile');
           if (bits.length) { pill.textContent = bits.join(' · '); pill.hidden = false; }
           tileEl.style.display = '';
+        } else if (s.shared_circle) {
+          // The Hub isn't open to them, but the committee has opened their Circle (migration 109).
+          tileEl.setAttribute('href', 'member-sankofa-hub.html');
+          title.textContent = 'Your Sankofa Circle';
+          text.textContent = 'You\'re in ' + s.shared_circle + '. See who is in your Circle and who your mentors are.';
+          link.firstChild.nodeValue = 'Meet your Circle ';
+          tileEl.style.display = '';
         } else if (s.is_admin) {
           tileEl.setAttribute('href', 'president-dashboard.html#sankofahub');
           title.textContent = 'Manage the Sankofa Hub';
@@ -168,14 +175,45 @@
     });
   }
 
+  function showHubClosed() {
+    showClosed(
+      '<span class="sh-closed-icon" aria-hidden="true">' + ICON.lock + '</span>' +
+      '<h2>The Sankofa Hub isn\'t open yet</h2>' +
+      '<p>We\'re putting the finishing touches on it. You\'ll see it on your Members Hub as soon as it opens to you.</p>' +
+      '<div class="sh-closed-actions"><a class="btn btn-outline" href="member-hub.html">Back to the Members Hub</a></div>');
+  }
+
+  // A Circle the committee has opened to its members before the full Hub is open to them (migration 109):
+  // who is in it, by name, with role and title. Nothing else.
+  function showSharedCircle(sc) {
+    var c = sc.circle, people = sc.people || [];
+    var mentors = people.filter(function (p) { return p.role === 'mentor'; });
+    var mentees = people.filter(function (p) { return p.role !== 'mentor'; });
+    function card(p) {
+      return '<article class="sh-member' + (p.is_me ? ' is-me' : '') + (p.blurred ? ' is-blurred' : '') + '"><div class="sh-member-top">' + S.avatar(p, 'lg') +
+        '<div class="sh-member-id"><h4>' + esc(p.name) + (p.is_me ? ' <span class="sh-chip">You</span>' : '') + '</h4><p>' + esc(p.stage || '') + '</p>' +
+        '<p class="sh-member-chips">' + (p.is_lead ? '<span class="sh-chip sh-chip--lead">Circle lead</span>' : '') +
+        '<span class="sh-chip sh-chip--role">' + (p.role === 'mentor' ? (p.pending ? 'Mentor \u00B7 pending' : 'Mentor') : 'Mentee') + '</span>' +
+        (p.awaiting_approval ? '<span class="sh-chip">Joining soon</span>' : '') + '</p></div></div>' +
+        (p.specialty ? '<p class="sh-quote">&ldquo;' + esc(p.specialty) + '&rdquo;</p>' : '') + '</article>';
+    }
+    showClosed(
+      '<div class="sh-circle-banner ' + themeOf(c) + '"><div><span class="sh-eyebrow">Your Circle' + (c.academic_year ? ' \u00B7 ' + esc(c.academic_year) : '') + '</span><h2>' + esc(c.name) + '</h2>' +
+      (c.motto ? '<p class="sh-quote">&ldquo;' + esc(c.motto) + '&rdquo;</p>' : '') + (c.description ? '<p>' + esc(c.description) + '</p>' : '') + '</div></div>' +
+      '<p class="sh-muted">The full Sankofa Hub (meetings, board, goals and messages) isn\'t open to you yet. In the meantime, here is who is in your Circle.</p>' +
+      '<h3 class="sh-section-title">Mentors <span class="sh-muted">' + mentors.length + '</span></h3><div class="sh-members">' + (mentors.length ? mentors.map(card).join('') : '<p class="sh-muted">Mentors will appear here soon.</p>') + '</div>' +
+      '<h3 class="sh-section-title">Mentees <span class="sh-muted">' + mentees.length + '</span></h3><div class="sh-members">' + (mentees.length ? mentees.map(card).join('') : '<p class="sh-muted">No mentees yet.</p>') + '</div>' +
+      '<div class="sh-closed-actions"><a class="btn btn-outline" href="member-hub.html">Back to the Members Hub</a></div>');
+    $('sh-closed').classList.add('sh-closed--wide');
+  }
+
   function start() {
     var ov = st.ov;
     if (ov.hub_closed) {
-      showClosed(
-        '<span class="sh-closed-icon" aria-hidden="true">' + ICON.lock + '</span>' +
-        '<h2>The Sankofa Hub isn\'t open yet</h2>' +
-        '<p>We\'re putting the finishing touches on it. You\'ll see it on your Members Hub as soon as it opens to you.</p>' +
-        '<div class="sh-closed-actions"><a class="btn btn-outline" href="member-hub.html">Back to the Members Hub</a></div>');
+      // The committee may have opened their Circle even though the whole Hub isn't open to them yet.
+      rpc('sankofa_shared_circle').then(function (sc) {
+        if (sc && sc.circle) showSharedCircle(sc); else showHubClosed();
+      }, showHubClosed);
       return;
     }
     if (!ov.participant) {

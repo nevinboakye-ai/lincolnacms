@@ -72,9 +72,12 @@
     loading = true;
     // Guest mentors (migration 106): if it hasn't been run yet, the Hub works exactly as before.
     var guestsCall = rpc('sankofa_admin_guests').then(function (g) { guestsOk = true; return g || []; }, function () { guestsOk = false; return []; });
-    return Promise.all([rpc('sankofa_admin_overview'), guestsCall]).then(function (res) {
+    // Which Circles are open to their members (migration 109)
+    var sharesCall = rpc('sankofa_admin_circle_shares').then(function (ids) { sharesOk = true; return ids || []; }, function () { sharesOk = false; return []; });
+    return Promise.all([rpc('sankofa_admin_overview'), guestsCall, sharesCall]).then(function (res) {
       var ov = res[0];
       mergeGuests(ov, res[1]);
+      ov.circles.forEach(function (c) { c.shared = res[2].indexOf(c.id) !== -1; });
       data = ov;
       lastLoad = Date.now();
       loading = false;
@@ -96,7 +99,7 @@
   // ---- Guest mentors: doctors in a Circle who don't have an account yet ----------------------
   // They are drawn like any other mentor (a dashed seat, a "Guest" tag), but they are name cards:
   // no login, no messages, no one-to-one pairing. Their ids start with "g:".
-  var guestsOk = false;
+  var guestsOk = false, sharesOk = false;
   function isGuestId(id) { return String(id).indexOf('g:') === 0; }
   // A mentee can have several mentors (migration 108); older data only has mentor_id.
   function mentorIdsOf(p) { return p.mentor_ids ? p.mentor_ids : (p.mentor_id ? [p.mentor_id] : []); }
@@ -253,7 +256,7 @@
       // Every mentor in a Circle mentors the whole Circle, so a mentee without a one-to-one pairing is fine.
     }
     return '<section class="shm-circle sh-theme-' + esc(c.theme) + (c.status !== 'active' ? ' is-archived' : '') + '" data-lane="' + esc(c.id) + '" aria-label="' + esc(c.name) + '">' +
-      '<header class="shm-circle-head"><span class="shm-swatch" aria-hidden="true"></span><h3>' + esc(c.name) + '</h3>' +
+      '<header class="shm-circle-head"><span class="shm-swatch" aria-hidden="true"></span><h3>' + esc(c.name) + '</h3>' + (c.shared ? '<span class="shm-open-tag" title="Its members can see this Circle and who is in it">Open to members</span>' : '') +
         '<button type="button" class="sh-icon-btn" data-shm-circle-menu="' + esc(c.id) + '" aria-label="Options for ' + esc(c.name) + '">' + ICON.dots + '</button></header>' +
       '<div class="shm-ring">' + ringSeats(c) + '<button type="button" class="shm-ring-mid" data-shm-open="' + esc(c.id) + '" aria-label="Open ' + esc(c.name) + '"><b class="' + (over ? 'shm-over' : full ? 'shm-full' : '') + '">' + c.members.length + '</b><small>of ' + c.capacity + '</small></button></div>' +
       '<p class="shm-circle-meta">' + plural(mentors.length, 'mentor') + ' · ' + plural(mentees, 'mentee') + (c.next_meeting ? ' · next ' + esc(S.fmtDay(c.next_meeting)) : '') + '</p>' +
@@ -365,9 +368,10 @@
       }
       var html = '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
         '<div class="shm-detail-head sh-theme-' + esc(c.theme) + '"><span class="shm-swatch" aria-hidden="true"></span><div><span class="guide-eyebrow">Sankofa Circle</span><h2 class="guide-title" style="margin:0">' + esc(c.name) + '</h2>' +
-        '<p class="sh-muted" style="margin:2px 0 0">' + c.members.length + '/' + c.capacity + ' places · ' + plural(mentors.length, 'mentor') + ' · ' + plural(mentees.length, 'mentee') + (c.motto ? ' · “' + esc(c.motto) + '”' : '') + '</p></div></div>' +
+        '<p class="sh-muted" style="margin:2px 0 0">' + (c.shared ? 'Open to its members &middot; ' : '') + c.members.length + '/' + c.capacity + ' places · ' + plural(mentors.length, 'mentor') + ' · ' + plural(mentees.length, 'mentee') + (c.motto ? ' · “' + esc(c.motto) + '”' : '') + '</p></div></div>' +
         '<div class="shm-detail-actions"><button type="button" class="btn btn-outline btn-sm" data-d-auto' + (unpaired.length && realMentors.length ? '' : ' disabled') + '>' + ICON.wand + ' Suggest pairings</button>' +
         '<button type="button" class="btn btn-outline btn-sm" data-d-addguest>' + ICON.plus + ' Add mentor by name</button>' +
+        '<button type="button" class="btn btn-outline btn-sm' + (c.shared ? ' is-on' : '') + '" data-d-share>' + (c.shared ? 'Open to members &#10003; (close)' : 'Open to members') + '</button>' +
         '<button type="button" class="btn btn-outline btn-sm" data-d-menu>Meeting, announcement &amp; settings</button></div>';
       html += '<h3 class="sh-dlg-h">Mentors <span class="sh-muted">every mentor here supports the whole Circle. Pairing is optional: drag a mentee onto a mentor for a one-to-one (a mentee can have several).</span></h3>';
       if (!mentors.length) html += '<p class="sh-muted">No mentor in this Circle yet. Place a mentor here from the Unplaced list.</p>';
@@ -414,6 +418,14 @@
       if (pm) { openPersonMenu(pm.getAttribute('data-shm-person-menu')); return; }
       if (e.target.closest('[data-d-menu]')) { openCircleMenu(id); return; }
       if (e.target.closest('[data-d-addguest]')) { openGuestForm(null, id); return; }
+      if (e.target.closest('[data-d-share]')) {
+        if (!sharesOk) { S.toast('Opening Circles to members needs migration 109 to be run in Supabase (see README-members-setup.md, section 166).', { type: 'err' }); return; }
+        var cur = circleById(id), on = !cur.shared;
+        rpc('sankofa_admin_circle_set_shared', { p_circle: id, p_shared: on }).then(function () {
+          return after(on ? cur.name + ' is open: its members can see who is in it, by name, even before the Hub is open to them' : cur.name + ' is closed to members again');
+        }, fail);
+        return;
+      }
       if (e.target.closest('[data-d-auto]')) {
         var plan = pairingsForCircle(circleById(id));
         if (!plan.length) { S.toast('No pairings to suggest - check mentor capacity'); return; }
