@@ -245,13 +245,12 @@
     var mentees = c.members.length - mentors.length;
     var over = c.members.length > c.capacity;
     var full = c.members.length >= c.capacity;
-    var needMentor = c.members.filter(function (m) { return m.role === 'mentee' && !mentorIdsOf(m).length; }).length;
     var sel = selectedIds().length;
     var names = c.members.slice().sort(function (a, b) { return (b.role === 'mentor') - (a.role === 'mentor') || a.name.localeCompare(b.name); }).map(function (m) { return S.firstName ? S.firstName(m.name) : m.name.split(' ')[0]; });
     var warn = '';
     if (c.status === 'active') {
       if (c.members.length && !mentors.length) warn = '<p class="shm-warn">No mentor yet</p>';
-      else if (needMentor) warn = '<p class="shm-warn shm-warn--soft">' + plural(needMentor, 'mentee') + ' without a mentor</p>';
+      // Every mentor in a Circle mentors the whole Circle, so a mentee without a one-to-one pairing is fine.
     }
     return '<section class="shm-circle sh-theme-' + esc(c.theme) + (c.status !== 'active' ? ' is-archived' : '') + '" data-lane="' + esc(c.id) + '" aria-label="' + esc(c.name) + '">' +
       '<header class="shm-circle-head"><span class="shm-swatch" aria-hidden="true"></span><h3>' + esc(c.name) + '</h3>' +
@@ -260,7 +259,7 @@
       '<p class="shm-circle-meta">' + plural(mentors.length, 'mentor') + ' · ' + plural(mentees, 'mentee') + (c.next_meeting ? ' · next ' + esc(S.fmtDay(c.next_meeting)) : '') + '</p>' +
       (names.length ? '<p class="shm-circle-names">' + esc(names.join(', ')) + '</p>' : '<p class="shm-circle-names is-empty">Empty - drag people here</p>') + warn +
       '<footer class="shm-circle-foot">' + (sel && c.status === 'active' ? '<button type="button" class="btn btn-primary btn-sm" data-shm-addsel="' + esc(c.id) + '">Add ' + sel + ' here</button>' : '') +
-        '<button type="button" class="btn btn-outline btn-sm" data-shm-open="' + esc(c.id) + '">Open &amp; pair</button></footer></section>';
+        '<button type="button" class="btn btn-outline btn-sm" data-shm-open="' + esc(c.id) + '">Open Circle</button></footer></section>';
   }
 
   function inactiveDays(p) {
@@ -370,7 +369,7 @@
         '<div class="shm-detail-actions"><button type="button" class="btn btn-outline btn-sm" data-d-auto' + (unpaired.length && realMentors.length ? '' : ' disabled') + '>' + ICON.wand + ' Suggest pairings</button>' +
         '<button type="button" class="btn btn-outline btn-sm" data-d-addguest>' + ICON.plus + ' Add mentor by name</button>' +
         '<button type="button" class="btn btn-outline btn-sm" data-d-menu>Meeting, announcement &amp; settings</button></div>';
-      html += '<h3 class="sh-dlg-h">Mentors <span class="sh-muted">drag a mentee onto a mentor, or use the menu. A mentee can have more than one mentor: drop them on another mentor too.</span></h3>';
+      html += '<h3 class="sh-dlg-h">Mentors <span class="sh-muted">every mentor here supports the whole Circle. Pairing is optional: drag a mentee onto a mentor for a one-to-one (a mentee can have several).</span></h3>';
       if (!mentors.length) html += '<p class="sh-muted">No mentor in this Circle yet. Place a mentor here from the Unplaced list.</p>';
       html += '<div class="shm-mgroups">' + mentors.map(function (m) {
         if (m.is_guest) {
@@ -384,7 +383,7 @@
           '<div class="shm-mgroup-body">' + (mine.length ? mine.map(function (x) { return chip(x, m.id); }).join('') : '<span class="shm-lane-empty">No mentees yet</span>') + '</div></div>';
       }).join('') + '</div>';
       if (unpaired.length) {
-        html += '<h3 class="sh-dlg-h">Needs a mentor (' + unpaired.length + ')</h3><ul class="shm-unpaired">' + unpaired.map(function (m) {
+        html += '<h3 class="sh-dlg-h">Not paired one-to-one (' + unpaired.length + ') <span class="sh-muted">' + (mentors.length ? 'still mentored by the whole Circle; pair only if you want a 1:1' : 'add a mentor to the Circle') + '</span></h3><ul class="shm-unpaired">' + unpaired.map(function (m) {
           var otherId = mentorIdsOf(m).filter(function (id) { return !mentorIds[id]; })[0];
           var other = otherId ? personById(otherId) : null;
           return '<li draggable="true" data-dpcard="' + esc(m.id) + '">' + S.avatar(m, 'sm') + '<span class="shm-prow-main"><button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '"><strong>' + esc(m.name) + '</strong></button><small>' + esc(m.stage || '') + (other ? ' · paired with ' + esc(other.name) + ' (other Circle)' : '') + '</small></span>' +
@@ -394,7 +393,7 @@
             }).join('') + '</select>' : '') + '</li>';
         }).join('') + '</ul>';
       } else if (mentees.length) {
-        html += '<p class="shm-allpaired">Every mentee has a mentor 🎉</p>';
+        html += '<p class="shm-allpaired">Every mentee has a one-to-one mentor 🎉</p>';
       }
       dlg.el.innerHTML = html;
     }
@@ -504,7 +503,7 @@
       '<div class="guide-form">' +
         '<div class="field"><label for="shm-move">Circle</label><select id="shm-move">' + circleOptions(p.circle_id, true) + '</select></div>' +
         (c ? '<label class="sh-check"><input type="checkbox" id="shm-lead"' + (p.is_lead ? ' checked' : '') + '> <span>Circle lead (shown first, helps run the Circle)</span></label>' : '') +
-        (p.role === 'mentee' ? '<fieldset class="field shm-mentors"><legend>Mentors <span class="guide-optional">(tick as many as you like, up to 5)</span></legend>' + (mentors.length ? mentors.map(function (m) {
+        (p.role === 'mentee' ? '<fieldset class="field shm-mentors"><legend>One-to-one mentors <span class="guide-optional">(optional, up to 5. Everyone in the Circle is already mentored by all of its mentors.)</span></legend>' + (mentors.length ? mentors.map(function (m) {
           var load = (m.mentee_ids || []).length;
           return '<label class="sh-check"><input type="checkbox" data-mentor-pick value="' + esc(m.id) + '"' + (hasMentor(p, m.id) ? ' checked' : '') + '> <span>' + esc(m.name) + ' <small>(' + load + (m.capacity != null ? '/' + m.capacity : '') + ' mentees)' + (m.circle_id === p.circle_id && p.circle_id ? ' &middot; same Circle' : '') + '</small></span></label>';
         }).join('') : '<p class="sh-muted">No mentors in the Hub yet.</p>') + '</fieldset>' : '') +

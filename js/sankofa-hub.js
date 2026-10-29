@@ -431,7 +431,7 @@
     if (isMentor()) {
       var list = ov.my_mentees || [];
       if (!list.length) {
-        return '<div class="sh-card"><h3>My mentees</h3><p class="sh-muted">No one is paired with you one-to-one yet. Your Circle\'s mentees are in <button type="button" class="link-button" data-sh-goto="circle">My Circle</button>.</p></div>';
+        return '<div class="sh-card"><h3>My mentees</h3><p class="sh-muted">You mentor everyone in your Circle. One-to-one pairs, if you have any, appear here. Your Circle\'s mentees are in <button type="button" class="link-button" data-sh-goto="circle">My Circle</button>.</p></div>';
       }
       return '<div class="sh-card"><div class="sh-card-head"><h3>My mentees</h3><span class="sh-muted">' + plural(list.length, 'mentee') + '</span></div>' +
         list.map(function (m) {
@@ -441,25 +441,28 @@
             '<button type="button" class="btn btn-outline sh-btn-sm" data-sh-new-121="' + esc(m.pairing_id) + '" data-name="' + esc(m.name) + '">' + ICON.cal + ' 1:1</button></div></div>';
         }).join('') + '</div>';
     }
-    // A mentee can have several mentors (migration 108); older data only has my_mentor.
-    var mine = ov.my_mentors && ov.my_mentors.length ? ov.my_mentors : (ov.my_mentor ? [ov.my_mentor] : []);
-    if (mine.length) {
-      return '<div class="sh-card"><div class="sh-card-head"><h3>' + (mine.length > 1 ? 'My mentors' : 'My mentor') + '</h3>' + (mine.length > 1 ? '<span class="sh-muted">' + mine.length + ' mentors</span>' : '') + '</div>' +
-        mine.map(function (mentor) {
-          return '<div class="sh-person-card">' + personRow(mentor) +
-            (mentor.headline ? '<p class="sh-quote">&ldquo;' + esc(mentor.headline) + '&rdquo;</p>' : '') +
-            ((mentor.offers && mentor.offers.length) ? '<p class="sh-tags">' + mentor.offers.slice(0, 4).map(function (o) { return '<span class="sh-tag">' + esc(o) + '</span>'; }).join('') + '</p>' : '') +
-            '<div class="sh-person-actions">' + msgBtn(mentor) +
-            '<button type="button" class="btn btn-outline sh-btn-sm" data-sh-new-121="' + esc(mentor.pairing_id) + '" data-name="' + esc(mentor.name) + '">' + ICON.cal + ' Book a 1:1</button></div></div>';
-        }).join('') + '</div>';
-    }
-    var mentors = (ov.members || []).filter(function (m) { return m.role === 'mentor' && !m.is_me; });
-    if (!ov.circle) return '';
-    return '<div class="sh-card"><h3>Your mentors</h3>' + (mentors.length
-      ? '<p class="sh-muted">You haven\'t been paired one-to-one yet - these are your Circle\'s mentors.</p>' + mentors.map(function (m) {
-          return '<div class="sh-person-card">' + personRow(m, msgBtn(m)) + '</div>';
-        }).join('')
-      : '<p class="sh-muted">Mentors will appear here once your Circle has them.</p>') + '</div>';
+    // Every mentor in the Circle supports every mentee in it. A one-to-one pairing is optional: the
+    // mentors you're paired with (migration 108 allows several) get a "Book a 1:1" button.
+    var paired = ov.my_mentors && ov.my_mentors.length ? ov.my_mentors : (ov.my_mentor ? [ov.my_mentor] : []);
+    var pairedBy = {};
+    paired.forEach(function (m) { pairedBy[m.id] = m; });
+    var circleMentors = (ov.members || []).filter(function (m) { return m.role === 'mentor' && !m.is_me; });
+    var everyone = circleMentors.slice();
+    paired.forEach(function (m) { if (!circleMentors.some(function (x) { return x.id === m.id; })) everyone.push(m); });
+    if (!ov.circle && !everyone.length) return '';
+    if (!everyone.length) return '<div class="sh-card"><h3>Your mentors</h3><p class="sh-muted">Mentors will appear here once your Circle has them.</p></div>';
+    return '<div class="sh-card"><div class="sh-card-head"><h3>' + (everyone.length > 1 ? 'Your mentors' : 'Your mentor') + '</h3><span class="sh-muted">' + plural(everyone.length, 'mentor') + '</span></div>' +
+      '<p class="sh-muted">' + (everyone.length > 1 ? 'Every mentor in your Circle supports everyone in it' : 'Your Circle\'s mentor supports everyone in it') + '. Ask any of them for advice' + (paired.length ? '; a 1:1 is there with the ones you\'re paired with.' : '.') + '</p>' +
+      everyone.map(function (m) {
+        var pr = pairedBy[m.id];
+        var withMe = pr || m;
+        return '<div class="sh-person-card">' + personRow(withMe, pr ? '<span class="sh-chip">Your 1:1 mentor</span>' : (m.is_guest && m.pending ? '<span class="sh-chip">Pending</span>' : '')) +
+          (withMe.headline ? '<p class="sh-quote">&ldquo;' + esc(withMe.headline) + '&rdquo;</p>' : '') +
+          ((withMe.offers && withMe.offers.length) ? '<p class="sh-tags">' + withMe.offers.slice(0, 4).map(function (o) { return '<span class="sh-tag">' + esc(o) + '</span>'; }).join('') + '</p>' : '') +
+          (m.is_guest ? '<p class="sh-muted">Part of your Circle, not on the LACMS Hub yet.</p>' :
+            '<div class="sh-person-actions">' + msgBtn(withMe) +
+            (pr ? '<button type="button" class="btn btn-outline sh-btn-sm" data-sh-new-121="' + esc(pr.pairing_id) + '" data-name="' + esc(pr.name) + '">' + ICON.cal + ' Book a 1:1</button>' : '') + '</div>') + '</div>';
+      }).join('') + '</div>';
   }
 
   function latestBoardCard() {
