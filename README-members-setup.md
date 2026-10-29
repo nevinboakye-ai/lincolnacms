@@ -1862,6 +1862,8 @@ The first time someone opens the homepage in a browser session they see a welcom
 - **Link account:** when they sign up, open their card -> *They've signed up: link account* -> search -> Link. They become a real mentor in the same Circle (their specialty is carried across) and the name card is retired.
 - **Several mentors and mentees in one Circle** was already possible and still is: a Circle holds as many mentors and mentees as its places allow (you can go over, with a warning), with or without accounts. Several mentors are listed side by side when you open the Circle.
 
+**Pending or confirmed:** a guest mentor is **Pending** (the doctor hasn't confirmed yet, the default) or **Confirmed**. Either way the Circle is available to its members and they see the mentor by name; a pending mentor is shown as "Mentor · pending" so no one is misled. Change it in the mentor's form, or press **Mark as confirmed** on their card. If you ran 106 before this update, run it again (safe) to add the status.
+
 **What a guest mentor is not:** a name card, not an account. They can't log in, message, earn XP, or be paired one-to-one with a mentee (pairing needs a real account; use *Link account* once they have one). A Circle that still has guest mentors can't be deleted, only archived.
 
 **What Circle members see:** on their Sankofa Hub's *My Circle* page the guest mentors appear with the other mentors, with name, role, organisation and specialty. Their **email and your notes are for the committee only** (enforced in the database).

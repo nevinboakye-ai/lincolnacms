@@ -161,7 +161,7 @@
       if (!ov.participant || ov.status !== 'active' || !ov.circle) return;
       return rpc('sankofa_circle_guests').then(function (list) {
         (list || []).forEach(function (g) {
-          ov.members.push({ id: 'g:' + g.id, is_guest: true, name: g.name, role: 'mentor', stage: [g.title, g.organisation].filter(Boolean).join(' \u00B7 ') || 'Guest mentor',
+          ov.members.push({ id: 'g:' + g.id, is_guest: true, name: g.name, role: 'mentor', stage: [g.title, g.organisation].filter(Boolean).join(' \u00B7 ') || 'Guest mentor', pending: g.status === 'pending',
             headline: g.specialty ? 'Specialty: ' + g.specialty : null, is_me: false, is_lead: false, can_message: false, blurred: false, care: null, level: null, streak: null });
         });
       }, function () { /* not set up yet: the Circle simply has no guest mentors to show */ });
@@ -551,13 +551,13 @@
       '<div class="sh-member-id"><h4>' + esc(m.name) + (m.is_me ? ' <span class="sh-chip">You</span>' : '') + '</h4>' +
       '<p>' + esc(m.stage || '') + '</p>' +
       '<p class="sh-member-chips">' + (m.is_lead ? '<span class="sh-chip sh-chip--lead">Circle lead</span>' : '') +
-      '<span class="sh-chip sh-chip--role">' + (m.is_guest ? 'Guest mentor' : m.role === 'mentor' ? 'Mentor' : 'Mentee') + '</span>' +
+      '<span class="sh-chip sh-chip--role">' + (m.is_guest ? (m.pending ? 'Mentor \u00B7 pending' : 'Mentor') : m.role === 'mentor' ? 'Mentor' : 'Mentee') + '</span>' +
       (m.level ? '<span class="sh-chip">Lv ' + m.level + '</span>' : '') +
       (m.streak > 0 ? '<span class="sh-chip sh-chip--streak">' + ICON.flame + m.streak + 'w</span>' : '') +
       (care && care.need_help ? '<span class="sh-flag">Wants a check-in</span>' : '') + '</p></div>' + moodHtml + '</div>' +
       (m.headline ? '<p class="sh-quote">&ldquo;' + esc(m.headline) + '&rdquo;</p>' : '') +
       (care ? '<p class="sh-muted sh-member-active">' + esc(lastActiveText(care)) + '</p>' : '') +
-      (m.is_guest ? '<p class="sh-muted sh-member-active">Part of your Circle, not on the LACMS Hub yet.</p>' : '') +
+      (m.is_guest ? '<p class="sh-muted sh-member-active">' + (m.pending ? 'Joining your Circle as a mentor - confirmation pending.' : 'Part of your Circle, not on the LACMS Hub yet.') + '</p>' : '') +
       (m.is_me || m.is_guest ? '' : '<div class="sh-person-actions">' + msgBtn(m) +
         ((isMentor() || isAdmin()) && m.role !== 'mentor' && !m.blurred ? '<button type="button" class="btn btn-outline sh-btn-sm" data-sh-snapshot="' + esc(m.id) + '">Progress</button>' : '') + '</div>') +
       '</article>';

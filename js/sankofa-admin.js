@@ -101,7 +101,7 @@
   function guestAsPerson(g) {
     return { id: 'g:' + g.id, guest_id: g.id, is_guest: true, name: g.name, role: 'mentor', status: 'active',
       stage: [g.title, g.organisation].filter(Boolean).join(' \u00B7 ') || 'Guest mentor', title: g.title, organisation: g.organisation,
-      specialty: g.specialty, email: g.email, note: g.note, circle_id: g.circle_id || null, is_lead: false, capacity: null, mentee_ids: [],
+      specialty: g.specialty, email: g.email, note: g.note, gstatus: g.status || 'pending', circle_id: g.circle_id || null, is_lead: false, capacity: null, mentee_ids: [],
       interests: [], offers: [], profile_done: true, joined_at: g.created_at, xp: 0 };
   }
   function mergeGuests(ov, guests) {
@@ -212,7 +212,7 @@
     return '<div class="shm-prow' + (on ? ' is-on' : '') + '" draggable="true" data-pcard="' + esc(p.id) + '">' +
       '<label class="shm-check"><input type="checkbox" data-shm-tick="' + esc(p.id) + '"' + (on ? ' checked' : '') + ' aria-label="Select ' + esc(p.name) + '"></label>' +
       '<span class="shm-prow-av' + (p.role === 'mentor' ? ' is-mentor' : '') + (p.is_guest ? ' is-guest' : '') + '">' + S.avatar(p, 'sm') + '</span>' +
-      '<span class="shm-prow-main"><strong>' + esc(p.name) + '</strong><small><b class="shm-role-tag' + (p.role === 'mentor' ? ' is-mentor' : '') + '">' + (p.is_guest ? 'Guest mentor' : p.role === 'mentor' ? 'Mentor' : 'Mentee') + '</b>' + (p.stage ? ' · ' + esc(p.stage) : '') + (note ? ' · ' + esc(note) : '') + '</small></span>' +
+      '<span class="shm-prow-main"><strong>' + esc(p.name) + '</strong><small><b class="shm-role-tag' + (p.role === 'mentor' ? ' is-mentor' : '') + '">' + (p.is_guest ? 'Guest mentor' + (p.gstatus === 'pending' ? ' (pending)' : '') : p.role === 'mentor' ? 'Mentor' : 'Mentee') + '</b>' + (p.stage ? ' · ' + esc(p.stage) : '') + (note ? ' · ' + esc(note) : '') + '</small></span>' +
       '<button type="button" class="shm-place" data-shm-place="' + esc(p.id) + '" aria-label="Place ' + esc(p.name) + ' in a Circle">Place</button>' +
       '<button type="button" class="sh-icon-btn" data-shm-person-menu="' + esc(p.id) + '" aria-label="Options for ' + esc(p.name) + '">' + ICON.dots + '</button></div>';
   }
@@ -232,7 +232,7 @@
       var m = members[i];
       if (!m) { out += '<span class="shm-seat shm-seat--empty" style="' + pos + '" aria-hidden="true"></span>'; continue; }
       out += '<button type="button" class="shm-seat' + (m.role === 'mentor' ? ' is-mentor' : '') + (m.is_guest ? ' is-guest' : '') + (m.is_lead ? ' is-lead' : '') + (matches(m) ? '' : ' is-dim') + (query && matches(m) ? ' is-hit' : '') +
-        '" style="' + pos + '" draggable="true" data-pcard="' + esc(m.id) + '" title="' + esc(m.name + ' · ' + (m.is_guest ? 'Guest mentor' : m.role === 'mentor' ? 'Mentor' : 'Mentee') + (m.is_lead ? ' · Lead' : '')) + '" aria-label="' + esc(m.name) + ', ' + (m.role === 'mentor' ? 'mentor' : 'mentee') + '">' + S.avatar(m, 'seat') + '</button>';
+        '" style="' + pos + '" draggable="true" data-pcard="' + esc(m.id) + '" title="' + esc(m.name + ' · ' + (m.is_guest ? 'Guest mentor' + (m.gstatus === 'pending' ? ' (pending)' : '') : m.role === 'mentor' ? 'Mentor' : 'Mentee') + (m.is_lead ? ' · Lead' : '')) + '" aria-label="' + esc(m.name) + ', ' + (m.role === 'mentor' ? 'mentor' : 'mentee') + '">' + S.avatar(m, 'seat') + '</button>';
     }
     return out;
   }
@@ -370,7 +370,7 @@
       html += '<div class="shm-mgroups">' + mentors.map(function (m) {
         if (m.is_guest) {
           return '<div class="shm-mgroup is-guest"><div class="shm-mgroup-head">' + S.avatar(m, 'sm') + '<button type="button" class="shm-pchip-name" data-shm-person-menu="' + esc(m.id) + '"><strong>' + esc(m.name) + '</strong></button>' +
-            '<span class="shm-guest-tag">Guest mentor</span></div><div class="shm-mgroup-body"><span class="shm-lane-empty">' + esc(m.stage) + ' &middot; not on LACMS yet, so mentees can\'t be paired to them one-to-one until they sign up.</span></div></div>';
+            '<span class="shm-guest-tag">Guest mentor' + (m.gstatus === 'pending' ? ' &middot; pending' : '') + '</span></div><div class="shm-mgroup-body"><span class="shm-lane-empty">' + esc(m.stage) + ' &middot; not on LACMS yet, so mentees can\'t be paired to them one-to-one until they sign up.</span></div></div>';
         }
         var mine = mentees.filter(function (x) { return x.mentor_id === m.id; });
         var cap = m.capacity;
@@ -556,7 +556,9 @@
       '<div class="field"><label for="shg-spec">Specialty <span class="guide-optional">(optional)</span></label><input type="text" id="shg-spec" maxlength="100" value="' + esc(v.specialty || '') + '"></div>' +
       '<div class="field"><label for="shg-email">Email <span class="guide-optional">(committee only)</span></label><input type="email" id="shg-email" maxlength="200" value="' + esc(v.email || '') + '"></div>' +
       '<div class="field"><label for="shg-note">Notes <span class="guide-optional">(committee only)</span></label><textarea id="shg-note" rows="2" maxlength="500" placeholder="e.g. Met at the careers fair, free on Thursdays">' + esc(v.note || '') + '</textarea></div>' +
-      '<div class="field"><label for="shg-circle">Circle</label><select id="shg-circle">' + circleOptions(g ? g.circle_id : circleId, true) + '</select></div>' +
+      '<div class="sh-field-row"><div class="field"><label for="shg-circle">Circle</label><select id="shg-circle">' + circleOptions(g ? g.circle_id : circleId, true) + '</select></div>' +
+      '<div class="field"><label for="shg-status">Status</label><select id="shg-status"><option value="pending"' + ((g ? g.gstatus : 'pending') === 'pending' ? ' selected' : '') + '>Pending (not confirmed yet)</option><option value="confirmed"' + (g && g.gstatus === 'confirmed' ? ' selected' : '') + '>Confirmed</option></select></div></div>' +
+      '<p class="sh-hint">Either way, the Circle\'s members see their name. Pending is shown to them as &ldquo;pending&rdquo;.</p>' +
       '<p class="guide-error" hidden></p><div class="guide-actions"><button type="submit" class="btn btn-primary" data-go="close">' + (g ? 'Save' : 'Add mentor') + '</button>' +
       (g ? '' : '<button type="submit" class="btn btn-outline" data-go="again">Add and another</button>') + '<button type="button" class="btn btn-outline" data-dialog-close>Cancel</button></div></form>');
     var again = false;
@@ -570,7 +572,7 @@
       var circle = $('shg-circle').value || null;
       busy(btn, true, 'Saving…');
       rpc('sankofa_admin_guest_save', { p_id: g ? g.guest_id : null, p_name: name, p_title: $('shg-title').value, p_organisation: $('shg-org').value, p_specialty: $('shg-spec').value,
-        p_email: $('shg-email').value, p_note: $('shg-note').value, p_circle: circle }).then(function () {
+        p_email: $('shg-email').value, p_note: $('shg-note').value, p_circle: circle, p_status: $('shg-status').value }).then(function () {
         dlg.close();
         S.toast(g ? 'Saved' : name + ' added' + (circle && circleById(circle) ? ' to ' + circleById(circle).name : ''));
         return load(true).then(function () { if (again) openGuestForm(null, circle); });
@@ -587,17 +589,24 @@
     if (p.email) detail.push(['Email', '<a href="mailto:' + esc(p.email) + '">' + esc(p.email) + '</a>']);
     if (p.note) detail.push(['Notes', esc(p.note)]);
     var dlg = S.openDialog('<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
-      '<div class="shm-dlg-head">' + S.avatar(p, 'lg') + '<div><span class="guide-eyebrow">Guest mentor &middot; not on LACMS yet</span><h2 class="guide-title" style="margin:0">' + esc(p.name) + '</h2></div></div>' +
+      '<div class="shm-dlg-head">' + S.avatar(p, 'lg') + '<div><span class="guide-eyebrow">Guest mentor &middot; ' + (p.gstatus === 'pending' ? 'pending' : 'confirmed') + ' &middot; not on LACMS yet</span><h2 class="guide-title" style="margin:0">' + esc(p.name) + '</h2></div></div>' +
       (detail.length ? '<dl class="shm-detail">' + detail.map(function (d) { return '<div><dt>' + d[0] + '</dt><dd>' + d[1] + '</dd></div>'; }).join('') + '</dl>' : '') +
       '<div class="guide-form"><div class="field"><label for="shm-move">Circle</label><select id="shm-move">' + circleOptions(p.circle_id, true) + '</select></div>' +
       '<p class="guide-error" hidden></p>' +
       '<div class="guide-actions"><button type="button" class="btn btn-primary" data-save>Save changes</button><button type="button" class="btn btn-outline" data-edit>Edit details</button>' +
+      (p.gstatus === 'pending' ? '<button type="button" class="btn btn-outline" data-confirm>Mark as confirmed</button>' : '') +
       '<button type="button" class="btn btn-outline" data-link>They\'ve signed up: link account</button></div>' +
       '<div class="shm-linkbox" hidden><div class="field"><label for="shm-linkq">Find their account</label><input type="search" id="shm-linkq" placeholder="Search by name…"></div><div class="shm-linklist" aria-live="polite"></div></div>' +
       '<div class="guide-actions" style="margin-top:12px"><button type="button" class="btn btn-outline sh-btn-danger" data-remove>Remove</button></div></div>');
     var err = dlg.el.querySelector('.guide-error');
     function showErr(er) { err.textContent = er.message; err.hidden = false; }
     dlg.el.querySelector('[data-edit]').addEventListener('click', function () { dlg.close(); openGuestForm(p, p.circle_id); });
+    var conf = dlg.el.querySelector('[data-confirm]');
+    if (conf) conf.addEventListener('click', function () {
+      busy(conf, true, 'Saving…');
+      rpc('sankofa_admin_guest_save', { p_id: p.guest_id, p_name: p.name, p_title: p.title || '', p_organisation: p.organisation || '', p_specialty: p.specialty || '', p_email: p.email || '',
+        p_note: p.note || '', p_circle: p.circle_id || null, p_status: 'confirmed' }).then(function () { dlg.close(); S.toast(p.name + ' confirmed'); return load(true); }, function (er) { busy(conf, false); showErr(er); });
+    });
     dlg.el.querySelector('[data-save]').addEventListener('click', function (e) {
       var btn = e.currentTarget, to = $('shm-move').value || null;
       if (to === (p.circle_id || null)) { dlg.close(); return; }
