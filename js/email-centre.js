@@ -110,6 +110,8 @@
     refine: freshRefine(),
     manual: {},              // lower(email) -> true: people added by search
     excluded: {},            // lower(email) -> true: unticked in the list
+    optOut: {},              // lower(email) -> true: has opted out of society updates (migration 110)
+    essential: false,        // an essential account / safety message: sent even to people who opted out
     search: '',
     subject: '',
     message: '',
@@ -216,8 +218,11 @@
       supabaseClient.rpc('email_motm_nominators').then(function (r) { return r.error ? null : (r.data || []); }, function () { return null; }),
       supabaseClient.rpc('email_event_registrants').then(function (r) { return r.error ? null : (r.data || []); }, function () { return null; }),
       supabaseClient.rpc('email_feedback_guests').then(function (r) { return r.error ? null : (r.data || []); }, function () { return null; }),
-      supabaseClient.from('site_events').select('slug, name, starts_on').order('starts_on', { ascending: false, nullsFirst: false }).then(function (r) { return r.error ? [] : (r.data || []); }, function () { return []; })
+      supabaseClient.from('site_events').select('slug, name, starts_on').order('starts_on', { ascending: false, nullsFirst: false }).then(function (r) { return r.error ? [] : (r.data || []); }, function () { return []; }),
+      supabaseClient.rpc('president_email_opt_outs').then(function (r) { return r.error ? [] : (r.data || []); }, function () { return []; })
     ]).then(function (res) {
+      state.optOut = {};
+      (res[14] || []).forEach(function (e) { state.optOut[lc(e)] = true; });
       state.people = {};
       var members = res[0], pros = res[1], apps = res[2], appRounds = res[3], rounds = res[4], mentorForms = res[5], overview = res[6], studentReqs = res[7], proReqs = res[8];
       state.myEmail = res[9] || '';
@@ -373,7 +378,9 @@
     out.sort(function (a, b) { return (a.name || a.email).localeCompare(b.name || b.email); });
     return out;
   }
-  function recipients() { return candidates().filter(function (p) { return !state.excluded[p.key]; }); }
+  // People who asked not to get society updates are left out, unless this is an essential message.
+  function optedOut(p) { return !state.essential && !!state.optOut[p.key]; }
+  function recipients() { return candidates().filter(function (p) { return !state.excluded[p.key] && !optedOut(p); }); }
   // A short description of who a batch went to, saved with it: "Students who applied to Sankofa · Phase 2 · Medicine only".
   function audienceLabel() {
     var a = audienceById(state.audience), rf = state.refine, bits = [];
@@ -489,16 +496,17 @@
 
     // The list
     var list = candidates();
-    var chosen = list.filter(function (p) { return !state.excluded[p.key]; }).length;
+    var chosen = list.filter(function (p) { return !state.excluded[p.key] && !optedOut(p); }).length;
     html += '<div class="ec-recipients"><div class="ec-recipients-head"><strong>' + (state.audience || list.length ? plural(chosen, 'person', 'people') + ' selected' : 'No one chosen yet') + (list.length !== chosen ? ' <span class="sh-muted">of ' + list.length + '</span>' : '') + '</strong>' +
       (list.length ? '<span class="ec-recipients-tools"><button type="button" class="link-button" data-ec-all="1">Select all</button><button type="button" class="link-button" data-ec-all="0">None</button></span>' : '') + '</div>';
     if (!list.length) {
       html += '<p class="sh-muted">Pick a group above, or add people by name.</p>';
     } else {
       html += '<div class="ec-recipient-list">' + list.map(function (p) {
-        var on = !state.excluded[p.key];
-        return '<label class="ec-recipient' + (on ? '' : ' is-off') + '"><input type="checkbox" data-ec-tick="' + esc(p.key) + '"' + (on ? ' checked' : '') + '>' +
-          '<span class="ec-recipient-main"><strong>' + esc(p.name || p.email) + '</strong><small>' + esc(p.email) + (kindLabel(p) ? ' · ' + esc(kindLabel(p)) : '') + '</small>' +
+        var oo = optedOut(p);
+        var on = !state.excluded[p.key] && !oo;
+        return '<label class="ec-recipient' + (on ? '' : ' is-off') + '"><input type="checkbox" data-ec-tick="' + esc(p.key) + '"' + (on ? ' checked' : '') + (oo ? ' disabled' : '') + '>' +
+          '<span class="ec-recipient-main"><strong>' + esc(p.name || p.email) + '</strong><small>' + esc(p.email) + (kindLabel(p) ? ' · ' + esc(kindLabel(p)) : '') + (oo ? ' · opted out of updates' : '') + '</small>' +
           (p.lastEmail ? '<small class="ec-last">Last emailed ' + esc(timeAgo(p.lastEmail.created_at)) + ': ' + esc(p.lastEmail.subject) + '</small>' : '') + '</span>' +
           (state.manual[p.key] ? '<button type="button" class="ec-x" data-ec-unadd="' + esc(p.key) + '" aria-label="Remove ' + esc(p.name || p.email) + '">&times;</button>' : '') + '</label>';
       }).join('') + '</div>';
@@ -515,6 +523,7 @@
       '<label class="ec-field"><span>Start from</span><select id="ec-template">' + tpl + '</select></label>' +
       '<label class="ec-field"><span>Subject</span><input type="text" id="ec-subject" maxlength="150" value="' + esc(state.subject) + '" autocomplete="off"></label>' +
       '<label class="ec-field"><span>Message</span><textarea id="ec-message" rows="10" maxlength="5000">' + esc(state.message) + '</textarea></label>' +
+      '<label class="sh-check ec-essential"><input type="checkbox" data-ec-essential' + (state.essential ? ' checked' : '') + '> <span>This is an essential message about their account, membership or safety (send it even to people who opted out of updates)</span></label>' +
       '<div class="ec-tools"><span class="ec-insert">Insert: <button type="button" data-ec-insert="{first_name}">first name</button><button type="button" data-ec-insert="{name}">full name</button><button type="button" data-ec-insert="{phase}">phase</button><button type="button" data-ec-insert="{circle}">their Circle</button></span><span class="ec-counter">' + state.message.length + ' / 5000</span></div>' +
       '<details class="ec-preview" open><summary>Preview' + (first ? ' for ' + esc(greetName(first.name)) : '') + '</summary><div class="ec-preview-box">' +
       (first ? '<strong>' + esc(merge(state.subject, first) || '(no subject yet)') + '</strong>' + (state.message.trim() ? previewHtml(merge(state.message, first)) : '<p class="ce-empty">Your message appears here.</p>') : '<p class="sh-muted">Choose who it is for to see a preview.</p>') +
@@ -755,6 +764,7 @@
   root.addEventListener('change', function (e) {
     var el;
     if ((el = e.target.closest('[data-ec-refine]'))) { state.refine[el.getAttribute('data-ec-refine')] = el.value; state.excluded = {}; render(); return; }
+    if ((el = e.target.closest('[data-ec-essential]'))) { state.essential = el.checked; render(); return; }
     if ((el = e.target.closest('[data-ec-tick]'))) {
       var k = el.getAttribute('data-ec-tick');
       if (el.checked) delete state.excluded[k]; else state.excluded[k] = true;

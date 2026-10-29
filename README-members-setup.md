@@ -1900,3 +1900,19 @@ The full Sankofa Hub needs Hub Access, so a Circle whose mentors and mentees wer
 - Everyone placed in that Circle who has a login sees it on their **Members Hub** (a "Your Sankofa Circle" card) and on the Sankofa Hub page: the Circle's name, motto and **who is in it, by name, with role and title**. This works even if the full Hub isn't open to them yet, and even if some mentors are still pending (a guest mentor added by name, or a professional awaiting approval). Pending mentors are marked "Mentor · pending".
 - It is a **read-only roster**: no emails, messages, progress or meetings. Sixth-form members still appear without a name to anyone except the Executive Committee. People who are in another Circle (or none) see nothing.
 - Closed by default, per Circle. When the full Hub opens to them (Hub Access -> Sankofa Hub), they get the whole Hub as before.
+
+
+## 167. Data protection, privacy and regulations (Lincoln SU)
+
+The full picture - what was checked, what the law and ULSU's policies require, what was built, and the open actions that need people - is in **[COMPLIANCE-REPORT.md](COMPLIANCE-REPORT.md)** (also as `LACMS-Compliance-Report.docx` for sending to the Students' Union). Read section 10 first: it lists what you and ULSU still have to do.
+
+**To switch the new tools on (in this order):**
+1. **Supabase -> SQL Editor:** run `db/migrations/110-data-protection-compliance.sql` (safe to repeat). If you want the nightly retention clean-up, enable the `pg_cron` extension first (Database -> Extensions), then run 110 again.
+2. **Redeploy the two email functions** (`send-account-email` and `send-member-email`) so emails identify the sender and carry the privacy and opt-out links. Send yourself a test email afterwards.
+3. Publish the site (this push). Until 110 has run, the data request form and "My data & privacy" tools tell people to email `acms@lincolnsu.com` instead; nothing else breaks.
+
+**What's new for you (president):** Dashboard -> **Data & Privacy**: requests, complaints and concerns with one-month deadlines (overdue ones are flagged red; safeguarding ones remind you to pass them to ULSU), *Download their data*, *Erase their data*, *Run clean-up now*, and *Inactive accounts*. The email centre now skips people who opted out of society updates (tick "essential message" for account/safety emails).
+
+**What's new for members and visitors:** privacy, cookie, terms, accessibility and safeguarding pages (linked from every footer); a cookie banner (visit counting is opt-in); a "Your data rights" form that works without an account; and **My data & privacy** on the members hub (download my data, request deletion, email preferences, my requests). Members are asked to read the privacy notice again whenever its version changes (`PRIVACY_VERSION` in `js/privacy.js`).
+
+**Also changed:** Google Fonts and the jsDelivr login library are no longer loaded from third parties (fonts are in `css/fonts`, the library in `js/vendor`), and the old always-on visit counter in `js/main.js` was removed in favour of the consent-based one in `js/privacy.js`.

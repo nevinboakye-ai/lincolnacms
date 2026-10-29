@@ -433,7 +433,7 @@
       var email = a.email || (me && me.email) || ss(GUEST_KEY) || '';
       who = '<div class="fb-card fb-card--tight"><h3>About you</h3>' +
         '<div class="fb-fields"><div class="field"><label for="fb-email">Your email <span class="fb-req">required</span></label>' +
-        '<input type="email" id="fb-email" autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com" value="' + esc(email) + '"></div>' +
+        '<input type="email" id="fb-email" autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com" value="' + esc(email) + '"><span class="hint">We use your email only to avoid duplicate replies and to contact you if you ask us to. <a href="privacy.html" target="_blank" rel="noopener">Privacy notice</a></span></div>' +
         '<div class="field"><label for="fb-name">First name <span class="guide-optional">(optional)</span></label>' +
         '<input type="text" id="fb-name" autocomplete="given-name" maxlength="80" value="' + esc(a.name) + '"></div></div>' +
         '<span class="field-label">I’m a… <span class="guide-optional">(optional)</span></span><div class="fb-pills" role="radiogroup" aria-label="I am a">' +

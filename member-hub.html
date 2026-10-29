@@ -7,7 +7,7 @@
 <title>Members Hub - LACMS</title>
 <meta name="description" content="Your LACMS membership profile and digital membership card.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-180">
+<link rel="stylesheet" href="css/styles.css?v=20260824-181">
 </head>
 <body>
 
@@ -413,6 +413,48 @@
 
   </div>
 
+  <section class="section" id="my-privacy-section" style="display:none;" aria-label="My data and privacy">
+    <div class="container">
+      <div class="priv-panel" id="my-privacy">
+        <div class="section-head">
+          <span class="eyebrow">Your information</span>
+          <h2>My data &amp; privacy</h2>
+        </div>
+        <p style="color: var(--color-text-muted); max-width: 62ch;">You&rsquo;re in control of your information. Everything here is free and works straight away or within a month. See the <a href="privacy.html" style="color: var(--color-gold-light);">privacy notice</a> for the detail.</p>
+        <div class="priv-grid">
+          <div class="priv-card">
+            <h3>Download my data</h3>
+            <p>Get a copy of everything this site holds about you, as a file you can keep or move elsewhere.</p>
+            <button type="button" class="btn btn-outline" data-priv-download>Download my data</button>
+          </div>
+          <div class="priv-card">
+            <h3>Delete my account &amp; data</h3>
+            <p>Ask us to delete your account and the information linked to it. We&rsquo;ll check it&rsquo;s you, then do it within a month. This can&rsquo;t be undone.</p>
+            <button type="button" class="btn btn-outline sh-btn-danger" data-priv-delete>Request deletion</button>
+            <div class="priv-confirm" data-priv-delete-confirm hidden>
+              <p><strong>Delete everything?</strong> Your account, profile, messages, Sankofa records and activity will be permanently removed. Your membership with the Students&rsquo; Union isn&rsquo;t affected.</p>
+              <div><button type="button" class="btn btn-primary" data-priv-delete-yes>Yes, request deletion</button><button type="button" class="btn btn-outline" data-priv-delete-no>Cancel</button></div>
+            </div>
+          </div>
+          <div class="priv-card">
+            <h3>Emails</h3>
+            <label class="checkbox-option"><input type="checkbox" data-priv-updates checked> Send me society updates (news, events, opportunities)</label>
+            <p>Essential emails about your account, membership and safety are always sent.</p>
+          </div>
+          <div class="priv-card">
+            <h3>Something else</h3>
+            <p>Correct something, object to how we use your data, withdraw consent, make a complaint or report a concern.</p>
+            <a class="btn btn-outline" href="data-request.html">Make a request</a>
+          </div>
+        </div>
+        <p class="priv-msg" data-priv-msg role="status" hidden></p>
+        <h3 style="margin-top: var(--space-5);">My requests</h3>
+        <div data-priv-requests><p class="sh-muted">Loading&hellip;</p></div>
+        <p class="legal-faint" style="margin-top: var(--space-3);"><button type="button" class="link-button" data-cookie-settings>Cookie settings</button></p>
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="member-hub-mmg-section" style="display:none;">
     <div class="container">
       <div class="section-head">
@@ -485,6 +527,18 @@
         </ul>
       </div>
     </div>
+    <div class="footer-legal">
+      <p>LACMS is a student society of the <a href="https://lincolnsu.com" target="_blank" rel="noopener">University of Lincoln Students&rsquo; Union</a>.</p>
+      <ul>
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="cookies.html">Cookies</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="accessibility.html">Accessibility</a></li>
+        <li><a href="safeguarding.html">Safeguarding</a></li>
+        <li><a href="data-request.html">Your data rights</a></li>
+        <li><button type="button" class="link-button" data-cookie-settings>Cookie settings</button></li>
+      </ul>
+    </div>
     <div class="footer-bottom">
       <span>&copy; <span data-year></span> Lincoln African Caribbean Medical Society</span>
       <span>Open to every course and background</span>
@@ -493,20 +547,21 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/view-as.js?v=20260824-180"></script>
+<script src="js/vendor/supabase-js-2.118.0.min.js"></script>
+<script src="js/view-as.js?v=20260824-181"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-180"></script>
-<script src="js/members.js?v=20260824-180"></script>
-<script src="js/notifications.js?v=20260824-180"></script>
-<script src="js/badge-lore.js?v=20260824-180"></script>
-<script src="js/journey.js?v=20260824-180"></script>
-<script src="js/nominate.js?v=20260824-180"></script>
-<script src="js/feedback-entry.js?v=20260824-180"></script>
-<script src="js/hub-layout.js?v=20260824-180"></script>
-<script src="js/guidance.js?v=20260824-180"></script>
-<script src="js/sankofa-common.js?v=20260824-180"></script>
-<script src="js/sankofa-hub.js?v=20260824-180"></script>
-<script src="js/chat.js?v=20260824-180"></script>
+<script src="js/main.js?v=20260824-181"></script>
+<script src="js/members.js?v=20260824-181"></script>
+<script src="js/notifications.js?v=20260824-181"></script>
+<script src="js/badge-lore.js?v=20260824-181"></script>
+<script src="js/journey.js?v=20260824-181"></script>
+<script src="js/nominate.js?v=20260824-181"></script>
+<script src="js/feedback-entry.js?v=20260824-181"></script>
+<script src="js/hub-layout.js?v=20260824-181"></script>
+<script src="js/guidance.js?v=20260824-181"></script>
+<script src="js/sankofa-common.js?v=20260824-181"></script>
+<script src="js/sankofa-hub.js?v=20260824-181"></script>
+<script src="js/chat.js?v=20260824-181"></script>
+<script src="js/privacy.js?v=20260824-181"></script>
 </body>
 </html>

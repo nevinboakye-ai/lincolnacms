@@ -1055,6 +1055,7 @@
         '<div class="field"><label for="sqf-org">Organisation <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label><input type="text" id="sqf-org" placeholder="e.g. Nottingham University Hospitals NHS Trust"></div>' +
         '<div class="field"><label for="sqf-linkedin">LinkedIn <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label><input type="url" id="sqf-linkedin" placeholder="https://linkedin.com/in/…"></div>' +
         '<div class="field"><label for="sqf-offer">Why do you want to mentor, or what can you offer?</label><textarea id="sqf-offer" maxlength="600" placeholder="A sentence or two is plenty - specialty, what you could help with, why it matters to you." required></textarea></div>' +
+        '<p style="margin: var(--space-3) 0; font-size: 0.85rem; color: var(--color-text-faint); line-height: 1.55;">We use these details only to review your application and contact you. See the <a href="privacy.html" style="color: var(--color-gold-light);">privacy notice</a>.</p>' +
         '<button type="submit" class="btn btn-primary btn-block">Submit application</button>' +
         '<p id="sqf-status" class="auth-error" role="status" style="display:none;"></p>' +
         '</form></div>' +
@@ -1761,14 +1762,19 @@
       modal.style.display = 'none';
       modal.innerHTML =
         '<div class="network-modal-backdrop"></div>' +
-        '<div class="network-modal-panel">' +
-        '<h2 style="margin-top:0;">Welcome to LACMS</h2>' +
-        '<p style="color: var(--color-text-muted); line-height: 1.6;">Before you carry on, here\'s how we use your information - we think it\'s only fair you know, and agree to it, before you use the hub.</p>' +
-        '<p style="color: var(--color-text-muted); line-height: 1.6;">LACMS uses the details in your profile - your name, course, year of study, and how you use this platform - to actually run the society for you: matching Sankofa mentors and mentees, sharing discounts, opportunities and events relevant to you, keeping your digital membership card and place in the Network working, and letting the committee reach you when it matters. We don\'t sell it, and we don\'t share it with anyone outside LACMS and the University of Lincoln Students\' Union. It\'s used to support your membership - nothing else.</p>' +
-        '<label class="checkbox-option" style="margin: var(--space-4) 0;"><input type="checkbox" id="terms-gate-checkbox"> I understand and agree to how my information is used, as described above.</label>' +
-        '<button type="button" class="btn btn-primary btn-block" id="terms-gate-accept-btn" disabled>I agree &amp; continue</button>' +
+        '<div class="network-modal-panel" role="dialog" aria-modal="true" aria-labelledby="terms-gate-title" style="max-height: 90vh; overflow-y: auto;">' +
+        '<h2 id="terms-gate-title" style="margin-top:0;">Welcome to LACMS</h2>' +
+        '<p style="color: var(--color-text-muted); line-height: 1.6;">Before you carry on, please read how we look after your information. The short version:</p>' +
+        '<ul style="color: var(--color-text-muted); line-height: 1.6; padding-left: 1.2rem; list-style: disc;">' +
+        '<li>We use your name, course, year and how you use this site to run the society: your membership, events, perks, the Network and Sankofa.</li>' +
+        '<li>We never sell it, and we don\'t use advertising or social-media tracking. Visit counting only happens if you allow it.</li>' +
+        '<li>Your student number is only used to check your membership with the Students\' Union.</li>' +
+        '<li>You can download your data, correct it, or ask us to delete it, any time, from <strong>My data &amp; privacy</strong> on your hub.</li></ul>' +
+        '<p style="line-height: 1.6;"><a href="privacy.html" target="_blank" rel="noopener" style="color: var(--color-gold-light);">Read the full privacy notice</a> &middot; <a href="terms.html" target="_blank" rel="noopener" style="color: var(--color-gold-light);">Terms of use</a></p>' +
+        '<label class="checkbox-option" style="margin: var(--space-4) 0;"><input type="checkbox" id="terms-gate-checkbox"> I have read the privacy notice and the terms of use.</label>' +
+        '<button type="button" class="btn btn-primary btn-block" id="terms-gate-accept-btn" disabled>Continue</button>' +
         '<p id="terms-gate-status" class="auth-error" role="status" style="display:none; margin-top: var(--space-3);"></p>' +
-        '<p style="margin-top: var(--space-4); margin-bottom: 0; text-align: center;"><button type="button" class="link-button" id="terms-gate-decline-btn" style="color: var(--color-text-faint); font-size: 0.85rem;">I don\'t agree - sign me out</button></p>' +
+        '<p style="margin-top: var(--space-4); margin-bottom: 0; text-align: center;"><button type="button" class="link-button" id="terms-gate-decline-btn" style="color: var(--color-text-faint); font-size: 0.85rem;">I\'d rather not &ndash; log me out</button></p>' +
         '</div>';
       document.body.appendChild(modal);
 
@@ -1781,14 +1787,20 @@
         hideMessage(statusEl);
         acceptBtn.disabled = true;
         acceptBtn.textContent = 'Saving…';
+        // accept_terms() sets the members-row timestamp (not applicable to professionals, so its
+        // error is ignored for them); privacy_acknowledge() records which version of the privacy
+        // notice they read (migration 110 - ignored if it hasn't been run yet).
+        var version = window.LACMS_PRIVACY_VERSION || '';
         supabaseClient.rpc('accept_terms').then(function (result) {
-          if (result.error) {
+          if (result.error && !gateIsProfessional) {
             acceptBtn.disabled = false;
-            acceptBtn.textContent = 'I agree & continue';
+            acceptBtn.textContent = 'Continue';
             showMessage(statusEl, "Couldn't save that - try again, or email acms@lincolnsu.com if it keeps happening.");
             return;
           }
-          modal.style.display = 'none';
+          return supabaseClient.rpc('privacy_acknowledge', { p_version: version }).then(function () {
+            modal.style.display = 'none';
+          }, function () { modal.style.display = 'none'; });
         });
       });
 
@@ -1799,10 +1811,26 @@
       });
     }
 
+    var gateIsProfessional = false;
     function checkTermsGate(member) {
-      if (member.terms_accepted_at) return;
-      buildTermsGateModal();
-      document.getElementById('terms-gate-modal').style.display = 'flex';
+      if (!member.terms_accepted_at) {
+        buildTermsGateModal();
+        document.getElementById('terms-gate-modal').style.display = 'flex';
+        return;
+      }
+      checkPrivacyVersion();
+    }
+    // If the privacy notice has changed since someone last read it (migration 110 records the
+    // version), show the same modal again. Applies to professionals too. If 110 hasn't been run,
+    // the call fails and nothing is shown.
+    function checkPrivacyVersion() {
+      var current = window.LACMS_PRIVACY_VERSION;
+      if (!current) return;
+      supabaseClient.rpc('privacy_ack_status').then(function (res) {
+        if (res.error || !res.data || res.data.version === current) return;
+        buildTermsGateModal();
+        document.getElementById('terms-gate-modal').style.display = 'flex';
+      }, function () {});
     }
 
     // Professionals get their own card/details variant — title and
@@ -1812,6 +1840,8 @@
     // out) work exactly the same for both, so those markup blocks aren't
     // duplicated.
     function renderProfessionalProfile(pro, session) {
+      gateIsProfessional = true;
+      checkPrivacyVersion();
       var categoryLabel = PROFESSIONAL_CATEGORY_LABELS[pro.category] || PROFESSIONAL_CATEGORY_LABELS.other;
 
       setText('professional-full-name', pro.full_name);
@@ -5090,7 +5120,7 @@
       return DASH_SHARED_SECTIONS.indexOf(section) !== -1 && !!dashAllowed[section];
     }
     // Never shareable: whoever could edit Hub Access could give themselves everything.
-    var PRESIDENT_ONLY_SECTIONS = ['access'];
+    var PRESIDENT_ONLY_SECTIONS = ['access', 'privacy'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
@@ -5190,7 +5220,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners', 'qr'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'privacy', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners', 'qr'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {

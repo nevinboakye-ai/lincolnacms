@@ -7,7 +7,7 @@
 <title>Sankofa Circle Application - LACMS</title>
 <meta name="description" content="Apply for a Sankofa Circle - open to Medicine members, and aspiring medics.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-180">
+<link rel="stylesheet" href="css/styles.css?v=20260824-181">
 </head>
 <body>
 
@@ -150,7 +150,7 @@
 
           <div class="field">
             <label for="sankofa-heritage">What is your country of heritage? <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
-            <span class="hint" style="display:block; margin-bottom: var(--space-2);">Helps us pair Circles more thoughtfully.</span>
+            <span class="hint" style="display:block; margin-bottom: var(--space-2);">Helps us pair Circles more thoughtfully. This is sensitive information about your background: it is completely optional, and if you answer you are giving your explicit consent for the committee to use it only for matching. Leave it blank if you&rsquo;d rather not &ndash; it makes no difference to your application. You can ask us to delete it at any time.</span>
             <select id="sankofa-heritage" name="sankofa-heritage">
               <option value="">Select…</option>
               <optgroup label="African">
@@ -313,6 +313,7 @@
             <textarea id="sankofa-statement" name="sankofa-statement"></textarea>
           </div>
 
+          <p style="margin: var(--space-3) 0; font-size: 0.85rem; color: var(--color-text-faint); line-height: 1.55;">Your answers are used to match mentors and mentees and run Circles, and are shared with the Sankofa committee and your Circle&rsquo;s mentors. See the <a href="privacy.html" style="color: var(--color-gold-light);">privacy notice</a>.</p>
           <button type="submit" class="btn btn-primary btn-block">Submit application</button>
           <p id="sankofa-status" class="auth-error" role="status" style="display:none;"></p>
         </form>
@@ -367,6 +368,18 @@
         </ul>
       </div>
     </div>
+    <div class="footer-legal">
+      <p>LACMS is a student society of the <a href="https://lincolnsu.com" target="_blank" rel="noopener">University of Lincoln Students&rsquo; Union</a>.</p>
+      <ul>
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="cookies.html">Cookies</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="accessibility.html">Accessibility</a></li>
+        <li><a href="safeguarding.html">Safeguarding</a></li>
+        <li><a href="data-request.html">Your data rights</a></li>
+        <li><button type="button" class="link-button" data-cookie-settings>Cookie settings</button></li>
+      </ul>
+    </div>
     <div class="footer-bottom">
       <span>&copy; <span data-year></span> Lincoln African Caribbean Medical Society</span>
       <span>Open to every course and background</span>
@@ -375,16 +388,17 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/view-as.js?v=20260824-180"></script>
+<script src="js/vendor/supabase-js-2.118.0.min.js"></script>
+<script src="js/view-as.js?v=20260824-181"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-180"></script>
-<script src="js/members.js?v=20260824-180"></script>
-<script src="js/notifications.js?v=20260824-180"></script>
-<script src="js/badge-lore.js?v=20260824-180"></script>
-<script src="js/journey.js?v=20260824-180"></script>
-<script src="js/hub-nav.js?v=20260824-180"></script>
-<script src="js/guidance.js?v=20260824-180"></script>
-<script src="js/chat.js?v=20260824-180"></script>
+<script src="js/main.js?v=20260824-181"></script>
+<script src="js/members.js?v=20260824-181"></script>
+<script src="js/notifications.js?v=20260824-181"></script>
+<script src="js/badge-lore.js?v=20260824-181"></script>
+<script src="js/journey.js?v=20260824-181"></script>
+<script src="js/hub-nav.js?v=20260824-181"></script>
+<script src="js/guidance.js?v=20260824-181"></script>
+<script src="js/chat.js?v=20260824-181"></script>
+<script src="js/privacy.js?v=20260824-181"></script>
 </body>
 </html>

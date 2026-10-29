@@ -7,7 +7,7 @@
 <title>Request your LACMS account</title>
 <meta name="description" content="Already paid your LACMS membership? Request your account and the committee will set up your login.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-180">
+<link rel="stylesheet" href="css/styles.css?v=20260824-181">
 </head>
 <body>
 
@@ -125,6 +125,7 @@
           <div class="field">
             <label for="request-student-number">Student number</label>
             <input type="text" id="request-student-number" name="request-student-number" placeholder="Your University of Lincoln student number" required>
+            <span class="hint">Only used to check your LACMS membership against the Students' Union's list. It is seen only by the committee members who approve accounts.</span>
           </div>
           <div class="field">
             <label for="request-course">Course</label>
@@ -146,6 +147,7 @@
             <label for="request-note">Anything else we should know? <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
             <textarea id="request-note" name="request-note" maxlength="2000" placeholder="e.g. a different preferred name, or anything about your membership payment worth flagging"></textarea>
           </div>
+          <p style="margin: var(--space-3) 0; font-size: 0.85rem; color: var(--color-text-faint); line-height: 1.55;">We use these details only to check your membership and set up your account. See the <a href="privacy.html" style="color: var(--color-gold-light);">privacy notice</a> for what we do with your information and your rights.</p>
           <button type="submit" class="btn btn-primary btn-block">Submit request</button>
           <p id="request-account-status" class="auth-error" role="status" style="display:none;"></p>
           <p style="margin-top: var(--space-3); margin-bottom: 0; font-size: 0.85rem; color: var(--color-text-faint);">Already have a login? <a href="member-login.html" style="color: var(--color-gold-light);">Log in</a></p>
@@ -210,6 +212,18 @@
         </ul>
       </div>
     </div>
+    <div class="footer-legal">
+      <p>LACMS is a student society of the <a href="https://lincolnsu.com" target="_blank" rel="noopener">University of Lincoln Students&rsquo; Union</a>.</p>
+      <ul>
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="cookies.html">Cookies</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="accessibility.html">Accessibility</a></li>
+        <li><a href="safeguarding.html">Safeguarding</a></li>
+        <li><a href="data-request.html">Your data rights</a></li>
+        <li><button type="button" class="link-button" data-cookie-settings>Cookie settings</button></li>
+      </ul>
+    </div>
     <div class="footer-bottom">
       <span>&copy; <span data-year></span> Lincoln African Caribbean Medical Society</span>
       <span>Open to every course and background</span>
@@ -218,13 +232,14 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/view-as.js?v=20260824-180"></script>
+<script src="js/vendor/supabase-js-2.118.0.min.js"></script>
+<script src="js/view-as.js?v=20260824-181"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-180"></script>
-<script src="js/members.js?v=20260824-180"></script>
-<script src="js/notifications.js?v=20260824-180"></script>
-<script src="js/guidance.js?v=20260824-180"></script>
-<script src="js/chat.js?v=20260824-180"></script>
+<script src="js/main.js?v=20260824-181"></script>
+<script src="js/members.js?v=20260824-181"></script>
+<script src="js/notifications.js?v=20260824-181"></script>
+<script src="js/guidance.js?v=20260824-181"></script>
+<script src="js/chat.js?v=20260824-181"></script>
+<script src="js/privacy.js?v=20260824-181"></script>
 </body>
 </html>

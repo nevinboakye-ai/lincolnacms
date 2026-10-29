@@ -1020,6 +1020,7 @@
         '<div class="field"><label for="sh-ck-win">A win this week <span class="guide-optional">(optional)</span></label><textarea id="sh-ck-win" maxlength="400" rows="2" placeholder="Something that went well, big or small">' + esc(ck ? ck.win || '' : '') + '</textarea></div>' +
         '<div class="field"><label for="sh-ck-ch">A challenge <span class="guide-optional">(optional)</span></label><textarea id="sh-ck-ch" maxlength="400" rows="2" placeholder="Anything that\'s been hard?">' + esc(ck ? ck.challenge || '' : '') + '</textarea></div>' +
         '<label class="sh-check"><input type="checkbox" id="sh-ck-help"' + (ck && ck.need_help ? ' checked' : '') + '> <span>I\'d like someone to check in with me</span></label>' +
+        '<p class="sh-fineprint">Check-ins are optional. Your mood rating and notes are shared with your Circle\'s mentors and the Sankofa committee so you can be supported; by submitting you agree to that. A check-in isn\'t a crisis service and isn\'t monitored around the clock: if you need help now, see <a href="safeguarding.html" target="_blank" rel="noopener">where to get urgent help</a>. You can ask us to delete your check-ins at any time (<a href="privacy.html" target="_blank" rel="noopener">privacy notice</a>).</p>' +
         '<p class="guide-error" hidden></p><button type="submit" class="btn btn-primary">' + (ck ? 'Update check-in' : 'Submit check-in') + '</button></form>';
     }
     var hist = (st.hist || []).slice().reverse();

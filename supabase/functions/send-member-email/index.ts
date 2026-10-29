@@ -66,7 +66,11 @@ function emailButton(href: string, label: string) {
     '</td></tr></table>';
 }
 
-function renderEmailShell(preheader: string, bodyHtml: string) {
+const LINKSTYLE = 'color:' + '#d4a62b' + '; text-decoration:underline;';
+
+// updates = true for society news / committee-written emails: adds how to stop them (service emails
+// such as account approval and payment reminders are sent regardless).
+function renderEmailShell(preheader: string, bodyHtml: string, updates = false) {
   return (
     '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>' +
     '<body style="margin:0; padding:0; background:#0a0a0c;">' +
@@ -83,9 +87,12 @@ function renderEmailShell(preheader: string, bodyHtml: string) {
     bodyHtml +
     '</div>' +
     '<div style="padding:20px 32px 28px; border-top:1px solid rgba(255,255,255,0.08); margin-top:12px; text-align:center; font-family:' + SANS + '; font-size:12px; color:#837e73;">' +
-    'This message was sent from an address we don\'t read, so please don\'t reply to it - email us at ' +
-    '<a href="mailto:' + REPLY_TO + '" style="color:' + GOLD + '; text-decoration:none;">' + REPLY_TO + '</a> instead.<br>' +
-    'University of Lincoln, Brayford Pool, Lincoln' +
+    'Sent by LACMS, a student society of the University of Lincoln Students\' Union. This address isn\'t monitored, so please don\'t reply to it - email us at ' +
+    '<a href="mailto:' + REPLY_TO + '" style="color:' + GOLD + '; text-decoration:none;">' + REPLY_TO + '</a>' + ' instead.<br>' +
+    'You\'re getting this because you have, or asked for, a LACMS account. ' +
+    '<a href="https://lincolnacms.uk/privacy.html" style="' + LINKSTYLE + '">Privacy notice</a> &middot; <a href="https://lincolnacms.uk/data-request.html" style="' + LINKSTYLE + '">Your data rights</a>' +
+    (updates ? '<br>To stop society updates (essential account emails will still be sent), switch them off in <a href="https://lincolnacms.uk/member-hub.html#my-privacy" style="' + LINKSTYLE + '">My data &amp; privacy</a> or email us.' : '') + '<br>' +
+    'Lincoln Students\' Union, Brayford Pool, Lincoln, LN6 7TS' +
     '</div>' +
     '</div>' +
     '</div>' +

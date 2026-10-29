@@ -8,7 +8,7 @@
 <meta name="description" content="For our committee members to manage MMG, Sankofa, Nominations, Events and Gallery, all in one place.">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-180">
+<link rel="stylesheet" href="css/styles.css?v=20260824-181">
 </head>
 <body>
 
@@ -181,6 +181,12 @@
               <span class="dash-nav-card-desc">Review messages members have reported, and pause someone's messaging</span>
               <span class="dash-nav-card-count" id="dash-count-chatreports">&nbsp;</span>
             </button>
+            <button type="button" class="dash-nav-card" data-dash-section="privacy">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 8.2-8 9-4.8-.8-8-4.5-8-9V6l8-3z"/><polyline points="9 12 11 14 15 10"/></svg></span>
+              <span class="dash-nav-card-title">Data &amp; Privacy</span>
+              <span class="dash-nav-card-desc">Data requests, complaints and concerns (with deadlines), erase or export a person's data, retention clean-up</span>
+              <span class="dash-nav-card-count" id="dash-count-privacy">&nbsp;</span>
+            </button>
             <button type="button" class="dash-nav-card" data-dash-section="sitestats">
               <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
               <span class="dash-nav-card-title">Site Numbers</span>
@@ -243,7 +249,7 @@
             <div class="dash-toolbar">
               <div class="network-search">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="search" id="dash-search-input" placeholder="Search everyone by name…">
+                <input aria-label="Search everyone by name" type="search" id="dash-search-input" placeholder="Search everyone by name…">
               </div>
               <div class="dash-refresh">
                 <span id="dash-updated-label" class="dash-updated-label">Updated just now</span>
@@ -417,7 +423,7 @@
               <p>Every photo below can be selected or unselected individually - unselecting pulls it from the public gallery without deleting it. Upload adds a new photo to choose from, live immediately.</p>
             </div>
             <form id="gallery-live-upload-form" class="gallery-upload-form">
-              <input type="file" id="gallery-live-upload-file" accept="image/*" multiple required>
+              <input aria-label="Choose files to upload" type="file" id="gallery-live-upload-file" accept="image/*" multiple required>
               <button type="submit" class="btn btn-primary">Upload photos</button>
               <p id="gallery-live-upload-status" class="auth-error" role="status" style="display:none;"></p>
             </form>
@@ -489,7 +495,7 @@
             <div class="dash-toolbar">
               <div class="network-search">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="search" id="hub-access-search" placeholder="Search by name…">
+                <input aria-label="Search by name" type="search" id="hub-access-search" placeholder="Search by name…">
               </div>
               <div class="dash-filter-tabs" id="hub-access-type-tabs">
                 <button type="button" class="dash-filter-tab is-active" data-hub-filter="all">All</button>
@@ -526,6 +532,18 @@
             <p id="chatreports-status" class="auth-error" role="status" style="display:none;"></p>
             <div id="chatreports-list" class="chatrep-list"></div>
             <p id="chatreports-empty" style="display:none; color: var(--color-text-faint);"></p>
+          </div>
+
+          <div class="dash-panel" id="dash-panel-privacy" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">Data &amp; Privacy</span>
+              <h2>Data requests &amp; concerns</h2>
+            </div>
+            <div id="privacy-root"><p class="sh-muted">Loading&hellip;</p></div>
           </div>
 
           <div class="dash-panel" id="dash-panel-sitestats" style="display:none;">
@@ -582,7 +600,7 @@
             <div class="dash-toolbar">
               <div class="network-search">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="search" id="pending-search" placeholder="Search by name or email…">
+                <input aria-label="Search by name or email" type="search" id="pending-search" placeholder="Search by name or email…">
               </div>
               <div class="dash-filter-tabs" id="pending-filter-tabs">
                 <button type="button" class="dash-filter-tab is-active" data-pending-filter="all">All</button>
@@ -782,7 +800,7 @@
             <div class="dash-toolbar">
               <div class="network-search">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="search" id="manage-search-input" placeholder="Search everyone by name…">
+                <input aria-label="Search everyone by name" type="search" id="manage-search-input" placeholder="Search everyone by name…">
               </div>
               <div class="dash-filter-tabs" id="manage-type-tabs">
                 <button type="button" class="dash-filter-tab is-active" data-manage-filter="all">All</button>
@@ -848,6 +866,18 @@
         </ul>
       </div>
     </div>
+    <div class="footer-legal">
+      <p>LACMS is a student society of the <a href="https://lincolnsu.com" target="_blank" rel="noopener">University of Lincoln Students&rsquo; Union</a>.</p>
+      <ul>
+        <li><a href="privacy.html">Privacy</a></li>
+        <li><a href="cookies.html">Cookies</a></li>
+        <li><a href="terms.html">Terms</a></li>
+        <li><a href="accessibility.html">Accessibility</a></li>
+        <li><a href="safeguarding.html">Safeguarding</a></li>
+        <li><a href="data-request.html">Your data rights</a></li>
+        <li><button type="button" class="link-button" data-cookie-settings>Cookie settings</button></li>
+      </ul>
+    </div>
     <div class="footer-bottom">
       <span>&copy; <span data-year></span> Lincoln African Caribbean Medical Society</span>
       <span>Open to every course and background</span>
@@ -856,29 +886,31 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/view-as.js?v=20260824-180"></script>
+<script src="js/vendor/supabase-js-2.118.0.min.js"></script>
+<script src="js/view-as.js?v=20260824-181"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-180"></script>
-<script src="js/members.js?v=20260824-180"></script>
-<script src="js/account-edit.js?v=20260824-180"></script>
-<script src="js/notifications.js?v=20260824-180"></script>
-<script src="js/guidance.js?v=20260824-180"></script>
-<script src="js/chat.js?v=20260824-180"></script>
-<script src="js/chat-admin.js?v=20260824-180"></script>
-<script src="js/site-stats-admin.js?v=20260824-180"></script>
-<script src="js/sankofa-rounds.js?v=20260824-180"></script>
-<script src="js/sankofa-common.js?v=20260824-180"></script>
-<script src="js/sankofa-admin.js?v=20260824-180"></script>
-<script src="js/email-centre.js?v=20260824-180"></script>
-<script src="js/qr.js?v=20260824-180"></script>
-<script src="js/feedback-labels.js?v=20260824-180"></script>
-<script src="js/event-reviews.js?v=20260824-180"></script>
-<script src="js/feedback-defs.js?v=20260824-180"></script>
-<script src="js/feedback-templates.js?v=20260824-180"></script>
-<script src="js/feedback-builder.js?v=20260824-180"></script>
-<script src="js/feedback-admin.js?v=20260824-180"></script>
-<script src="js/partner-admin.js?v=20260824-180"></script>
-<script src="js/qr-studio.js?v=20260824-180"></script>
+<script src="js/main.js?v=20260824-181"></script>
+<script src="js/members.js?v=20260824-181"></script>
+<script src="js/account-edit.js?v=20260824-181"></script>
+<script src="js/notifications.js?v=20260824-181"></script>
+<script src="js/guidance.js?v=20260824-181"></script>
+<script src="js/chat.js?v=20260824-181"></script>
+<script src="js/chat-admin.js?v=20260824-181"></script>
+<script src="js/site-stats-admin.js?v=20260824-181"></script>
+<script src="js/sankofa-rounds.js?v=20260824-181"></script>
+<script src="js/sankofa-common.js?v=20260824-181"></script>
+<script src="js/sankofa-admin.js?v=20260824-181"></script>
+<script src="js/email-centre.js?v=20260824-181"></script>
+<script src="js/qr.js?v=20260824-181"></script>
+<script src="js/feedback-labels.js?v=20260824-181"></script>
+<script src="js/event-reviews.js?v=20260824-181"></script>
+<script src="js/feedback-defs.js?v=20260824-181"></script>
+<script src="js/feedback-templates.js?v=20260824-181"></script>
+<script src="js/feedback-builder.js?v=20260824-181"></script>
+<script src="js/feedback-admin.js?v=20260824-181"></script>
+<script src="js/partner-admin.js?v=20260824-181"></script>
+<script src="js/qr-studio.js?v=20260824-181"></script>
+<script src="js/privacy-admin.js?v=20260824-181"></script>
+<script src="js/privacy.js?v=20260824-181"></script>
 </body>
 </html>
