@@ -36,7 +36,7 @@
 | 7 | Retention | Nothing was ever deleted | Written schedule; automatic clean-up function; inactive-account review tool | Done (see 10.5) |
 | 8 | Email | No sender identification or opt-out | Every email says who sent it, why, and links to the privacy notice and data rights; society updates can be switched off; the email centre skips people who opted out | Done (edge functions must be redeployed, 10.2) |
 | 9 | Sensitive data | Optional "country of heritage" and mood check-ins with no notice | Plain-language notices; explicit-consent wording; "not a crisis service" and where to get urgent help | Done |
-| 10 | Safeguarding | No page or route | Safeguarding page built from ULSU's policy (Safeguarding Officers, wellbeing contacts, Prevent) | Done |
+| 10 | Safeguarding | No page or route | Safeguarding page built from ULSU's policy (Safeguarding Officers, wellbeing contacts, Prevent) | Done; contact person needed (10.8) |
 | 11 | Terms and community rules | None | Terms of use aligned to ULSU's Code of Conduct and social media policy, including a ban on patient information and a takedown route | Done |
 | 12 | Accessibility | No statement | Accessibility statement; unlabelled search and file inputs fixed | Done; independent audit recommended |
 | 13 | Society identity | Not stated on the site | Every page footer states LACMS is a society of ULSU and links the legal pages | Done |
@@ -70,15 +70,15 @@
 | Special category data (Art. 9) | Extra condition needed (e.g. explicit consent) | Heritage (ethnic origin) optional with explicit consent wording; wellbeing mood data optional with notice | Done |
 | Data subject rights (Art. 15 to 22) | Respond within one month, free | Self-service export and request form; dashboard queue with deadlines (section 8 is the procedure) | Done |
 | Processors (Art. 28) and transfers (Ch. V) | Written contracts; safeguards for non-UK transfers | Processors listed (section 5); notice discloses them | **Action needed** (10.3) |
-| Breach reporting (Art. 33 and 34) | ICO within 72 hours if risk; tell individuals if high risk | Procedure in section 8.3; ULSU DPO to be told | **Action needed** to rehearse (10.8) |
+| Breach reporting (Art. 33 and 34) | ICO within 72 hours if risk; tell individuals if high risk | Procedure in section 8.3; ULSU DPO to be told | **Action needed** to rehearse (10.9) |
 | DPIA (Art. 35) | Assess high-risk processing | Summary DPIA in Appendix A (wellbeing, heritage, messaging) | Done / **ULSU to confirm** |
 | Children (Art. 8, ICO Children's code) | Care with any child's data | The site is for adults; the notice says we don't knowingly collect children's data and will remove it if found | Done |
 | DPO (Art. 37) | Required only for public authorities / large-scale special category | Not required for a society; ULSU's DPO oversees | n/a |
 | **Data (Use and Access) Act 2025** | Controller complaints procedure; SAR "reasonable and proportionate" search and stop-the-clock; new cookie exceptions (statistical, appearance) | Complaints route and 30-day acknowledgement in the notice; SAR procedure reflects it; **cookies stay opt-in** so nothing depends on the new exceptions. Commencement dates of some provisions should be checked on legislation.gov.uk | Done / verify dates |
 | **PECR 2003** (cookies, storage and electronic marketing) | Consent for non-essential storage; identify sender; opt-out for marketing | Banner and settings, opt-in analytics; email sender identification and opt-out | Done |
-| **Equality Act 2010** | No discrimination; reasonable adjustments | Accessibility statement and request route; terms prohibit discrimination | Done; audit recommended (10.9) |
+| **Equality Act 2010** | No discrimination; reasonable adjustments | Accessibility statement and request route; terms prohibit discrimination | Done; audit recommended (10.10) |
 | **Online Safety Act 2023** | Services with user-to-user features (chat, comments, uploads) must assess illegal-content risk, offer reporting and complaints, and have clear terms | Reporting in chat, a "report a concern" form and email; terms explain moderation; short risk assessment in Appendix B | Done; review yearly |
-| **Safeguarding law and duties** (Children Acts 1989 and 2004, Care Act 2014, Safeguarding Vulnerable Groups Act 2006, Counter-Terrorism and Security Act 2015) | Report concerns; safe recruitment; Prevent | Via ULSU's policy, as above | Done |
+| **Safeguarding law and duties** (Children Acts 1989 and 2004, Care Act 2014, Safeguarding Vulnerable Groups Act 2006, Counter-Terrorism and Security Act 2015) | Report concerns; safe recruitment; Prevent | Via ULSU's policy, as above | Done; **Action needed** (10.8) |
 | **Copyright, Designs and Patents Act 1988** | Remove infringing content promptly | Terms contain a takedown route; uploaders warrant their rights | Done |
 | Defamation, harassment and communications offences | Don't host unlawful content | Terms and moderation | Done |
 | **Higher Education (Freedom of Speech) Act 2023** | Duties fall on universities and students' unions | Terms welcome lawful debate and ban harassment; no further action in code | ULSU to confirm if it needs anything from societies |
@@ -120,7 +120,7 @@
 | Domain registrar and DNS for lincolnacms.uk | Domain | Domain contacts | Use the official society address (10.7) |
 | ULSU | Related controller (membership, DPO oversight) | Membership list | Confirm arrangement (10.1) |
 
-The notice tells visitors about these providers. **No other third-party scripts, fonts, analytics, advertising or social widgets load on the site** (verified by scanning every page).
+**Note:** at the committee's request the privacy notice no longer has a section naming these providers or describing transfers outside the UK. UK GDPR Article 13 normally expects a notice to say who receives personal data and about any overseas transfers, so this is an open risk (10.3).  **No other third-party scripts, fonts, analytics, advertising or social widgets load on the site** (verified by scanning every page).
 
 ---
 
@@ -210,17 +210,18 @@ Do not investigate. Listen, do not promise confidentiality, record date/time/wha
 |---|---|---|---|
 | 10.1 | **High** | Get ULSU's **written confirmation** of who is the data controller for the society's website (LACMS alone, ULSU, or joint) and that the wording in section 1 of the privacy notice is right. Ask whether ULSU wants a data-sharing or processing agreement with LACMS. | Committee, with ULSU Student Communities and DPO (`compliance@lincolnsu.com`) |
 | 10.2 | **High** | **Deploy:** run migration 110 in Supabase; redeploy the two email edge functions (`send-account-email`, `send-member-email`); publish the site. Until 110 runs, the request form and "My data" tools tell people to email instead. | Site administrator |
-| 10.3 | **High** | Accept the data processing terms with **Supabase**, **Resend** and **GitHub**; note each provider's transfer safeguard; confirm the Supabase project **region** and update the notice if you want to name it. | Site administrator |
+| 10.3 | **High** | Accept the data processing terms with **Supabase**, **Resend** and **GitHub**; note each provider's transfer safeguard; confirm the Supabase project **region**. Decide with ULSU whether the privacy notice should describe recipients and overseas transfers (it currently doesn't). | Site administrator |
 | 10.4 | **High** | Switch on **MFA** for every account behind the site (Supabase, GitHub, Resend, domain registrar, and every committee member with dashboard access). In Supabase enable leaked-password protection. Confirm "Enforce HTTPS" is on in GitHub Pages. | Site administrator |
 | 10.5 | Medium | Enable the **pg_cron** extension in Supabase, then run migration 110 again (it then schedules the nightly clean-up), or press *Run clean-up now* monthly. Review inactive accounts annually. | Committee |
 | 10.6 | Medium | Confirm with ULSU the **ICO registration** position: is LACMS covered by ULSU's data protection fee, or does it need its own? | Committee, with ULSU |
 | 10.7 | **High** | **Account continuity and ULSU policies:** make sure every service login uses `acms@lincolnsu.com` (not a personal address) and is handed to ULSU at each annual handover; ask ULSU whether this independent website needs its approval under the social media policy; keep the ULSU logo off it unless approved (it currently isn't used). The site is currently run by a single volunteer, so the society needs a second trusted administrator so its data isn't stranded when committees change. | Committee, with ULSU |
-| 10.8 | Medium | Rehearse the breach procedure once (who to call, where the log is). | Committee |
-| 10.9 | Medium | Commission an **independent accessibility audit** (WCAG 2.2 AA) and update the accessibility statement with the result. | Committee |
-| 10.10 | Medium | Read the ULSU documents only skimmed in this review (section 2) and tell us if anything conflicts. | Committee |
-| 10.11 | Medium | Confirm winners' **consent before publishing** Member of the Month entries and committee photos; the notice says winners are shown but does not claim a recorded consent. | Committee |
-| 10.12 | Low | Review the privacy notice, terms and this report every year, or whenever a new feature collects new data (for example update `privacy.html` and bump `PRIVACY_VERSION` in `js/privacy.js`). | Committee |
-| 10.13 | Low | Check the commencement dates of the Data (Use and Access) Act 2025 provisions on legislation.gov.uk before relying on any date mentioned in this report. | Site administrator |
+| 10.8 | **High** | **Safeguarding:** agree who on the committee is the point of contact for passing safeguarding concerns to ULSU's Safeguarding Officers; committee members to complete ULSU's safeguarding and data protection training. | Committee |
+| 10.9 | Medium | Rehearse the breach procedure once (who to call, where the log is). | Committee |
+| 10.10 | Medium | Commission an **independent accessibility audit** (WCAG 2.2 AA) and update the accessibility statement with the result. | Committee |
+| 10.11 | Medium | Read the ULSU documents only skimmed in this review (section 2) and tell us if anything conflicts. | Committee |
+| 10.12 | Medium | Confirm winners' **consent before publishing** Member of the Month entries and committee photos; the notice says winners are shown but does not claim a recorded consent. | Committee |
+| 10.13 | Low | Review the privacy notice, terms and this report every year, or whenever a new feature collects new data (for example update `privacy.html` and bump `PRIVACY_VERSION` in `js/privacy.js`). | Committee |
+| 10.14 | Low | Check the commencement dates of the Data (Use and Access) Act 2025 provisions on legislation.gov.uk before relying on any date mentioned in this report. | Site administrator |
 
 ---
 
