@@ -1911,7 +1911,7 @@ The full picture - what was checked, what the law and ULSU's policies require, w
 2. **Redeploy the two email functions** (`send-account-email` and `send-member-email`) so emails identify the sender and carry the privacy and opt-out links. Send yourself a test email afterwards.
 3. Publish the site (this push). Until 110 has run, the data request form and "My data & privacy" tools tell people to email `acms@lincolnsu.com` instead; nothing else breaks.
 
-**What's new for you (president):** Dashboard -> **Data & Privacy**: requests, complaints and concerns with one-month deadlines (overdue ones are flagged red; safeguarding ones remind you to pass them to ULSU), *Download their data*, *Erase their data*, *Run clean-up now*, and *Inactive accounts*. The email centre now skips people who opted out of society updates (tick "essential message" for account/safety emails).
+**What's new for the committee:** Dashboard -> **Data & Privacy**: requests, complaints and concerns with one-month deadlines (overdue ones are flagged red; safeguarding ones remind you to pass them to ULSU), *Download their data*, *Erase their data*, *Run clean-up now*, and *Inactive accounts*. The email centre now skips people who opted out of society updates (tick "essential message" for account/safety emails).
 
 **What's new for members and visitors:** privacy, cookie, terms, accessibility and safeguarding pages (linked from every footer); a cookie banner (visit counting is opt-in); a "Your data rights" form that works without an account; and **My data & privacy** on the members hub (download my data, request deletion, email preferences, my requests). Members are asked to read the privacy notice again whenever its version changes (`PRIVACY_VERSION` in `js/privacy.js`).
 

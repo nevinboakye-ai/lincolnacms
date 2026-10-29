@@ -5,7 +5,7 @@
 --      access (a copy of your data), erasure, correction, restriction, objection, withdrawing
 --      consent, complaints, safeguarding / content concerns. Anyone can submit one (with or without
 --      an account). Each gets a due date one calendar month away, which is the legal time limit for
---      data rights requests. The president sees and works through them (Dashboard -> Data requests).
+--      data rights requests. The committee works through them in the dashboard (Dashboard -> Data & Privacy).
 --   2. export_my_data() - a signed-in person can download everything the site holds about them
 --      (right of access and data portability) as a JSON file, instantly.
 --   3. president_erase_user() - erases a person from the site (right to erasure): deletes their
