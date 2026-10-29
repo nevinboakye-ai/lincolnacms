@@ -587,6 +587,7 @@
         '<input type="text" id="evf-newtag" maxlength="30" placeholder="Category name" hidden></div>' +
         '<div class="field ev-checks"><label class="checkbox-option"><input type="checkbox" id="evf-flagship"' + (e0.flagship ? ' checked' : '') + '>Flagship event (gold)</label>' +
         '<label class="checkbox-option"><input type="checkbox" id="evf-active"' + (e0.active ? ' checked' : '') + '>Show on the website</label></div></div>' +
+        '<p class="legal-faint" style="margin: var(--space-2) 0;">Does the event have an <strong>external speaker</strong> (anyone who isn\'t a current Lincoln student or staff member, including doctors and other professionals)? ULSU\'s External Speakers Policy says the Students\' Union must clear them through the Student Dashboard, with at least 10 working days\' notice, <strong>before the event is publicised</strong>. Keep it off the website until it has.</p>' +
         '<details class="ev-links-more"' + (e0.titleUrl || e0.linkUrl || e0.buttonUrl ? ' open' : '') + '><summary>Links (optional)</summary>' +
           '<div class="field"><label for="evf-titleurl">Make the title a link to</label><input type="text" id="evf-titleurl" value="' + esc(e0.titleUrl) + '" placeholder="e.g. mmg.html"></div>' +
           '<div class="ev-form-row"><div class="field"><label for="evf-btnlabel">Button text</label><input type="text" id="evf-btnlabel" maxlength="40" value="' + esc(e0.buttonLabel) + '" placeholder="e.g. MMG Portal"></div>' +

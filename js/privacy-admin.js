@@ -21,6 +21,7 @@
   var CLOSED = { completed: 1, refused: 1, withdrawn: 1 };
 
   var rows = null;
+  var acks = null;          // committee data protection confirmations (migration 111)
   var filter = 'open';
   var loading = false;
 
@@ -49,6 +50,7 @@
         return;
       }
       rows = res.data || [];
+      supabaseClient.rpc('president_committee_acknowledgements').then(function (a) { acks = a.error ? null : (a.data || []); if (rows) render(); }, function () {});
       var open = rows.filter(function (r) { return !CLOSED[r.status]; });
       var overdue = open.filter(function (r) { return daysLeft(r.due_at) < 0; }).length;
       if (countEl) { countEl.textContent = open.length ? open.length + ' open' + (overdue ? ' · ' + overdue + ' overdue' : '') : 'None open'; countEl.style.color = overdue ? 'var(--accent-red)' : ''; }
@@ -105,6 +107,10 @@
           '<label>Not signed in for <select data-pa-months><option value="12" selected>12+ months</option><option value="18">18+ months</option><option value="24">24+ months</option></select></label>' +
           '<button type="button" class="btn btn-outline" data-pa-inactive>Show them</button></div></div>' +
       '<div data-pa-inactive-list></div>' +
+      (acks ? '<h3 class="privreq-h">Committee data protection training</h3><p class="sh-muted" style="max-width:70ch">ULSU\'s Code of Conduct says committee members complete the Students\' Union\'s data protection training before accessing personal data. Each person is asked once a year when they open the dashboard.</p>' +
+        (acks.length ? '<div class="legal-table-wrap"><table class="legal-table"><thead><tr><th scope="col">Person</th><th scope="col">Year</th><th scope="col">Training</th><th scope="col">Confirmed</th></tr></thead><tbody>' + acks.map(function (a) {
+          return '<tr><th scope="row">' + esc(a.name) + '</th><td>' + esc(a.academic_year) + '</td><td>' + (a.training_status === 'completed' ? 'Completed' : '<strong>Not yet</strong>') + '</td><td>' + esc(day(a.at)) + '</td></tr>';
+        }).join('') + '</tbody></table></div>' : '<p class="sh-muted">No one has confirmed yet.</p>') : '') +
       '<p class="priv-msg" data-pa-erase-msg hidden role="status"></p>';
   }
 

@@ -17,7 +17,7 @@
 
 **How the work was done.**
 1. Every page, script, database table and email template in the website was inspected for what personal data it collects, stores, shows, shares or sends.
-2. ULSU's published policies were fetched and read: the Privacy Notice (August 2026), the Safeguarding of Children and Vulnerable Adults Policy, the Student Members' Social Media Policy, and the Group Gmail Access and Onboarding Policy. Their titles only were seen for the Code of Conduct, Equal Opportunities Policy, Complaints Handbook, Terms and Conditions, Cookie Policy and the University/ULSU Data Sharing Agreement; these should be read by the committee (see section 2).
+2. ULSU's published policies were fetched and read: the Privacy Notice (August 2026), the Safeguarding of Children and Vulnerable Adults Policy, the Student Members' Social Media Policy, and the Group Gmail Access and Onboarding Policy. The wider set read for the second pass, and the few not read, are listed in section 2.
 3. ULSU does not publish a data protection guide for societies' own websites, and its privacy notice does not say how a society's website should be treated. Where ULSU is silent, this report applies the law (UK GDPR, Data Protection Act 2018, PECR, Data (Use and Access) Act 2025 and others) directly.
 4. Code, database and content changes were made, then tested (section 11).
 
@@ -44,22 +44,32 @@
 | 13 | Society identity | Not stated on the site | Every page footer states LACMS is a society of ULSU and links the legal pages | Done |
 | 14 | Controller arrangement with ULSU | Unstated | Notice names LACMS as responsible with ULSU's DPO overseeing | **ULSU to confirm** |
 | 15 | Contracts, registrations and account security | n/a | See section 10 | **Action needed** |
+| 16 | ULSU's own rules (Code of Conduct, External Speakers, Non-Student Membership, Social Media, Gmail, Safeguarding and others) | Not compared | Compared rule by rule in section 2; committee data-protection confirmation, speaker and brand safeguards built; five items need the committee or ULSU | **Action needed** (10.15 to 10.18) |
 
 ---
 
-## 2. Lincoln Students' Union's published requirements and how the website lines up with them
+## 2. Lincoln Students' Union's published rules and how the website lines up
 
-This is a comparison against ULSU's published documents. **No agreement or contact with ULSU has taken place yet.**
+This compares the website against ULSU's published documents (listed in Appendix C). **No agreement or contact with ULSU has taken place yet**, so "lines up" means "is consistent with what ULSU has published", not "ULSU has approved it". Documents read in full: Privacy Notice, Code of Conduct 2026/27, Safeguarding Policy, Student Members' Social Media Policy, Group Gmail Policy, Non-Student Membership Policy, External Speakers Policy, Political Activity Policy, Equal Opportunities Policy (membership parts), Complaints Handbook (data protection and societies parts), the University/ULSU Information Sharing Agreement, the Brand Guidelines, and the Student Code of Practice. ULSU's Terms, Cookie Policy and accessibility page were checked only for rules about societies (none found). The Fundraising, Conflict of Interest, Foreign Influence, Campaigning, Trips & Events and Volunteering policies were not read in detail because they concern activities, not the website.
 
-| ULSU document | What it says (as read) | How the website lines up |
-|---|---|---|
-| **Privacy Notice (08/26)**: ULSU is data controller for SU activity; DPO is `compliance@lincolnsu.com`; complaints `complaints@lincolnsu.com`; rights include access, correction, deletion, restriction/objection, withdrawing consent, portability; SARs answered within one month; direct right to complain to the controller first, acknowledged within 30 days (DUAA); marketing via consent or charity soft opt-in with free opt-out; children's data minimised; retention: membership records for involvement + up to 6 years, enquiries up to 2 years | Our notice uses the same rights list, the one-month time limit and the 30-day complaint acknowledgement; names the ULSU DPO and complaints contacts; email opt-out in place; children's data not collected knowingly. Our retention periods are shorter than ULSU's for data we hold (ULSU keeps the master membership record). | Done / **ULSU to confirm** the controller wording |
-| **Safeguarding of Children and Vulnerable Adults Policy (04/25)**: committee members are "Student Volunteers" and must report concerns immediately to the Safeguarding Officers (Group Chief Executive and Deputy); do not investigate or promise confidentiality; wellbeing concerns go to University Student Wellbeing (01522 886400); Prevent duty is escalated by the Chief Executive; records kept with restricted access | `safeguarding.html` states this route, the urgent-help numbers and the Prevent escalation; dashboard flags safeguarding requests with a reminder to pass them to ULSU and not investigate; chat reports kept as safeguarding records | Done |
-| **Student Members' Social Media Policy (08/26)**: groups are acting under ULSU's auspices; content must be professional; no harassment, discrimination, explicit content, defamation; no unapproved use of the ULSU name or logo; handover of social media logins to ULSU each year; MFA recommended; AI content must not deceive or impersonate; "mini websites" are managed via the Student Dashboard | Terms of use prohibit each of these (including deceptive AI content). The site does **not** use the ULSU logo. | Done; see 10.7 for logins, MFA and whether ULSU wants to approve this independent website |
-| **Group Gmail Access and Onboarding Policy (09/25)**: societies must use their official ULSU-managed address (not personal addresses); credentials not shared outside the elected committee; annual handover; MFA mandatory | The website publishes and sends from `acms@lincolnsu.com`. | **Action needed**: every service account behind the site must use that official address (10.7) |
-| Code of Conduct 2026-27, Equal Opportunities Policy, Complaints Handbook, Terms & Conditions, Cookie Policy, UL/ULSU Data Sharing Agreement | **Not read in full** (titles and links only) | The terms and accessibility pages point to ULSU's complaints route and reflect the equality principle | **Action needed**: committee to read and confirm nothing conflicts |
-
----
+| # | ULSU rule | Where it comes from | Website position | Status |
+|---|---|---|---|---|
+| 1 | Committee members complete ULSU's **data protection training before being given access to personal data** | Code of Conduct, "Data Protection" | Each committee member who opens the dashboard is asked once a year to confirm whether they have completed the training; the answer is recorded (and the president can see it); "not yet" shows a reminder until confirmed. The website cannot deliver or verify the training. It records and reminds rather than blocking access. | **Partly met. Action needed** (10.16) |
+| 2 | **External speakers** (anyone who isn't a current student or staff member, including professionals) must be cleared by ULSU through the Student Dashboard, 10 working days ahead, and **the event must not be publicised until cleared** | External Speakers Policy; Code of Conduct | The event editor now warns committee members before publishing; the professional request form says offering to speak isn't an invitation. Whether any existing event has an uncleared external speaker can't be checked from the code. | **Partly met. Action needed** (10.17) |
+| 3 | **Non-students** can take part in society activity only through a ULSU Non-Student Membership (Associate, Visiting, Coaches...), and cannot hold society committee roles | Non-Student Membership Policy | The site lets approved healthcare professionals (not students) into the Network, the Sankofa Hub and messaging. None holds a committee role. ULSU may say these people need a membership type, or that they take part as invited guests/speakers. This is a **ULSU decision**, not something code can settle. | **Not confirmed. Action needed** (10.15) |
+| 4 | Only **current members** may attend society events; societies report anyone without valid membership | Social Media Policy; Code of Conduct | Account approval checks the person has paid for membership through ULSU; event registration needs a members' login | Met |
+| 5 | **All money for activities goes through ULSU**; no outside bank accounts or collecting money; external fundraising needs Trustees' permission | Code of Conduct; External Speakers Policy | The website handles no money (membership is bought on ULSU's site). The events page lists a *Winter Charity Fundraiser*: any collecting must run through ULSU and may need Trustee permission. | Met for the site; **Action needed** (10.18) |
+| 6 | Data: ULSU is controller for SU activity; rights, one-month replies, complaints handled by the DPO then the ICO; marketing consent or soft opt-in with free opt-out | ULSU Privacy Notice; Complaints Handbook | Notice uses the same rights and timescales, shows ULSU's DPO and complaints contacts, and has an update-email opt-out | Met (wording to be agreed with ULSU, 10.1) |
+| 7 | Student data from the University must not be passed to third parties without written authority, and **not exported outside the EEA** without adequate protection | University/ULSU Information Sharing Agreement | The website holds data members give it directly. It does not import the University's student data. Hosting and email providers may be outside the UK/EEA (10.3). | **Check needed** (10.3) |
+| 8 | Safeguarding concerns go to the ULSU Safeguarding Officers; incidents at activities are reported through the Student Dashboard; Prevent duty | Safeguarding Policy; Code of Conduct | Safeguarding page names the route and the urgent-help numbers and links ULSU's incident report form | Met; **Action needed** (10.8) |
+| 9 | Professional, respectful online conduct; no harassment, explicit or defamatory content; no deceptive AI content; don't misrepresent ULSU | Code of Conduct; Social Media Policy | Terms of use cover each. The footer now says this is the society's own website and not an official ULSU website. | Met |
+| 10 | **No unapproved use of ULSU's name or logo**; official logo files only | Social Media Policy; Brand Guidelines | The website doesn't use the logo or any redrawn version. It names ULSU in plain text only. | Met |
+| 11 | Hand **social media and service logins** to ULSU at each handover; MFA | Social Media Policy | Not something the website can do | **Action needed** (10.7) |
+| 12 | Use the official ULSU group email, not personal addresses | Group Gmail Policy | Site publishes and sends from `acms@lincolnsu.com` | Met; accounts behind the site **Action needed** (10.7) |
+| 13 | Societies have **open membership** and don't restrict by name | Equal Opportunities Policy | Site says "Open to every course and background" | Met |
+| 14 | Free speech with lawful, respectful debate; no hate speech | Code of Conduct | Terms welcome debate and ban harassment and hate | Met |
+| 15 | Political neutrality | Political Activity Policy | The site carries no party-political content | Met |
+| 16 | Committee **attend required induction and training**; confidentiality of information held through the role | Code of Conduct | Covered by item 1 and the annual handover checklist (8.4) | Action needed (10.16) |
 
 ## 3. Legal framework
 
@@ -195,6 +205,7 @@ Do not investigate. Listen, do not promise confidentiality, record date/time/wha
 ### 8.4 Annual handover (every June to September)
 - Move all service logins (Supabase, GitHub, Resend, domain) to the official society address and hand details to ULSU as its policies require; re-enrol MFA.
 - Run **Data & Privacy, Run clean-up now**, and review **Inactive accounts**.
+- Check that every committee member has confirmed their data protection training (Data & Privacy, bottom of the page).
 - Review the privacy notice, bump the version in `js/privacy.js` and `privacy.html` if anything changed.
 - Committee members complete ULSU's data protection and safeguarding training.
 
@@ -203,8 +214,8 @@ Do not investigate. Listen, do not promise confidentiality, record date/time/wha
 ## 9. What changed in the code
 
 **New pages:** `privacy.html`, `cookies.html`, `terms.html`, `accessibility.html`, `safeguarding.html`, `data-request.html`.
-**New scripts:** `js/privacy.js` (consent, analytics, data-rights form, member panel), `js/privacy-admin.js` (dashboard).
-**Database:** `db/migrations/110-data-protection-compliance.sql`.
+**New scripts:** `js/privacy.js` (consent, analytics, data-rights form, member panel), `js/privacy-admin.js` (dashboard), `js/committee-ack.js` (yearly committee training confirmation).
+**Database:** `db/migrations/110-data-protection-compliance.sql` and `db/migrations/111-committee-data-protection-acknowledgement.sql`.
 **Changed:** every page (footer legal links, privacy script, version string); `member-hub.html` (My data and privacy); `president-dashboard.html` (the committee dashboard; Data & Privacy section); `js/main.js` (visit counter moved behind consent); `js/members.js` (privacy notice gate with versioning, also for professionals); `js/email-centre.js` and the two email edge functions (opt-out, sender identification); `js/sankofa-hub.js`, `js/members.js`, `js/feedback.js`, `request-account.html`, `request-professional-account.html`, `member-sankofa.html`, `motm.html`, `gallery.html`, `mmg.html` (notices at the point of collection); `css/styles.css` (self-hosted fonts and new styles); all pages (login library self-hosted, unlabelled inputs fixed).
 **New static assets:** `css/fonts/*` (Inter and Fraunces, SIL Open Font License) and `js/vendor/supabase-js-2.118.0.min.js`.
 
@@ -216,10 +227,10 @@ Do not investigate. Listen, do not promise confidentiality, record date/time/wha
 |---|---|---|---|
 | 10.1 | **High** | **Make first contact with ULSU** (none has happened yet) and get **written confirmation** of who is the data controller for the society's website (LACMS alone, ULSU, or joint) and that the wording in section 1 of the privacy notice is right. Ask whether ULSU wants a data-sharing or processing agreement with LACMS. | Committee, with ULSU Student Communities and DPO (`compliance@lincolnsu.com`) |
 | 10.2 | **High** | **Deploy:** run migration 110 in Supabase; redeploy the two email edge functions (`send-account-email`, `send-member-email`); publish the site. Until 110 runs, the request form and "My data" tools tell people to email instead. | Site administrator |
-| 10.3 | **High** | Accept the data processing terms with **Supabase**, **Resend** and **GitHub**; note each provider's transfer safeguard; confirm the Supabase project **region**. Decide with ULSU whether the privacy notice should describe recipients and overseas transfers (it currently doesn't). | Site administrator |
+| 10.3 | **High** | Accept the data processing terms with **Supabase**, **Resend** and **GitHub**; note each provider's transfer safeguard; confirm the Supabase project **region** (ULSU's agreement with the University says student data isn't exported outside the EEA without adequate protection, so an EU/UK region and Resend's EU option are the safe choices). Decide with ULSU whether the privacy notice should describe recipients and overseas transfers (it currently doesn't). | Site administrator |
 | 10.4 | **High** | Switch on **MFA** for every account behind the site (Supabase, GitHub, Resend, domain registrar, and every committee member with dashboard access). In Supabase enable leaked-password protection. Confirm "Enforce HTTPS" is on in GitHub Pages. | Site administrator |
 | 10.5 | Medium | Enable the **pg_cron** extension in Supabase, then run migration 110 again (it then schedules the nightly clean-up), or press *Run clean-up now* monthly. Review inactive accounts annually. | Committee |
-| 10.6 | Medium | Confirm with ULSU the **ICO registration** position: is LACMS covered by ULSU's data protection fee, or does it need its own? | Committee, with ULSU |
+| 10.6 | Medium | Confirm with ULSU the **ICO registration** position: is LACMS covered by ULSU's data protection registration (ULSU is registered with the ICO under number 23259886 according to its published agreement with the University), or does it need its own? | Committee, with ULSU |
 | 10.7 | **High** | **Account continuity and ULSU policies:** make sure every service login uses `acms@lincolnsu.com` (not a personal address) and is handed to ULSU at each annual handover; ask ULSU whether this independent website needs its approval under the social media policy; keep the ULSU logo off it unless approved (it currently isn't used). The site is currently run by a single volunteer, so the society needs a second trusted administrator so its data isn't stranded when committees change. | Committee, with ULSU |
 | 10.8 | **High** | **Safeguarding:** agree who on the committee is the point of contact for passing safeguarding concerns to ULSU's Safeguarding Officers; committee members to complete ULSU's safeguarding and data protection training. | Committee |
 | 10.9 | Medium | Rehearse the breach procedure once (who to call, where the log is). | Committee |
@@ -228,7 +239,10 @@ Do not investigate. Listen, do not promise confidentiality, record date/time/wha
 | 10.12 | Medium | Confirm winners' **consent before publishing** Member of the Month entries and committee photos; the notice says winners are shown but does not claim a recorded consent. | Committee |
 | 10.13 | Low | Review the privacy notice, terms and this report every year, or whenever a new feature collects new data (for example update `privacy.html` and bump `PRIVACY_VERSION` in `js/privacy.js`). | Committee |
 | 10.14 | Low | Check the commencement dates of the Data (Use and Access) Act 2025 provisions on legislation.gov.uk before relying on any date mentioned in this report. | Site administrator |
-| 10.15 | **High** | **The Network directory:** every active member is listed (name, course, year, plus any LinkedIn/bio they add) to everyone given Network access, which can include approved external healthcare professionals. Members cannot currently hide themselves (only the committee can). The Network is closed by default and opened by the committee in Hub Access. Before opening it, decide whether it should be opt-in or have a self-service "hide me", and ask ULSU whether it is happy with membership details being used this way. | Committee, with ULSU |
+| 10.15 | **High** | **Non-student participation and the Network directory.** (a) ULSU's Non-Student Membership Policy says non-students take part in society activity only through a non-student membership type and cannot hold committee roles. Ask ULSU how healthcare professionals (mentors, speakers, Network users) may take part. (b) **The Network directory:** every active member is listed (name, course, year, plus any LinkedIn/bio they add) to everyone given Network access, which can include approved external healthcare professionals. Members cannot currently hide themselves (only the committee can). The Network is closed by default and opened by the committee in Hub Access. Before opening it, decide whether it should be opt-in or have a self-service "hide me", and ask ULSU whether it is happy with membership details being used this way. | Committee, with ULSU |
+| 10.16 | **High** | **Committee data protection training.** ULSU's Code of Conduct requires it before committee members access personal data. Ask ULSU for the training and have every committee member complete it; the dashboard records each person's yearly confirmation and reminds anyone who says "not yet". Decide whether you would rather block dashboard access until it is confirmed (the site records and reminds, it doesn't block). | Committee, with ULSU |
+| 10.17 | **High** | **External speakers.** Any event with a speaker who isn't a current Lincoln student or staff member (doctors, professionals, mentors giving a talk) must be cleared by ULSU through the Student Dashboard at least 10 working days ahead, and not publicised until cleared. Check every event currently on the events page and the Sankofa sessions, and keep any uncleared one off the website until cleared. | Committee |
+| 10.18 | Medium | **Fundraising.** The events page advertises a Winter Charity Fundraiser. ULSU's Code says all money must go through ULSU and raising funds for an outside cause needs the Trustees' permission. Read ULSU's Fundraising Policy and agree the plan with ULSU before promoting it further. | Committee, with ULSU |
 
 ---
 
@@ -237,6 +251,7 @@ Do not investigate. Listen, do not promise confidentiality, record date/time/wha
 - **Database (migration 110):** 62 automated checks against a clean PostgreSQL instance with stand-in tables (public submissions and rate limit, permissions for anonymous, member and administrator, export contents and exclusion of other people's data, full erasure with cascades and anonymisation, retention deletes old and keeps new, inactive accounts, email preferences, privacy acknowledgement). All passed. It was **not** run against the live Supabase database, so run the checks in section 10.2 after deploying.
 - **Browser:** consent banner (no storage or recording before consent, deletion of the visitor ID on withdrawal, Do Not Track), cookie settings, data-rights form (validation, honeypot, submission, confirmation), members hub "My data and privacy" (download, email preference, deletion request, request list), committee dashboard "Data & Privacy" (queue, overdue and safeguarding flags, status save, export, erase, clean-up, inactive accounts). These ran against a mock server, not the live back end.
 - **Static checks:** every local link, script and font referenced by every page resolves; no third-party script, font, iframe or tracker is loaded; form controls labelled; all pages have a language and title, and all pages except the QR redirect and partner-results pages have a skip link.
+- **Migration 111:** 10 automated checks (confirm, update, permissions, listing). **Browser:** the yearly confirmation, the "not yet" reminder and the president's list were run against the mock server.
 - **Not done:** the edge functions could not be run locally (no Deno), so their changes are text edits that need a test email after redeploying; no independent legal review; no accessibility audit; no penetration test.
 
 ---
@@ -261,6 +276,16 @@ Recommended: ULSU's DPO reviews and signs off this assessment.
 The site is a small, members-only service with private messaging, comments, resource uploads and a gallery. Users are verified students or approved professionals. Risk categories considered: harassment and abuse, hate, child safety, terrorism, intimate-image abuse, fraud, copyright. Likelihood is low because access is restricted to approved accounts and the audience is small. Measures: approval before account creation, report buttons and a report form, block and suspend tools, a committee review process, clear terms, escalation to ULSU and the police where required, and removal of content that breaks the terms. Review annually and after any serious incident. Record of reports: the dashboard's Message Reports and Data & Privacy sections.
 
 ## Appendix C: Sources read
+
+- ULSU Code of Conduct 2026/27
+- ULSU Non-Student Membership Policy (03/26)
+- ULSU External Speakers Policy (06/25)
+- ULSU Political Activity Policy (06/26)
+- ULSU Equal Opportunities Policy
+- ULSU Complaints Handbook (03/26)
+- University of Lincoln and ULSU Group Information Sharing Agreement (2022)
+- Lincoln Students' Union Brand Guidelines (08/22)
+- ULSU Student Code of Practice
 
 - ULSU Privacy Notice (08/26): `assets-cdn.sums.digital/LN/documents/Website_Policies/ULSU_Privacy_Notice.pdf`
 - ULSU Group Safeguarding of Children and Vulnerable Adults Policy (04/25)

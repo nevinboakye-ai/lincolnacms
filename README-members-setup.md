@@ -1907,7 +1907,7 @@ The full Sankofa Hub needs Hub Access, so a Circle whose mentors and mentees wer
 The full picture - what was checked, what the law and ULSU's policies require, what was built, and the open actions that need people - is in **[COMPLIANCE-REPORT.md](COMPLIANCE-REPORT.md)** (also as `LACMS-Compliance-Report.docx` for sending to the Students' Union). Read section 10 first: it lists what you and ULSU still have to do.
 
 **To switch the new tools on (in this order):**
-1. **Supabase -> SQL Editor:** run `db/migrations/110-data-protection-compliance.sql` (safe to repeat). If you want the nightly retention clean-up, enable the `pg_cron` extension first (Database -> Extensions), then run 110 again.
+1. **Supabase -> SQL Editor:** run `db/migrations/110-data-protection-compliance.sql` and then `db/migrations/111-committee-data-protection-acknowledgement.sql` (both safe to repeat). If you want the nightly retention clean-up, enable the `pg_cron` extension first (Database -> Extensions), then run 110 again.
 2. **Redeploy the two email functions** (`send-account-email` and `send-member-email`) so emails identify the sender and carry the privacy and opt-out links. Send yourself a test email afterwards.
 3. Publish the site (this push). Until 110 has run, the data request form and "My data & privacy" tools tell people to email `acms@lincolnsu.com` instead; nothing else breaks.
 
@@ -1916,3 +1916,5 @@ The full picture - what was checked, what the law and ULSU's policies require, w
 **What's new for members and visitors:** privacy, cookie, terms, accessibility and safeguarding pages (linked from every footer); a cookie banner (visit counting is opt-in); a "Your data rights" form that works without an account; and **My data & privacy** on the members hub (download my data, request deletion, email preferences, my requests). Members are asked to read the privacy notice again whenever its version changes (`PRIVACY_VERSION` in `js/privacy.js`).
 
 **Also changed:** Google Fonts and the jsDelivr login library are no longer loaded from third parties (fonts are in `css/fonts`, the library in `js/vendor`), and the old always-on visit counter in `js/main.js` was removed in favour of the consent-based one in `js/privacy.js`.
+
+**ULSU's own rules (second pass):** the report's section 2 now compares the site against ULSU's published Code of Conduct, External Speakers, Non-Student Membership, Social Media, Gmail, Safeguarding and other policies. New: a yearly committee data-protection training confirmation on the dashboard (ULSU's Code of Conduct requires the training before access to personal data), a reminder in the events editor and professional form about external speakers (ULSU must clear them first), an incident-report link on the safeguarding page, and a footer line saying this is the society's own website. Five items still need you or ULSU (report sections 10.15 to 10.18, 10.8).
