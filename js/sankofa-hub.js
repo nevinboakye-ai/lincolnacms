@@ -870,7 +870,7 @@
     var html = '<div class="sh-bar"><div><h2 class="sh-pane-title">Board' + (c ? ' · ' + esc(c.name) : '') + '</h2><p class="sh-muted">Your Circle\'s space - share wins, ask questions, cheer each other on.</p></div></div>';
     if (c) {
       var canAnnounce = isMentor() || isAdmin();
-      var mates = (ov.members || []).filter(function (m) { return !m.is_me && !m.blurred; });
+      var mates = (ov.members || []).filter(function (m) { return !m.is_me && !m.blurred && !m.is_guest; });
       html += '<form class="sh-card sh-compose" data-sh-compose novalidate>' +
         '<div class="ui-seg sh-seg" role="group" aria-label="What are you posting?"><button type="button" class="is-active" data-sh-kind="post">Post</button><button type="button" data-sh-kind="shoutout">👏 Kudos</button>' +
         (canAnnounce ? '<button type="button" data-sh-kind="announcement">📣 Announcement</button>' : '') + '</div>' +
