@@ -9,7 +9,7 @@
 //     year first - and shows the +XP the first hello earns.
 //
 // Nothing here changes who can see or message whom; it works from the cards
-// the page already shows (so the sixth-form protections are untouched).
+// the page already shows (so the profile protections are untouched).
 (function () {
   'use strict';
 

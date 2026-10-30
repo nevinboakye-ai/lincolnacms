@@ -8,7 +8,7 @@
 -- Because this is not consent-based any more (a pre-ticked box is not valid consent), the privacy
 -- notice describes it as part of running the member community, with a clear, easy way to opt out.
 -- Same details as before: name, course, year, member type, committee role, and any LinkedIn link or
--- bio the member added. Never an email address. Restricted (sixth-form) rows stay redacted. People
+-- bio the member added. Never an email address. Restricted rows stay redacted. People
 -- added by the committee before they have an account are still not listed (they can't opt out).
 --
 -- Safe to run more than once. Needs 112.
@@ -48,8 +48,8 @@ set search_path = public
 as $$
   select
     case when x.restricted then gen_random_uuid() else x.id end,
-    case when x.restricted then 'Sixth form student' else x.full_name end,
-    case when x.restricted then 'Sixth form' else x.course end,
+    case when x.restricted then 'Restricted profile' else x.full_name end,
+    case when x.restricted then 'Restricted' else x.course end,
     case when x.restricted then 'Executive Committee only' else x.year_of_study end,
     case when x.restricted then null else x.member_type end,
     case when x.restricted then null else x.committee_role end,

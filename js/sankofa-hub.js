@@ -13,7 +13,7 @@
 //   People    everyone in the Hub, with a message button
 //
 // All of the rules (who is in which Circle, who sees whom, XP and badges,
-// the sixth-form protections) live in Postgres - migrations 084 to 087. This
+// the profile protections) live in Postgres - migrations 084 to 087. This
 // file asks for data, draws it and sends the person's actions. On
 // member-hub.html the same file paints the "Sankofa Hub" tile.
 (function () {
@@ -459,7 +459,7 @@
   }
   function msgBtn(p) {
     if (!p.can_message) {
-      return '<button type="button" class="btn btn-outline sh-btn-sm" disabled title="' + (p.sixth_form ? 'Sixth-form members can only be messaged by the committee' : 'Messaging isn\'t available with this person') + '">Message</button>';
+      return '<button type="button" class="btn btn-outline sh-btn-sm" disabled title="' + (p.sixth_form ? 'This member can only be messaged by the committee' : 'Messaging isn\'t available with this person') + '">Message</button>';
     }
     return '<button type="button" class="btn btn-outline sh-btn-sm" data-sh-msg="' + esc(p.id) + '">' + ICON.chat + ' Message</button>';
   }
@@ -558,7 +558,7 @@
     if (st.tab !== 'circle') return;
     var ov = st.ov, c = ov.circle;
     if (!c) {
-      setHtml('sh-pane-circle', '<div class="sh-card sh-card--wait"><h3>You haven\'t been placed in a Circle yet</h3><p>A Circle is a small group that spans every stage - from sixth-form to senior doctor - who meet termly and look out for each other. The committee places everyone; you\'ll see your Circle here as soon as you\'re in one.</p></div>');
+      setHtml('sh-pane-circle', '<div class="sh-card sh-card--wait"><h3>You haven\'t been placed in a Circle yet</h3><p>A Circle is a small group that spans every stage - from first-year student to senior doctor - who meet termly and look out for each other. The committee places everyone; you\'ll see your Circle here as soon as you\'re in one.</p></div>');
       return;
     }
     var members = ov.members || [];
@@ -578,7 +578,7 @@
     }
     html += '<h3 class="sh-section-title">Mentors <span class="sh-muted">' + mentors.length + '</span></h3><div class="sh-members">' + (mentors.length ? mentors.map(memberCard).join('') : '<p class="sh-muted">No mentors in this Circle yet.</p>') + '</div>';
     html += '<h3 class="sh-section-title">Mentees <span class="sh-muted">' + others.length + '</span></h3><div class="sh-members">' + (others.length ? others.map(memberCard).join('') : '<p class="sh-muted">No mentees in this Circle yet.</p>') + '</div>';
-    html += '<p class="sh-fineprint">Sixth-form members are shown without a name and can only be messaged by the committee - that keeps them safe.</p>';
+    html += '<p class="sh-fineprint">Restricted profiles are shown without a name and can only be messaged by the committee.</p>';
     setHtml('sh-pane-circle', html);
   }
 
@@ -1229,7 +1229,7 @@
   function openWelcome() {
     var me = st.ov.me;
     var slides = [
-      { icon: '🌍', title: 'Welcome to the Sankofa Hub', text: '<strong>Sankofa</strong> means &ldquo;go back and fetch it&rdquo;. This is where our mentors and mentees come together - sixth-formers, medical students, junior doctors and senior doctors, all in one small <strong>Circle</strong>.' },
+      { icon: '🌍', title: 'Welcome to the Sankofa Hub', text: '<strong>Sankofa</strong> means &ldquo;go back and fetch it&rdquo;. This is where our mentors and mentees come together - medical students, junior doctors and senior doctors, all in one small <strong>Circle</strong>.' },
       { icon: '🗓️', title: 'Everything in one place', text: 'See <strong>who\'s in your Circle</strong>, <strong>when you meet next</strong> (with a countdown and a calendar link), message your mentors and peers, post on your Circle\'s board and keep track of your goals.' },
       { icon: '🔥', title: 'Grow, and get rewarded', text: 'Every check-in, meeting, goal and kind word earns <strong>XP</strong>. Level up, build a weekly <strong>streak</strong>, collect badges and help your Circle win the <strong>Circle Cup</strong>.' }
     ];

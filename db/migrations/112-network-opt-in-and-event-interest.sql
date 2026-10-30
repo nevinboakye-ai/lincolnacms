@@ -65,8 +65,8 @@ set search_path = public
 as $$
   select
     case when x.restricted then gen_random_uuid() else x.id end,
-    case when x.restricted then 'Sixth form student' else x.full_name end,
-    case when x.restricted then 'Sixth form' else x.course end,
+    case when x.restricted then 'Restricted profile' else x.full_name end,
+    case when x.restricted then 'Restricted' else x.course end,
     case when x.restricted then 'Executive Committee only' else x.year_of_study end,
     case when x.restricted then null else x.member_type end,
     case when x.restricted then null else x.committee_role end,

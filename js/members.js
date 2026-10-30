@@ -4422,17 +4422,17 @@
       }).join('');
     }
 
-    // Sixth-form students are visible to the Executive Committee only. For
+    // Restricted profiles are visible to the Executive Committee only. For
     // everyone else the database sends a redacted row (placeholder name, no
     // course, bio or link - see migration 072) and this draws it blurred and
     // inert, so there is nothing real behind the blur.
     var NETWORK_LOCK_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
     function renderRestrictedNetworkCard() {
-      return '<div class="network-card network-card--restricted" role="group" aria-label="Sixth-form student - only the Executive Committee can view or contact them">' +
+      return '<div class="network-card network-card--restricted" role="group" aria-label="Restricted profile - only the Executive Committee can view or contact them">' +
         '<span class="network-card-lock">' + NETWORK_LOCK_ICON + 'Executive Committee only</span>' +
         '<span class="network-card-avatar" aria-hidden="true">AB</span>' +
-        '<span class="network-card-name" aria-hidden="true">Sixth form student</span>' +
-        '<span class="network-card-meta" aria-hidden="true">Sixth form · Name hidden</span>' +
+        '<span class="network-card-name" aria-hidden="true">Restricted profile</span>' +
+        '<span class="network-card-meta" aria-hidden="true">Name hidden</span>' +
         '<span class="network-card-badge" aria-hidden="true">Restricted</span>' +
         '</div>';
     }
@@ -7298,7 +7298,7 @@
         box.innerHTML = '<div class="net-launch-text"><h3>' + (launched ? 'The Network is launched' : 'The Network is in pre-launch') + '</h3>' +
           '<p>' + (launched
             ? 'Everyone with Network access can see the professionals\' names, photos and profiles, and can message them.'
-            : 'Everyone except the Executive Committee sees the professionals as blurred, locked cards (no names or details are sent). Sixth formers stay hidden as always. Nothing changes until you press launch.') + '</p></div>' +
+            : 'Everyone except the Executive Committee sees the professionals as blurred, locked cards (no names or details are sent). Restricted profiles stay hidden as always. Nothing changes until you press launch.') + '</p></div>' +
           (launched ? '' : '<label class="net-launch-soon" for="network-soon-count"><span>"Joining soon" cards</span><input type="number" id="network-soon-count" min="0" max="30" value="' + (isNaN(soonSetting) ? 10 : Math.max(0, Math.min(30, soonSetting))) + '"><small>Extra locked cards for professionals not added yet. They show on the Network until you launch.</small></label>') +
           '<button type="button" class="btn ' + (launched ? 'btn-outline' : 'btn-primary') + '" id="network-launch-btn">' + (launched ? 'Back to pre-launch' : 'Launch the Network') + '</button>';
         var soonInput = document.getElementById('network-soon-count');

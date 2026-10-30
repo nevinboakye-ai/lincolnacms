@@ -182,7 +182,7 @@
       if (archived.length) {
         html += '<details class="shm-archived"><summary>Archived Circles (' + archived.length + ')</summary><div class="shm-circles">' + archived.map(circleCard).join('') + '</div></details>';
       }
-      html += '<p class="sh-fineprint">Tick people in the Unplaced list (or drag them) and place them in a Circle - drag a seat to another Circle to move someone. A <strong>gold ring</strong> marks a mentor. Open a Circle to pair mentors and mentees; a Circle can have as many of each as you like. A <strong>dashed ring</strong> is a guest mentor you added by name who hasn\'t signed up yet. Sixth-form members show by name to you, but anonymously to everyone else.</p>';
+      html += '<p class="sh-fineprint">Tick people in the Unplaced list (or drag them) and place them in a Circle - drag a seat to another Circle to move someone. A <strong>gold ring</strong> marks a mentor. Open a Circle to pair mentors and mentees; a Circle can have as many of each as you like. A <strong>dashed ring</strong> is a guest mentor you added by name who hasn\'t signed up yet. Restricted profiles show by name to you, but anonymously to everyone else.</p>';
     }
     var oldPool = root.querySelector('.shm-pool-list');
     var poolTop = oldPool ? oldPool.scrollTop : 0;
@@ -510,7 +510,7 @@
     detail.push(['XP', p.xp + (p.last_active ? ' · active ' + S.timeAgo(p.last_active) : ' · no activity yet')]);
     if (p.checkin) detail.push(['Latest check-in', MOOD_EMOJI[p.checkin.mood] + (p.checkin.need_help ? ' wants a check-in' : '') + ' · week of ' + S.fmtDay(p.checkin.week)]);
     var dlg = S.openDialog('<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
-      '<div class="shm-dlg-head">' + S.avatar(p, 'lg') + '<div><span class="guide-eyebrow">' + (p.role === 'mentor' ? 'Mentor' : 'Mentee') + (p.sixth_form ? ' · Sixth form' : '') + '</span><h2 class="guide-title" style="margin:0">' + esc(p.name) + '</h2><p class="sh-muted" style="margin:2px 0 0">' + esc(p.stage || '') + '</p></div></div>' +
+      '<div class="shm-dlg-head">' + S.avatar(p, 'lg') + '<div><span class="guide-eyebrow">' + (p.role === 'mentor' ? 'Mentor' : 'Mentee') + (p.sixth_form ? ' · Restricted' : '') + '</span><h2 class="guide-title" style="margin:0">' + esc(p.name) + '</h2><p class="sh-muted" style="margin:2px 0 0">' + esc(p.stage || '') + '</p></div></div>' +
       '<dl class="shm-detail">' + detail.map(function (d) { return '<div><dt>' + d[0] + '</dt><dd>' + d[1] + '</dd></div>'; }).join('') + '</dl>' +
       '<div class="guide-form">' +
         '<div class="field"><label for="shm-move">Circle</label><select id="shm-move">' + circleOptions(p.circle_id, true) + '</select></div>' +
@@ -833,7 +833,7 @@
           var key = r.user_id;
           return '<li><label><input type="checkbox" data-pick="' + esc(key) + '" data-role="' + role + '"' + (picked[key] ? ' checked' : '') + '>' +
             '<span class="shm-pick-main"><strong>' + esc(r.name) + '</strong><small>' + esc(r.detail || '') + (r.specialty ? ' · ' + esc(r.specialty) : '') + (r.applied_at ? ' · applied ' + esc(S.fmtDay(r.applied_at)) : '') + '</small></span>' +
-            (r.sixth_form ? '<span class="sh-chip">Sixth form</span>' : '') + (r.pending_approval ? '<span class="sh-chip" title="They have a login but the committee hasn\'t approved their professional account yet. They can be placed now; the Hub opens for them once approved.">Awaiting approval</span>' : '') + (r.inactive ? '<span class="sh-chip" title="Their profile is switched off in the Network">Inactive profile</span>' : '') + (kind === 'search' ? '<select data-role-for="' + esc(key) + '" aria-label="Add ' + esc(r.name) + ' as"><option value="mentee"' + (role === 'mentee' ? ' selected' : '') + '>as mentee</option><option value="mentor"' + (role === 'mentor' ? ' selected' : '') + '>as mentor</option></select>' : '') +
+            (r.sixth_form ? '<span class="sh-chip">Restricted</span>' : '') + (r.pending_approval ? '<span class="sh-chip" title="They have a login but the committee hasn\'t approved their professional account yet. They can be placed now; the Hub opens for them once approved.">Awaiting approval</span>' : '') + (r.inactive ? '<span class="sh-chip" title="Their profile is switched off in the Network">Inactive profile</span>' : '') + (kind === 'search' ? '<select data-role-for="' + esc(key) + '" aria-label="Add ' + esc(r.name) + ' as"><option value="mentee"' + (role === 'mentee' ? ' selected' : '') + '>as mentee</option><option value="mentor"' + (role === 'mentor' ? ' selected' : '') + '>as mentor</option></select>' : '') +
             '</label></li>';
         }).join('') + '</ul>';
       }

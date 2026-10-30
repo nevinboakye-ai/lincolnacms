@@ -10,8 +10,8 @@
 //
 // Only the uploader can read any of it - the database checks (see 074/075).
 // Likes, downloads, link clicks and unlocks name the person (members are told
-// in the resource preview); views are counts only. Sixth-form students are
-// shown as "Sixth form student" unless the viewer is an executive.
+// in the resource preview); views are counts only. Restricted profiles are
+// shown as "Restricted profile" unless the viewer is an executive.
 //
 // Everything degrades quietly: if migration 074 hasn't been run, nothing is
 // recorded and no insights UI appears. This file talks to js/resources.js
@@ -295,7 +295,7 @@
           '<button type="button" class="btn btn-outline" data-ins-csv>Download CSV</button>' +
           '<button type="button" class="btn btn-outline" data-ins-refresh>' + icon('refresh') + 'Refresh</button>' +
           '<button type="button" class="btn btn-primary" data-dialog-close>Close</button></div>' +
-        '<p class="res-ins-fine">You can see who liked, downloaded or clicked your resource (members are told this on the resource). Views are counts only. Your own activity isn\'t counted, and sixth-form students appear anonymously.</p>';
+        '<p class="res-ins-fine">You can see who liked, downloaded or clicked your resource (members are told this on the resource). Views are counts only. Your own activity isn\'t counted, and restricted profiles appear anonymously.</p>';
 
       Array.prototype.forEach.call(body.querySelectorAll('[data-count-to]'), function (el) {
         var to = n(el.getAttribute('data-count-to'));

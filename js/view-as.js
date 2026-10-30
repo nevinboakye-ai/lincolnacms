@@ -53,7 +53,6 @@
   var REFRESH_MARGIN_MS = 3 * 60 * 1000;     // ask for a new token this long before the old one runs out
 
   var COURSES = ['Medicine', 'Pharmacy', 'Dental Hygiene and Therapy', 'Diagnostic Radiography', 'Nursing', 'Midwifery', 'Biomedical Science', 'Occupational Therapy'];
-  var SIXTH = 'Sixth form / aspiring medic';
   var YEARS = ['Foundation Year', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Masters'];
   var MEMBER_TYPES = {
     member: 'Member',
@@ -111,7 +110,7 @@
     if (cy) bits.push(cy); else if (m.member_type === 'member') bits.push('Member');
     return bits.join(' · ');
   }
-  function eligibleFor(course) { return /medicine|sixth/i.test(course || ''); }
+  function eligibleFor(course) { return /medicine/i.test(course || ''); }
 
   function memberPersona(opts) {
     var m = {
@@ -150,7 +149,6 @@
     { id: 'pharm2', label: 'Pharmacy · Year 2', make: function () { return memberPersona({ course: 'Pharmacy', year_of_study: 'Year 2' }); } },
     { id: 'mid1', label: 'Midwifery · Year 1', make: function () { return memberPersona({ course: 'Midwifery', year_of_study: 'Year 1' }); } },
     { id: 'nurse2', label: 'Nursing · Year 2', make: function () { return memberPersona({ course: 'Nursing', year_of_study: 'Year 2' }); } },
-    { id: 'sixth', label: 'Sixth former', make: function () { return memberPersona({ course: SIXTH, year_of_study: null }); } },
     { id: 'exec', label: 'Executive Committee', make: function () { return memberPersona({ member_type: 'executive_committee', course: 'Medicine', year_of_study: 'Year 5', committee_role: 'Treasurer' }); } },
     { id: 'supp', label: 'Supporting Committee', make: function () { return memberPersona({ member_type: 'supporting_committee', course: 'Pharmacy', year_of_study: 'Year 3' }); } },
     { id: 'mentor', label: 'Senior Sankofa mentor', make: function () { return memberPersona({ member_type: 'senior_sankofa_mentor', course: 'Medicine', year_of_study: 'Year 5' }); } },
@@ -749,7 +747,7 @@
 
     function fieldsHtml() {
       var k = form.kind, out = '';
-      var courseList = COURSES.concat([SIXTH]);
+      var courseList = COURSES;
       if (k === 'member' || k === 'committee' || k === 'mentor') {
         if (k === 'committee') out += '<label class="va-field"><span>Committee</span><select data-f="member_type">' + options([['executive_committee', 'Executive Committee'], ['supporting_committee', 'Supporting Committee']], form.member_type) + '</select></label>';
         if (k === 'mentor') out += '<label class="va-field"><span>Mentor level</span><select data-f="member_type">' + options([['senior_sankofa_mentor', 'Senior Sankofa Mentor'], ['junior_sankofa_mentor', 'Junior Sankofa Mentor']], form.member_type) + '</select></label>';
