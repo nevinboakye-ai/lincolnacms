@@ -2,8 +2,8 @@
 
 **Society:** Lincoln African Caribbean Medical Society (LACMS), a student society of the University of Lincoln Students' Union (ULSU)
 **Website:** lincolnacms.uk
-**Report date:** 30 October 2026 (version 1.0)
-**Privacy notice version this report matches:** 2026-10-30
+**Report date:** 30 September 2026 (version 1.0)
+**Privacy notice version this report matches:** 2026-09-30
 
 ---
 

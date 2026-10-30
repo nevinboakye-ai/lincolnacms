@@ -1,7 +1,7 @@
 # LACMS website: how personal data and conduct are handled
 
 **Lincoln African Caribbean Medical Society (LACMS), a student society of the University of Lincoln Students' Union (ULSU)**
-**Website:** lincolnacms.uk | **Contact:** acms@lincolnsu.com | **Version:** 30 October 2026
+**Website:** lincolnacms.uk | **Contact:** acms@lincolnsu.com | **Version:** 30 September 2026
 
 ---
 

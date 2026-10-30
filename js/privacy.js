@@ -19,7 +19,7 @@
 
   // Bump this whenever privacy.html changes in a way that matters. Members are asked to read the
   // notice again (see the gate in members.js) the next time they sign in.
-  var PRIVACY_VERSION = '2026-10-30';
+  var PRIVACY_VERSION = '2026-09-30';
   window.LACMS_PRIVACY_VERSION = PRIVACY_VERSION;
 
   var CONSENT_KEY = 'lacms-consent';
