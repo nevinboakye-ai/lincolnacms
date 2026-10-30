@@ -203,7 +203,7 @@ begin
     'sankofa_goals:user_id', 'sankofa_checkins:user_id', 'sankofa_posts:author_id', 'sankofa_post_reactions:user_id',
     'sankofa_meeting_rsvps:user_id', 'sankofa_meeting_feedback:user_id', 'sankofa_xp:user_id', 'sankofa_badges:user_id',
     'chat_messages_i_sent:sender_id', 'chat_reports_i_made:reporter_id', 'chat_blocks:blocker_id', 'member_email_log:user_id',
-    'email_preferences:user_id', 'privacy_acknowledgements:user_id', 'committee_acknowledgements:user_id', 'compliance_requests:user_id', 'professional_requests:auth_user_id',
+    'email_preferences:user_id', 'privacy_acknowledgements:user_id', 'committee_acknowledgements:user_id', 'network_visibility:user_id', 'compliance_requests:user_id', 'professional_requests:auth_user_id',
     'account_requests:auth_user_id', 'times_a_committee_admin_previewed_the_site_as_you:target_id'
   ] loop
     parts := string_to_array(spec, ':');

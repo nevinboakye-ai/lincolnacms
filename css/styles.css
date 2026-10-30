@@ -12254,3 +12254,9 @@ html.fb-embed main { padding-top: var(--space-3); }
 .priv-chip--bad { border-color: rgba(193, 39, 45, 0.8); color: #ff8a8a; }
 .priv-chip--warn { border-color: rgba(212, 166, 43, 0.8); color: var(--color-gold-light); }
 .priv-chip--kind { background: rgba(var(--gold-rgb), 0.12); }
+
+/* Provisional events */
+.event-prov { margin: var(--space-2) 0; font-size: 0.88rem; color: var(--color-text-muted); line-height: 1.5; }
+.event-prov-badge { display: inline-block; margin-right: 6px; padding: 1px 9px; border-radius: 99px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--color-gold-light); border: 1px dashed rgba(var(--gold-rgb), 0.7); }
+
+.net-optin { margin-bottom: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid rgba(var(--gold-rgb), 0.45); border-radius: var(--radius-md); background: rgba(var(--gold-rgb), 0.07); }

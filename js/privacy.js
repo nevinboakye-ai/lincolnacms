@@ -251,6 +251,24 @@
         });
       }
 
+      // Network visibility (opt-in, migration 112): the members hub card and the strip on the Network page
+      function wireNetworkBox(box, msgEl, wrap) {
+        if (!box) return;
+        supabaseClient.rpc('network_get_my_visibility').then(function (res) {
+          if (res.error) return;                    // not set up yet: the Network is unchanged
+          box.checked = !!(res.data && res.data.visible);
+          if (wrap) wrap.style.display = '';
+        });
+        box.addEventListener('change', function () {
+          supabaseClient.rpc('network_set_my_visibility', { p_visible: box.checked }).then(function (res) {
+            if (res.error) { box.checked = !box.checked; if (msgEl) { msgEl.textContent = friendly(res.error); } return; }
+            var t = box.checked ? 'You\'re now listed in the Network.' : 'You\'re no longer listed in the Network.';
+            if (msgEl) { msgEl.textContent = t; msgEl.hidden = false; } else say(t);
+          });
+        });
+      }
+      wireNetworkBox($('[data-priv-network]', panel), null, null);
+
       // my requests
       var list = $('[data-priv-requests]', panel);
       function loadRequests() {
@@ -264,6 +282,27 @@
         }, function () {});
       }
       loadRequests();
+    });
+  }
+
+  // The opt-in strip at the top of the Network page
+  function initNetworkStrip() {
+    var wrap = $('[data-network-optin]');
+    if (!wrap || !hasClient()) return;
+    var box = $('[data-network-optin-box]', wrap), msg = $('[data-network-optin-msg]', wrap);
+    supabaseClient.auth.getSession().then(function (r) {
+      if (!r.data || !r.data.session) return;
+      supabaseClient.rpc('network_get_my_visibility').then(function (res) {
+        if (res.error) return;
+        box.checked = !!(res.data && res.data.visible);
+        wrap.style.display = '';
+      });
+      box.addEventListener('change', function () {
+        supabaseClient.rpc('network_set_my_visibility', { p_visible: box.checked }).then(function (res) {
+          if (res.error) { box.checked = !box.checked; msg.textContent = 'Couldn\'t save that. Please try again.'; return; }
+          msg.textContent = box.checked ? 'You\'re now listed. Reload to see yourself in the list.' : 'You\'re no longer listed.';
+        });
+      });
     });
   }
 
@@ -282,6 +321,7 @@
     initConsentPanel();
     initRequestForm();
     initMemberPanel();
+    initNetworkStrip();
     if (browserOptOut()) { try { localStorage.removeItem(VISITOR_KEY); } catch (e) { /* ignore */ } return; }
     var c = readConsent();
     if (!c) { if (!document.querySelector('[data-no-consent-banner]')) showBanner(); }

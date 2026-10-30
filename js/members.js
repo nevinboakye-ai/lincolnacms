@@ -2488,12 +2488,14 @@
     var feedbackHtml = feedbackOpen
       ? '<a class="btn btn-primary event-feedback-btn" href="feedback.html?event=' + encodeURIComponent(row.slug) + '">Give feedback</a>'
       : '';
+    var provisional = row.status === 'provisional';
+    var provHtml = provisional ? '<p class="event-prov"><span class="event-prov-badge">Provisional</span> Waiting for the Students\' Union to approve this event. You can register your interest and we\'ll tell you when it\'s confirmed.</p>' : '';
     return '<article class="event-row' + (row.is_flagship ? ' event-row--flagship' : '') + (isPast ? ' event-row--past' : '') + '" id="' + escapeHtml(row.slug) + '" data-expand-row>' +
       '<div class="event-row-date">' + escapeHtml(row.date_text) + (row.time_note ? '<br><span class="event-row-date-note">' + escapeHtml(row.time_note) + '</span>' : '') + '</div>' +
-      '<div><h2 class="event-row-title">' + titleHtml + '</h2><p>' + escapeHtml(row.summary) + '</p>' + tagHtml + linkHtml + '</div>' +
+      '<div><h2 class="event-row-title">' + titleHtml + '</h2><p>' + escapeHtml(row.summary) + '</p>' + provHtml + tagHtml + linkHtml + '</div>' +
       '<div class="event-row-actions">' + feedbackHtml + buttonHtml +
       '<a class="btn btn-outline" href="join.html" data-hide-when-signed-in>RSVP</a>' +
-      '<button type="button" class="btn btn-outline member-register-btn" data-event-slug="' + escapeHtml(row.slug) + '" data-event-name="' + escapeHtml(row.name) + '" style="display:none;">Register</button>' +
+      '<button type="button" class="btn btn-outline member-register-btn" data-event-slug="' + escapeHtml(row.slug) + '" data-event-name="' + escapeHtml(row.name) + '"' + (provisional ? ' data-event-interest="1"' : '') + ' style="display:none;">' + (provisional ? 'Register interest' : 'Register') + '</button>' +
       (detailsHtml ? '<button type="button" class="chevron-toggle-btn" data-expand-btn aria-expanded="false" aria-controls="' + escapeHtml(detailsId) + '" aria-label="More about ' + escapeHtml(row.name) + '">' + chevron + '</button>' : '') +
       '</div>' + detailsHtml + '</article>';
   }
@@ -2564,27 +2566,33 @@
 
       registerButtons.forEach(function (btn) { btn.style.display = ''; });
 
-      supabaseClient
-        .from('event_registrations')
-        .select('event_slug')
-        .eq('member_id', session.user.id)
-        .then(function (result) {
-          var registeredSlugs = (result.data || []).map(function (r) { return r.event_slug; });
-          registerButtons.forEach(function (btn) {
-            if (registeredSlugs.indexOf(btn.getAttribute('data-event-slug')) !== -1) {
-              markRegistered(btn);
-            }
-          });
+      function isInterestBtn(btn) { return btn.getAttribute('data-event-interest') === '1'; }
+      // A full registration counts for every button; an "interest" row only counts on provisional events
+      // (once an event is confirmed, interest is not a place: they can register properly).
+      function applyRegistrations(rows) {
+        var bySlug = {};
+        rows.forEach(function (r) { bySlug[r.event_slug] = r; });
+        registerButtons.forEach(function (btn) {
+          var r = bySlug[btn.getAttribute('data-event-slug')];
+          if (!r) return;
+          if (isInterestBtn(btn) || !r.is_interest) markRegistered(btn);
         });
+      }
+      supabaseClient.from('event_registrations').select('event_slug, is_interest').eq('member_id', session.user.id).then(function (result) {
+        if (!result.error) { applyRegistrations(result.data || []); return; }
+        // migration 112 not run yet: no interest column
+        supabaseClient.from('event_registrations').select('event_slug').eq('member_id', session.user.id).then(function (r2) { applyRegistrations(r2.data || []); });
+      });
 
       registerButtons.forEach(function (btn) {
         btn.addEventListener('click', function (e) {
           e.stopPropagation();
           if (btn.disabled) return;
           var slug = btn.getAttribute('data-event-slug');
+          var interest = isInterestBtn(btn);
 
           if (btn.classList.contains('is-registered')) {
-            if (!window.confirm('Cancel your registration for ' + btn.getAttribute('data-event-name') + '?')) return;
+            if (!window.confirm((interest ? 'Remove your interest in ' : 'Cancel your registration for ') + btn.getAttribute('data-event-name') + '?')) return;
             btn.disabled = true;
             supabaseClient
               .from('event_registrations')
@@ -2601,28 +2609,28 @@
 
           var name = btn.getAttribute('data-event-name');
           btn.disabled = true;
-          supabaseClient
-            .from('event_registrations')
-            .insert({ member_id: session.user.id, event_slug: slug, event_name: name })
-            .then(function (result) {
+          // event_register (migration 112) records interest separately from a full registration.
+          supabaseClient.rpc('event_register', { p_slug: slug, p_name: name, p_interest: interest }).then(function (result) {
+            if (!result.error) { btn.disabled = false; markRegistered(btn); return; }
+            if (interest) { btn.disabled = false; btn.textContent = 'Try again'; return; }
+            // Not migrated yet: fall back to the plain registration insert for confirmed events.
+            supabaseClient.from('event_registrations').insert({ member_id: session.user.id, event_slug: slug, event_name: name }).then(function (r2) {
               btn.disabled = false;
-              if (result.error) {
-                btn.textContent = 'Try again';
-                return;
-              }
+              if (r2.error) { btn.textContent = 'Try again'; return; }
               markRegistered(btn);
             });
+          }, function () { btn.disabled = false; btn.textContent = 'Try again'; });
         });
       });
 
       function markUnregistered(btn) {
         btn.classList.remove('is-registered');
-        btn.textContent = 'Register';
+        btn.textContent = isInterestBtn(btn) ? 'Register interest' : 'Register';
       }
 
       function markRegistered(btn) {
         btn.classList.add('is-registered');
-        btn.textContent = "You're registered - cancel?";
+        btn.textContent = isInterestBtn(btn) ? "Interest registered - remove?" : "You're registered - cancel?";
       }
     });
   }
@@ -6318,7 +6326,8 @@
       var emptyEl = document.getElementById('event-registrations-empty');
       var countEl = document.getElementById('event-regs-count-line');
       if (!wrap) return;
-      if (countEl) countEl.textContent = list.length + (list.length === 1 ? ' registration' : ' registrations') + ' total';
+      var nInterest = list.filter(function (r) { return r.is_interest; }).length;
+      if (countEl) countEl.textContent = (list.length - nInterest) + ((list.length - nInterest) === 1 ? ' registration' : ' registrations') + (nInterest ? ' and ' + nInterest + ' interest only' : '') + ' total';
       if (!list.length) {
         if (emptyEl) emptyEl.style.display = 'block';
         wrap.innerHTML = '';
@@ -6337,11 +6346,11 @@
         var rows = regs.map(function (r) {
           return '<div class="roster-row" data-name="' + escapeHtml((r.member_name || '').toLowerCase()) + '">' +
             '<div class="roster-main"><span class="roster-avatar">' + escapeHtml(presidentInitials(r.member_name)) + '</span>' +
-            '<div class="roster-info"><div class="roster-name">' + escapeHtml(r.member_name || 'Unnamed') + '</div></div></div>' +
+            '<div class="roster-info"><div class="roster-name">' + escapeHtml(r.member_name || 'Unnamed') + (r.is_interest ? ' <span class="priv-chip">Interest only</span>' : '') + '</div></div></div>' +
             '<span class="roster-time" data-label="Registered">' + escapeHtml(timeAgo(r.registered_at)) + '</span>' +
             '</div>';
         }).join('');
-        return '<div class="dash-course-section"><h2 class="dash-course-title">' + escapeHtml(name) + ' (' + regs.length + ')</h2><div class="roster-table">' + rows + '</div></div>';
+        return '<div class="dash-course-section"><h2 class="dash-course-title">' + escapeHtml(name) + ' (' + regs.filter(function (r) { return !r.is_interest; }).length + (regs.some(function (r) { return r.is_interest; }) ? ' + ' + regs.filter(function (r) { return r.is_interest; }).length + ' interested' : '') + ')</h2><div class="roster-table">' + rows + '</div></div>';
       }).join('');
     }
 

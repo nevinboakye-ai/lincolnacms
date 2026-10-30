@@ -86,7 +86,7 @@
       startTime: trimTime(r.start_time), endTime: trimTime(r.end_time), venue: r.venue || '',
       dateText: r.date_text || '', timeNote: r.time_note || '',
       titleUrl: r.title_url || '', linkUrl: r.link_url || '', linkLabel: r.link_label || '', buttonUrl: r.button_url || '', buttonLabel: r.button_label || '',
-      sortOrder: r.sort_order || 0, hasRealDate: !!r.starts_on
+      sortOrder: r.sort_order || 0, hasRealDate: !!r.starts_on, status: r.status === 'provisional' ? 'provisional' : 'confirmed', hasStatus: Object.prototype.hasOwnProperty.call(r, 'status')
     };
   }
   function category(ev) {
@@ -187,11 +187,13 @@
   }
 
   // ---- Data --------------------------------------------------------------------
+  var statusSupported = true;     // false if the site_events table has no status column yet (migration 112)
   function load() {
     return supabaseClient.from('site_events').select('*').order('sort_order', { ascending: true }).then(function (res) {
       if (res.error) { console.warn('Events calendar: couldn\'t load events:', res.error.message); return false; }
       var rows = res.data || [];
       events = rows.map(normalise).filter(function (ev) { return ev.active || canEdit; });
+      if (rows.length) statusSupported = Object.prototype.hasOwnProperty.call(rows[0], 'status');
       loaded = true;
       return true;
     }, function () { return false; });
@@ -382,7 +384,7 @@
       var p = parseKey(ev.start);
       return '<li><button type="button" class="ev-agenda-item ev-agenda-item--' + category(ev) + (ev.active ? '' : ' is-hidden') + '" data-ev-open="' + esc(ev.slug) + '">' +
         '<span class="ev-agenda-date"><b>' + p.d + '</b><small>' + WEEKDAYS[weekdayIndex(ev.start)] + '</small></span>' +
-        '<span class="ev-agenda-main"><strong>' + esc(ev.name) + (ev.active ? '' : ' <em>(hidden)</em>') + '</strong>' +
+        '<span class="ev-agenda-main"><strong>' + esc(ev.name) + (ev.active ? '' : ' <em>(hidden)</em>') + (ev.status === 'provisional' ? ' <em>(provisional)</em>' : '') + '</strong>' +
         '<span>' + esc(timeVenueText(ev)) + (ev.end && ev.end !== ev.start ? ' &middot; until ' + esc(shortDate(ev.end)) : '') + '</span></span>' +
         (ev.tag ? '<span class="card-tag' + (ev.tagGold ? ' card-tag--gold' : '') + '">' + esc(ev.tag) + '</span>' : '') +
       '</button></li>';
@@ -565,7 +567,7 @@
 
   function openEditor(ev, presetDay) {
     var isNew = !ev;
-    var e0 = ev || { name: '', summary: '', details: '', tag: '', start: presetDay || '', end: '', startTime: '', endTime: '', venue: '', active: true, flagship: false, tagGold: false, titleUrl: '', linkUrl: '', linkLabel: '', buttonUrl: '', buttonLabel: '', dateText: '' };
+    var e0 = ev || { name: '', summary: '', details: '', tag: '', start: presetDay || '', end: '', startTime: '', endTime: '', venue: '', active: true, flagship: false, status: 'provisional', tagGold: false, titleUrl: '', linkUrl: '', linkLabel: '', buttonUrl: '', buttonLabel: '', dateText: '' };
     var tagSet = DEFAULT_TAGS.slice();
     events.forEach(function (x) { if (x.tag && tagSet.indexOf(x.tag) === -1) tagSet.push(x.tag); });
     if (e0.tag && tagSet.indexOf(e0.tag) === -1) tagSet.push(e0.tag);
@@ -585,6 +587,7 @@
         '<div class="field"><label for="evf-details">More details <span class="guide-optional">(shown when the event is opened - optional)</span></label><textarea id="evf-details" rows="4" maxlength="3000">' + esc(e0.details) + '</textarea></div>' +
         '<div class="ev-form-row"><div class="field"><label for="evf-tag">Category</label><select id="evf-tag"><option value="">None</option>' + tagSet.map(function (t) { return '<option value="' + esc(t) + '"' + (t === e0.tag ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '<option value="__new">New category\u2026</option></select>' +
         '<input type="text" id="evf-newtag" maxlength="30" placeholder="Category name" hidden></div>' +
+        (statusSupported ? '<div class="field"><label for="evf-status">Status</label><select id="evf-status"><option value="provisional"' + (e0.status === 'provisional' ? ' selected' : '') + '>Provisional: waiting for the Students\' Union to approve (members can register interest only)</option><option value="confirmed"' + (e0.status !== 'provisional' ? ' selected' : '') + '>Confirmed: approved, registration is open</option></select></div>' : '') +
         '<div class="field ev-checks"><label class="checkbox-option"><input type="checkbox" id="evf-flagship"' + (e0.flagship ? ' checked' : '') + '>Flagship event (gold)</label>' +
         '<label class="checkbox-option"><input type="checkbox" id="evf-active"' + (e0.active ? ' checked' : '') + '>Show on the website</label></div></div>' +
         '<p class="legal-faint" style="margin: var(--space-2) 0;">Does the event have an <strong>external speaker</strong> (anyone who isn\'t a current Lincoln student or staff member, including doctors and other professionals)? ULSU\'s External Speakers Policy says the Students\' Union must clear them through the Student Dashboard, with at least 10 working days\' notice, <strong>before the event is publicised</strong>. Keep it off the website until it has.</p>' +
@@ -641,6 +644,7 @@
         link_label: $('evf-linklabel').value.trim() || null, link_url: $('evf-linkurl').value.trim() || null,
         sort_order: start ? Math.round(utc(start) / 86400000) : 99999
       };
+      if ($('evf-status')) payload.status = $('evf-status').value;
       var save = $('evf-save');
       save.disabled = true; save.textContent = 'Saving\u2026';
       var req;
