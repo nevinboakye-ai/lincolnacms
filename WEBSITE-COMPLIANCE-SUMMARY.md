@@ -11,7 +11,7 @@ This is a plain description of how the LACMS website works today: what informati
 
 **Where things stand with ULSU.** The society has not yet been in contact with ULSU about the matters in this document. ULSU's published policies are used as a reference point. Nothing here says ULSU has approved or reviewed the website.
 
-**Setup note.** Several features described here (data requests, download and deletion, the Network opt-in, provisional events, the committee training confirmation) need the website's database updates to be applied by the committee's administrator.
+**Setup note.** Several features described here (data requests, download and deletion, the Network listing, provisional events, the committee training confirmation) need the website's database updates to be applied by the committee's administrator.
 
 ## 2. The website at a glance
 
@@ -38,7 +38,7 @@ This is a plain description of how the LACMS website works today: what informati
 
 - **Download their data.** Signed-in members get a file of everything held about them, instantly, from *My data & privacy*.
 - **Ask for deletion, correction, restriction or objection, or withdraw consent.** From *My data & privacy*, or the public *Your data rights* form (no account needed), or by email. The society replies within one month. Requests are tracked with deadlines by the committee.
-- **Choose to appear in the Network.** Members are not listed unless they choose to be, and can remove themselves at any time. Email addresses are never shown. Healthcare professionals are listed on the consent they give when they request an account.
+- **Choose whether to appear in the Network.** Members are listed by default and can remove themselves at any time by unticking one box, with immediate effect. Email addresses are never shown. Healthcare professionals are listed on the consent they give when they request an account.
 - **Switch off society update emails.** Essential emails about the account, membership and safety are always sent.
 - **Choose cookies.** Analytics is off unless the visitor says yes, and can be changed at any time.
 - **Read the privacy notice again when it changes.** Members and professionals are asked to read it on their next sign-in.
@@ -53,7 +53,7 @@ This is a plain description of how the LACMS website works today: what informati
 ## 6. Who can see what
 
 - **Committee.** Only the information their role needs. Access to the dashboard is limited to authorised committee members, and each is asked once a year to confirm they have completed ULSU's data protection training before handling personal data. Administrator previews of the site as a member are read-only, are recorded, and never show private messages.
-- **Members.** The Network (when opened by the committee and only for members who opted in), comments and board posts show a name; Circle members see each other's name, role and intro. Messages are visible only to the people in the conversation and, if a message is reported, to the committee reviewing that report.
+- **Members.** The Network (when opened by the committee, for members who have not switched themselves off), comments and board posts show a name; Circle members see each other's name, role and intro. Messages are visible only to the people in the conversation and, if a message is reported, to the committee reviewing that report.
 - **Healthcare professionals.** Can be given access to the Network by the committee.
 - **Event partners.** Can be given a private link to anonymised results. Names and emails are never shown.
 - **The public.** Only what the society deliberately publishes (committee page, events, gallery, Member of the Month winners).

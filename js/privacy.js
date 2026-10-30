@@ -252,7 +252,7 @@
         });
       }
 
-      // Network visibility (opt-in, migration 112): the members hub card and the strip on the Network page
+      // Network visibility (listed by default, members can untick, migration 113): the members hub card and the strip on the Network page
       function wireNetworkBox(box, msgEl, wrap) {
         if (!box) return;
         supabaseClient.rpc('network_get_my_visibility').then(function (res) {
@@ -286,7 +286,7 @@
     });
   }
 
-  // The opt-in strip at the top of the Network page
+  // The listing strip at the top of the Network page
   function initNetworkStrip() {
     var wrap = $('[data-network-optin]');
     if (!wrap || !hasClient()) return;
