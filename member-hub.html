@@ -7,7 +7,7 @@
 <title>Members Hub - LACMS</title>
 <meta name="description" content="Your LACMS membership profile and digital membership card.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-183">
+<link rel="stylesheet" href="css/styles.css?v=20260824-184">
 </head>
 <body>
 
@@ -415,11 +415,12 @@
 
   <section class="section" id="my-privacy-section" style="display:none;" aria-label="My data and privacy">
     <div class="container">
-      <div class="priv-panel" id="my-privacy">
-        <div class="section-head">
-          <span class="eyebrow">Your information</span>
-          <h2>My data &amp; privacy</h2>
-        </div>
+      <details class="priv-panel priv-details" id="my-privacy">
+        <summary class="priv-summary">
+          <span class="priv-summary-text"><span class="eyebrow">Your information</span><strong>My data &amp; privacy</strong></span>
+          <small>Download, delete, emails, Network</small>
+        </summary>
+        <div class="priv-body">
         <p style="color: var(--color-text-muted); max-width: 62ch;">You&rsquo;re in control of your information. Everything here is free and works straight away or within a month. See the <a href="privacy.html" style="color: var(--color-gold-light);">privacy notice</a> for the detail.</p>
         <div class="priv-grid">
           <div class="priv-card">
@@ -456,7 +457,8 @@
         <h3 style="margin-top: var(--space-5);">My requests</h3>
         <div data-priv-requests><p class="sh-muted">Loading&hellip;</p></div>
         <p class="legal-faint" style="margin-top: var(--space-3);"><button type="button" class="link-button" data-cookie-settings>Cookie settings</button></p>
-      </div>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -567,6 +569,6 @@
 <script src="js/sankofa-common.js?v=20260824-183"></script>
 <script src="js/sankofa-hub.js?v=20260824-183"></script>
 <script src="js/chat.js?v=20260824-183"></script>
-<script src="js/privacy.js?v=20260824-183"></script>
+<script src="js/privacy.js?v=20260824-184"></script>
 </body>
 </html>

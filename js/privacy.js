@@ -204,6 +204,7 @@
       var email = session.user.email;
       var wrap = document.getElementById('my-privacy-section');
       if (wrap) wrap.style.display = '';
+      if (location.hash === '#my-privacy' && panel.tagName === 'DETAILS') { panel.open = true; setTimeout(function () { panel.scrollIntoView(); }, 50); }
 
       // download
       var dl = $('[data-priv-download]', panel);
