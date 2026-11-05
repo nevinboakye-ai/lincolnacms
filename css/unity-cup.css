@@ -862,3 +862,6 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
   .ua-vis-acts .btn, .ua-vis-at { flex: 1 1 100%; }
   .ua-vis-at input { flex: 1 1 160px; }
 }
+
+/* Team manager's page: below the two-column layout, the line-up comes first (right under the team name) */
+@media (max-width: 999px) { .tm-sq .sq-side { order: -1; } }
