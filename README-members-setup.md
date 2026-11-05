@@ -1961,3 +1961,7 @@ Run `db/migrations/116-unity-cup-access-and-team-links.sql` after 114 and 115.
 
 **Team order (migration 117):** run `db/migrations/117-unity-cup-team-order.sql`. In Dashboard -> Unity Cup -> Teams, the **Order of the teams** card at the top lists every team with **Move to top**, up and down buttons. The order you set is used on the public Teams section, the vote's team filter, the Squads tab and the fixture pickers. To put LACMS first, press "Move to top" on it.
 
+## 170. Hub Access now lists every account (migration 118)
+
+Dashboard -> Hub Access used to list only members and *active* professionals, so MMG guests, professionals not marked active and logins with no profile could never be given access. Run `db/migrations/118-hub-access-everyone.sql` and the list shows everyone who has a login: members of any status (pending and expired are marked), professionals with a login (inactive ones are marked), MMG guests, and any other login (shown as "Other account, no profile yet"). Each row now shows the person's email under their name, the search box finds people by email as well as name, and there is a new **Guests & other accounts** filter. A professional with no login at all is not listed, because there is no account to give access to. Per-person overrides (always allow / always block) work for every one of these accounts.
+

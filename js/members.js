@@ -7347,7 +7347,7 @@
         (res[1].data || []).forEach(function (row) {
           var p = byUser[row.user_id];
           if (!p) {
-            p = byUser[row.user_id] = { id: row.user_id, name: row.full_name || 'Unnamed', type: row.person_type, memberType: row.member_type, title: row.committee_role, course: row.course, year: row.year_of_study, cells: {} };
+            p = byUser[row.user_id] = { id: row.user_id, name: row.full_name || row.email || 'Unnamed', email: row.email || '', status: row.account_status || '', type: row.person_type, memberType: row.member_type, title: row.committee_role, course: row.course, year: row.year_of_study, cells: {} };
           }
           p.cells[row.feature] = { allowed: row.allowed, via: row.via };
         });
@@ -7477,8 +7477,9 @@
       var features = HUB_FEATURES.filter(function (f) { return hubRules.some(function (r) { return r.feature === f.key; }); });
 
       var rows = hubPeople.filter(function (p) {
-        if (q && p.name.toLowerCase().indexOf(q) === -1) return false;
+        if (q && p.name.toLowerCase().indexOf(q) === -1 && (p.email || '').toLowerCase().indexOf(q) === -1) return false;
         if (hubTypeFilter === 'member' || hubTypeFilter === 'professional') return p.type === hubTypeFilter;
+        if (hubTypeFilter === 'others') return p.type === 'guest' || p.type === 'other';
         if (hubTypeFilter === 'forced') {
           return features.some(function (f) { var c = p.cells[f.key]; return c && (c.via === 'override_allow' || c.via === 'override_deny'); });
         }
@@ -7498,9 +7499,12 @@
         features.map(function (f) { return '<th title="' + escapeHtml(f.label) + '"' + (f.dash ? ' class="hub-matrix-group-dash"' : '') + '>' + escapeHtml(f.short) + '</th>'; }).join('') + '</tr></thead>';
 
       var body = '<tbody>' + rows.map(function (p) {
-        var sub = p.type === 'professional'
-          ? 'Professional'
-          : [MEMBER_TYPE_LABELS[p.memberType] || 'Member', p.title, p.course, p.year].filter(Boolean).join(' · ');
+        var statusNote = p.status && p.status !== 'active' ? p.status : '';
+        var sub = (p.type === 'professional'
+          ? ['Professional', statusNote === 'inactive' ? 'not active' : '']
+          : p.type === 'guest' ? ['MMG guest']
+          : p.type === 'other' ? ['Other account', 'no profile yet']
+          : [MEMBER_TYPE_LABELS[p.memberType] || 'Member', p.title, p.course, p.year, statusNote]).concat([p.email]).filter(Boolean).join(' · ');
         var cells = features.map(function (f) {
           var c = p.cells[f.key] || { allowed: false, via: 'rule' };
           var cls = 'hub-cell ' + (c.allowed ? 'hub-cell--yes' : 'hub-cell--no');
