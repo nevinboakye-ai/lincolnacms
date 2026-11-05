@@ -125,7 +125,7 @@
       '<label class="ua-field ua-field--s"><span>Colour</span><input type="color" data-tf="colour" value="' + esc(t ? t.colour : '#d4a62b') + '"></label>' +
       '<label class="ua-field ua-field--s"><span>Group (optional)</span><input data-tf="group" maxlength="20" list="ua-groups" value="' + esc(t && t.group_name || '') + '" placeholder="Group A"></label>' +
       '<label class="ua-field ua-field--wide"><span>About the team (optional)</span><input data-tf="desc" maxlength="200" value="' + esc(t && t.description || '') + '" placeholder="A line or two for the team page"></label>' +
-      '</div>' + (t ? teamLinkBlock(t) : '') + (t && window.UnityPitch ? '<details class="ua-preview"><summary>Preview the line-up</summary>' + UnityPitch.html((D.players || []).filter(function (p) { return p.team_id === t.id && p.active; }), { colour: t.colour, canVote: false, title: t.name + ' line-up' }) + '<p class="ua-hint">Players are placed by their position (Goalkeeper, Defender, Midfielder, Forward). Set it in the Players tab.</p></details>' : '') + '<div class="ua-team-actions">' + (isNew ? '<button type="button" class="btn btn-primary" data-ua-save-team>Add team</button>' : '<span class="ua-hint">' + n + (n === 1 ? ' player' : ' players') + '</span>' + orderButtons(t.id) + '<button type="button" class="btn btn-outline" data-ua-save-team>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-team>Delete</button>') + '</div></div>';
+      '</div>' + (t ? teamLinkBlock(t) : '') + (t && window.UnityPitch ? '<details class="ua-preview"><summary>Preview the line-up</summary>' + UnityPitch.html((D.players || []).filter(function (p) { return p.team_id === t.id && p.active; }), { colour: t.colour, canVote: false, title: t.name + ' line-up' }) + '<p class="ua-hint">Players are placed by their position (Goalkeeper, Defender, Midfielder, Forward). Set it in the Players tab.</p></details>' : '') + '<div class="ua-team-actions">' + (isNew ? '<button type="button" class="btn btn-primary" data-ua-save-team>Add team</button>' : '<span class="ua-hint">' + n + (n === 1 ? ' player' : ' players') + '</span><button type="button" class="btn btn-outline" data-ua-save-team>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-team>Delete</button>') + '</div></div>';
   }
   // ---------------------------------------------------------------------
   // Private team links: a secret link per team lets its manager enter players with no account (migration 116)
@@ -203,12 +203,18 @@
     chain.then(function () { btn.disabled = false; lastSig = ''; note('Links created for every team.'); load(); });
   }
 
-  // Putting teams in order: the first team is listed first everywhere (public Teams section, vote filter, Squads).
-  function orderButtons(id) {
-    var i = (D.teams || []).findIndex(function (x) { return x.id === id; }), n = (D.teams || []).length;
-    return '<span class="ua-order" role="group" aria-label="Order"><button type="button" class="btn btn-outline" data-ua-move="top"' + (i === 0 ? ' disabled' : '') + '>Move to top</button>' +
-      '<button type="button" class="btn btn-outline ua-arrow" data-ua-move="up" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>&uarr;</button>' +
-      '<button type="button" class="btn btn-outline ua-arrow" data-ua-move="down" aria-label="Move down"' + (i === n - 1 ? ' disabled' : '') + '>&darr;</button></span>';
+  // The order of the teams, as its own card at the top of the Teams tab. The first team is listed first everywhere
+  // (public Teams section, the vote's team filter, the Squads tab and the fixture pickers).
+  function orderCard() {
+    var ts = D.teams || [];
+    if (ts.length < 2) return '';
+    return '<div class="ua-card"><h3>Order of the teams</h3><p class="ua-hint">The team at the top is shown first everywhere. Press <strong>Move to top</strong> to put a team first, or use the arrows.</p>' +
+      '<ol class="ua-order-list">' + ts.map(function (t, i) {
+        return '<li class="ua-orow" data-tid="' + esc(t.id) + '">' + '<span class="ua-onum">' + (i + 1) + '</span>' + crestHtml(t).replace('uc-crest--lg', 'uc-crest--sm') + '<strong>' + esc(t.name) + '</strong>' +
+          '<span class="ua-order" role="group" aria-label="Move ' + esc(t.name) + '"><button type="button" class="btn btn-outline" data-ua-move="top"' + (i === 0 ? ' disabled' : '') + '>Move to top</button>' +
+          '<button type="button" class="btn btn-outline ua-arrow" data-ua-move="up" aria-label="Move ' + esc(t.name) + ' up"' + (i === 0 ? ' disabled' : '') + '>&uarr;</button>' +
+          '<button type="button" class="btn btn-outline ua-arrow" data-ua-move="down" aria-label="Move ' + esc(t.name) + ' down"' + (i === ts.length - 1 ? ' disabled' : '') + '>&darr;</button></span></li>';
+      }).join('') + '</ol></div>';
   }
   function moveTeam(id, how, btn) {
     var ids = (D.teams || []).map(function (t) { return t.id; }), i = ids.indexOf(id); if (i < 0) return;
@@ -216,7 +222,12 @@
     if (how === 'top') ids.unshift(id); else ids.splice(how === 'up' ? Math.max(0, i - 1) : Math.min(ids.length, i + 1), 0, id);
     btn.disabled = true;
     supabaseClient.rpc('unity_admin_reorder_teams', { p_ids: ids }).then(function (r) {
-      if (r.error) { fail(r.error); return; }
+      if (r.error) {
+        btn.disabled = false;
+        if (/function|schema cache|does not exist|not found/i.test(r.error.message || '')) note('Reordering needs a database update: run db/migrations/117-unity-cup-team-order.sql in Supabase (SQL Editor), then try again.', true);
+        else fail(r.error);
+        return;
+      }
       lastSig = ''; note('Order saved.'); load();
     });
   }
@@ -226,7 +237,7 @@
   }
   function teamsHtml() {
     var ts = D.teams || [];
-    return groupList() + (ts.length ? linksCard() : '') + '<div class="ua-card"><h3>Add a team</h3><p class="ua-hint">Give it a name and a colour. A logo is optional: without one the page shows the team\'s initials in its colour. Put teams that play each other in the same group to get a table.</p>' + teamForm(null) + '</div>' +
+    return groupList() + orderCard() + (ts.length ? linksCard() : '') + '<div class="ua-card"><h3>Add a team</h3><p class="ua-hint">Give it a name and a colour. A logo is optional: without one the page shows the team\'s initials in its colour. Put teams that play each other in the same group to get a table.</p>' + teamForm(null) + '</div>' +
       '<div class="ua-card"><h3>Teams (' + ts.length + ')</h3>' + (ts.length ? '<div class="ua-teams">' + ts.map(teamForm).join('') + '</div>' : '<p class="ua-hint">No teams yet.</p>') + '</div>';
   }
   // Logos are shrunk in the browser first (the biggest side to 512px) so pages stay fast.
