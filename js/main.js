@@ -194,7 +194,7 @@
         if (!link) return;
         var choice = link.getAttribute('data-intro-choice');
         var remember = splash.querySelector('[data-intro-remember]');
-        if (remember && remember.checked) { try { localStorage.setItem('lacmsEntryPref', choice); } catch (err) {} }
+        if (choice !== 'unity' && remember && remember.checked) { try { localStorage.setItem('lacmsEntryPref', choice); } catch (err) {} }
         if (choice === 'site') { e.preventDefault(); dismissIntro(); }
         // "hub" follows its link to member-hub.html
       });

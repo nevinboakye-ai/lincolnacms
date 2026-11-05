@@ -12273,3 +12273,52 @@ html.fb-embed main { padding-top: var(--space-3); }
 .event-prov-badge { display: inline-block; margin-right: 6px; padding: 1px 9px; border-radius: 99px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--color-gold-light); border: 1px dashed rgba(var(--gold-rgb), 0.7); }
 
 .net-optin { margin-bottom: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid rgba(var(--gold-rgb), 0.45); border-radius: var(--radius-md); background: rgba(var(--gold-rgb), 0.07); }
+
+/* =========================================================
+   Unity Cup promos: welcome-screen card, homepage band, events card
+   (the portal itself is styled in css/unity-cup.css)
+   ========================================================= */
+.intro-card--unity { grid-column: 1 / -1; order: -1; position: relative; overflow: hidden; border-color: transparent; color: #f5f1e6;
+  background: linear-gradient(#0d1411, #0d1411) padding-box, linear-gradient(110deg, #d4a62b, #1e7a46, #c1272d, #d4a62b) border-box; border: 1.5px solid transparent; background-size: 100% 100%, 300% 100%; animation: ucp-border 6s linear infinite; }
+.intro-card--unity:hover, .intro-card--unity:focus-visible { background: linear-gradient(#131c17, #131c17) padding-box, linear-gradient(110deg, #d4a62b, #1e7a46, #c1272d, #d4a62b) border-box; background-size: 100% 100%, 300% 100%; border-color: transparent; }
+.intro-card--unity .intro-card-text { color: rgba(245, 241, 230, 0.78); }
+.intro-card-icon--ball { color: #f1d77f; animation: ucp-bob 2.4s ease-in-out infinite; }
+.intro-card-badge { position: absolute; top: 12px; right: 14px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; font: 700 0.7rem var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; background: rgba(193, 39, 45, 0.9); color: #fff; }
+.intro-card-badge i, .ucp-badge i { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: ucp-blink 1.4s infinite; }
+@keyframes ucp-border { to { background-position: 0 0, -300% 0; } }
+@keyframes ucp-bob { 50% { transform: translateY(-5px) rotate(12deg); } }
+@keyframes ucp-blink { 50% { opacity: 0.25; } }
+@media (max-width: 600px) {
+  .intro-card--unity .intro-card-badge { position: static; grid-column: 1; grid-row: 1; justify-self: start; margin-bottom: 4px; }
+  .intro-card--unity .intro-card-title, .intro-card--unity .intro-card-short { grid-column: 1; }
+  .intro-card--unity .intro-card-go { grid-row: 1 / span 3; }
+}
+
+.ucp-wrap { padding-block: var(--space-5) 0; }
+.ucp-wrap[hidden] { display: none; }
+.ucp { position: relative; isolation: isolate; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-4); padding: clamp(1.25rem, 3vw, 2rem) clamp(1.25rem, 3vw, 2.25rem); border-radius: var(--radius-lg); overflow: hidden; text-decoration: none; color: #f5f1e6;
+  background: radial-gradient(90% 140% at 0% 0%, #1f3320, #0b0e10 60%); border: 1px solid rgba(212, 166, 43, 0.45); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35); transition: transform 0.3s var(--ease-standard), box-shadow 0.3s, border-color 0.3s; }
+.ucp:hover, .ucp:focus-visible { transform: translateY(-3px); border-color: #e8c767; box-shadow: 0 24px 60px rgba(212, 166, 43, 0.22); }
+.ucp:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+.ucp-glow { position: absolute; inset: -40% -10% auto auto; width: 60%; height: 160%; z-index: -1; background: conic-gradient(from 200deg at 50% 0%, transparent 40%, rgba(241, 215, 127, 0.2) 50%, transparent 60%); animation: ucp-sweep 7s ease-in-out infinite alternate; transform-origin: 50% 0; }
+@keyframes ucp-sweep { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
+.ucp-ball { width: clamp(64px, 9vw, 104px); color: #f5f1e6; animation: ucp-bob 2.6s ease-in-out infinite; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.5)); }
+.ucp-ball svg { width: 100%; height: auto; display: block; }
+.ucp-body { display: grid; gap: 8px; min-width: 0; }
+.ucp-badge { justify-self: start; display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px; border-radius: 999px; font: 700 0.74rem var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; background: #c1272d; color: #fff; }
+.ucp-title { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.6rem, 4.5vw, 2.6rem); line-height: 1.05; }
+.ucp-title em { font-style: normal; background: linear-gradient(100deg, #f1d77f, #d4a62b, #6ee09b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ucp-text { max-width: 62ch; font-size: 0.98rem; line-height: 1.55; color: rgba(245, 241, 230, 0.82); }
+.ucp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ucp-chips span { padding: 4px 11px; border-radius: 999px; font: 600 0.78rem var(--font-body); background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); }
+.ucp-go { align-self: center; padding: 14px 22px; border-radius: 999px; font: 700 0.95rem var(--font-body); white-space: nowrap; background: linear-gradient(180deg, #f1d77f, #d4a62b); color: #17130a; box-shadow: 0 6px 20px rgba(212, 166, 43, 0.35); transition: transform 0.2s; }
+.ucp:hover .ucp-go { transform: translateX(3px); }
+.ucp.is-live .ucp-badge { background: #1e7a46; }
+@media (max-width: 760px) {
+  .ucp { grid-template-columns: 1fr; gap: var(--space-3); }
+  .ucp-ball { width: 64px; }
+  .ucp-go { text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-card--unity, .intro-card-icon--ball, .ucp-ball, .ucp-glow, .intro-card-badge i, .ucp-badge i { animation: none; }
+}

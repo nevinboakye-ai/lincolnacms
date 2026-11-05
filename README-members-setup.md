@@ -1922,3 +1922,22 @@ The full picture - what was checked, what the law and ULSU's policies require, w
 **Third pass (reviewer feedback):** the "hub isn't connected yet - Nevin still needs to add the Supabase keys" developer message was replaced on every page with a neutral "members area isn't available" message; the Network is now **opt-in** for members (Show me in the Network, off until chosen; migration 112); events can be **Provisional** with "Register interest" until ULSU approves them (set it in the event editor; migration 112, existing events stay Confirmed, so mark any not yet approved as Provisional); and the "Built by" banner at the top of every page was removed. Membership is £7.50 everywhere (checked).
 
 **Network listed by default (migration 113):** run `db/migrations/113-network-listed-by-default.sql` after 112. Every active member is now listed in the Network unless they have switched themselves off (the "Show me in the Network" box is ticked by default, on the Network page and in My data & privacy). Only a stored "off" hides someone. The privacy notice describes this as legitimate interests with an easy opt-out; consider telling members before it goes live.
+
+## 168. Unity Cup portal (vote, raffle, photos)
+
+A public page, `unity-cup.html`, open to everyone with no account: **Player of the Tournament vote**, a **charity raffle** with a spin-the-wheel draw, and **photo/video sharing**, plus a sign-post to the ESSENCE night the next day (run by Spacecrafts). It is linked from the welcome screen, the homepage and the Events page (`js/unity-promo.js` switches the badge to "Tomorrow"/"Today" and hides the promos two weeks after the event).
+
+**Set-up (do these before Friday, in this order):**
+1. **Supabase -> SQL Editor:** run `db/migrations/114-unity-cup.sql`.
+2. **Edge function (needed for the emailed code):** Dashboard -> Edge Functions -> deploy a new function named exactly `unity-cup-code`, paste `supabase/functions/unity-cup-code/index.ts`, and **turn OFF "Enforce JWT verification"** for it (voters have no login). It uses the same Resend secrets as the other functions. Until it is deployed, voting and raffle entry show "couldn't send the email". As an emergency fallback you can switch the emailed code off in the dashboard (Settings -> Email check), but fake addresses become possible.
+3. **Dashboard -> Unity Cup** (president only): add the players (Players & votes, paste "Name, Team, Number" lines), set the date/kick-off/venue, then switch on **Voting**, **Raffle** and **Uploads** when you are ready. Everything starts closed except uploads.
+4. **Test it with your own email**, then press "Clear all votes (testing)" so the real count starts at zero.
+
+**On the day:** Raffle tab: check each entry against the JustGiving donation list (name and amount), press **Verify** (or Reject). "Open the live draw" shows the full-screen wheel; the winner is chosen in the database, the wheel only displays it, and everyone watching the public page sees the wheel spin too (it checks every 15 seconds). Photos & videos tab: Approve or Reject what people send. At the end switch on **Show results to everyone** to reveal the winner.
+
+**How the vote stays fair and anonymous:** one vote per email address (Gmail dots and +tags are ignored, throwaway-email domains are refused); a 6-digit code is emailed to prove the inbox is real; limits on code requests and wrong guesses. The email is kept only as a salted hash, and there is no record of who voted for whom, only a running total per player.
+
+**Data and clean-up:** raffle names/emails and the voted-list are deleted by "Clean up old data" (Settings tab; once it is 30 days past the event date, running it also removes the raffle entries and voted-list). Codes are cleared after a day. The privacy notice and cookies page already describe all of this.
+
+**Raffle and ULSU:** the raffle needs a check before it goes live. Under the Gambling Act 2005 a draw where people pay (a donation counts) to enter for a prize is normally a lottery with its own rules (a society lottery needs registration unless it qualifies as a small/incidental one). Ask ULSU what they require for raffles and fundraising, and whether a free way to enter is needed. See the compliance report (action 10.19).
+

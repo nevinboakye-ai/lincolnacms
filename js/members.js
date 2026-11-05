@@ -5128,7 +5128,7 @@
       return DASH_SHARED_SECTIONS.indexOf(section) !== -1 && !!dashAllowed[section];
     }
     // Never shareable: whoever could edit Hub Access could give themselves everything.
-    var PRESIDENT_ONLY_SECTIONS = ['access', 'privacy'];
+    var PRESIDENT_ONLY_SECTIONS = ['access', 'privacy', 'unity'];
 
     function enterDashboard(session, role) {
       presidentUserId = session.user.id;
@@ -5228,7 +5228,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'privacy', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners', 'qr'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'privacy', 'unity', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners', 'qr'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {
