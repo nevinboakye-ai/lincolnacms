@@ -194,7 +194,7 @@
       return '<button type="button" class="uc-player' + (on ? ' is-selected' : '') + '" data-player="' + esc(p.id) + '" aria-pressed="' + on + '"' + (tm ? ' style="--tc:' + esc(tm.colour) + '"' : '') +
         (!S.voting_open || voted ? ' disabled' : '') + '>' +
         '<span class="uc-avatar">' + esc(initials(p.name)) + (p.shirt_no ? '<b>' + esc(p.shirt_no) + '</b>' : '') + '</span>' +
-        '<span class="uc-player-name">' + esc(p.name) + '</span>' +
+        '<span class="uc-player-name">' + esc(p.name) + '</span>' + (p.captain ? '<span class="uc-role uc-role--' + (p.captain === 'captain' ? 'c' : 'vc') + '">' + (p.captain === 'captain' ? 'Captain' : 'Vice-captain') + '</span>' : '') +
         (p.team ? '<span class="uc-player-team">' + esc(p.team) + (p.position ? ' &middot; ' + esc(p.position) : '') + '</span>' : (p.position ? '<span class="uc-player-team">' + esc(p.position) + '</span>' : '')) +
         '<span class="uc-player-tick">' + ICON.check + '</span></button>';
     }).join('');
@@ -734,7 +734,7 @@
       (t.description ? '<p class="uc-modal-lede">' + esc(t.description) + '</p>' : '') +
       (window.UnityPitch && squad.length ? '<h3 class="uc-sub">Line-up</h3>' + UnityPitch.html(squad, { colour: t.colour, canVote: canVote, title: t.name + ' line-up' }) : '') +
       '<h3 class="uc-sub">Squad</h3>' + (squad.length ? '<ul class="uc-squad">' + squad.map(function (p) {
-        return '<li><span class="uc-shirt" style="--tc:' + esc(t.colour) + '">' + esc(p.shirt_no || '–') + '</span><span class="uc-squad-name"><strong>' + esc(p.name) + '</strong>' + (p.position ? '<small>' + esc(p.position) + '</small>' : '') + '</span>' +
+        return '<li><span class="uc-shirt" style="--tc:' + esc(t.colour) + '">' + esc(p.shirt_no || '–') + '</span><span class="uc-squad-name"><strong>' + esc(p.name) + (p.captain ? ' <i class="uc-role uc-role--' + (p.captain === 'captain' ? 'c' : 'vc') + '">' + (p.captain === 'captain' ? 'Captain' : 'Vice-captain') + '</i>' : '') + '</strong>' + (p.position ? '<small>' + esc(p.position) + '</small>' : '') + '</span>' +
           (canVote ? '<button type="button" class="uc-mini" data-vote-player="' + esc(p.id) + '">Vote</button>' : '') + '</li>';
       }).join('') + '</ul>' : '<p class="uc-muted">The squad will be added soon.</p>') +
       (fx.length ? '<h3 class="uc-sub">Fixtures &amp; results</h3><ul class="uc-fx-list uc-fx-list--modal">' + fx.map(fixtureCard).join('') + '</ul>' : '');

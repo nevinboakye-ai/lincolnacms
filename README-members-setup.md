@@ -1965,3 +1965,11 @@ Run `db/migrations/116-unity-cup-access-and-team-links.sql` after 114 and 115.
 
 Dashboard -> Hub Access used to list only members and *active* professionals, so MMG guests, professionals not marked active and logins with no profile could never be given access. Run `db/migrations/118-hub-access-everyone.sql` and the list shows everyone who has a login: members of any status (pending and expired are marked), professionals with a login (inactive ones are marked), MMG guests, and any other login (shown as "Other account, no profile yet"). Each row now shows the person's email under their name, the search box finds people by email as well as name, and there is a new **Guests & other accounts** filter. A professional with no login at all is not listed, because there is no account to give access to. Per-person overrides (always allow / always block) work for every one of these accounts.
 
+## 171. Hub Access: people who have no login yet (migration 119)
+
+The Network also shows people the committee added before they had an account (pending members) and professionals who haven't signed up. Run `db/migrations/119-hub-access-people-without-logins.sql` and Dashboard -> Hub Access lists them too, marked **No account yet** (there is a **No account yet** filter). Their cells show what the rules will give them once they sign up; you can still choose "Always allow" or "Always block" for them. Because they have no login id, those choices are stored against their **email** and take effect automatically the moment someone signs up with that email. A professional with no email on file can't be listed (there is nothing to match them on). Needs migration 118 first.
+
+## 172. Unity Cup captains (migration 120)
+
+Run `db/migrations/120-unity-cup-captains.sql`. In **Squads**, each player has **C** (captain) and **VC** (vice-captain) buttons. A team has one of each: choosing a new captain replaces the old one, and a hidden or moved player stops being captain. Team managers can set them on their private page too. On the public page the captain wears a gold armband and a **C** badge on the 3D pitch, the vice-captain a silver armband and **VC**; there is a small legend under the pitch, and the squad list and vote cards carry a "Captain" / "Vice-captain" tag.
+

@@ -17,7 +17,7 @@
   var ERR = {
     bad_name: 'Please type the player\'s name.', bad_number: 'The shirt number should be 1 to 3 digits.', bad_position: 'Please pick a position from the list.',
     too_many: 'That is the most players one team can have (30).', busy: 'You\'re going quickly! Please wait a moment and try again.',
-    not_yours: 'That player isn\'t in your team.', no_players: 'Add at least one player before you submit.',
+    not_yours: 'That player isn\'t in your team.', hidden: 'A hidden player can\'t be captain.', no_team: 'That player isn\'t in a team.', bad_role: 'Pick captain or vice-captain.', no_players: 'Add at least one player before you submit.',
     closed: 'The committee has closed editing, so changes can\'t be saved any more.', deadline: 'The deadline has passed, so changes can\'t be saved any more.',
     link_off: 'This link has been switched off. Ask the organisers.', bad_link: 'This link is no longer valid. Ask the organisers for a new one.',
     server: 'Something went wrong. Please check your connection and try again.'
@@ -80,7 +80,7 @@
     root.innerHTML =
       '<section class="tm-hero" style="--tc:' + esc(t.colour) + '">' + crest() + '<div><span class="uc-kicker">' + esc(S.event_title || 'Unity Cup') + '</span><h1>' + esc(t.name) + '</h1><div class="tm-chips" id="tm-chips">' + chips + '</div></div></section>' +
       '<div id="tm-banner"></div>' +
-      (can ? '<ol class="tm-steps"><li><b>1</b><span>Add your players</span></li><li><b>2</b><span>Check the pitch</span></li><li><b>3</b><span>Press Submit</span></li></ol>' : '') +
+      (can ? '<ol class="tm-steps"><li><b>1</b><span>Add your players</span></li><li><b>2</b><span>Pick a captain (C)</span></li><li><b>3</b><span>Press Submit</span></li></ol>' : '') +
       '<div class="sq tm-sq" id="tm-body"></div><div id="tm-submit"></div>';
     banner(); body(); submitCard();
   }
@@ -138,6 +138,7 @@
       '<input class="sq-in-name" data-sf="name" maxlength="60" value="' + esc(p.name) + '" aria-label="Name"' + dis + '>' +
       '<input class="sq-in-num" data-sf="num" inputmode="numeric" maxlength="3" value="' + esc(p.shirt_no || '') + '" aria-label="Shirt number"' + dis + '>' +
       '<select data-sf="pos" aria-label="Position"' + dis + '>' + pos + '</select>' +
+      (S.editable ? '<span class="sq-cap" role="group" aria-label="Captaincy for ' + esc(p.name) + '"><button type="button" class="sq-capbtn sq-capbtn--c' + (p.captain === 'captain' ? ' is-on' : '') + '" data-tm-cap="captain" aria-pressed="' + (p.captain === 'captain') + '" title="Captain" aria-label="Captain">C</button><button type="button" class="sq-capbtn sq-capbtn--vc' + (p.captain === 'vice' ? ' is-on' : '') + '" data-tm-cap="vice" aria-pressed="' + (p.captain === 'vice') + '" title="Vice-captain" aria-label="Vice-captain">VC</button></span>' : (p.captain ? '<span class="uc-role uc-role--' + (p.captain === 'captain' ? 'c' : 'vc') + '">' + (p.captain === 'captain' ? 'Captain' : 'Vice') + '</span>' : '<span></span>')) +
       (S.editable ? '<button type="button" class="sq-del" data-tm-del aria-label="Remove ' + esc(p.name) + '">&times;</button>' : '<span></span>') + '<span class="sq-saved" aria-hidden="true">&#10003;</span></div>';
   }
 
@@ -227,6 +228,19 @@
     });
   }
 
+  function setCaptain(rowEl, role) {
+    var pid = rowEl.getAttribute('data-pid'), p = S.players.filter(function (x) { return x.id === pid; })[0];
+    if (!p || String(pid).indexOf('tmp-') === 0) return;
+    var next = p.captain === role ? null : role, before = S.players.map(function (x) { return [x, x.captain]; });
+    S.players.forEach(function (x) { if (next && x !== p && x.captain === next) x.captain = null; });
+    p.captain = next; refresh();
+    track(supabaseClient.rpc('unity_team_set_captain', { p_token: token, p_player: pid, p_role: next })).then(function (r) {
+      if (r.error || !r.data || !r.data.ok) { before.forEach(function (b) { b[0].captain = b[1]; }); refresh(); toast('Not saved: ' + errMsg(r)); if (blockedNow(r)) load().then(function (ok) { if (ok) render(); }); return; }
+      S.last_edit_at = new Date().toISOString();
+      toast(next ? p.name + (next === 'captain' ? ' is captain.' : ' is vice-captain.') : p.name + ' is no longer ' + (role === 'captain' ? 'captain.' : 'vice-captain.'));
+    }, function () { before.forEach(function (b) { b[0].captain = b[1]; }); refresh(); toast('Not saved. ' + ERR.server); });
+  }
+
   function submit(form) {
     var hintEl = $('[data-tm-submit-hint]', form), btn = $('button[type=submit]', form);
     var by = form.elements.by.value.trim();
@@ -251,7 +265,10 @@
     if (e.target.name === 'pos' && e.target.closest('[data-tm-add]')) { sqPos = e.target.value; return; }
     var f = e.target.closest && e.target.closest('[data-sf]'); if (f) saveRow(f.closest('[data-pid]'), f);
   });
-  document.addEventListener('click', function (e) { var d = e.target.closest && e.target.closest('[data-tm-del]'); if (d) remove(d.closest('[data-pid]')); });
+  document.addEventListener('click', function (e) {
+    var cb = e.target.closest && e.target.closest('[data-tm-cap]'); if (cb) { setCaptain(cb.closest('[data-pid]'), cb.getAttribute('data-tm-cap')); return; }
+    var d = e.target.closest && e.target.closest('[data-tm-del]'); if (d) remove(d.closest('[data-pid]'));
+  });
   document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest && e.target.closest('.tm-row') && e.target.tagName === 'INPUT') { e.preventDefault(); e.target.blur(); } });
   // coming back to the tab: pick up anything the committee changed (but never while someone is typing)
   document.addEventListener('visibilitychange', function () {

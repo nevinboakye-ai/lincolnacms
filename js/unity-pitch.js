@@ -111,14 +111,22 @@
 
   // ---------------------------------------------------------------------
   // Players
-  var JERSEY = '<svg class="up-jersey" viewBox="0 0 64 56" aria-hidden="true"><path class="up-jersey-body" d="M21 3 8 9 1 24l11 5 4-6v31h32V23l4 6 11-5-7-15-13-6c-2 7-20 7-22 0z"/><path class="up-jersey-collar" d="M21 3c2 7 20 7 22 0-3 4-19 4-22 0z"/></svg>';
+  // A little shirt in the team colour. A captain's has an armband on the sleeve (gold for the captain, silver for the vice).
+  function jersey(role) {
+    return '<svg class="up-jersey" viewBox="0 0 64 56" aria-hidden="true"><path class="up-jersey-body" d="M21 3 8 9 1 24l11 5 4-6v31h32V23l4 6 11-5-7-15-13-6c-2 7-20 7-22 0z"/><path class="up-jersey-collar" d="M21 3c2 7 20 7 22 0-3 4-19 4-22 0z"/>' +
+      (role ? '<path class="up-band up-band--' + (role === 'captain' ? 'c' : 'vc') + '" d="M3.4 19.6l9.2 4.1-1.7 3.6-9.4-4.2z"/>' : '') + '</svg>';
+  }
+  var ROLE_LABEL = { captain: 'Captain', vice: 'Vice-captain' };
 
   function card(p, o, key) {
-    var inner = '<span class="up-kit">' + JERSEY + '<b class="up-num">' + esc(p.shirt_no || '') + '</b></span>' +
+    var role = p.captain === 'captain' || p.captain === 'vice' ? p.captain : null;
+    var inner = '<span class="up-kit">' + jersey(role) + '<b class="up-num">' + esc(p.shirt_no || '') + '</b>' +
+      (role ? '<i class="up-cap up-cap--' + (role === 'captain' ? 'c' : 'vc') + '" title="' + ROLE_LABEL[role] + '">' + (role === 'captain' ? 'C' : 'VC') + '</i>' : '') + '</span>' +
       '<span class="up-plate"><span class="up-pname">' + esc(p.name) + '</span><span class="up-ppos">' + esc(ABBR[key] || '') + '</span></span>';
+    var label = (o.canVote ? 'Vote for ' : '') + p.name + (role ? ', ' + ROLE_LABEL[role].toLowerCase() : '');
     return o.canVote
-      ? '<button type="button" class="up-card up-card--vote" data-vote-player="' + esc(p.id) + '" aria-label="Vote for ' + esc(p.name) + '">' + inner + '</button>'
-      : '<div class="up-card">' + inner + '</div>';
+      ? '<button type="button" class="up-card up-card--vote" data-vote-player="' + esc(p.id) + '" aria-label="' + esc(label) + '">' + inner + '</button>'
+      : '<div class="up-card"' + (role ? ' role="group" aria-label="' + esc(label) + '"' : '') + '>' + inner + '</div>';
   }
 
   // Works out where every player stands: which pitch depth, which side, and how big their card is.
@@ -168,6 +176,9 @@
         out += '<div class="up-pl" style="left:' + r1((s.X - vb.x) / vb.w * 100) + '%;top:' + r1((s.Y - vb.y) / vb.h * 100) + '%;width:' + r1(pw) + '%;font-size:' + r1(pw * 0.158) + 'em;--d:' + (s.order * 0.09 + i * 0.012).toFixed(2) + 's">' + card(s.p, o, s.key) + '</div>';
       });
       out += '</div></div>';
+      if ((players || []).some(function (p) { return p.captain && p.active !== false; })) {
+        out += '<p class="up-legend"><span><i class="up-cap up-cap--c">C</i> Captain</span><span><i class="up-cap up-cap--vc">VC</i> Vice-captain</span></p>';
+      }
     } else {
       out += '<p class="uc-muted up-empty">Add each player\'s position (for example Goalkeeper, Defender, Midfielder, Forward) and the line-up appears here.</p>';
     }

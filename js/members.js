@@ -7345,9 +7345,11 @@
         hubRules = res[0].data || [];
         var byUser = {};
         (res[1].data || []).forEach(function (row) {
-          var p = byUser[row.user_id];
+          // people who have no login yet have no user id; the database gives them an email-based key instead
+          var key = row.person_key || row.user_id;
+          var p = byUser[key];
           if (!p) {
-            p = byUser[row.user_id] = { id: row.user_id, name: row.full_name || row.email || 'Unnamed', email: row.email || '', status: row.account_status || '', type: row.person_type, memberType: row.member_type, title: row.committee_role, course: row.course, year: row.year_of_study, cells: {} };
+            p = byUser[key] = { id: key, hasAccount: row.has_account !== false, name: row.full_name || row.email || 'Unnamed', email: row.email || '', status: row.account_status || '', type: row.person_type, memberType: row.member_type, title: row.committee_role, course: row.course, year: row.year_of_study, cells: {} };
           }
           p.cells[row.feature] = { allowed: row.allowed, via: row.via };
         });
@@ -7480,6 +7482,7 @@
         if (q && p.name.toLowerCase().indexOf(q) === -1 && (p.email || '').toLowerCase().indexOf(q) === -1) return false;
         if (hubTypeFilter === 'member' || hubTypeFilter === 'professional') return p.type === hubTypeFilter;
         if (hubTypeFilter === 'others') return p.type === 'guest' || p.type === 'other';
+        if (hubTypeFilter === 'noaccount') return !p.hasAccount;
         if (hubTypeFilter === 'forced') {
           return features.some(function (f) { var c = p.cells[f.key]; return c && (c.via === 'override_allow' || c.via === 'override_deny'); });
         }
@@ -7500,6 +7503,7 @@
 
       var body = '<tbody>' + rows.map(function (p) {
         var statusNote = p.status && p.status !== 'active' ? p.status : '';
+        if (!p.hasAccount) statusNote = 'no account yet';
         var sub = (p.type === 'professional'
           ? ['Professional', statusNote === 'inactive' ? 'not active' : '']
           : p.type === 'guest' ? ['MMG guest']
@@ -7513,12 +7517,13 @@
           else if (c.via === 'override_allow') { cls += ' hub-cell--forced'; label = 'Forced on for this person'; }
           else if (c.via === 'override_deny') { cls += ' hub-cell--forced'; label = 'Forced off for this person'; }
           else label = c.allowed ? 'Has access by the rule' : 'No access by the rule';
+          if (!p.hasAccount) label += ' (no account yet: this applies when they sign up with ' + (p.email || 'their email') + ')';
           var disabled = c.via === 'president' ? ' disabled' : '';
           return '<td' + (f.dash ? ' class="hub-matrix-group-dash"' : '') + '><button type="button" class="' + cls + '" data-hub-cell data-uid="' + escapeHtml(p.id) + '" data-feature="' + f.key + '"' + disabled +
             ' aria-label="' + escapeHtml(p.name + ', ' + f.label + ': ' + label) + '" title="' + escapeHtml(label) + '">' +
             (c.via === 'president' ? '&#9733;' : (c.allowed ? '&#10003;' : '&#10005;')) + '</button></td>';
         }).join('');
-        return '<tr data-hub-row><th scope="row" class="hub-matrix-person"><span class="hub-matrix-name">' + escapeHtml(p.name) + '</span><span class="hub-matrix-sub">' + escapeHtml(sub) + '</span></th>' + cells + '</tr>';
+        return '<tr data-hub-row' + (p.hasAccount ? '' : ' class="hub-row--noaccount"') + '><th scope="row" class="hub-matrix-person"><span class="hub-matrix-name">' + escapeHtml(p.name) + '</span><span class="hub-matrix-sub">' + escapeHtml(sub) + '</span></th>' + cells + '</tr>';
       }).join('') + '</tbody>';
 
       table.innerHTML = head + body;
@@ -7626,7 +7631,10 @@
           var uid = item.getAttribute('data-uid');
           var feature = item.getAttribute('data-feature');
           closeHubMenu();
-          supabaseClient.rpc('president_set_hub_override', { p_user: uid, p_feature: feature, p_mode: item.getAttribute('data-hub-mode') }).then(function (result) {
+          var viaEmail = String(uid).indexOf('email:') === 0;
+          (viaEmail
+            ? supabaseClient.rpc('president_set_hub_email_override', { p_email: uid.slice(6), p_feature: feature, p_mode: item.getAttribute('data-hub-mode') })
+            : supabaseClient.rpc('president_set_hub_override', { p_user: uid, p_feature: feature, p_mode: item.getAttribute('data-hub-mode') })).then(function (result) {
             if (result.error) { showHubStatus("Couldn't change that: " + result.error.message); return; }
             loadHubAccess();
           });

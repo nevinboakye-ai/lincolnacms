@@ -349,13 +349,38 @@
     if (pv) pv.innerHTML = t ? UnityPitch.html(list.filter(function (p) { return p.active; }), { colour: t.colour, canVote: false, title: t.name + ' line-up' }) : '<p class="ua-hint">Pick a team to see its line-up.</p>';
   }
 
+  // Captain / vice-captain toggles on a squad row. One of each per team; choosing a new one replaces the old.
+  function capButtons(p) {
+    var off = !p.active || !p.team_id ? ' disabled' : '';
+    return '<span class="sq-cap" role="group" aria-label="Captaincy for ' + esc(p.name) + '">' +
+      '<button type="button" class="sq-capbtn sq-capbtn--c' + (p.captain === 'captain' ? ' is-on' : '') + '" data-sq-cap="captain" aria-pressed="' + (p.captain === 'captain') + '" title="Captain" aria-label="Captain"' + off + '>C</button>' +
+      '<button type="button" class="sq-capbtn sq-capbtn--vc' + (p.captain === 'vice' ? ' is-on' : '') + '" data-sq-cap="vice" aria-pressed="' + (p.captain === 'vice') + '" title="Vice-captain" aria-label="Vice-captain"' + off + '>VC</button></span>';
+  }
+  function setCaptain(row, role) {
+    var pid = row.getAttribute('data-pid'), p = (D.players || []).filter(function (x) { return x.id === pid; })[0];
+    if (!p || String(pid).indexOf('tmp-') === 0) return;
+    var next = p.captain === role ? null : role;
+    var before = (D.players || []).map(function (x) { return [x, x.captain]; });
+    (D.players || []).forEach(function (x) { if (next && x !== p && x.team_id === p.team_id && x.captain === next) x.captain = null; });
+    p.captain = next;
+    sqRefresh();
+    supabaseClient.rpc('unity_admin_set_captain', { p_player: pid, p_role: next }).then(function (r) {
+      if (r.error || !r.data || !r.data.ok) {
+        before.forEach(function (b) { b[0].captain = b[1]; }); sqRefresh();
+        note((r.error && r.error.message) || (r.data && r.data.error === 'hidden' ? 'A hidden player can\'t be captain.' : /function|schema cache|does not exist/i.test(String(r.error && r.error.message)) ? 'Captains need a database update: run db/migrations/120-unity-cup-captains.sql.' : 'Couldn\'t change the captain.'), true);
+        return;
+      }
+      lastSig = ''; toast(next ? p.name + (next === 'captain' ? ' is now captain.' : ' is now vice-captain.') : p.name + ' is no longer ' + (role === 'captain' ? 'captain.' : 'vice-captain.'));
+    });
+  }
+
   function sqRow(p) {
     var t = teamById(p.team_id), moveTo = '<select class="sq-move" data-sf="move" aria-label="Move ' + esc(p.name) + ' to another team"><option value="">Move…</option>' + (D.teams || []).filter(function (x) { return x.id !== p.team_id; }).map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.name) + '</option>'; }).join('') + (p.team_id ? '<option value="__none">No team</option>' : '') + '</select>';
     return '<div class="sq-row' + (p.active ? '' : ' is-off') + '" data-pid="' + esc(p.id) + '" style="--tc:' + esc(t ? t.colour : '#888') + '">' +
       '<span class="sq-shirt">' + esc(p.shirt_no || '–') + '</span>' +
       '<input class="sq-in-name" data-sf="name" maxlength="60" value="' + esc(p.name) + '" aria-label="Name">' +
       '<input class="sq-in-num" data-sf="num" inputmode="numeric" maxlength="3" value="' + esc(p.shirt_no || '') + '" aria-label="Shirt number">' +
-      '<select data-sf="pos" aria-label="Position">' + posOptions(p.position) + '</select>' + moveTo +
+      '<select data-sf="pos" aria-label="Position">' + posOptions(p.position) + '</select>' + capButtons(p) + moveTo +
       '<label class="ua-chk sq-shown" title="Untick to hide from the public page"><input type="checkbox" data-sf="active"' + (p.active ? ' checked' : '') + '> Shown</label>' +
       '<span class="sq-votes" title="Votes">' + (p.votes || 0) + '<small> votes</small>' + (p.source === 'team' ? '<i class="sq-src" title="Added by the team through its private link">team</i>' : '') + '</span>' +
       '<button type="button" class="sq-del" data-sq-del aria-label="Remove ' + esc(p.name) + '">&times;</button><span class="sq-saved" aria-hidden="true">&#10003;</span></div>';
@@ -631,6 +656,7 @@
       saveSettings(p); return;
     }
     var sc = t.closest('[data-sq-team]'); if (sc) { sqTeam = sc.getAttribute('data-sq-team'); $$('.sq-chip').forEach(function (c) { c.classList.toggle('is-active', c === sc); }); sqPos = null; sqBody(); return; }
+    var cb = t.closest('[data-sq-cap]'); if (cb && !cb.disabled) { setCaptain(cb.closest('[data-pid]'), cb.getAttribute('data-sq-cap')); return; }
     if (t.closest('[data-sq-del]')) { sqDelete(t.closest('[data-pid]')); return; }
     if (t.closest('[data-sq-paste]')) { sqPaste(); return; }
     var la = t.closest('[data-ua-link]'); if (la) { linkAction(la.closest('[data-tid-link]').getAttribute('data-tid-link'), la.getAttribute('data-ua-link'), la); return; }

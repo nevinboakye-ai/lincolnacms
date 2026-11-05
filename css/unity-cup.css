@@ -607,6 +607,13 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
 .up-plate { display: grid; width: 100%; border-radius: 0.3em; overflow: hidden; box-shadow: 0 0.5em 0.8em rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.18); }
 .up-pname { display: block; padding: 0.35em 0.4em; background: #15120b; color: #fff; font: 800 1em/1.15 var(--font-body); letter-spacing: 0.02em; text-transform: uppercase; overflow-wrap: break-word; }
 .up-ppos { display: block; padding: 0.2em 0.4em; background: #f5f1e6; color: #17130a; border-bottom: 0.2em solid var(--uc-gold); font: 800 0.78em/1.1 var(--font-body); letter-spacing: 0.08em; }
+.up-band { stroke: rgba(0, 0, 0, 0.45); stroke-width: 0.8; stroke-linejoin: round; }
+.up-band--c { fill: #f1d77f; } .up-band--vc { fill: #d9dde3; }
+.up-cap { position: absolute; right: -1.3em; top: -0.5em; display: grid; place-items: center; min-width: 2.1em; height: 2.1em; padding: 0 0.25em; border-radius: 999px; font: 800 1em/1 var(--font-body); font-style: normal; letter-spacing: 0; border: 0.14em solid #fff; box-shadow: 0 0.2em 0.5em rgba(0, 0, 0, 0.5); z-index: 1; }
+.up-cap--c { background: #f1d77f; color: #17130a; } .up-cap--vc { background: #d9dde3; color: #17130a; font-size: 0.78em; min-width: 2.5em; height: 2.5em; right: -1.45em; top: -0.7em; }
+.up-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; margin: 10px 0 0; font-size: 0.8rem; color: var(--color-text-muted); }
+.up-legend .up-cap { position: static; display: inline-grid; margin-right: 6px; vertical-align: middle; font-size: 0.72rem; min-width: 1.9em; height: 1.9em; border-width: 2px; }
+.up-legend .up-cap--vc { font-size: 0.62rem; min-width: 2.3em; height: 2.3em; }
 .up-card--vote { cursor: pointer; transition: filter 0.2s; -webkit-tap-highlight-color: transparent; }
 .up-card--vote:hover, .up-card--vote:focus-visible { filter: brightness(1.12) drop-shadow(0 0 0.6em rgba(241, 215, 127, 0.8)); }
 .up-pl:hover { z-index: 5; }
@@ -660,7 +667,7 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
 .sq-group h4 { margin: 0; display: flex; align-items: center; justify-content: space-between; font: 700 0.78rem var(--font-body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-gold-light); }
 .sq-group h4 span { padding: 2px 9px; border-radius: 999px; background: var(--color-surface-raised); color: var(--color-text-muted); letter-spacing: 0; }
 .sq-rows { display: grid; gap: 8px; }
-.sq-row { position: relative; display: grid; grid-template-columns: 38px minmax(0, 1.6fr) 60px minmax(0, 1.1fr) 92px auto auto 36px; align-items: center; gap: 8px; padding: 8px; border-radius: 12px; background: var(--color-bg-alt); border: 1px solid var(--color-border); transition: border-color 0.3s, background 0.3s; }
+.sq-row { position: relative; display: grid; grid-template-columns: 38px minmax(0, 1.5fr) 56px minmax(0, 1fr) 82px 92px auto auto 36px; align-items: center; gap: 8px; padding: 8px; border-radius: 12px; background: var(--color-bg-alt); border: 1px solid var(--color-border); transition: border-color 0.3s, background 0.3s; }
 .sq-row.is-off { opacity: 0.55; }
 .sq-row.is-saved { border-color: #4fd186; background: rgba(79, 209, 134, 0.08); }
 .sq-shirt { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #fff; font: 800 0.85rem var(--font-body); background: var(--tc); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
@@ -680,8 +687,8 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
 @keyframes ua-toast-in { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .ua-toast button { border: 0; background: none; color: #f1d77f; font: 800 0.9rem var(--font-body); text-decoration: underline; cursor: pointer; }
 @media (max-width: 720px) {
-  .sq-row { grid-template-columns: 38px minmax(0, 1fr) 64px 36px; grid-template-areas: "shirt name num del" ". pos move move" ". shown votes votes"; row-gap: 6px; }
-  .sq-row .sq-shirt { grid-area: shirt; } .sq-row [data-sf="name"] { grid-area: name; } .sq-row [data-sf="num"] { grid-area: num; } .sq-row .sq-del { grid-area: del; }
+  .sq-row { grid-template-columns: 38px minmax(0, 1fr) 64px 36px; grid-template-areas: "shirt name num del" ". pos cap cap" ". move move move" ". shown votes votes"; row-gap: 6px; }
+  .sq-row .sq-shirt { grid-area: shirt; } .sq-row [data-sf="name"] { grid-area: name; } .sq-row [data-sf="num"] { grid-area: num; } .sq-row .sq-del { grid-area: del; } .sq-row .sq-cap { grid-area: cap; justify-self: stretch; }
   .sq-row [data-sf="pos"] { grid-area: pos; border-color: var(--color-border); } .sq-row [data-sf="move"] { grid-area: move; border-color: var(--color-border); } .sq-row .sq-shown { grid-area: shown; } .sq-row .sq-votes { grid-area: votes; }
   .sq-add-grid { grid-template-columns: minmax(0, 1fr) 80px; }
   .sq-add-grid .sq-submit { grid-column: 1 / -1; width: 100%; }
@@ -744,7 +751,7 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
 .tm-steps b { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--color-gold-fill); color: var(--color-on-gold); font-size: 0.85rem; }
 .tm-steps em { font-style: normal; font-weight: 700; color: var(--color-text); }
 .tm-sq .sq-main { gap: var(--space-3); }
-.tm-row { grid-template-columns: 38px minmax(0, 1.6fr) 60px minmax(0, 1.1fr) 36px; }
+.tm-row { grid-template-columns: 38px minmax(0, 1.5fr) 56px minmax(0, 1fr) 82px 36px; }
 .tm-submit { margin-top: var(--space-3); grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: center; border-color: color-mix(in srgb, var(--uc-gold) 55%, var(--color-border)); }
 .tm-submit h3 { margin: 0 0 4px; }
 .tm-submit-form { display: grid; gap: 10px; }
@@ -757,7 +764,7 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
   .tm-submit { grid-template-columns: 1fr; }
   .tm-hero { gap: 14px; }
   .tm-hero .uc-crest--xl { --size: 64px; }
-  .tm-row { grid-template-columns: 38px minmax(0, 1fr) 64px 36px; grid-template-areas: "shirt name num del" ". pos pos pos"; row-gap: 6px; }
+  .tm-row { grid-template-columns: 38px minmax(0, 1fr) 64px 36px; grid-template-areas: "shirt name num del" ". pos cap cap"; row-gap: 6px; }
 }
 @media (prefers-reduced-motion: reduce) { .tm-hero, .tm-spin { animation: none; } }
 .ua-order { display: inline-flex; gap: 6px; }
@@ -768,3 +775,16 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
 .ua-orow strong { overflow-wrap: anywhere; }
 .ua-onum { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--color-surface-raised); font: 800 0.8rem var(--font-body); color: var(--color-text-muted); }
 @media (max-width: 520px) { .ua-orow { grid-template-columns: 26px auto minmax(0, 1fr); } .ua-orow .ua-order { grid-column: 1 / -1; justify-content: flex-end; } }
+.uc-role { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font: 800 0.66rem var(--font-body); font-style: normal; letter-spacing: 0.06em; text-transform: uppercase; vertical-align: middle; }
+.uc-role--c { background: #f1d77f; color: #17130a; } .uc-role--vc { background: #d9dde3; color: #17130a; }
+.uc-player > .uc-role { margin: 2px 0 0; }
+
+/* captain / vice-captain toggles (committee Squads rows and the team page) */
+.sq-cap { display: inline-flex; gap: 4px; }
+.sq-capbtn { min-width: 36px; height: 36px; padding: 0 6px; border-radius: 999px; border: 1.5px solid var(--color-border-strong); background: transparent; color: var(--color-text-muted); font: 800 0.74rem var(--font-body); letter-spacing: 0.02em; cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+.sq-capbtn:hover:not(:disabled) { border-color: var(--uc-gold); color: var(--color-text); }
+.sq-capbtn:disabled { opacity: 0.35; cursor: default; }
+.sq-capbtn--c.is-on { background: #f1d77f; border-color: #f1d77f; color: #17130a; box-shadow: 0 0 0 3px rgba(241, 215, 127, 0.3); }
+.sq-capbtn--vc.is-on { background: #d9dde3; border-color: #d9dde3; color: #17130a; box-shadow: 0 0 0 3px rgba(217, 221, 227, 0.3); }
+.sq-capbtn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+@media (max-width: 720px) { .sq-cap { justify-content: flex-end; } }
