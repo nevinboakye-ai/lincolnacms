@@ -18,7 +18,7 @@
   var tab = 'setup';
   var timer = null;
   var loading = false;
-  var wheel = null, overlay = null;
+  var wheel = null, overlay = null, lastSig = '';
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function $(sel, el) { return (el || root).querySelector(sel); }
@@ -39,21 +39,22 @@
         if (!D) root.innerHTML = '<p class="ua-msg is-bad">Couldn\'t load the Unity Cup panel. ' + esc(res.error && res.error.message || '') + ' Run <code>db/migrations/114-unity-cup.sql</code> if you haven\'t yet.</p>';
         return;
       }
+      var sig = JSON.stringify(res.data), changed = sig !== lastSig; lastSig = sig;
       D = res.data;
       var votes = (D.players || []).reduce(function (n, p) { return n + (p.votes || 0); }, 0);
       var pending = (D.entries || []).filter(function (e) { return e.status === 'pending'; }).length + (D.media || []).filter(function (m) { return m.status === 'pending'; }).length;
       if (countEl) countEl.textContent = votes + ' votes · ' + (D.entries || []).length + ' raffle entries' + (pending ? ' · ' + pending + ' to check' : '');
-      if (!quiet || !isEditing()) render();
+      if (!quiet || (changed && !isEditing())) render();
     }, function () { loading = false; });
   }
   function isEditing() { var a = document.activeElement; return a && root.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName); }
 
   function render() {
     var pend = { raffle: (D.entries || []).filter(function (e) { return e.status === 'pending'; }).length, media: (D.media || []).filter(function (m) { return m.status === 'pending'; }).length };
-    var tabs = [['setup', 'Settings'], ['players', 'Players & votes'], ['raffle', 'Raffle' + (pend.raffle ? ' (' + pend.raffle + ')' : '')], ['media', 'Photos & videos' + (pend.media ? ' (' + pend.media + ')' : '')]];
-    root.innerHTML = '<div class="ua-top"><a class="btn btn-outline" href="unity-cup.html" target="_blank" rel="noopener">Open the public page</a><div class="ua-live">' + liveLine() + '</div></div>' +
+    var tabs = [['setup', 'Settings'], ['teams', 'Teams'], ['players', 'Players & votes'], ['fixtures', 'Fixtures'], ['raffle', 'Raffle' + (pend.raffle ? ' (' + pend.raffle + ')' : '')], ['media', 'Photos & videos' + (pend.media ? ' (' + pend.media + ')' : '')]];
+    root.innerHTML = '<div class="ua-top"><a class="btn btn-outline" href="unity-cup.html" target="_blank" rel="noopener">Open the public page</a><div class="ua-status">' + liveLine() + '</div></div>' +
       '<div class="ua-tabs" role="tablist">' + tabs.map(function (t) { return '<button type="button" role="tab" class="ua-tab' + (tab === t[0] ? ' is-active' : '') + '" data-ua-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + esc(t[1]) + '</button>'; }).join('') + '</div>' +
-      '<p class="ua-msg" data-ua-msg role="status"></p><div class="ua-pane">' + ({ setup: setupHtml, players: playersHtml, raffle: raffleHtml, media: mediaHtml }[tab])() + '</div>';
+      '<p class="ua-msg" data-ua-msg role="status"></p><div class="ua-pane">' + ({ setup: setupHtml, teams: teamsHtml, players: playersHtml, fixtures: fixturesHtml, raffle: raffleHtml, media: mediaHtml }[tab])() + '</div>';
     if (tab === 'media') loadThumbs();
   }
 
@@ -101,23 +102,171 @@
   }
 
   // ---------------------------------------------------------------------
+  // Teams
+  function teamById(id) { return (D.teams || []).filter(function (t) { return t.id === id; })[0]; }
+  function teamOptions(sel, withNone) {
+    return (withNone ? '<option value="">(no team)</option>' : '<option value="">Choose a team…</option>') + (D.teams || []).map(function (t) { return '<option value="' + esc(t.id) + '"' + (sel === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>'; }).join('');
+  }
+  function crestHtml(t) {
+    var col = (t && t.colour) || '#d4a62b';
+    return '<span class="uc-crest uc-crest--lg" style="--tc:' + esc(col) + '">' + (t && t.logo_path ? '<img src="' + esc(mediaUrl('unity-cup-gallery', t.logo_path)) + '" alt="">' : '<b>' + esc(((t && (t.short_name || t.name)) || '?').slice(0, 3).toUpperCase()) + '</b>') + '</span>';
+  }
+  function teamForm(t) {
+    var isNew = !t, id = t ? t.id : 'new', n = t ? (D.players || []).filter(function (p) { return p.team_id === t.id; }).length : 0;
+    return '<div class="ua-team" data-tid="' + esc(id) + '">' +
+      '<div class="ua-team-logo">' + crestHtml(t) + '<label class="ua-file"><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-tf-logo><span>' + (t && t.logo_path ? 'Change logo' : 'Add logo') + '</span></label>' +
+      (t && t.logo_path ? '<label class="ua-chk"><input type="checkbox" data-tf-clear> Remove logo</label>' : '') + '</div>' +
+      '<div class="ua-team-fields">' +
+      '<label class="ua-field"><span>Team name</span><input data-tf="name" maxlength="40" value="' + esc(t ? t.name : '') + '" placeholder="e.g. Red Wolves"></label>' +
+      '<label class="ua-field ua-field--s"><span>Short name</span><input data-tf="short" maxlength="5" value="' + esc(t && t.short_name || '') + '" placeholder="RWF"></label>' +
+      '<label class="ua-field ua-field--s"><span>Colour</span><input type="color" data-tf="colour" value="' + esc(t ? t.colour : '#d4a62b') + '"></label>' +
+      '<label class="ua-field ua-field--s"><span>Group (optional)</span><input data-tf="group" maxlength="20" list="ua-groups" value="' + esc(t && t.group_name || '') + '" placeholder="Group A"></label>' +
+      '<label class="ua-field ua-field--wide"><span>About the team (optional)</span><input data-tf="desc" maxlength="200" value="' + esc(t && t.description || '') + '" placeholder="A line or two for the team page"></label>' +
+      '</div><div class="ua-team-actions">' + (isNew ? '<button type="button" class="btn btn-primary" data-ua-save-team>Add team</button>' : '<span class="ua-hint">' + n + (n === 1 ? ' player' : ' players') + '</span><button type="button" class="btn btn-outline" data-ua-save-team>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-team>Delete</button>') + '</div></div>';
+  }
+  function groupList() {
+    var g = []; (D.teams || []).forEach(function (t) { if (t.group_name && g.indexOf(t.group_name) < 0) g.push(t.group_name); });
+    return '<datalist id="ua-groups">' + g.concat(['Group A', 'Group B', 'Group C', 'Group D']).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
+  }
+  function teamsHtml() {
+    var ts = D.teams || [];
+    return groupList() + '<div class="ua-card"><h3>Add a team</h3><p class="ua-hint">Give it a name and a colour. A logo is optional: without one the page shows the team\'s initials in its colour. Put teams that play each other in the same group to get a table.</p>' + teamForm(null) + '</div>' +
+      '<div class="ua-card"><h3>Teams (' + ts.length + ')</h3>' + (ts.length ? '<div class="ua-teams">' + ts.map(teamForm).join('') + '</div>' : '<p class="ua-hint">No teams yet.</p>') + '</div>';
+  }
+  // Logos are shrunk in the browser first (the biggest side to 512px) so pages stay fast.
+  function shrinkLogo(file) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function () {
+        var sc = Math.min(1, 512 / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(img.width * sc)); cv.height = Math.max(1, Math.round(img.height * sc));
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        var jpeg = file.type === 'image/jpeg';
+        cv.toBlob(function (b) { URL.revokeObjectURL(url); if (!b) { reject(new Error('Could not read that image.')); return; } resolve({ blob: b, ext: jpeg ? 'jpg' : 'png', type: jpeg ? 'image/jpeg' : 'image/png' }); }, jpeg ? 'image/jpeg' : 'image/png', 0.9);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('That file is not an image we can use.')); };
+      img.src = url;
+    });
+  }
+  function saveTeam(row, btn) {
+    var id = row.getAttribute('data-tid') === 'new' ? null : row.getAttribute('data-tid'), old = id ? teamById(id) : null;
+    var g = function (k) { return $('[data-tf="' + k + '"]', row).value; };
+    var file = $('[data-tf-logo]', row).files[0], clear = $('[data-tf-clear]', row) && $('[data-tf-clear]', row).checked;
+    if (!g('name').trim()) { note('A team needs a name.', true); return; }
+    btn.disabled = true;
+    var teamId;
+    supabaseClient.rpc('unity_admin_save_team', { p_id: id, p_name: g('name'), p_short: g('short'), p_colour: g('colour'), p_group: g('group'), p_description: g('desc'), p_sort: id ? null : (D.teams || []).length, p_logo_path: null, p_keep_logo: true }).then(function (r) {
+      if (r.error) throw r.error;
+      teamId = r.data;
+      if (file) {
+        return shrinkLogo(file).then(function (c) {
+          var path = 'teams/' + teamId + '-' + Date.now() + '.' + c.ext;
+          return supabaseClient.storage.from('unity-cup-gallery').upload(path, c.blob, { contentType: c.type, upsert: false }).then(function (up) {
+            if (up.error) throw up.error;
+            return supabaseClient.rpc('unity_admin_save_team', { p_id: teamId, p_name: g('name'), p_short: g('short'), p_colour: g('colour'), p_group: g('group'), p_description: g('desc'), p_sort: null, p_logo_path: path, p_keep_logo: false });
+          });
+        }).then(function (r2) { if (r2.error) throw r2.error; if (old && old.logo_path) supabaseClient.storage.from('unity-cup-gallery').remove([old.logo_path]); });
+      }
+      if (clear && old && old.logo_path) {
+        return supabaseClient.rpc('unity_admin_save_team', { p_id: teamId, p_name: g('name'), p_short: g('short'), p_colour: g('colour'), p_group: g('group'), p_description: g('desc'), p_sort: null, p_logo_path: null, p_keep_logo: false }).then(function (r3) { if (r3.error) throw r3.error; supabaseClient.storage.from('unity-cup-gallery').remove([old.logo_path]); });
+      }
+    }).then(function () { note(id ? 'Team saved.' : 'Team added.'); return load(); }).catch(function (e) { btn.disabled = false; fail(e); });
+  }
+
+  // ---------------------------------------------------------------------
   // Players
   function playersHtml() {
-    var ps = D.players || [], total = ps.reduce(function (n, p) { return n + (p.votes || 0); }, 0), max = Math.max.apply(null, ps.map(function (p) { return p.votes || 0; }).concat([1]));
+    var ps = (D.players || []).slice().sort(function (a, b) { var ta = (teamById(a.team_id) || { name: '~' }).name, tb = (teamById(b.team_id) || { name: '~' }).name; return ta.localeCompare(tb) || (parseInt(a.shirt_no, 10) || 999) - (parseInt(b.shirt_no, 10) || 999) || a.name.localeCompare(b.name); });
+    var total = ps.reduce(function (n, p) { return n + (p.votes || 0); }, 0), max = Math.max.apply(null, ps.map(function (p) { return p.votes || 0; }).concat([1]));
     return '<div class="ua-card"><h3>Votes so far: <span class="ua-big">' + total + '</span> <small>(' + D.voters + ' people voted)</small></h3>' +
       (ps.length ? '<div class="ua-players">' + ps.map(function (p) {
         return '<div class="ua-player' + (p.active ? '' : ' is-off') + '" data-pid="' + esc(p.id) + '"><div class="ua-player-edit">' +
-          '<input data-pf="name" maxlength="60" value="' + esc(p.name) + '" aria-label="Name"><input data-pf="team" maxlength="60" placeholder="Team" value="' + esc(p.team || '') + '" aria-label="Team"><input data-pf="shirt" maxlength="6" placeholder="#" value="' + esc(p.shirt_no || '') + '" aria-label="Shirt number">' +
+          '<input data-pf="name" maxlength="60" value="' + esc(p.name) + '" aria-label="Name"><select data-pf="team" aria-label="Team">' + teamOptions(p.team_id, true) + '</select><input data-pf="shirt" maxlength="6" placeholder="#" value="' + esc(p.shirt_no || '') + '" aria-label="Shirt number"><input data-pf="position" maxlength="20" placeholder="Position" value="' + esc(p.position || '') + '" aria-label="Position">' +
           '<label class="ua-chk"><input type="checkbox" data-pf="active"' + (p.active ? ' checked' : '') + '> Shown</label>' +
           '<button type="button" class="btn btn-outline" data-ua-save-player>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-player>Remove</button></div>' +
-          '<div class="ua-bar"><span style="width:' + Math.round((p.votes || 0) / max * 100) + '%"></span><b>' + (p.votes || 0) + '</b></div></div>';
+          '<div class="ua-bar"><span style="width:' + Math.round((p.votes || 0) / max * 100) + '%"></span><b>' + (p.votes || 0) + ' votes</b></div></div>';
       }).join('') + '</div>' : '<p class="ua-hint">No players yet. Add them below.</p>') + '</div>' +
-      '<div class="ua-card"><h3>Add players</h3><p class="ua-hint">One per line: <code>Name, Team, Shirt number</code> (team and number are optional).</p>' +
-      '<textarea class="ua-textarea" data-ua-bulk rows="6" placeholder="Marcus Tolliver, Red Wolves, 7&#10;Daniel Okafor, Blue Hawks, 10"></textarea>' +
+      '<div class="ua-card"><h3>Add players</h3><p class="ua-hint">One per line: <code>Name, Team, Shirt number, Position</code> (everything after the name is optional). A team you haven\'t made yet is created for you.</p>' +
+      '<textarea class="ua-textarea" data-ua-bulk rows="6" placeholder="Marcus Tolliver, Red Wolves, 7, Forward&#10;Daniel Okafor, Blue Hawks, 10, Midfield"></textarea>' +
       '<button type="button" class="btn btn-primary" data-ua-add-players>Add these players</button></div>';
   }
-  function savePlayer(id, name, team, shirt, sort, active) {
-    return supabaseClient.rpc('unity_admin_save_player', { p_id: id, p_name: name, p_team: team, p_shirt: shirt, p_sort: sort, p_active: active });
+  function savePlayer(id, name, teamId, shirt, position, sort, active) {
+    return supabaseClient.rpc('unity_admin_save_player', { p_id: id, p_name: name, p_team_id: teamId || null, p_shirt: shirt || null, p_position: position || null, p_sort: sort, p_active: active });
+  }
+  function addPlayers(lines) {
+    var base = (D.players || []).length, teams = (D.teams || []).slice(), made = 0;
+    function find(name) { var n = name.trim().toLowerCase(); return teams.filter(function (t) { return t.name.toLowerCase() === n; })[0]; }
+    var rows = lines.map(function (l) { var p = l.split(',').map(function (x) { return x.trim(); }); return { name: p[0], team: p[1] || '', shirt: (p[2] || '').replace(/^#/, ''), pos: p[3] || '' }; });
+    var chain = Promise.resolve();
+    rows.forEach(function (r) {
+      chain = chain.then(function () {
+        if (!r.team || find(r.team)) return;
+        return supabaseClient.rpc('unity_admin_save_team', { p_id: null, p_name: r.team, p_short: null, p_colour: '#d4a62b', p_group: null, p_description: null, p_sort: teams.length, p_logo_path: null, p_keep_logo: true }).then(function (res) {
+          if (res.error) throw res.error; teams.push({ id: res.data, name: r.team }); made++;
+        });
+      });
+    });
+    rows.forEach(function (r, i) {
+      chain = chain.then(function () { var t = r.team ? find(r.team) : null; return savePlayer(null, r.name, t && t.id, r.shirt, r.pos, base + i, true).then(function (res) { if (res.error) throw res.error; }); });
+    });
+    return chain.then(function () { note(rows.length + (rows.length === 1 ? ' player' : ' players') + ' added' + (made ? ' (' + made + ' new ' + (made === 1 ? 'team' : 'teams') + ' created, give them colours and logos in Teams)' : '') + '.'); return load(); }).catch(fail);
+  }
+
+  // ---------------------------------------------------------------------
+  // Fixtures
+  var STATUS = [['scheduled', 'Scheduled'], ['live', 'Live'], ['finished', 'Full time'], ['postponed', 'Postponed']];
+  function fixtureForm(f) {
+    var isNew = !f, id = f ? f.id : 'new';
+    var stages = []; (D.fixtures || []).forEach(function (x) { if (x.stage && stages.indexOf(x.stage) < 0) stages.push(x.stage); });
+    var sc = function (v) { return v == null ? '' : v; };
+    return '<div class="ua-fx" data-fid="' + esc(id) + '"><div class="ua-fx-grid">' +
+      '<label class="ua-field"><span>Home team</span><select data-ff="home">' + teamOptions(f && f.home_team_id) + '</select></label>' +
+      '<label class="ua-field"><span>Away team</span><select data-ff="away">' + teamOptions(f && f.away_team_id) + '</select></label>' +
+      '<label class="ua-field"><span>Round / stage</span><input data-ff="stage" maxlength="40" list="ua-stages" value="' + esc(f && f.stage || '') + '" placeholder="Group A, Semi-final…"></label>' +
+      '<label class="ua-field"><span>Kick-off</span><input type="datetime-local" data-ff="kickoff" value="' + esc(toLocalInput(f && f.kickoff_at)) + '"></label>' +
+      '<label class="ua-field"><span>Pitch</span><input data-ff="pitch" maxlength="30" value="' + esc(f && f.pitch || '') + '" placeholder="Pitch 1"></label>' +
+      '<label class="ua-field"><span>Status</span><select data-ff="status">' + STATUS.map(function (x) { return '<option value="' + x[0] + '"' + ((f ? f.status : 'scheduled') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="ua-field ua-field--score"><span>Home score</span><input type="number" min="0" max="99" inputmode="numeric" data-ff="hs" value="' + esc(sc(f && f.home_score)) + '"></label>' +
+      '<label class="ua-field ua-field--score"><span>Away score</span><input type="number" min="0" max="99" inputmode="numeric" data-ff="as" value="' + esc(sc(f && f.away_score)) + '"></label>' +
+      '<label class="ua-field ua-field--wide"><span>Note (optional)</span><input data-ff="note" maxlength="120" value="' + esc(f && f.note || '') + '" placeholder="e.g. Won on penalties"></label></div>' +
+      '<div class="ua-actions">' + (isNew ? '<button type="button" class="btn btn-primary" data-ua-save-fx>Add fixture</button>' : '<button type="button" class="btn btn-outline" data-ua-save-fx>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-fx>Delete</button>') + '</div></div>';
+  }
+  function liveScoring() {
+    var now = new Date(), startDay = new Date(now); startDay.setHours(0, 0, 0, 0); var endDay = new Date(startDay); endDay.setDate(endDay.getDate() + 1);
+    var list = (D.fixtures || []).filter(function (f) { return f.status === 'live' || (f.status === 'scheduled' && f.kickoff_at && new Date(f.kickoff_at) >= startDay && new Date(f.kickoff_at) < endDay); });
+    if (!list.length) return '';
+    return '<div class="ua-card ua-card--live"><h3>Live scoring</h3><p class="ua-hint">Tap + when a goal goes in. It shows on the public page within about 15 seconds.</p><div class="ua-live-list">' + list.map(function (f) {
+      var h = teamById(f.home_team_id), a = teamById(f.away_team_id); if (!h || !a) return '';
+      var hs = f.home_score == null ? 0 : f.home_score, as = f.away_score == null ? 0 : f.away_score;
+      function side(t, v, k) { return '<div class="ua-side">' + crestHtml(t).replace('uc-crest--lg', 'uc-crest--sm') + '<strong>' + esc(t.name) + '</strong><div class="ua-step"><button type="button" data-ua-goal="' + k + '" data-d="-1" aria-label="Minus one for ' + esc(t.name) + '">&minus;</button><b>' + v + '</b><button type="button" data-ua-goal="' + k + '" data-d="1" aria-label="Plus one for ' + esc(t.name) + '">+</button></div></div>'; }
+      return '<div class="ua-live" data-fid="' + esc(f.id) + '" data-hs="' + hs + '" data-as="' + as + '"><div class="ua-live-top"><span class="ua-pill is-' + esc(f.status) + '">' + esc((STATUS.filter(function (x) { return x[0] === f.status; })[0] || [0, f.status])[1]) + '</span><small>' + esc([f.stage, f.pitch, f.kickoff_at ? new Date(f.kickoff_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')) + '</small></div>' +
+        '<div class="ua-live-sides">' + side(h, hs, 'h') + side(a, as, 'a') + '</div>' +
+        '<div class="ua-actions">' + (f.status !== 'live' ? '<button type="button" class="btn btn-primary" data-ua-status="live">Kick off (go live)</button>' : '') + (f.status === 'live' ? '<button type="button" class="btn btn-primary" data-ua-status="finished">Full time</button>' : '') + '</div></div>';
+    }).join('') + '</div></div>';
+  }
+  function fixturesHtml() {
+    var fs = D.fixtures || [], stages = []; fs.forEach(function (x) { if (x.stage && stages.indexOf(x.stage) < 0) stages.push(x.stage); });
+    var dl = '<datalist id="ua-stages">' + stages.concat(['Group A', 'Group B', 'Quarter-final', 'Semi-final', 'Final', '3rd place']).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
+    if ((D.teams || []).length < 2) return '<div class="ua-card"><h3>Fixtures</h3><p class="ua-hint">Add at least two teams (Teams tab) first.</p></div>';
+    return dl + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
+      '<div class="ua-card"><h3>All fixtures (' + fs.length + ')</h3>' + (fs.length ? '<div class="ua-fx-list">' + fs.map(fixtureForm).join('') + '</div>' : '<p class="ua-hint">No fixtures yet.</p>') + '</div>';
+  }
+  function readFixture(row) {
+    var g = function (k) { return $('[data-ff="' + k + '"]', row); }, num = function (v) { return v === '' || v == null ? null : Number(v); };
+    return { stage: g('stage').value, home: g('home').value || null, away: g('away').value || null, kickoff: g('kickoff').value ? new Date(g('kickoff').value).toISOString() : null, pitch: g('pitch').value, status: g('status').value, hs: num(g('hs').value), as: num(g('as').value), note: g('note').value };
+  }
+  function saveFixture(row, btn) {
+    var id = row.getAttribute('data-fid') === 'new' ? null : row.getAttribute('data-fid'), v = readFixture(row);
+    if (!v.home || !v.away) { note('Pick both teams.', true); return; }
+    if (v.home === v.away) { note('A team can\'t play itself.', true); return; }
+    btn.disabled = true;
+    supabaseClient.rpc('unity_admin_save_fixture', { p_id: id, p_stage: v.stage, p_home: v.home, p_away: v.away, p_kickoff: v.kickoff, p_pitch: v.pitch, p_status: v.status, p_home_score: v.hs, p_away_score: v.as, p_note: v.note, p_sort: id ? null : (D.fixtures || []).length }).then(function (r) {
+      btn.disabled = false; if (r.error) { fail(r.error); return; } note(id ? 'Fixture saved.' : 'Fixture added.'); load();
+    });
+  }
+  function setScore(fid, hs, as, status) {
+    var f = (D.fixtures || []).filter(function (x) { return x.id === fid; })[0]; if (f) { f.home_score = hs; f.away_score = as; f.status = status; render(); }   // show it at once
+    return supabaseClient.rpc('unity_admin_set_score', { p_id: fid, p_home_score: hs, p_away_score: as, p_status: status }).then(function (r) { if (r.error) { fail(r.error); } return load(); });
   }
 
   // ---------------------------------------------------------------------
@@ -253,18 +402,13 @@
     if (t.closest('[data-ua-add-players]')) {
       var lines = ($('[data-ua-bulk]').value || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
       if (!lines.length) return;
-      var base = (D.players || []).length;
-      Promise.all(lines.map(function (l, i) { var parts = l.split(',').map(function (x) { return x.trim(); }); return savePlayer(null, parts[0], parts[1] || null, (parts[2] || '').replace(/^#/, '') || null, base + i, true); })).then(function (rs) {
-        var bad = rs.filter(function (r) { return r.error; })[0];
-        if (bad) fail(bad.error); else note(lines.length + (lines.length === 1 ? ' player' : ' players') + ' added.');
-        load();
-      });
+      addPlayers(lines);
       return;
     }
     var sp = t.closest('[data-ua-save-player]');
     if (sp) {
       var row = sp.closest('[data-pid]'), get = function (k) { return $('[data-pf="' + k + '"]', row); };
-      savePlayer(row.getAttribute('data-pid'), get('name').value, get('team').value, get('shirt').value, null, get('active').checked).then(function (r) { if (r.error) fail(r.error); else { note('Saved.'); load(); } });
+      savePlayer(row.getAttribute('data-pid'), get('name').value, get('team').value, get('shirt').value, get('position').value, null, get('active').checked).then(function (r) { if (r.error) fail(r.error); else { note('Saved.'); load(); } });
       return;
     }
     var dp = t.closest('[data-ua-del-player]');
@@ -281,6 +425,20 @@
       supabaseClient.rpc('unity_admin_set_entry', { p_id: er.getAttribute('data-eid'), p_status: st, p_note: nt }).then(function (r) { if (r.error) fail(r.error); else load(); });
       return;
     }
+    var st = t.closest('[data-ua-save-team]'); if (st) { saveTeam(st.closest('[data-tid]'), st); return; }
+    var dt = t.closest('[data-ua-del-team]');
+    if (dt) {
+      var trow = dt.closest('[data-tid]'), tm = teamById(trow.getAttribute('data-tid')), nfx = (D.fixtures || []).filter(function (f) { return f.home_team_id === tm.id || f.away_team_id === tm.id; }).length;
+      if (!window.confirm('Delete ' + tm.name + '? ' + (nfx ? 'Its ' + nfx + (nfx === 1 ? ' fixture is' : ' fixtures are') + ' deleted too. ' : '') + 'Its players stay (without a team) so any votes are kept.')) return;
+      supabaseClient.rpc('unity_admin_delete_team', { p_id: tm.id }).then(function (r) { if (r.error) { fail(r.error); return; } if (r.data) supabaseClient.storage.from('unity-cup-gallery').remove([r.data]); note('Team deleted.'); load(); });
+      return;
+    }
+    var sf = t.closest('[data-ua-save-fx]'); if (sf) { saveFixture(sf.closest('[data-fid]'), sf); return; }
+    var df = t.closest('[data-ua-del-fx]'); if (df) { if (window.confirm('Delete this fixture?')) supabaseClient.rpc('unity_admin_delete_fixture', { p_id: df.closest('[data-fid]').getAttribute('data-fid') }).then(function (r) { if (r.error) fail(r.error); else { note('Fixture deleted.'); load(); } }); return; }
+    var gl = t.closest('[data-ua-goal]');
+    if (gl) { var lv = gl.closest('[data-fid]'), hs = Number(lv.getAttribute('data-hs')), as = Number(lv.getAttribute('data-as')), d = Number(gl.getAttribute('data-d')); if (gl.getAttribute('data-ua-goal') === 'h') hs = Math.max(0, Math.min(99, hs + d)); else as = Math.max(0, Math.min(99, as + d)); var fx0 = (D.fixtures || []).filter(function (x) { return x.id === lv.getAttribute('data-fid'); })[0]; setScore(lv.getAttribute('data-fid'), hs, as, fx0 && fx0.status === 'scheduled' ? 'live' : (fx0 ? fx0.status : 'live')); return; }
+    var ss = t.closest('[data-ua-status]');
+    if (ss) { var lv2 = ss.closest('[data-fid]'); setScore(lv2.getAttribute('data-fid'), Number(lv2.getAttribute('data-hs')), Number(lv2.getAttribute('data-as')), ss.getAttribute('data-ua-status')); return; }
     if (t.closest('[data-ua-draw]')) { openDraw(); return; }
     var vd = t.closest('[data-ua-void]');
     if (vd) { if (!window.confirm('Void this winner? They go back into the draw pool.')) return; supabaseClient.rpc('unity_admin_void_draw', { p_id: vd.getAttribute('data-ua-void') }).then(function () { load(); }); return; }

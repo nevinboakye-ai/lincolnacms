@@ -48,6 +48,8 @@
   var modalEl = null, lastFocus = null;
   var filterTeam = '';
   var queue = [];            // files waiting to be sent
+  var teamsById = {}, fxSig = '', teamSig = '';
+  var fxTab = 'fixtures';    // fixtures | table
 
   var $ = function (sel, el) { return (el || document).querySelector(sel); };
   var $$ = function (sel, el) { return Array.prototype.slice.call((el || document).querySelectorAll(sel)); };
@@ -79,6 +81,7 @@
       if (res.error || !res.data) { if (!S) showUnavailable(); return false; }
       var first = !S;
       S = res.data;
+      teamsById = {}; (S.teams || []).forEach(function (t) { teamsById[t.id] = t; });
       if (first) { knownDraws = {}; (S.draws || []).forEach(function (d) { knownDraws[d.id] = 1; }); }
       renderAll(first);
       if (!first) watchDraws();
@@ -94,6 +97,8 @@
   // Rendering
   function renderAll(first) {
     renderHero();
+    renderFixtures();
+    renderTeams();
     renderVote();
     renderRaffle(first);
     renderMedia();
@@ -154,6 +159,7 @@
 
     // team filter
     var teams = [];
+    (S.teams || []).forEach(function (t) { if (players.some(function (p) { return p.team_id === t.id; })) teams.push(t.name); });
     players.forEach(function (p) { if (p.team && teams.indexOf(p.team) < 0) teams.push(p.team); });
     var tf = $('#uc-team-filter');
     if (tf) {
@@ -170,7 +176,8 @@
       wrap.innerHTML = (total ? '<p class="uc-results-total">' + total + (total === 1 ? ' vote' : ' votes') + ' cast</p>' : '') + list.map(function (p, i) {
         var v = p.votes || 0, pct = total ? Math.round(v / total * 100) : 0;
         var lead = results && i === 0 && v > 0;
-        return '<div class="uc-result' + (lead ? ' is-winner' : '') + '" style="--w:' + Math.round(v / max * 100) + '%; --i:' + i + ';">' +
+        var rt = teamsById[p.team_id];
+        return '<div class="uc-result' + (lead ? ' is-winner' : '') + '" style="--w:' + Math.round(v / max * 100) + '%; --i:' + i + ';' + (rt ? ' --tc:' + esc(rt.colour) + ';' : '') + '">' +
           '<span class="uc-avatar">' + esc(initials(p.name)) + '</span>' +
           '<div class="uc-result-body"><div class="uc-result-top"><strong>' + esc(p.name) + (lead ? ' <span class="uc-crown" title="Player of the Tournament">&#9733;</span>' : '') + '</strong><span>' + v + ' &middot; ' + pct + '%</span></div>' +
           '<div class="uc-bar"><span></span></div>' +
@@ -183,11 +190,12 @@
     wrap.className = 'uc-players';
     wrap.innerHTML = list.map(function (p) {
       var on = selected === p.id;
-      return '<button type="button" class="uc-player' + (on ? ' is-selected' : '') + '" data-player="' + esc(p.id) + '" aria-pressed="' + on + '"' +
+      var tm = teamsById[p.team_id];
+      return '<button type="button" class="uc-player' + (on ? ' is-selected' : '') + '" data-player="' + esc(p.id) + '" aria-pressed="' + on + '"' + (tm ? ' style="--tc:' + esc(tm.colour) + '"' : '') +
         (!S.voting_open || voted ? ' disabled' : '') + '>' +
         '<span class="uc-avatar">' + esc(initials(p.name)) + (p.shirt_no ? '<b>' + esc(p.shirt_no) + '</b>' : '') + '</span>' +
         '<span class="uc-player-name">' + esc(p.name) + '</span>' +
-        (p.team ? '<span class="uc-player-team">' + esc(p.team) + '</span>' : '') +
+        (p.team ? '<span class="uc-player-team">' + esc(p.team) + (p.position ? ' &middot; ' + esc(p.position) : '') + '</span>' : (p.position ? '<span class="uc-player-team">' + esc(p.position) + '</span>' : '')) +
         '<span class="uc-player-tick">' + ICON.check + '</span></button>';
     }).join('');
     updateVoteBar();
@@ -293,7 +301,7 @@
     closeModal(true);
     lastFocus = document.activeElement;
     modalEl = document.createElement('div');
-    modalEl.className = 'uc-modal';
+    modalEl.className = 'uc-modal' + (opts.wide ? ' uc-modal--wide' : '');
     modalEl.innerHTML = '<div class="uc-modal-backdrop" data-uc-close></div><div class="uc-modal-panel" role="dialog" aria-modal="true" aria-labelledby="uc-modal-title" tabindex="-1">' +
       '<button type="button" class="uc-modal-x" data-uc-close aria-label="Close">' + ICON.close + '</button><div class="uc-modal-body">' + html + '</div></div>';
     document.body.appendChild(modalEl);
@@ -611,6 +619,127 @@
   }
   function stepLightbox(d) { var n = (S.media || []).length; if (!n) return; openLightbox((lbIndex + d + n) % n); }
 
+
+  // ---------------------------------------------------------------------
+  // Teams, squads and fixtures
+  function logoUrl(t) { return t && t.logo_path ? publicUrl(t.logo_path) : ''; }
+  function mono(t) { return esc((t && (t.short_name || t.name) || '?').replace(/[^A-Za-z0-9 ]/g, '').trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 3).toUpperCase() || '?'); }
+  function crest(t, cls) {
+    if (!t) return '<span class="uc-crest ' + (cls || '') + '"><b>?</b></span>';
+    var u = logoUrl(t);
+    return '<span class="uc-crest ' + (cls || '') + '" style="--tc:' + esc(t.colour) + '">' + (u ? '<img src="' + esc(u) + '" alt="" loading="lazy">' : '<b>' + mono(t) + '</b>') + '</span>';
+  }
+  function kickDate(f) { return f.kickoff_at ? new Date(f.kickoff_at) : null; }
+  function dayKey(d) { return d ? d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() : 'tbc'; }
+  function dayLabelFor(d) {
+    if (!d) return 'Time to be confirmed';
+    var t = new Date(); t.setHours(0, 0, 0, 0);
+    var x = new Date(d); x.setHours(0, 0, 0, 0);
+    var diff = Math.round((x - t) / 86400000);
+    var base = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    return diff === 0 ? 'Today · ' + base : diff === 1 ? 'Tomorrow · ' + base : base;
+  }
+  function timeOf(d) { return d ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'TBC'; }
+
+  function fixtureCard(f) {
+    var h = teamsById[f.home_team_id], a = teamsById[f.away_team_id];
+    if (!h || !a) return '';
+    var d = kickDate(f), has = f.home_score != null && f.away_score != null && f.status !== 'scheduled' && f.status !== 'postponed';
+    var live = f.status === 'live';
+    var state = live ? '<span class="uc-fx-state is-live"><i></i>Live</span>' : f.status === 'finished' ? '<span class="uc-fx-state">Full time</span>' : f.status === 'postponed' ? '<span class="uc-fx-state is-off">Postponed</span>' : '<span class="uc-fx-state is-time">' + esc(timeOf(d)) + '</span>';
+    var win = has && f.status === 'finished' ? (f.home_score > f.away_score ? 'h' : f.home_score < f.away_score ? 'a' : '') : '';
+    function line(t, score, isWin) {
+      return '<div class="uc-fx-line' + (isWin ? ' is-win' : '') + '"><button type="button" class="uc-fx-team" data-team-open="' + esc(t.id) + '">' + crest(t) + '<span>' + esc(t.name) + '</span></button>' +
+        '<b class="uc-fx-sc' + (live ? ' is-live' : '') + '">' + (has ? score : '') + '</b></div>';
+    }
+    return '<li class="uc-fx' + (live ? ' is-live' : '') + (f.status === 'finished' ? ' is-done' : '') + '">' +
+      '<div class="uc-fx-top">' + state + '<span class="uc-fx-meta">' + (f.stage ? esc(f.stage) : '') + (f.stage && f.pitch ? ' &middot; ' : '') + (f.pitch ? esc(f.pitch) : '') + '</span></div>' +
+      '<div class="uc-fx-lines">' + line(h, f.home_score, win === 'h') + line(a, f.away_score, win === 'a') + '</div>' +
+      (f.note ? '<p class="uc-fx-note">' + esc(f.note) + '</p>' : '') + '</li>';
+  }
+
+  // Group tables: worked out here from finished fixtures between teams that share a group.
+  function standings() {
+    var groups = {};
+    (S.teams || []).forEach(function (t) { if (t.group_name) { (groups[t.group_name] = groups[t.group_name] || {})[t.id] = { t: t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }; } });
+    (S.fixtures || []).forEach(function (f) {
+      if (f.status !== 'finished' || f.home_score == null || f.away_score == null) return;
+      var h = teamsById[f.home_team_id], a = teamsById[f.away_team_id];
+      if (!h || !a || !h.group_name || h.group_name !== a.group_name) return;
+      var g = groups[h.group_name], H = g[h.id], A = g[a.id];
+      H.p++; A.p++; H.gf += f.home_score; H.ga += f.away_score; A.gf += f.away_score; A.ga += f.home_score;
+      if (f.home_score > f.away_score) { H.w++; A.l++; H.pts += 3; } else if (f.home_score < f.away_score) { A.w++; H.l++; A.pts += 3; } else { H.d++; A.d++; H.pts++; A.pts++; }
+    });
+    return Object.keys(groups).sort().map(function (name) {
+      var rows = Object.keys(groups[name]).map(function (id) { return groups[name][id]; });
+      rows.sort(function (x, y) { return y.pts - x.pts || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || x.t.name.localeCompare(y.t.name); });
+      return { name: name, rows: rows };
+    });
+  }
+
+  function renderFixtures() {
+    var sec = $('#fixtures'); if (!sec) return;
+    var sig = JSON.stringify([S.fixtures, S.teams]) + fxTab + Math.floor(Date.now() / 60000);
+    if (sig === fxSig) return;
+    fxSig = sig;
+    var list = $('#uc-fx-list'), tabs = $('#uc-fx-tabs'), next = $('#uc-fx-next');
+    var fx = (S.fixtures || []).filter(function (f) { return teamsById[f.home_team_id] && teamsById[f.away_team_id]; });
+    var tables = standings();
+    tabs.innerHTML = tables.length && fx.length ? '<button type="button" class="uc-chip' + (fxTab === 'fixtures' ? ' is-active' : '') + '" data-fx-tab="fixtures">Fixtures &amp; results</button><button type="button" class="uc-chip' + (fxTab === 'table' ? ' is-active' : '') + '" data-fx-tab="table">Tables</button>' : '';
+    if (!tables.length || !fx.length) fxTab = 'fixtures';
+    if (!fx.length) { next.innerHTML = ''; list.innerHTML = '<p class="uc-empty">The fixtures will appear here once the committee has set them. Check back soon.</p>'; return; }
+
+    // "Live now" / "Next up"
+    var live = fx.filter(function (f) { return f.status === 'live'; });
+    var now = Date.now();
+    var upcoming = fx.filter(function (f) { return f.status === 'scheduled' && f.kickoff_at && new Date(f.kickoff_at).getTime() >= now - 20 * 60000; }).sort(function (a, b) { return new Date(a.kickoff_at) - new Date(b.kickoff_at); });
+    var feature = live.length ? live : upcoming.slice(0, 1);
+    next.innerHTML = feature.length ? '<div class="uc-next"><span class="uc-next-label">' + (live.length ? '<i></i>Live now' : 'Next up') + '</span><ul class="uc-fx-list">' + feature.map(fixtureCard).join('') + '</ul></div>' : '';
+
+    if (fxTab === 'table') {
+      list.innerHTML = tables.map(function (g) {
+        return '<div class="uc-table-card"><h3>' + esc(g.name) + '</h3><div class="uc-table-scroll"><table class="uc-table"><thead><tr><th class="uc-tl">Team</th><th title="Played">P</th><th title="Won">W</th><th title="Drawn">D</th><th title="Lost">L</th><th title="Goal difference">GD</th><th title="Points">Pts</th></tr></thead><tbody>' +
+          g.rows.map(function (r, i) { var gd = r.gf - r.ga; return '<tr' + (i === 0 && r.p ? ' class="is-top"' : '') + '><td class="uc-tl"><button type="button" data-team-open="' + esc(r.t.id) + '">' + crest(r.t, 'uc-crest--sm') + '<span>' + esc(r.t.name) + '</span></button></td><td>' + r.p + '</td><td>' + r.w + '</td><td>' + r.d + '</td><td>' + r.l + '</td><td>' + (gd > 0 ? '+' + gd : gd) + '</td><td><b>' + r.pts + '</b></td></tr>'; }).join('') +
+          '</tbody></table></div></div>';
+      }).join('');
+      return;
+    }
+    var days = [], map = {};
+    fx.forEach(function (f) { var d = kickDate(f), k = dayKey(d); if (!map[k]) { map[k] = { label: dayLabelFor(d), items: [] }; days.push(map[k]); } map[k].items.push(f); });
+    list.innerHTML = days.map(function (day) { return '<div class="uc-day"><h3>' + esc(day.label) + '</h3><ul class="uc-fx-list">' + day.items.map(fixtureCard).join('') + '</ul></div>'; }).join('');
+  }
+
+  function renderTeams() {
+    var grid = $('#uc-teams'); if (!grid) return;
+    var sig = JSON.stringify([S.teams, S.players && S.players.map(function (p) { return [p.id, p.team_id]; })]);
+    if (sig === teamSig) return;
+    teamSig = sig;
+    var teams = S.teams || [];
+    if (!teams.length) { grid.className = 'uc-teams'; grid.innerHTML = '<p class="uc-empty">The teams will be announced here soon.</p>'; return; }
+    grid.className = 'uc-teams';
+    grid.innerHTML = teams.map(function (t) {
+      var n = (S.players || []).filter(function (p) { return p.team_id === t.id; }).length;
+      return '<button type="button" class="uc-team" data-team-open="' + esc(t.id) + '" style="--tc:' + esc(t.colour) + '">' + crest(t, 'uc-crest--lg') +
+        '<span class="uc-team-name">' + esc(t.name) + '</span>' +
+        '<span class="uc-team-sub">' + (t.group_name ? esc(t.group_name) + ' &middot; ' : '') + n + (n === 1 ? ' player' : ' players') + '</span></button>';
+    }).join('');
+  }
+
+  function openTeam(id) {
+    var t = teamsById[id]; if (!t) return;
+    var squad = (S.players || []).filter(function (p) { return p.team_id === t.id; }).sort(function (a, b) { return (parseInt(a.shirt_no, 10) || 999) - (parseInt(b.shirt_no, 10) || 999) || a.name.localeCompare(b.name); });
+    var canVote = S.voting_open && !lsGet(LS.voted) && !S.show_results;
+    var fx = (S.fixtures || []).filter(function (f) { return f.home_team_id === t.id || f.away_team_id === t.id; });
+    var html = '<div class="uc-team-head" style="--tc:' + esc(t.colour) + '">' + crest(t, 'uc-crest--xl') + '<div><span class="uc-modal-eyebrow">' + (t.group_name ? esc(t.group_name) : 'Team') + '</span><h2 id="uc-modal-title" class="uc-modal-title">' + esc(t.name) + '</h2></div></div>' +
+      (t.description ? '<p class="uc-modal-lede">' + esc(t.description) + '</p>' : '') +
+      '<h3 class="uc-sub">Squad</h3>' + (squad.length ? '<ul class="uc-squad">' + squad.map(function (p) {
+        return '<li><span class="uc-shirt" style="--tc:' + esc(t.colour) + '">' + esc(p.shirt_no || '–') + '</span><span class="uc-squad-name"><strong>' + esc(p.name) + '</strong>' + (p.position ? '<small>' + esc(p.position) + '</small>' : '') + '</span>' +
+          (canVote ? '<button type="button" class="uc-mini" data-vote-player="' + esc(p.id) + '">Vote</button>' : '') + '</li>';
+      }).join('') + '</ul>' : '<p class="uc-muted">The squad will be added soon.</p>') +
+      (fx.length ? '<h3 class="uc-sub">Fixtures &amp; results</h3><ul class="uc-fx-list uc-fx-list--modal">' + fx.map(fixtureCard).join('') + '</ul>' : '');
+    openModal(html, { wide: true });
+  }
+
   // ---------------------------------------------------------------------
   // Wiring
   document.addEventListener('click', function (e) {
@@ -620,6 +749,10 @@
     if (pl && !pl.disabled) { selected = selected === pl.getAttribute('data-player') ? null : pl.getAttribute('data-player'); renderVote(); return; }
     var team = t.closest('[data-team]');
     if (team) { filterTeam = team.getAttribute('data-team'); renderVote(); return; }
+    var to = t.closest('[data-team-open]'); if (to) { openTeam(to.getAttribute('data-team-open')); return; }
+    var vp = t.closest('[data-vote-player]');
+    if (vp) { selected = vp.getAttribute('data-vote-player'); closeModal(true); renderVote(); var vs = document.getElementById('vote'); if (vs) vs.scrollIntoView({ behavior: 'smooth', block: 'start' }); say('Player selected. Press Vote now.'); return; }
+    var ft = t.closest('[data-fx-tab]'); if (ft) { fxTab = ft.getAttribute('data-fx-tab'); fxSig = ''; renderFixtures(); return; }
     if (t.closest('#uc-votebar-go')) { startVote(); return; }
     if (t.closest('#uc-enter-btn')) { startRaffle(); return; }
     var tile = t.closest('[data-media]');
@@ -665,7 +798,12 @@
 
   // Scroll reveals and the sticky section nav highlight
   function wireScroll() {
+    document.body.classList.add('uc-page');
     var io = null;
+    var voteSec = document.getElementById('vote'), bar = document.getElementById('uc-votebar');
+    if (voteSec && bar && 'IntersectionObserver' in window) {
+      new IntersectionObserver(function (es) { es.forEach(function (en) { bar.classList.toggle('is-away', !en.isIntersecting); }); }, { threshold: 0 }).observe(voteSec);
+    }
     if ('IntersectionObserver' in window) {
       io = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('is-in'); io.unobserve(en.target); } }); }, { threshold: 0.12 });
       $$('[data-reveal]').forEach(function (n) { io.observe(n); });

@@ -7,8 +7,8 @@
 <title>Unity Cup - LACMS</title>
 <meta name="description" content="The LACMS Unity Cup: vote for Player of the Tournament, enter the charity raffle and share your photos and videos from the day. Open to everyone, no account needed.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-186">
-<link rel="stylesheet" href="css/unity-cup.css?v=20260824-186">
+<link rel="stylesheet" href="css/styles.css?v=20260824-187">
+<link rel="stylesheet" href="css/unity-cup.css?v=20260824-187">
 <meta property="og:title" content="LACMS Unity Cup">
 <meta property="og:description" content="Vote for Player of the Tournament, win a prize and share the day.">
 <meta property="og:image" content="https://lincolnacms.uk/Media/ACMS%20Branding/logo.png">
@@ -110,12 +110,40 @@
 
 <nav class="uc-subnav" aria-label="Unity Cup sections">
   <div class="container uc-subnav-inner">
+    <a href="#fixtures" data-uc-jump="fixtures">Fixtures</a>
+    <a href="#teams" data-uc-jump="teams">Teams</a>
     <a href="#vote" data-uc-jump="vote">Vote</a>
     <a href="#raffle" data-uc-jump="raffle">Raffle</a>
     <a href="#moments" data-uc-jump="moments">Your photos</a>
     <a href="#essence" data-uc-jump="essence">Essence</a>
   </div>
 </nav>
+
+<!-- ============ Fixtures ============ -->
+<section class="uc-section" id="fixtures" aria-labelledby="uc-fx-h">
+  <div class="container">
+    <header class="uc-head" data-reveal>
+      <span class="uc-kicker">Match day</span>
+      <h2 id="uc-fx-h">Fixtures &amp; results</h2>
+      <p>Kick-off times, pitches and live scores. Tap a team to see its squad.</p>
+    </header>
+    <div id="uc-fx-next"></div>
+    <div class="uc-chips" id="uc-fx-tabs" role="group" aria-label="Fixtures or tables"></div>
+    <div id="uc-fx-list" class="uc-fixtures" data-uc-loading><div class="uc-skel"></div><div class="uc-skel"></div></div>
+  </div>
+</section>
+
+<!-- ============ Teams ============ -->
+<section class="uc-section uc-section--alt" id="teams" aria-labelledby="uc-teams-h">
+  <div class="container">
+    <header class="uc-head" data-reveal>
+      <span class="uc-kicker">The teams</span>
+      <h2 id="uc-teams-h">Meet the squads</h2>
+      <p>Tap a team to see its players, its group and its matches.</p>
+    </header>
+    <div id="uc-teams" class="uc-teams" data-uc-loading><div class="uc-skel"></div><div class="uc-skel"></div><div class="uc-skel"></div></div>
+  </div>
+</section>
 
 <!-- ============ Vote ============ -->
 <section class="uc-section" id="vote" aria-labelledby="uc-vote-h">
@@ -318,15 +346,15 @@
 </footer>
 
 <script src="js/vendor/supabase-js-2.118.0.min.js"></script>
-<script src="js/view-as.js?v=20260824-186"></script>
+<script src="js/view-as.js?v=20260824-187"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/main.js?v=20260824-186"></script>
-<script src="js/members.js?v=20260824-186"></script>
-<script src="js/notifications.js?v=20260824-186"></script>
-<script src="js/guidance.js?v=20260824-186"></script>
-<script src="js/chat.js?v=20260824-186"></script>
-<script src="js/privacy.js?v=20260824-186"></script>
-<script src="js/unity-wheel.js?v=20260824-186"></script>
-<script src="js/unity-cup.js?v=20260824-186"></script>
+<script src="js/main.js?v=20260824-187"></script>
+<script src="js/members.js?v=20260824-187"></script>
+<script src="js/notifications.js?v=20260824-187"></script>
+<script src="js/guidance.js?v=20260824-187"></script>
+<script src="js/chat.js?v=20260824-187"></script>
+<script src="js/privacy.js?v=20260824-187"></script>
+<script src="js/unity-wheel.js?v=20260824-187"></script>
+<script src="js/unity-cup.js?v=20260824-187"></script>
 </body>
 </html>
