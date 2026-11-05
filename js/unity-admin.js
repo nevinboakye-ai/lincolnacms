@@ -471,6 +471,23 @@
   // ---------------------------------------------------------------------
   // Fixtures
   var STATUS = [['scheduled', 'Scheduled'], ['live', 'Live'], ['finished', 'Full time'], ['postponed', 'Postponed']];
+  // Who can see a fixture: hidden (no publish time), scheduled (publish time still to come) or public.
+  function visOf(f) { if (!f || !f.publish_at) return 'hidden'; return new Date(f.publish_at) <= new Date() ? 'public' : 'scheduled'; }
+  function whenText(iso) { return new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+  function needs122() { var fs = D.fixtures || []; return !!fs.length && !('publish_at' in fs[0]); }
+  var VIS_LABEL = { hidden: 'Hidden', scheduled: 'Scheduled', public: 'Public' };
+  function visPill(f) { var v = visOf(f); return '<span class="ua-pill ua-vis-pill is-' + v + '">' + VIS_LABEL[v] + '</span>'; }
+  function visBar(f) {
+    if (needs122()) return '';   // migration 122 not run yet: nothing to choose
+    var v = visOf(f), msg = v === 'public' ? 'Everyone can see this fixture' + (f.status === 'finished' ? ' and its result.' : '.')
+      : v === 'scheduled' ? 'Goes public on ' + whenText(f.publish_at) + '. Until then only the committee can see it.'
+      : 'Only the committee can see this. Visitors, the league tables and the share pictures don\'t include it.';
+    var acts = '';
+    if (v !== 'public') acts += '<button type="button" class="btn btn-primary" data-ua-fx-vis="now">Publish now</button>';
+    if (v !== 'hidden') acts += '<button type="button" class="btn btn-outline" data-ua-fx-vis="hide">Hide</button>';
+    if (v !== 'public') acts += '<span class="ua-vis-at"><input type="datetime-local" data-ua-fx-at aria-label="Date and time this fixture goes public" value="' + esc(v === 'scheduled' ? toLocalInput(f.publish_at) : '') + '"><button type="button" class="btn btn-outline" data-ua-fx-vis="at">' + (v === 'scheduled' ? 'Reschedule' : 'Schedule') + '</button></span>';
+    return '<div class="ua-vis is-' + v + '"><div class="ua-vis-top">' + visPill(f) + '<small>' + esc(msg) + '</small></div><div class="ua-vis-acts">' + acts + '</div></div>';
+  }
   function fixtureForm(f) {
     var isNew = !f, id = f ? f.id : 'new';
     var stages = []; (D.fixtures || []).forEach(function (x) { if (x.stage && stages.indexOf(x.stage) < 0) stages.push(x.stage); });
@@ -484,7 +501,10 @@
       '<label class="ua-field"><span>Status</span><select data-ff="status">' + STATUS.map(function (x) { return '<option value="' + x[0] + '"' + ((f ? f.status : 'scheduled') === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></label>' +
       '<label class="ua-field ua-field--score"><span>Home score</span><input type="number" min="0" max="99" inputmode="numeric" data-ff="hs" value="' + esc(sc(f && f.home_score)) + '"></label>' +
       '<label class="ua-field ua-field--score"><span>Away score</span><input type="number" min="0" max="99" inputmode="numeric" data-ff="as" value="' + esc(sc(f && f.away_score)) + '"></label>' +
-      '<label class="ua-field ua-field--wide"><span>Note (optional)</span><input data-ff="note" maxlength="120" value="' + esc(f && f.note || '') + '" placeholder="e.g. Won on penalties"></label></div>' +
+      '<label class="ua-field ua-field--wide"><span>Note (optional)</span><input data-ff="note" maxlength="120" value="' + esc(f && f.note || '') + '" placeholder="e.g. Won on penalties"></label>' +
+      (isNew && !needs122() ? '<label class="ua-field"><span>On the public page</span><select data-ff="vis"><option value="hidden">Keep hidden for now</option><option value="now">Publish straight away</option><option value="at">Schedule for…</option></select></label>' +
+        '<label class="ua-field" data-ff-pubwrap hidden><span>Goes public at</span><input type="datetime-local" data-ff="pubat"></label>' : '') + '</div>' +
+      (isNew ? '' : visBar(f)) +
       '<div class="ua-actions">' + (isNew ? '<button type="button" class="btn btn-primary" data-ua-save-fx>Add fixture</button>' : '<button type="button" class="btn btn-outline" data-ua-save-fx>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-fx>Delete</button>') + '</div></div>';
   }
   function liveScoring() {
@@ -496,15 +516,29 @@
       var hs = f.home_score == null ? 0 : f.home_score, as = f.away_score == null ? 0 : f.away_score;
       function side(t, v, k) { return '<div class="ua-side">' + crestHtml(t).replace('uc-crest--lg', 'uc-crest--sm') + '<strong>' + esc(t.name) + '</strong><div class="ua-step"><button type="button" data-ua-goal="' + k + '" data-d="-1" aria-label="Minus one for ' + esc(t.name) + '">&minus;</button><b>' + v + '</b><button type="button" data-ua-goal="' + k + '" data-d="1" aria-label="Plus one for ' + esc(t.name) + '">+</button></div></div>'; }
       return '<div class="ua-live" data-fid="' + esc(f.id) + '" data-hs="' + hs + '" data-as="' + as + '"><div class="ua-live-top"><span class="ua-pill is-' + esc(f.status) + '">' + esc((STATUS.filter(function (x) { return x[0] === f.status; })[0] || [0, f.status])[1]) + '</span><small>' + esc([f.stage, f.pitch, f.kickoff_at ? new Date(f.kickoff_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')) + '</small></div>' +
+        (needs122() || visOf(f) === 'public' ? '' : '<p class="ua-vis-warn">' + visPill(f) + ' <span>Visitors can\'t see this match yet.</span> <button type="button" class="btn btn-outline" data-ua-fx-vis="now">Publish now</button></p>') +
         '<div class="ua-live-sides">' + side(h, hs, 'h') + side(a, as, 'a') + '</div>' +
         '<div class="ua-actions">' + (f.status !== 'live' ? '<button type="button" class="btn btn-primary" data-ua-status="live">Kick off (go live)</button>' : '') + (f.status === 'live' ? '<button type="button" class="btn btn-primary" data-ua-status="finished">Full time</button>' : '') + '</div></div>';
     }).join('') + '</div></div>';
+  }
+  function visibilityCard() {
+    var fs = D.fixtures || [];
+    if (needs122()) return '<div class="ua-card ua-card--warn"><h3>One more step: choosing when fixtures go public</h3><p class="ua-hint">Run <code>122-unity-cup-publish-fixtures.sql</code> (from the <code>db/migrations</code> folder) in the Supabase SQL Editor, then reload. Until then every fixture is shown publicly as soon as it is saved.</p></div>';
+    var c = { public: 0, scheduled: 0, hidden: 0 }; fs.forEach(function (f) { c[visOf(f)]++; });
+    var next = fs.filter(function (f) { return visOf(f) === 'scheduled'; }).map(function (f) { return new Date(f.publish_at).getTime(); }).sort(function (a, b) { return a - b; })[0];
+    return '<div class="ua-card ua-vis-card"><h3>What the public can see</h3>' +
+      '<p class="ua-hint">New fixtures stay <strong>hidden</strong> until you publish them. Results and league tables are built only from public fixtures, so nothing leaks early.</p>' +
+      '<div class="ua-vis-count"><span class="ua-pill ua-vis-pill is-public">' + c.public + ' public</span><span class="ua-pill ua-vis-pill is-scheduled">' + c.scheduled + ' scheduled</span><span class="ua-pill ua-vis-pill is-hidden">' + c.hidden + ' hidden</span>' + (next ? '<small>Next goes public ' + esc(whenText(new Date(next).toISOString())) + '</small>' : '') + '</div>' +
+      (fs.length ? '<div class="ua-vis-acts">' +
+        (c.hidden + c.scheduled ? '<button type="button" class="btn btn-primary" data-ua-fx-vis="now" data-ua-fx-all>Publish all (' + (c.hidden + c.scheduled) + ')</button>' : '') +
+        (c.hidden ? '<span class="ua-vis-at"><input type="datetime-local" data-ua-fx-at-all aria-label="Date and time the hidden fixtures go public"><button type="button" class="btn btn-outline" data-ua-fx-vis="at" data-ua-fx-all>Schedule the hidden ones</button></span>' : '') +
+        (c.public + c.scheduled ? '<button type="button" class="btn btn-outline sh-btn-danger" data-ua-fx-vis="hide" data-ua-fx-all>Hide all</button>' : '') + '</div>' : '') + '</div>';
   }
   function fixturesHtml() {
     var fs = D.fixtures || [], stages = []; fs.forEach(function (x) { if (x.stage && stages.indexOf(x.stage) < 0) stages.push(x.stage); });
     var dl = '<datalist id="ua-stages">' + stages.concat(['Group A', 'Group B', 'Quarter-final', 'Semi-final', 'Final', '3rd place']).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
     if ((D.teams || []).length < 2) return '<div class="ua-card"><h3>Fixtures</h3><p class="ua-hint">Add at least two teams (Teams tab) first.</p></div>';
-    return dl + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
+    return dl + visibilityCard() + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
       '<div class="ua-card"><h3>All fixtures (' + fs.length + ')</h3>' + (fs.length ? '<div class="ua-fx-list">' + fs.map(fixtureForm).join('') + '</div>' : '<p class="ua-hint">No fixtures yet.</p>') + '</div>';
   }
   function readFixture(row) {
@@ -517,7 +551,22 @@
     if (v.home === v.away) { note('A team can\'t play itself.', true); return; }
     btn.disabled = true;
     supabaseClient.rpc('unity_admin_save_fixture', { p_id: id, p_stage: v.stage, p_home: v.home, p_away: v.away, p_kickoff: v.kickoff, p_pitch: v.pitch, p_status: v.status, p_home_score: v.hs, p_away_score: v.as, p_note: v.note, p_sort: id ? null : (D.fixtures || []).length }).then(function (r) {
-      btn.disabled = false; if (r.error) { fail(r.error); return; } note(id ? 'Fixture saved.' : 'Fixture added.'); load();
+      if (r.error) { btn.disabled = false; fail(r.error); return; }
+      var vis = !id && $('[data-ff="vis"]', row) ? $('[data-ff="vis"]', row).value : 'hidden';
+      if (id || vis === 'hidden') { btn.disabled = false; load().then(function () { note(id ? 'Fixture saved.' : 'Fixture added. It is hidden until you publish it.'); }); return; }
+      setVis([r.data], vis, vis === 'at' ? atISO($('[data-ff="pubat"]', row)) : null, btn, 'Fixture added' + (vis === 'now' ? ' and public.' : ' and scheduled.'));
+    });
+  }
+  function atISO(input) { return input && input.value ? new Date(input.value).toISOString() : null; }
+  // Hide / publish now / schedule. ids = null means every fixture (the server leaves ones already public alone).
+  function setVis(ids, mode, at, btn, doneMsg) {
+    if (mode === 'at' && !at) { if (btn) btn.disabled = false; note('Pick the date and time first.', true); return; }
+    if (btn) btn.disabled = true;
+    supabaseClient.rpc('unity_admin_set_fixture_visibility', { p_ids: ids, p_mode: mode, p_at: at }).then(function (r) {
+      if (btn) btn.disabled = false;
+      if (r.error) { note(/function|schema cache|does not exist/i.test(r.error.message || '') ? 'Run migration 122-unity-cup-publish-fixtures.sql in Supabase first.' : r.error.message, true); return load(); }
+      var m = doneMsg || (mode === 'now' ? 'Published.' : mode === 'hide' ? 'Hidden from the public page.' : 'Scheduled.');
+      return load().then(function () { note(m); });   // after the reload, which redraws the panel
     });
   }
   function setScore(fid, hs, as, status) {
@@ -673,6 +722,15 @@
     }
     var sf = t.closest('[data-ua-save-fx]'); if (sf) { saveFixture(sf.closest('[data-fid]'), sf); return; }
     var df = t.closest('[data-ua-del-fx]'); if (df) { if (window.confirm('Delete this fixture?')) supabaseClient.rpc('unity_admin_delete_fixture', { p_id: df.closest('[data-fid]').getAttribute('data-fid') }).then(function (r) { if (r.error) fail(r.error); else { note('Fixture deleted.'); load(); } }); return; }
+    var fv = t.closest('[data-ua-fx-vis]');
+    if (fv) {
+      var mode = fv.getAttribute('data-ua-fx-vis'), all = fv.hasAttribute('data-ua-fx-all'), frow = fv.closest('[data-fid]');
+      var inp = all ? $('[data-ua-fx-at-all]') : frow && $('[data-ua-fx-at]', frow), when = mode === 'at' ? atISO(inp) : null;
+      if (mode === 'at' && when && new Date(when) <= new Date()) { note('Pick a time in the future, or use Publish now.', true); return; }
+      if (all && mode === 'now' && !window.confirm('Make every hidden or scheduled fixture public now?')) return;
+      if (all && mode === 'hide' && !window.confirm('Hide every fixture from the public page? Visitors will see no fixtures, results or tables until you publish again.')) return;
+      setVis(all ? null : [frow.getAttribute('data-fid')], mode, when, fv); return;
+    }
     var gl = t.closest('[data-ua-goal]');
     if (gl) { var lv = gl.closest('[data-fid]'), hs = Number(lv.getAttribute('data-hs')), as = Number(lv.getAttribute('data-as')), d = Number(gl.getAttribute('data-d')); if (gl.getAttribute('data-ua-goal') === 'h') hs = Math.max(0, Math.min(99, hs + d)); else as = Math.max(0, Math.min(99, as + d)); var fx0 = (D.fixtures || []).filter(function (x) { return x.id === lv.getAttribute('data-fid'); })[0]; setScore(lv.getAttribute('data-fid'), hs, as, fx0 && fx0.status === 'scheduled' ? 'live' : (fx0 ? fx0.status : 'live')); return; }
     var ss = t.closest('[data-ua-status]');
@@ -702,6 +760,8 @@
   });
 
   root.addEventListener('change', function (e) {
+    var vs = e.target.closest && e.target.closest('select[data-ff="vis"]');
+    if (vs) { var w = $('[data-ff-pubwrap]', vs.closest('.ua-fx')); if (w) w.hidden = vs.value !== 'at'; return; }
     var sw = e.target.closest('[data-ua-set]');
     if (!sw) return;
     var key = sw.getAttribute('data-ua-set'), p = {}; p[key] = sw.checked;

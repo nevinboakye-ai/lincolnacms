@@ -838,3 +838,27 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
 .uc-sub-row .uc-sub { margin: 0; }
 .uc-fx-top .uc-fx-meta { margin-left: auto; }
 .uc-winners li .uc-share--icon { margin-left: auto; flex: none; }
+
+/* Choosing when fixtures go public (migration 122) */
+[data-ff-pubwrap][hidden] { display: none; }
+.ua-pill.ua-vis-pill.is-public { background: rgba(79, 209, 134, 0.2); color: #4fd186; }
+.ua-pill.ua-vis-pill.is-scheduled { background: rgba(212, 166, 43, 0.2); color: var(--color-gold-light); }
+.ua-pill.ua-vis-pill.is-hidden { background: var(--color-surface-raised); color: var(--color-text-muted); }
+.ua-vis { display: grid; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--color-border); background: var(--color-surface); }
+.ua-vis.is-public { border-style: solid; border-color: rgba(79, 209, 134, 0.4); }
+.ua-vis.is-scheduled { border-color: rgba(212, 166, 43, 0.55); }
+.ua-vis-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.ua-vis-top small, .ua-vis-count small { color: var(--color-text-muted); font-size: 0.86rem; line-height: 1.4; }
+.ua-vis-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ua-vis-acts .btn { min-height: 40px; padding-top: 8px; padding-bottom: 8px; }
+.ua-vis-at { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ua-vis-at input { min-height: 40px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text); font: inherit; max-width: 100%; }
+.ua-vis-count { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 12px; }
+.ua-vis-card .ua-vis-acts { margin-top: 2px; }
+.ua-vis-warn { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0; padding: 10px 12px; border-radius: 10px; background: rgba(212, 166, 43, 0.12); border: 1px solid rgba(212, 166, 43, 0.4); font-size: 0.9rem; }
+.ua-vis-warn .btn { min-height: 36px; padding-top: 6px; padding-bottom: 6px; margin-left: auto; }
+.ua-card--warn { border-color: rgba(212, 166, 43, 0.6); }
+@media (max-width: 560px) {
+  .ua-vis-acts .btn, .ua-vis-at { flex: 1 1 100%; }
+  .ua-vis-at input { flex: 1 1 160px; }
+}

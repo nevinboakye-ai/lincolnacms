@@ -1990,3 +1990,13 @@ Anyone can turn what they're looking at into a picture to save or post (`js/unit
 
 Each comes as a **Post (4:5)** or a **Story (9:16)**, 2160 px wide. The window has **Share** (on a phone this opens the phone's own share sheet with the picture attached, which is how to reach Instagram, WhatsApp, TikTok, Snapchat and so on), **Save image** (a lossless PNG), **Copy image**, and quick links to WhatsApp, X and Facebook plus **Copy caption** (those links share the caption and the page; websites can't attach a picture to them, so the window says to save the image or use Share on a phone for that). The "Share" button only appears on devices whose browser supports sharing.
 
+
+## 175. Choosing when fixtures go public (migration 122)
+
+Run `db/migrations/122-unity-cup-publish-fixtures.sql`. Before this, every fixture appeared on the public Unity Cup page the moment it was saved. Now each one is **Hidden**, **Scheduled** or **Public**:
+- **New fixtures start Hidden.** Only the committee sees them (Dashboard -> Unity Cup -> Fixtures). The match, its result, the league tables built from it and the share pictures all stay off the public page until it is published.
+- **Publish now** makes one fixture public straight away; **Schedule** picks a date and time and it switches itself on then (nobody needs to be there); **Hide** takes it back off (and cancels a schedule). When adding a fixture you can also choose "Publish straight away" or "Schedule for...".
+- **What the public can see** (top of the Fixtures tab) shows how many are public / scheduled / hidden, with **Publish all**, **Schedule the hidden ones** and **Hide all**.
+- The live-scoring cards warn "Visitors can't see this match yet" if you kick off a hidden match, with a Publish now button next to it.
+- **Fixtures that already existed stay public** when the migration is run, so nothing disappears from the live page. Use **Hide all** if you want to start from a clean slate.
+- The rule is enforced in the database (the public page is only ever sent published fixtures), so it can't be bypassed. Until the migration is run, the Fixtures tab shows a reminder and everything behaves as before.
