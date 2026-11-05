@@ -7373,6 +7373,9 @@
 
       var html = HUB_FEATURES.map(function (f) {
         var rule = hubRules.filter(function (r) { return r.feature === f.key; })[0];
+        if (!rule && f.key === 'dash_unity') {
+          return '<div class="hub-rule-card"><div class="hub-rule-head"><div class="hub-rule-headtext"><h3 class="hub-rule-title">' + escapeHtml(f.label) + '</h3><p class="hub-rule-desc">Not set up in the database yet. In Supabase (SQL Editor), run <code>db/migrations/116-unity-cup-access-and-team-links.sql</code>, then reload this page and it will appear here with the other access rules.</p></div></div></div>';
+        }
         if (!rule) return '';
         var withAccess = hubPeople.filter(function (p) { return p.cells[f.key] && p.cells[f.key].allowed; }).length;
         var courseOptions = LACMS_COURSES.slice();

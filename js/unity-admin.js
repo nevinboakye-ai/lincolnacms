@@ -37,7 +37,7 @@
     return supabaseClient.rpc('unity_admin_get').then(function (res) {
       loading = false;
       if (res.error || !res.data) {
-        if (!D) root.innerHTML = '<p class="ua-msg is-bad">Couldn\'t load the Unity Cup panel. ' + esc(res.error && res.error.message || '') + ' Run <code>db/migrations/114-unity-cup.sql</code> if you haven\'t yet.</p>';
+        if (!D) root.innerHTML = '<div class="ua-card"><h3>The Unity Cup isn\'t set up in the database yet</h3><p class="ua-hint">' + esc(res.error && res.error.message || '') + '</p><p class="ua-hint">In Supabase, open <strong>SQL Editor</strong> and run these files from the <code>db/migrations</code> folder, in this order: <code>114-unity-cup.sql</code>, <code>115-unity-cup-teams-fixtures.sql</code>, <code>116-unity-cup-access-and-team-links.sql</code>, <code>117-unity-cup-team-order.sql</code>. Then reload this page.</p></div>';
         return;
       }
       var sig = JSON.stringify(res.data), changed = sig !== lastSig; lastSig = sig;
@@ -53,7 +53,8 @@
   function render() {
     var pend = { raffle: (D.entries || []).filter(function (e) { return e.status === 'pending'; }).length, media: (D.media || []).filter(function (m) { return m.status === 'pending'; }).length };
     var tabs = [['setup', 'Settings'], ['teams', 'Teams'], ['players', 'Squads'], ['fixtures', 'Fixtures'], ['raffle', 'Raffle' + (pend.raffle ? ' (' + pend.raffle + ')' : '')], ['media', 'Photos & videos' + (pend.media ? ' (' + pend.media + ')' : '')]];
-    root.innerHTML = '<div class="ua-top"><a class="btn btn-outline" href="unity-cup.html" target="_blank" rel="noopener">Open the public page</a><div class="ua-status">' + liveLine() + '</div></div>' +
+    var banner = !D.team_links ? '<div class="ua-card ua-card--warn"><h3>A database update is waiting</h3><p class="ua-hint">Run <code>db/migrations/116-unity-cup-access-and-team-links.sql</code> in Supabase (SQL Editor) to switch on who-can-run-this access and the private team links. Until then those two parts are hidden.</p></div>' : '';
+    root.innerHTML = banner + '<div class="ua-top"><a class="btn btn-outline" href="unity-cup.html" target="_blank" rel="noopener">Open the public page</a><div class="ua-status">' + liveLine() + '</div></div>' +
       '<div class="ua-tabs" role="tablist">' + tabs.map(function (t) { return '<button type="button" role="tab" class="ua-tab' + (tab === t[0] ? ' is-active' : '') + '" data-ua-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + esc(t[1]) + '</button>'; }).join('') + '</div>' +
       '<p class="ua-msg" data-ua-msg role="status"></p><div class="ua-pane">' + ({ setup: setupHtml, teams: teamsHtml, players: playersHtml, fixtures: fixturesHtml, raffle: raffleHtml, media: mediaHtml }[tab])() + '</div>';
     if (tab === 'media') loadThumbs();
@@ -151,6 +152,7 @@
     return chips.join('');
   }
   function teamLinkBlock(t) {
+    if (!D.team_links) return '';
     var l = linkFor(t.id), edits = (D.team_edits || []).filter(function (e) { return e.team_id === t.id; }).slice(0, 8);
     if (!l) return '<div class="ua-link-box" data-tid-link="' + esc(t.id) + '"><div><strong>Private team link</strong><p class="ua-hint">Let this team\'s manager enter their own players, with no login. You get a secret link to send them.</p></div><button type="button" class="btn btn-outline" data-ua-link="create">Create private link</button></div>';
     return '<div class="ua-link-box is-made" data-tid-link="' + esc(t.id) + '"><div class="ua-link-head"><strong>Private team link</strong><span class="ua-link-status">' + linkStatus(t, l) + '</span></div>' +
@@ -162,6 +164,7 @@
       (edits.length ? '<details class="ua-changes"><summary>What the team has changed (' + edits.length + ')</summary><ul>' + edits.map(function (e) { return '<li><b>' + esc(e.action) + '</b> ' + esc(e.detail || '') + ' <small>' + esc(ago(e.at)) + '</small></li>'; }).join('') + '</ul></details>' : '') + '</div>';
   }
   function linksCard() {
+    if (!D.team_links) return '';
     var s = D.settings, ts = D.teams || [], made = ts.filter(function (t) { return linkFor(t.id); }).length, submitted = (D.team_links || []).filter(function (l) { return l.submitted_at; }).length;
     return '<div class="ua-card"><h3>Team links</h3><p class="ua-hint">Give each team its own private link so a team manager can enter their players\' names, numbers and positions themselves, with no account or login. Create a link inside each team below (or all at once here), send it, and watch the status. <strong>' + made + ' of ' + ts.length + '</strong> teams have a link, <strong>' + submitted + '</strong> have submitted.</p>' +
       '<div class="ua-switches">' + sw('team_links_open', 'Teams can edit through their links', 'Switch off to freeze every team\'s line-up (the links then show it read-only).', s.team_links_open) + '</div>' +
@@ -687,8 +690,13 @@
   if (card) card.addEventListener('click', function () { load(); });
   supabaseClient.auth.getSession().then(function (r) {
     if (!r.data || !r.data.session) return;
+    // Normally "may this person run the Unity Cup?" (president, or given it in Hub Access). If migration 116 hasn't
+    // been run yet that function doesn't exist, so fall back to "is this the president?" instead of hiding the card.
     supabaseClient.rpc('unity_can_manage').then(function (p) {
-      if (p.error || p.data !== true) { if (card) card.style.display = 'none'; return; }
+      if (!p.error) return p.data === true;
+      return supabaseClient.rpc('is_president').then(function (q) { return !q.error && q.data === true; });
+    }).then(function (allowed) {
+      if (!allowed) { if (card) card.style.display = 'none'; return; }
       load(true);
     });
   });
