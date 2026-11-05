@@ -760,3 +760,6 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
   .tm-row { grid-template-columns: 38px minmax(0, 1fr) 64px 36px; grid-template-areas: "shirt name num del" ". pos pos pos"; row-gap: 6px; }
 }
 @media (prefers-reduced-motion: reduce) { .tm-hero, .tm-spin { animation: none; } }
+.ua-order { display: inline-flex; gap: 6px; }
+.ua-order .btn { min-height: 40px; padding: 0 12px; font-size: 0.85rem; }
+.ua-arrow { min-width: 40px; font-size: 1.05rem; }

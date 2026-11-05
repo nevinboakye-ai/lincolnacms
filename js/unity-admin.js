@@ -124,7 +124,7 @@
       '<label class="ua-field ua-field--s"><span>Colour</span><input type="color" data-tf="colour" value="' + esc(t ? t.colour : '#d4a62b') + '"></label>' +
       '<label class="ua-field ua-field--s"><span>Group (optional)</span><input data-tf="group" maxlength="20" list="ua-groups" value="' + esc(t && t.group_name || '') + '" placeholder="Group A"></label>' +
       '<label class="ua-field ua-field--wide"><span>About the team (optional)</span><input data-tf="desc" maxlength="200" value="' + esc(t && t.description || '') + '" placeholder="A line or two for the team page"></label>' +
-      '</div>' + (t ? teamLinkBlock(t) : '') + (t && window.UnityPitch ? '<details class="ua-preview"><summary>Preview the line-up</summary>' + UnityPitch.html((D.players || []).filter(function (p) { return p.team_id === t.id && p.active; }), { colour: t.colour, canVote: false, title: t.name + ' line-up' }) + '<p class="ua-hint">Players are placed by their position (Goalkeeper, Defender, Midfielder, Forward). Set it in the Players tab.</p></details>' : '') + '<div class="ua-team-actions">' + (isNew ? '<button type="button" class="btn btn-primary" data-ua-save-team>Add team</button>' : '<span class="ua-hint">' + n + (n === 1 ? ' player' : ' players') + '</span><button type="button" class="btn btn-outline" data-ua-save-team>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-team>Delete</button>') + '</div></div>';
+      '</div>' + (t ? teamLinkBlock(t) : '') + (t && window.UnityPitch ? '<details class="ua-preview"><summary>Preview the line-up</summary>' + UnityPitch.html((D.players || []).filter(function (p) { return p.team_id === t.id && p.active; }), { colour: t.colour, canVote: false, title: t.name + ' line-up' }) + '<p class="ua-hint">Players are placed by their position (Goalkeeper, Defender, Midfielder, Forward). Set it in the Players tab.</p></details>' : '') + '<div class="ua-team-actions">' + (isNew ? '<button type="button" class="btn btn-primary" data-ua-save-team>Add team</button>' : '<span class="ua-hint">' + n + (n === 1 ? ' player' : ' players') + '</span>' + orderButtons(t.id) + '<button type="button" class="btn btn-outline" data-ua-save-team>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-team>Delete</button>') + '</div></div>';
   }
   // ---------------------------------------------------------------------
   // Private team links: a secret link per team lets its manager enter players with no account (migration 116)
@@ -200,6 +200,23 @@
     chain.then(function () { btn.disabled = false; lastSig = ''; note('Links created for every team.'); load(); });
   }
 
+  // Putting teams in order: the first team is listed first everywhere (public Teams section, vote filter, Squads).
+  function orderButtons(id) {
+    var i = (D.teams || []).findIndex(function (x) { return x.id === id; }), n = (D.teams || []).length;
+    return '<span class="ua-order" role="group" aria-label="Order"><button type="button" class="btn btn-outline" data-ua-move="top"' + (i === 0 ? ' disabled' : '') + '>Move to top</button>' +
+      '<button type="button" class="btn btn-outline ua-arrow" data-ua-move="up" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>&uarr;</button>' +
+      '<button type="button" class="btn btn-outline ua-arrow" data-ua-move="down" aria-label="Move down"' + (i === n - 1 ? ' disabled' : '') + '>&darr;</button></span>';
+  }
+  function moveTeam(id, how, btn) {
+    var ids = (D.teams || []).map(function (t) { return t.id; }), i = ids.indexOf(id); if (i < 0) return;
+    ids.splice(i, 1);
+    if (how === 'top') ids.unshift(id); else ids.splice(how === 'up' ? Math.max(0, i - 1) : Math.min(ids.length, i + 1), 0, id);
+    btn.disabled = true;
+    supabaseClient.rpc('unity_admin_reorder_teams', { p_ids: ids }).then(function (r) {
+      if (r.error) { fail(r.error); return; }
+      lastSig = ''; note('Order saved.'); load();
+    });
+  }
   function groupList() {
     var g = []; (D.teams || []).forEach(function (t) { if (t.group_name && g.indexOf(t.group_name) < 0) g.push(t.group_name); });
     return '<datalist id="ua-groups">' + g.concat(['Group A', 'Group B', 'Group C', 'Group D']).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
@@ -605,6 +622,7 @@
     var la = t.closest('[data-ua-link]'); if (la) { linkAction(la.closest('[data-tid-link]').getAttribute('data-tid-link'), la.getAttribute('data-ua-link'), la); return; }
     var lall = t.closest('[data-ua-link-all]'); if (lall) { allLinks(lall.getAttribute('data-ua-link-all'), lall); return; }
     if (t.closest('[data-ua-save-deadline]')) { var dv = $('[data-ua-deadline]').value; saveSettings({ team_links_deadline: dv ? new Date(dv).toISOString() : '' }); return; }
+    var mv = t.closest('[data-ua-move]'); if (mv) { moveTeam(mv.closest('[data-tid]').getAttribute('data-tid'), mv.getAttribute('data-ua-move'), mv); return; }
     var st = t.closest('[data-ua-save-team]'); if (st) { saveTeam(st.closest('[data-tid]'), st); return; }
     var dt = t.closest('[data-ua-del-team]');
     if (dt) {
