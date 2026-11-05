@@ -1,10 +1,11 @@
-// Dashboard -> Unity Cup (president only)
+// Dashboard -> Unity Cup (the president, plus anyone given "Dashboard: Unity Cup" in Hub Access)
 //
 // Runs the Unity Cup portal (unity-cup.html): switches for voting / raffle / uploads, the player list and
 // live vote counts, raffle entries (check each donation against JustGiving, then mark it verified), the live
 // draw with the wheel, and the review queue for photos and videos people send in.
 //
-// Everything goes through the committee-only database functions in migration 114.
+// Everything goes through the committee-only database functions (migrations 114 to 116), which check the
+// same permission: the president, or a member with Hub Access to "Dashboard: Unity Cup".
 
 (function () {
   'use strict';
@@ -123,15 +124,89 @@
       '<label class="ua-field ua-field--s"><span>Colour</span><input type="color" data-tf="colour" value="' + esc(t ? t.colour : '#d4a62b') + '"></label>' +
       '<label class="ua-field ua-field--s"><span>Group (optional)</span><input data-tf="group" maxlength="20" list="ua-groups" value="' + esc(t && t.group_name || '') + '" placeholder="Group A"></label>' +
       '<label class="ua-field ua-field--wide"><span>About the team (optional)</span><input data-tf="desc" maxlength="200" value="' + esc(t && t.description || '') + '" placeholder="A line or two for the team page"></label>' +
-      '</div>' + (t && window.UnityPitch ? '<details class="ua-preview"><summary>Preview the line-up</summary>' + UnityPitch.html((D.players || []).filter(function (p) { return p.team_id === t.id && p.active; }), { colour: t.colour, canVote: false, title: t.name + ' line-up' }) + '<p class="ua-hint">Players are placed by their position (Goalkeeper, Defender, Midfielder, Forward). Set it in the Players tab.</p></details>' : '') + '<div class="ua-team-actions">' + (isNew ? '<button type="button" class="btn btn-primary" data-ua-save-team>Add team</button>' : '<span class="ua-hint">' + n + (n === 1 ? ' player' : ' players') + '</span><button type="button" class="btn btn-outline" data-ua-save-team>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-team>Delete</button>') + '</div></div>';
+      '</div>' + (t ? teamLinkBlock(t) : '') + (t && window.UnityPitch ? '<details class="ua-preview"><summary>Preview the line-up</summary>' + UnityPitch.html((D.players || []).filter(function (p) { return p.team_id === t.id && p.active; }), { colour: t.colour, canVote: false, title: t.name + ' line-up' }) + '<p class="ua-hint">Players are placed by their position (Goalkeeper, Defender, Midfielder, Forward). Set it in the Players tab.</p></details>' : '') + '<div class="ua-team-actions">' + (isNew ? '<button type="button" class="btn btn-primary" data-ua-save-team>Add team</button>' : '<span class="ua-hint">' + n + (n === 1 ? ' player' : ' players') + '</span><button type="button" class="btn btn-outline" data-ua-save-team>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-team>Delete</button>') + '</div></div>';
   }
+  // ---------------------------------------------------------------------
+  // Private team links: a secret link per team lets its manager enter players with no account (migration 116)
+  function linkFor(teamId) { return (D.team_links || []).filter(function (l) { return l.team_id === teamId; })[0]; }
+  function linkUrl(l) { return new URL('unity-team.html', window.location.href).href + '#' + l.token; }
+  function shareText(t, l) {
+    return 'Hi! Here is your private link to enter the ' + t.name + ' line-up for the LACMS Unity Cup:\n' + linkUrl(l) +
+      '\n\nAdd each player\'s name, shirt number and position, then press "Submit line-up" when you\'re done. You can come back and change things until we close it. Please don\'t share the link outside your team.';
+  }
+  function ago(iso) {
+    if (!iso) return '';
+    var m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : when(iso);
+  }
+  function linkStatus(t, l) {
+    if (!l.enabled) return '<span class="ua-pill is-off">Switched off</span>';
+    var chips = [];
+    var edited = l.last_edit_at && (!l.submitted_at || new Date(l.last_edit_at) > new Date(l.submitted_at));
+    if (l.submitted_at && !edited) chips.push('<span class="ua-pill is-done">Submitted ' + esc(ago(l.submitted_at)) + (l.submitted_by ? ' by ' + esc(l.submitted_by) : '') + '</span>');
+    else if (l.submitted_at && edited) chips.push('<span class="ua-pill is-warn">Changed after submitting ' + esc(ago(l.last_edit_at)) + '</span>');
+    else if (l.last_edit_at) chips.push('<span class="ua-pill is-live">Entering players · last change ' + esc(ago(l.last_edit_at)) + '</span>');
+    else if (l.last_opened_at) chips.push('<span class="ua-pill">Opened ' + esc(ago(l.last_opened_at)) + ', nothing entered yet</span>');
+    else chips.push('<span class="ua-pill">Not opened yet</span>');
+    return chips.join('');
+  }
+  function teamLinkBlock(t) {
+    var l = linkFor(t.id), edits = (D.team_edits || []).filter(function (e) { return e.team_id === t.id; }).slice(0, 8);
+    if (!l) return '<div class="ua-link-box" data-tid-link="' + esc(t.id) + '"><div><strong>Private team link</strong><p class="ua-hint">Let this team\'s manager enter their own players, with no login. You get a secret link to send them.</p></div><button type="button" class="btn btn-outline" data-ua-link="create">Create private link</button></div>';
+    return '<div class="ua-link-box is-made" data-tid-link="' + esc(t.id) + '"><div class="ua-link-head"><strong>Private team link</strong><span class="ua-link-status">' + linkStatus(t, l) + '</span></div>' +
+      '<div class="ua-link-url"><input readonly value="' + esc(linkUrl(l)) + '" aria-label="Private link for ' + esc(t.name) + '" data-ua-url><button type="button" class="btn btn-primary" data-ua-link="copy">Copy link</button></div>' +
+      '<div class="ua-actions"><button type="button" class="btn btn-outline" data-ua-link="copytext">Copy a message to send</button><a class="btn btn-outline" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(shareText(t, l)) + '">WhatsApp</a>' +
+      '<a class="btn btn-outline" target="_blank" rel="noopener" href="' + esc(linkUrl(l)) + '">Open it</a><button type="button" class="btn btn-outline" data-ua-link="' + (l.enabled ? 'disable' : 'enable') + '">' + (l.enabled ? 'Switch off' : 'Switch on') + '</button>' +
+      '<button type="button" class="btn btn-outline sh-btn-danger" data-ua-link="regenerate">Make a new link</button></div>' +
+      '<p class="ua-hint">Anyone with this link can edit this team\'s players, so send it only to the team manager. "Make a new link" stops the old one working straight away.</p>' +
+      (edits.length ? '<details class="ua-changes"><summary>What the team has changed (' + edits.length + ')</summary><ul>' + edits.map(function (e) { return '<li><b>' + esc(e.action) + '</b> ' + esc(e.detail || '') + ' <small>' + esc(ago(e.at)) + '</small></li>'; }).join('') + '</ul></details>' : '') + '</div>';
+  }
+  function linksCard() {
+    var s = D.settings, ts = D.teams || [], made = ts.filter(function (t) { return linkFor(t.id); }).length, submitted = (D.team_links || []).filter(function (l) { return l.submitted_at; }).length;
+    return '<div class="ua-card"><h3>Team links</h3><p class="ua-hint">Give each team its own private link so a team manager can enter their players\' names, numbers and positions themselves, with no account or login. Create a link inside each team below (or all at once here), send it, and watch the status. <strong>' + made + ' of ' + ts.length + '</strong> teams have a link, <strong>' + submitted + '</strong> have submitted.</p>' +
+      '<div class="ua-switches">' + sw('team_links_open', 'Teams can edit through their links', 'Switch off to freeze every team\'s line-up (the links then show it read-only).', s.team_links_open) + '</div>' +
+      '<div class="ua-row"><label class="ua-field ua-field--s"><span>Lock all team links at (optional)</span><input type="datetime-local" data-ua-deadline value="' + esc(toLocalInput(s.team_links_deadline)) + '"></label><button type="button" class="btn btn-outline" data-ua-save-deadline>Save</button></div>' +
+      '<div class="ua-actions"><button type="button" class="btn btn-outline" data-ua-link-all="create"' + (ts.length ? '' : ' disabled') + '>Create links for every team</button><button type="button" class="btn btn-outline" data-ua-link-all="copy"' + (made ? '' : ' disabled') + '>Copy every team\'s link (one message)</button></div></div>';
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy') ? resolve() : reject(); } catch (e) { reject(e); } ta.remove();
+    });
+  }
+  function linkAction(teamId, action, btn) {
+    var t = teamById(teamId), l = linkFor(teamId);
+    if (action === 'copy' || action === 'copytext') { if (!l) return; copyText(action === 'copy' ? linkUrl(l) : shareText(t, l)).then(function () { toast(action === 'copy' ? 'Link copied.' : 'Message copied. Paste it into WhatsApp or an email.'); }, function () { var inp = $('[data-ua-url]', btn.closest('[data-tid-link]')); if (inp) { inp.focus(); inp.select(); } toast('Select the link and copy it.'); }); return; }
+    if (action === 'regenerate' && !window.confirm('Make a new link for ' + t.name + '? The old link stops working immediately, so you must send the new one.')) return;
+    if (action === 'disable' && !window.confirm('Switch off ' + t.name + '\'s link? Whoever has it can no longer open it until you switch it back on.')) return;
+    btn.disabled = true;
+    supabaseClient.rpc('unity_admin_team_link', { p_team_id: teamId, p_action: action }).then(function (r) {
+      btn.disabled = false;
+      if (r.error) { fail(r.error); return; }
+      lastSig = ''; note(action === 'create' ? 'Link created.' : action === 'regenerate' ? 'New link made. The old one no longer works.' : 'Done.'); load();
+    });
+  }
+  function allLinks(action, btn) {
+    var ts = D.teams || [];
+    if (action === 'copy') {
+      var text = 'LACMS Unity Cup: private team links\n\n' + ts.filter(function (t) { return linkFor(t.id); }).map(function (t) { return t.name + ': ' + linkUrl(linkFor(t.id)); }).join('\n') + '\n\nEach link is only for that team\'s manager. Please don\'t share them around.';
+      copyText(text).then(function () { toast('All the links are copied.'); }); return;
+    }
+    btn.disabled = true;
+    var chain = Promise.resolve();
+    ts.forEach(function (t) { if (!linkFor(t.id)) chain = chain.then(function () { return supabaseClient.rpc('unity_admin_team_link', { p_team_id: t.id, p_action: 'create' }); }); });
+    chain.then(function () { btn.disabled = false; lastSig = ''; note('Links created for every team.'); load(); });
+  }
+
   function groupList() {
     var g = []; (D.teams || []).forEach(function (t) { if (t.group_name && g.indexOf(t.group_name) < 0) g.push(t.group_name); });
     return '<datalist id="ua-groups">' + g.concat(['Group A', 'Group B', 'Group C', 'Group D']).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
   }
   function teamsHtml() {
     var ts = D.teams || [];
-    return groupList() + '<div class="ua-card"><h3>Add a team</h3><p class="ua-hint">Give it a name and a colour. A logo is optional: without one the page shows the team\'s initials in its colour. Put teams that play each other in the same group to get a table.</p>' + teamForm(null) + '</div>' +
+    return groupList() + (ts.length ? linksCard() : '') + '<div class="ua-card"><h3>Add a team</h3><p class="ua-hint">Give it a name and a colour. A logo is optional: without one the page shows the team\'s initials in its colour. Put teams that play each other in the same group to get a table.</p>' + teamForm(null) + '</div>' +
       '<div class="ua-card"><h3>Teams (' + ts.length + ')</h3>' + (ts.length ? '<div class="ua-teams">' + ts.map(teamForm).join('') + '</div>' : '<p class="ua-hint">No teams yet.</p>') + '</div>';
   }
   // Logos are shrunk in the browser first (the biggest side to 512px) so pages stay fast.
@@ -251,7 +326,7 @@
       '<input class="sq-in-num" data-sf="num" inputmode="numeric" maxlength="3" value="' + esc(p.shirt_no || '') + '" aria-label="Shirt number">' +
       '<select data-sf="pos" aria-label="Position">' + posOptions(p.position) + '</select>' + moveTo +
       '<label class="ua-chk sq-shown" title="Untick to hide from the public page"><input type="checkbox" data-sf="active"' + (p.active ? ' checked' : '') + '> Shown</label>' +
-      '<span class="sq-votes" title="Votes">' + (p.votes || 0) + '<small> votes</small></span>' +
+      '<span class="sq-votes" title="Votes">' + (p.votes || 0) + '<small> votes</small>' + (p.source === 'team' ? '<i class="sq-src" title="Added by the team through its private link">team</i>' : '') + '</span>' +
       '<button type="button" class="sq-del" data-sq-del aria-label="Remove ' + esc(p.name) + '">&times;</button><span class="sq-saved" aria-hidden="true">&#10003;</span></div>';
   }
 
@@ -527,6 +602,9 @@
     var sc = t.closest('[data-sq-team]'); if (sc) { sqTeam = sc.getAttribute('data-sq-team'); $$('.sq-chip').forEach(function (c) { c.classList.toggle('is-active', c === sc); }); sqPos = null; sqBody(); return; }
     if (t.closest('[data-sq-del]')) { sqDelete(t.closest('[data-pid]')); return; }
     if (t.closest('[data-sq-paste]')) { sqPaste(); return; }
+    var la = t.closest('[data-ua-link]'); if (la) { linkAction(la.closest('[data-tid-link]').getAttribute('data-tid-link'), la.getAttribute('data-ua-link'), la); return; }
+    var lall = t.closest('[data-ua-link-all]'); if (lall) { allLinks(lall.getAttribute('data-ua-link-all'), lall); return; }
+    if (t.closest('[data-ua-save-deadline]')) { var dv = $('[data-ua-deadline]').value; saveSettings({ team_links_deadline: dv ? new Date(dv).toISOString() : '' }); return; }
     var st = t.closest('[data-ua-save-team]'); if (st) { saveTeam(st.closest('[data-tid]'), st); return; }
     var dt = t.closest('[data-ua-del-team]');
     if (dt) {
@@ -591,7 +669,7 @@
   if (card) card.addEventListener('click', function () { load(); });
   supabaseClient.auth.getSession().then(function (r) {
     if (!r.data || !r.data.session) return;
-    supabaseClient.rpc('is_president').then(function (p) {
+    supabaseClient.rpc('unity_can_manage').then(function (p) {
       if (p.error || p.data !== true) { if (card) card.style.display = 'none'; return; }
       load(true);
     });
