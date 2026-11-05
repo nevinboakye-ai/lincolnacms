@@ -23,6 +23,7 @@
     server: 'Something went wrong. Please check your connection and try again.'
   };
 
+  var SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>';
   var token = '', S = null, pending = 0, tmpN = 0, sqPos = null, toastTimer = null;
 
   function $(sel, el) { return (el || document).querySelector(sel); }
@@ -109,7 +110,7 @@
           '<fieldset class="sq-pos"><legend>Position</legend>' + POS.map(function (x) { return '<label><input type="radio" name="pos" value="' + x[0] + '"' + (sqPos === x[0] ? ' checked' : '') + '><span>' + x[1] + '<small>' + x[0] + '</small></span></label>'; }).join('') + '<label><input type="radio" name="pos" value=""' + (sqPos === '' ? ' checked' : '') + '><span>&ndash;<small>None</small></span></label></fieldset>' +
           '<p class="sq-hint" data-sq-hint role="status" aria-live="polite">The position puts them in the right place on the pitch.</p></form></div>' : '') +
         '<div id="tm-list"></div></div>' +
-      '<aside class="sq-side"><div class="ua-card"><h3>Your line-up</h3><div id="tm-preview"></div></div></aside>';
+      '<aside class="sq-side"><div class="ua-card"><div class="uc-sub-row" style="margin-top:0"><h3>Your line-up</h3>' + (window.UnityShare ? '<button type="button" class="uc-share" data-tm-share>' + SHARE_ICON + 'Share</button>' : '') + '</div><div id="tm-preview"></div></div></aside>';
     var num = $('[name="num"]', el); if (num) num.value = nextNumber(S.players);
     refresh();
   }
@@ -266,6 +267,14 @@
     var f = e.target.closest && e.target.closest('[data-sf]'); if (f) saveRow(f.closest('[data-pid]'), f);
   });
   document.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('[data-tm-share]')) {
+      var t = S.team, players = S.players.filter(function (p) { return p.active; }).map(function (p) { return { id: p.id, name: p.name, shirt_no: p.shirt_no, position: p.position, captain: p.captain, active: true }; });
+      if (!players.some(function (p) { return UnityPitch.lineOf(p.position); })) { toast('Give your players positions first, so they appear on the pitch.'); return; }
+      UnityShare.open({ kind: 'lineup', heading: t.name + ' line-up', title: t.name + ' line-up', filename: 'lacms-unity-cup-' + String(t.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-lineup',
+        caption: t.name + ' line-up for the LACMS Unity Cup \u26BD',
+        data: { team: { name: t.name, short_name: t.short_name, colour: t.colour, logo: logo() || null }, group: t.group_name || '', players: players, hasRoles: players.some(function (p) { return !!p.captain; }) } });
+      return;
+    }
     var cb = e.target.closest && e.target.closest('[data-tm-cap]'); if (cb) { setCaptain(cb.closest('[data-pid]'), cb.getAttribute('data-tm-cap')); return; }
     var d = e.target.closest && e.target.closest('[data-tm-del]'); if (d) remove(d.closest('[data-pid]'));
   });

@@ -68,6 +68,7 @@
     close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
     play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
     upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>',
     ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
   };
 
@@ -173,7 +174,7 @@
       var max = Math.max.apply(null, players.map(function (p) { return p.votes || 0; }).concat([1]));
       var total = S.total_votes || 0;
       wrap.className = 'uc-results';
-      wrap.innerHTML = (total ? '<p class="uc-results-total">' + total + (total === 1 ? ' vote' : ' votes') + ' cast</p>' : '') + list.map(function (p, i) {
+      wrap.innerHTML = (total && window.UnityShare ? '<div class="uc-section-actions"><button type="button" class="uc-share" data-share="winner">' + ICON.share + (results ? 'Share the result' : 'Share the standings') + '</button></div>' : '') + (total ? '<p class="uc-results-total">' + total + (total === 1 ? ' vote' : ' votes') + ' cast</p>' : '') + list.map(function (p, i) {
         var v = p.votes || 0, pct = total ? Math.round(v / total * 100) : 0;
         var lead = results && i === 0 && v > 0;
         var rt = teamsById[p.team_id];
@@ -243,7 +244,7 @@
     if (wl) {
       var ds = S.draws || [];
       wl.innerHTML = ds.length ? '<h3>Winners</h3><ul>' + ds.map(function (d) {
-        return '<li><span class="uc-win-badge">#' + esc(d.ticket_no) + '</span><span><strong>' + esc(d.name) + '</strong> won ' + esc(d.prize) + '</span></li>';
+        return '<li><span class="uc-win-badge">#' + esc(d.ticket_no) + '</span><span><strong>' + esc(d.name) + '</strong> won ' + esc(d.prize) + '</span>' + (window.UnityShare ? '<button type="button" class="uc-share uc-share--icon" data-share-draw="' + esc(d.id) + '" aria-label="Share this winner as a picture" title="Share as a picture">' + ICON.share + '</button>' : '') + '</li>';
       }).join('') + '</ul>' : '<p class="uc-muted">The draw happens live at the tournament. Winners will appear here.</p>';
     }
   }
@@ -653,7 +654,7 @@
         '<b class="uc-fx-sc' + (live ? ' is-live' : '') + '">' + (has ? score : '') + '</b></div>';
     }
     return '<li class="uc-fx' + (live ? ' is-live' : '') + (f.status === 'finished' ? ' is-done' : '') + '">' +
-      '<div class="uc-fx-top">' + state + '<span class="uc-fx-meta">' + (f.stage ? esc(f.stage) : '') + (f.stage && f.pitch ? ' &middot; ' : '') + (f.pitch ? esc(f.pitch) : '') + '</span></div>' +
+      '<div class="uc-fx-top">' + state + '<span class="uc-fx-meta">' + (f.stage ? esc(f.stage) : '') + (f.stage && f.pitch ? ' &middot; ' : '') + (f.pitch ? esc(f.pitch) : '') + '</span>' + (window.UnityShare ? '<button type="button" class="uc-share uc-share--icon" data-share-match="' + esc(f.id) + '" aria-label="Share this match as a picture" title="Share as a picture">' + ICON.share + '</button>' : '') + '</div>' +
       '<div class="uc-fx-lines">' + line(h, f.home_score, win === 'h') + line(a, f.away_score, win === 'a') + '</div>' +
       (f.note ? '<p class="uc-fx-note">' + esc(f.note) + '</p>' : '') + '</li>';
   }
@@ -685,6 +686,8 @@
     var list = $('#uc-fx-list'), tabs = $('#uc-fx-tabs'), next = $('#uc-fx-next');
     var fx = (S.fixtures || []).filter(function (f) { return teamsById[f.home_team_id] && teamsById[f.away_team_id]; });
     var tables = standings();
+    var shareBox = $('#uc-fx-share');
+    if (shareBox) shareBox.innerHTML = fx.length && window.UnityShare ? '<button type="button" class="uc-share" data-share="' + (fxTab === 'table' ? 'tables' : 'fixtures') + '">' + ICON.share + (fxTab === 'table' ? 'Share the tables' : 'Share fixtures &amp; results') + '</button>' : '';
     tabs.innerHTML = tables.length && fx.length ? '<button type="button" class="uc-chip' + (fxTab === 'fixtures' ? ' is-active' : '') + '" data-fx-tab="fixtures">Fixtures &amp; results</button><button type="button" class="uc-chip' + (fxTab === 'table' ? ' is-active' : '') + '" data-fx-tab="table">Tables</button>' : '';
     if (!tables.length || !fx.length) fxTab = 'fixtures';
     if (!fx.length) { next.innerHTML = ''; list.innerHTML = '<p class="uc-empty">The fixtures will appear here once the committee has set them. Check back soon.</p>'; return; }
@@ -732,13 +735,76 @@
     var fx = (S.fixtures || []).filter(function (f) { return f.home_team_id === t.id || f.away_team_id === t.id; });
     var html = '<div class="uc-team-head" style="--tc:' + esc(t.colour) + '">' + crest(t, 'uc-crest--xl') + '<div><span class="uc-modal-eyebrow">' + (t.group_name ? esc(t.group_name) : 'Team') + '</span><h2 id="uc-modal-title" class="uc-modal-title">' + esc(t.name) + '</h2></div></div>' +
       (t.description ? '<p class="uc-modal-lede">' + esc(t.description) + '</p>' : '') +
-      (window.UnityPitch && squad.length ? '<h3 class="uc-sub">Line-up</h3>' + UnityPitch.html(squad, { colour: t.colour, canVote: canVote, title: t.name + ' line-up' }) : '') +
+      (window.UnityPitch && squad.length ? '<div class="uc-sub-row"><h3 class="uc-sub">Line-up</h3>' + (window.UnityShare ? '<button type="button" class="uc-share" data-share-lineup="' + esc(t.id) + '">' + ICON.share + 'Share line-up</button>' : '') + '</div>' + UnityPitch.html(squad, { colour: t.colour, canVote: canVote, title: t.name + ' line-up' }) : '') +
       '<h3 class="uc-sub">Squad</h3>' + (squad.length ? '<ul class="uc-squad">' + squad.map(function (p) {
         return '<li><span class="uc-shirt" style="--tc:' + esc(t.colour) + '">' + esc(p.shirt_no || '–') + '</span><span class="uc-squad-name"><strong>' + esc(p.name) + (p.captain ? ' <i class="uc-role uc-role--' + (p.captain === 'captain' ? 'c' : 'vc') + '">' + (p.captain === 'captain' ? 'Captain' : 'Vice-captain') + '</i>' : '') + '</strong>' + (p.position ? '<small>' + esc(p.position) + '</small>' : '') + '</span>' +
           (canVote ? '<button type="button" class="uc-mini" data-vote-player="' + esc(p.id) + '">Vote</button>' : '') + '</li>';
       }).join('') + '</ul>' : '<p class="uc-muted">The squad will be added soon.</p>') +
       (fx.length ? '<h3 class="uc-sub">Fixtures &amp; results</h3><ul class="uc-fx-list uc-fx-list--modal">' + fx.map(fixtureCard).join('') + '</ul>' : '');
     openModal(html, { wide: true });
+  }
+
+  // ---------------------------------------------------------------------
+  // Share as a picture (js/unity-share.js)
+  function shareTeam(t) { return t ? { name: t.name, short_name: t.short_name, colour: t.colour, logo: logoUrl(t) || null } : { name: '?', colour: '#d4a62b' }; }
+  function shareFixture(f) {
+    var d = kickDate(f), tm = d ? timeOf(d) : 'TBC';
+    return { home: shareTeam(teamsById[f.home_team_id]), away: shareTeam(teamsById[f.away_team_id]), hs: f.home_score, as: f.away_score, status: f.status, time: tm, stage: f.stage || '', pitch: f.pitch || '', note: f.note || '' };
+  }
+  function slug(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unity-cup'; }
+
+  function shareLineup(id) {
+    var t = teamsById[id]; if (!t || !window.UnityShare) return;
+    var players = (S.players || []).filter(function (p) { return p.team_id === id; }).map(function (p) { return { id: p.id, name: p.name, shirt_no: p.shirt_no, position: p.position, captain: p.captain, active: true }; });
+    UnityShare.open({ kind: 'lineup', heading: t.name + ' line-up', title: t.name + ' line-up', filename: 'lacms-unity-cup-' + slug(t.name) + '-lineup',
+      caption: t.name + ' line-up for the LACMS Unity Cup ⚽',
+      data: { team: shareTeam(t), group: t.group_name || '', players: players, hasRoles: players.some(function (p) { return !!p.captain; }) } });
+  }
+  function shareMatch(fid) {
+    var f = (S.fixtures || []).filter(function (x) { return x.id === fid; })[0]; if (!f || !window.UnityShare) return;
+    var d = shareFixture(f), has = f.home_score != null && f.away_score != null && f.status !== 'scheduled' && f.status !== 'postponed';
+    UnityShare.open({ kind: 'match', heading: d.home.name + ' v ' + d.away.name, title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-' + slug(d.home.name + '-v-' + d.away.name),
+      caption: (f.status === 'finished' ? 'Full time: ' : f.status === 'live' ? 'Live: ' : '') + d.home.name + (has ? ' ' + f.home_score + '-' + f.away_score + ' ' : ' v ') + d.away.name + ' at the LACMS Unity Cup ⚽',
+      data: { fixture: d } });
+  }
+  function shareFixtures() {
+    var fx = (S.fixtures || []).filter(function (f) { return teamsById[f.home_team_id] && teamsById[f.away_team_id]; });
+    if (!fx.length || !window.UnityShare) return;
+    var days = [], map = {}, todayKey = dayKey(new Date());
+    fx.forEach(function (f) { var d = kickDate(f), k = dayKey(d); if (!map[k]) { map[k] = { key: k, date: d, items: [] }; days.push(map[k]); } map[k].items.push(f); });
+    var variants = days.map(function (dy) {
+      var nice = dy.date ? dy.date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Time to be confirmed';
+      var short = dy.key === todayKey ? 'Today' : dy.date ? dy.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : 'TBC';
+      var done = dy.items.every(function (f) { return f.status === 'finished'; });
+      return { label: short, kind: 'fixtures', caption: 'LACMS Unity Cup ' + (done ? 'results' : 'fixtures') + ' for ' + nice + ' ⚽', data: { title: done ? 'Results' : 'Fixtures', subtitle: nice, fixtures: dy.items.map(shareFixture) } };
+    });
+    var finished = fx.filter(function (f) { return f.status === 'finished'; });
+    if (finished.length && days.length > 1) variants.push({ label: 'All results', kind: 'fixtures', caption: 'LACMS Unity Cup results so far ⚽', data: { title: 'Results', subtitle: 'So far', fixtures: finished.map(shareFixture) } });
+    var start = 0, ti = days.findIndex(function (d) { return d.key === todayKey; });
+    if (ti >= 0) start = ti; else { var up = days.findIndex(function (d) { return d.items.some(function (f) { return f.status !== 'finished'; }); }); start = up >= 0 ? up : days.length - 1; }
+    UnityShare.open({ kind: 'fixtures', heading: 'Share fixtures & results', title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-fixtures', variants: variants, start: start });
+  }
+  function shareTables() {
+    if (!window.UnityShare) return;
+    var groups = standings().map(function (g) { return { name: g.name, rows: g.rows.map(function (r) { return { t: shareTeam(r.t), p: r.p, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.pts }; }) }; });
+    if (!groups.length) return;
+    UnityShare.open({ kind: 'tables', heading: 'Share the tables', title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-tables', caption: 'LACMS Unity Cup group tables ⚽',
+      data: { title: 'Group tables', subtitle: 'LACMS Unity Cup', groups: groups } });
+  }
+  function shareWinner() {
+    var players = (S.players || []).filter(function (p) { return (p.votes || 0) > 0; }).sort(function (a, b) { return (b.votes || 0) - (a.votes || 0); });
+    if (!players.length || !window.UnityShare) return;
+    var total = S.total_votes || players.reduce(function (n, p) { return n + (p.votes || 0); }, 0);
+    function row(p) { var t = teamsById[p.team_id]; return { name: p.name, team: p.team || '', colour: t ? t.colour : '#d4a62b', votes: p.votes || 0, pct: total ? Math.round((p.votes || 0) / total * 100) : null }; }
+    var w = row(players[0]), done = !S.voting_open;
+    UnityShare.open({ kind: 'winner', heading: done ? 'Share the result' : 'Share the standings', title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-player-of-the-tournament',
+      caption: done ? w.name + ' is the LACMS Unity Cup Player of the Tournament ⭐' : 'Player of the Tournament so far at the LACMS Unity Cup: ' + w.name + ' ⭐',
+      data: { winner: w, others: players.slice(1, 6).map(row), total: total } });
+  }
+  function shareDraw(id) {
+    var d = (S.draws || []).filter(function (x) { return x.id === id; })[0]; if (!d || !window.UnityShare) return;
+    UnityShare.open({ kind: 'raffle', heading: 'Share the winner', title: 'LACMS Unity Cup raffle', filename: 'lacms-unity-cup-raffle-winner', caption: 'Ticket #' + d.ticket_no + ' wins ' + d.prize + ' in the LACMS Unity Cup charity raffle! 🎉',
+      data: { ticket: d.ticket_no, name: d.name, prize: d.prize } });
   }
 
   // ---------------------------------------------------------------------
@@ -754,6 +820,11 @@
     var vp = t.closest('[data-vote-player]');
     if (vp) { selected = vp.getAttribute('data-vote-player'); closeModal(true); renderVote(); var vs = document.getElementById('vote'); if (vs) vs.scrollIntoView({ behavior: 'smooth', block: 'start' }); say('Player selected. Press Vote now.'); return; }
     var ft = t.closest('[data-fx-tab]'); if (ft) { fxTab = ft.getAttribute('data-fx-tab'); fxSig = ''; renderFixtures(); return; }
+    var sl = t.closest('[data-share-lineup]'); if (sl) { shareLineup(sl.getAttribute('data-share-lineup')); return; }
+    var sm = t.closest('[data-share-match]'); if (sm) { shareMatch(sm.getAttribute('data-share-match')); return; }
+    var sd = t.closest('[data-share-draw]'); if (sd) { shareDraw(sd.getAttribute('data-share-draw')); return; }
+    var sg = t.closest('[data-share]');
+    if (sg) { var kind = sg.getAttribute('data-share'); if (kind === 'fixtures') shareFixtures(); else if (kind === 'tables') shareTables(); else if (kind === 'winner') shareWinner(); return; }
     if (t.closest('#uc-votebar-go')) { startVote(); return; }
     if (t.closest('#uc-enter-btn')) { startRaffle(); return; }
     var tile = t.closest('[data-media]');

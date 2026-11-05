@@ -1980,3 +1980,13 @@ Run `db/migrations/121-hub-access-signed-up-people.sql`. This replaces the large
 - **Who is listed:** every member who has signed up (active, pending or expired), plus Network professionals who have a login. Test and half-made logins, MMG guests and people who haven't signed up yet are no longer shown. (Choices saved against an email for someone who hadn't signed up still apply when they do.)
 - If the migration hasn't been run, the screen warns when its list was cut off and tells you which file to run.
 
+## 174. Share as a picture (no database change)
+
+Anyone can turn what they're looking at into a picture to save or post (`js/unity-share.js`, drawn straight onto a canvas in the visitor's own browser; nothing is uploaded or stored):
+- **Share line-up** (inside any team on the public page, and on the team manager's private page): the team's 3D pitch with the captain's armband and a legend.
+- **Share fixtures & results** (Fixtures section): one picture per day, plus "All results" once games are finished; it opens on today's day.
+- **Share this match** (the small icon on every fixture): a big single-match card with the score and status.
+- **Share the tables** (Tables view), **Share the result** (once results are shown: Player of the Tournament with the top few and their votes), and **Share** beside each **raffle winner**.
+
+Each comes as a **Post (4:5)** or a **Story (9:16)**, 2160 px wide. The window has **Share** (on a phone this opens the phone's own share sheet with the picture attached, which is how to reach Instagram, WhatsApp, TikTok, Snapchat and so on), **Save image** (a lossless PNG), **Copy image**, and quick links to WhatsApp, X and Facebook plus **Copy caption** (those links share the caption and the page; websites can't attach a picture to them, so the window says to save the image or use Share on a phone for that). The "Share" button only appears on devices whose browser supports sharing.
+
