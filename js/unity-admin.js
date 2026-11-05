@@ -51,11 +51,12 @@
 
   function render() {
     var pend = { raffle: (D.entries || []).filter(function (e) { return e.status === 'pending'; }).length, media: (D.media || []).filter(function (m) { return m.status === 'pending'; }).length };
-    var tabs = [['setup', 'Settings'], ['teams', 'Teams'], ['players', 'Players & votes'], ['fixtures', 'Fixtures'], ['raffle', 'Raffle' + (pend.raffle ? ' (' + pend.raffle + ')' : '')], ['media', 'Photos & videos' + (pend.media ? ' (' + pend.media + ')' : '')]];
+    var tabs = [['setup', 'Settings'], ['teams', 'Teams'], ['players', 'Squads'], ['fixtures', 'Fixtures'], ['raffle', 'Raffle' + (pend.raffle ? ' (' + pend.raffle + ')' : '')], ['media', 'Photos & videos' + (pend.media ? ' (' + pend.media + ')' : '')]];
     root.innerHTML = '<div class="ua-top"><a class="btn btn-outline" href="unity-cup.html" target="_blank" rel="noopener">Open the public page</a><div class="ua-status">' + liveLine() + '</div></div>' +
       '<div class="ua-tabs" role="tablist">' + tabs.map(function (t) { return '<button type="button" role="tab" class="ua-tab' + (tab === t[0] ? ' is-active' : '') + '" data-ua-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + esc(t[1]) + '</button>'; }).join('') + '</div>' +
       '<p class="ua-msg" data-ua-msg role="status"></p><div class="ua-pane">' + ({ setup: setupHtml, teams: teamsHtml, players: playersHtml, fixtures: fixturesHtml, raffle: raffleHtml, media: mediaHtml }[tab])() + '</div>';
     if (tab === 'media') loadThumbs();
+    if (tab === 'players') sqBody();
   }
 
   function liveLine() {
@@ -174,42 +175,166 @@
   }
 
   // ---------------------------------------------------------------------
-  // Players
+  // Squads: pick a team, add players one after another, edit them in place
+  var POS = [['Goalkeeper', 'GK'], ['Defender', 'DEF'], ['Midfielder', 'MID'], ['Forward', 'FWD']];
+  var sqTeam = null, sqPos = null, tmpN = 0, toastTimer = null;
+
+  function sqList(teamId) { return (D.players || []).filter(function (p) { return teamId === 'none' ? !p.team_id : p.team_id === teamId; }); }
+  function nextNumber(list) { var used = {}; list.forEach(function (p) { var n = parseInt(p.shirt_no, 10); if (!isNaN(n)) used[n] = 1; }); var n = 1; while (used[n]) n++; return n; }
+  function lineName(key) { return { gk: 'Goalkeeper', def: 'Defence', mid: 'Midfield', fwd: 'Attack' }[key] || 'No position yet'; }
+  function sqCrest(t) { return t ? crestHtml(t).replace('uc-crest--lg', 'uc-crest--sm') : '<span class="uc-crest uc-crest--sm"><b>?</b></span>'; }
+
+  function posOptions(cur) {
+    var std = POS.map(function (x) { return x[0]; }), out = '<option value="">No position</option>';
+    out += std.map(function (v) { return '<option' + (cur === v ? ' selected' : '') + '>' + v + '</option>'; }).join('');
+    if (cur && std.indexOf(cur) < 0) out += '<option selected>' + esc(cur) + '</option>';
+    return out;
+  }
+
   function playersHtml() {
-    var ps = (D.players || []).slice().sort(function (a, b) { var ta = (teamById(a.team_id) || { name: '~' }).name, tb = (teamById(b.team_id) || { name: '~' }).name; return ta.localeCompare(tb) || (parseInt(a.shirt_no, 10) || 999) - (parseInt(b.shirt_no, 10) || 999) || a.name.localeCompare(b.name); });
-    var total = ps.reduce(function (n, p) { return n + (p.votes || 0); }, 0), max = Math.max.apply(null, ps.map(function (p) { return p.votes || 0; }).concat([1]));
-    return '<datalist id="ua-positions"><option value="Goalkeeper"><option value="Defender"><option value="Midfielder"><option value="Forward"></datalist>' + '<div class="ua-card"><h3>Votes so far: <span class="ua-big">' + total + '</span> <small>(' + D.voters + ' people voted)</small></h3>' +
-      (ps.length ? '<div class="ua-players">' + ps.map(function (p) {
-        return '<div class="ua-player' + (p.active ? '' : ' is-off') + '" data-pid="' + esc(p.id) + '"><div class="ua-player-edit">' +
-          '<input data-pf="name" maxlength="60" value="' + esc(p.name) + '" aria-label="Name"><select data-pf="team" aria-label="Team">' + teamOptions(p.team_id, true) + '</select><input data-pf="shirt" maxlength="6" placeholder="#" value="' + esc(p.shirt_no || '') + '" aria-label="Shirt number"><input data-pf="position" maxlength="20" list="ua-positions" placeholder="Position" value="' + esc(p.position || '') + '" aria-label="Position">' +
-          '<label class="ua-chk"><input type="checkbox" data-pf="active"' + (p.active ? ' checked' : '') + '> Shown</label>' +
-          '<button type="button" class="btn btn-outline" data-ua-save-player>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-player>Remove</button></div>' +
-          '<div class="ua-bar"><span style="width:' + Math.round((p.votes || 0) / max * 100) + '%"></span><b>' + (p.votes || 0) + ' votes</b></div></div>';
-      }).join('') + '</div>' : '<p class="ua-hint">No players yet. Add them below.</p>') + '</div>' +
-      '<div class="ua-card"><h3>Add players</h3><p class="ua-hint">One per line: <code>Name, Team, Shirt number, Position</code> (everything after the name is optional). A team you haven\'t made yet is created for you.</p>' +
-      '<textarea class="ua-textarea" data-ua-bulk rows="6" placeholder="Marcus Tolliver, Red Wolves, 7, Forward&#10;Daniel Okafor, Blue Hawks, 10, Midfield"></textarea>' +
-      '<button type="button" class="btn btn-primary" data-ua-add-players>Add these players</button></div>';
+    var teams = D.teams || [];
+    if (!teams.length) return '<div class="ua-card"><h3>Squads</h3><p class="ua-hint">Add a team first (Teams tab), then come back to add its players.</p></div>';
+    if (sqTeam !== 'none' && !teamById(sqTeam)) sqTeam = teams[0].id;
+    var loose = sqList('none').length;
+    var chips = teams.map(function (t) {
+      var n = sqList(t.id).length;
+      return '<button type="button" class="sq-chip' + (sqTeam === t.id ? ' is-active' : '') + '" data-sq-team="' + esc(t.id) + '" style="--tc:' + esc(t.colour) + '">' + sqCrest(t) + '<span>' + esc(t.name) + '</span><b>' + n + '</b></button>';
+    }).join('') + (loose ? '<button type="button" class="sq-chip' + (sqTeam === 'none' ? ' is-active' : '') + '" data-sq-team="none"><span class="uc-crest uc-crest--sm"><b>?</b></span><span>No team</span><b>' + loose + '</b></button>' : '');
+    var votes = (D.players || []).reduce(function (n, p) { return n + (p.votes || 0); }, 0);
+    return '<datalist id="ua-positions"></datalist><div class="sq-top"><div class="sq-chips" role="tablist" aria-label="Choose a team">' + chips + '</div><p class="ua-hint sq-total"><strong>' + votes + '</strong> votes from <strong>' + D.voters + '</strong> people so far</p></div>' +
+      '<div class="sq" id="sq-body"></div>';
+  }
+
+  function sqBody() {
+    var body = $('#sq-body'); if (!body) return;
+    var t = sqTeam === 'none' ? null : teamById(sqTeam), list = sqList(sqTeam);
+    if (!sqPos) sqPos = list.some(function (p) { return UnityPitch.lineOf(p.position) === 'gk'; }) ? 'Defender' : 'Goalkeeper';
+    var colour = t ? t.colour : '#d4a62b';
+    body.innerHTML =
+      '<div class="sq-main" style="--tc:' + esc(colour) + '">' +
+        '<div class="ua-card sq-add-card"><div class="sq-head">' + sqCrest(t) + '<div><h3>' + esc(t ? t.name : 'Players without a team') + '</h3><small class="ua-hint" id="sq-count"></small></div></div>' +
+        (t ? '<form class="sq-add" data-sq-add novalidate><div class="sq-add-grid">' +
+          '<label class="ua-field sq-name"><span>Player name</span><input name="name" autocomplete="off" autocapitalize="words" maxlength="60" placeholder="e.g. Marcus Tolliver" aria-label="Player name"></label>' +
+          '<label class="ua-field sq-num"><span>Shirt no.</span><input name="num" inputmode="numeric" maxlength="3" aria-label="Shirt number"></label>' +
+          '<button type="submit" class="btn btn-primary sq-submit">Add player</button></div>' +
+          '<fieldset class="sq-pos"><legend>Position</legend>' + POS.map(function (x) { return '<label><input type="radio" name="pos" value="' + x[0] + '"' + (sqPos === x[0] ? ' checked' : '') + '><span>' + x[1] + '<small>' + x[0] + '</small></span></label>'; }).join('') + '<label><input type="radio" name="pos" value=""' + (sqPos === '' ? ' checked' : '') + '><span>–<small>None</small></span></label></fieldset>' +
+          '<p class="sq-hint" data-sq-hint role="status" aria-live="polite">Type a name and press Enter. The next player is ready straight away.</p></form>' : '<p class="ua-hint">These players have no team. Use "Move to" on a row to give them one.</p>') + '</div>' +
+        '<div id="sq-list"></div>' +
+        (t ? '<details class="ua-preview sq-paste"><summary>Paste a whole list instead</summary><p class="ua-hint">One player per line: <code>Name, Number, Position</code> (number and position optional, any order after the name).</p><textarea class="ua-textarea" data-sq-bulk rows="5" placeholder="Marcus Tolliver, 7, Forward&#10;Daniel Okafor, 10, Midfielder"></textarea><button type="button" class="btn btn-outline" data-sq-paste>Add these players</button></details>' : '') +
+      '</div>' +
+      '<aside class="sq-side"><div class="ua-card"><h3>Line-up preview</h3><div id="sq-preview"></div></div></aside>';
+    var num = $('[name="num"]', body); if (num) num.value = nextNumber(list);
+    sqRefresh();
+  }
+
+  // Redraws only the list, the count and the pitch (never the add form, so what you're typing is safe).
+  function sqRefresh() {
+    var t = sqTeam === 'none' ? null : teamById(sqTeam), list = sqList(sqTeam);
+    var cnt = $('#sq-count'); if (cnt) cnt.textContent = list.length + (list.length === 1 ? ' player' : ' players');
+    $$('.sq-chip').forEach(function (c) { var id = c.getAttribute('data-sq-team'); $('b', c).textContent = sqList(id).length; });
+    var groups = { gk: [], def: [], mid: [], fwd: [], none: [] };
+    list.forEach(function (p) { groups[UnityPitch.lineOf(p.position) || 'none'].push(p); });
+    var order = ['gk', 'def', 'mid', 'fwd', 'none'];
+    var el = $('#sq-list');
+    el.innerHTML = list.length ? order.filter(function (k) { return groups[k].length; }).map(function (k) {
+      return '<div class="ua-card sq-group"><h4>' + lineName(k) + ' <span>' + groups[k].length + '</span></h4><div class="sq-rows">' + groups[k].sort(function (a, b) { return (parseInt(a.shirt_no, 10) || 999) - (parseInt(b.shirt_no, 10) || 999) || a.name.localeCompare(b.name); }).map(sqRow).join('') + '</div></div>';
+    }).join('') : '<div class="ua-card"><p class="ua-hint">No players yet. Add the first one above.</p></div>';
+    var pv = $('#sq-preview');
+    if (pv) pv.innerHTML = t ? UnityPitch.html(list.filter(function (p) { return p.active; }), { colour: t.colour, canVote: false, title: t.name + ' line-up' }) : '<p class="ua-hint">Pick a team to see its line-up.</p>';
+  }
+
+  function sqRow(p) {
+    var t = teamById(p.team_id), moveTo = '<select class="sq-move" data-sf="move" aria-label="Move ' + esc(p.name) + ' to another team"><option value="">Move…</option>' + (D.teams || []).filter(function (x) { return x.id !== p.team_id; }).map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.name) + '</option>'; }).join('') + (p.team_id ? '<option value="__none">No team</option>' : '') + '</select>';
+    return '<div class="sq-row' + (p.active ? '' : ' is-off') + '" data-pid="' + esc(p.id) + '" style="--tc:' + esc(t ? t.colour : '#888') + '">' +
+      '<span class="sq-shirt">' + esc(p.shirt_no || '–') + '</span>' +
+      '<input class="sq-in-name" data-sf="name" maxlength="60" value="' + esc(p.name) + '" aria-label="Name">' +
+      '<input class="sq-in-num" data-sf="num" inputmode="numeric" maxlength="3" value="' + esc(p.shirt_no || '') + '" aria-label="Shirt number">' +
+      '<select data-sf="pos" aria-label="Position">' + posOptions(p.position) + '</select>' + moveTo +
+      '<label class="ua-chk sq-shown" title="Untick to hide from the public page"><input type="checkbox" data-sf="active"' + (p.active ? ' checked' : '') + '> Shown</label>' +
+      '<span class="sq-votes" title="Votes">' + (p.votes || 0) + '<small> votes</small></span>' +
+      '<button type="button" class="sq-del" data-sq-del aria-label="Remove ' + esc(p.name) + '">&times;</button><span class="sq-saved" aria-hidden="true">&#10003;</span></div>';
+  }
+
+  function hint(text, bad) { var h = $('[data-sq-hint]'); if (!h) return; h.textContent = text; h.className = 'sq-hint' + (bad ? ' is-bad' : ' is-ok'); }
+  function toast(text, undo) {
+    var old = document.getElementById('ua-toast'); if (old) old.remove();
+    var el = document.createElement('div'); el.id = 'ua-toast'; el.className = 'ua-toast'; el.setAttribute('role', 'status');
+    el.innerHTML = '<span>' + esc(text) + '</span>' + (undo ? '<button type="button">Undo</button>' : '');
+    document.body.appendChild(el);
+    if (undo) $('button', el).addEventListener('click', function () { el.remove(); undo(); });
+    window.clearTimeout(toastTimer); toastTimer = window.setTimeout(function () { el.remove(); }, 6500);
   }
   function savePlayer(id, name, teamId, shirt, position, sort, active) {
     return supabaseClient.rpc('unity_admin_save_player', { p_id: id, p_name: name, p_team_id: teamId || null, p_shirt: shirt || null, p_position: position || null, p_sort: sort, p_active: active });
   }
-  function addPlayers(lines) {
-    var base = (D.players || []).length, teams = (D.teams || []).slice(), made = 0;
-    function find(name) { var n = name.trim().toLowerCase(); return teams.filter(function (t) { return t.name.toLowerCase() === n; })[0]; }
-    var rows = lines.map(function (l) { var p = l.split(',').map(function (x) { return x.trim(); }); return { name: p[0], team: p[1] || '', shirt: (p[2] || '').replace(/^#/, ''), pos: p[3] || '' }; });
-    var chain = Promise.resolve();
-    rows.forEach(function (r) {
-      chain = chain.then(function () {
-        if (!r.team || find(r.team)) return;
-        return supabaseClient.rpc('unity_admin_save_team', { p_id: null, p_name: r.team, p_short: null, p_colour: '#d4a62b', p_group: null, p_description: null, p_sort: teams.length, p_logo_path: null, p_keep_logo: true }).then(function (res) {
-          if (res.error) throw res.error; teams.push({ id: res.data, name: r.team }); made++;
-        });
+
+  function sqAdd(form) {
+    var name = form.elements.name.value.trim(), num = form.elements.num.value.trim().replace(/^#/, ''), pos = (form.querySelector('[name="pos"]:checked') || {}).value || '';
+    sqPos = pos;
+    if (!name) { hint('Type the player\'s name first.', true); form.elements.name.focus(); return; }
+    var list = sqList(sqTeam), dup = num && list.filter(function (p) { return String(p.shirt_no) === num; })[0];
+    if (dup && !window.confirm('Number ' + num + ' is already ' + dup.name + '\'s. Use it anyway?')) { form.elements.num.focus(); form.elements.num.select(); return; }
+    var tmp = { id: 'tmp-' + (++tmpN), name: name, team_id: sqTeam, shirt_no: num || null, position: pos || null, votes: 0, active: true };
+    D.players.push(tmp);
+    sqRefresh();
+    form.elements.name.value = '';
+    form.elements.num.value = nextNumber(sqList(sqTeam));
+    form.elements.name.focus();
+    hint('Adding ' + name + '…');
+    savePlayer(null, name, sqTeam, num, pos, list.length, true).then(function (r) {
+      if (r.error) { D.players = D.players.filter(function (p) { return p !== tmp; }); sqRefresh(); hint('Couldn\'t add ' + name + ': ' + r.error.message, true); return; }
+      var oldId = tmp.id; tmp.id = r.data; lastSig = ''; var rowEl = $('[data-pid="' + oldId + '"]'); if (rowEl) rowEl.setAttribute('data-pid', r.data); hint('Added ' + name + '. Next player?');
+    }, function () { D.players = D.players.filter(function (p) { return p !== tmp; }); sqRefresh(); hint('Couldn\'t add ' + name + '. Check your connection.', true); });
+  }
+
+  function sqSaveRow(row, input) {
+    var pid = row.getAttribute('data-pid'), p = (D.players || []).filter(function (x) { return x.id === pid; })[0]; if (!p || String(pid).indexOf('tmp-') === 0) return;
+    var get = function (k) { return $('[data-sf="' + k + '"]', row); };
+    var name = get('name').value.trim(); if (!name) { get('name').value = p.name; return; }
+    var before = JSON.parse(JSON.stringify(p));
+    p.name = name; p.shirt_no = get('num').value.trim().replace(/^#/, '') || null; p.position = get('pos').value || null; p.active = get('active').checked;
+    var mv = get('move').value, moved = mv !== '';
+    if (moved) p.team_id = mv === '__none' ? null : mv;
+    var teamName = moved && p.team_id ? (teamById(p.team_id) || {}).name : '';
+    savePlayer(pid, p.name, p.team_id, p.shirt_no, p.position, null, p.active).then(function (r) {
+      if (r.error) { Object.assign(p, before); sqRefresh(); note(r.error.message, true); return; }
+      lastSig = '';
+      if (moved) { toast(p.name + (teamName ? ' moved to ' + teamName : ' now has no team')); sqRefresh(); return; }
+      row.classList.add('is-saved'); window.setTimeout(function () { row.classList.remove('is-saved'); }, 1400);
+      var pv = $('#sq-preview'), t = teamById(sqTeam); if (pv && t) pv.innerHTML = UnityPitch.html(sqList(sqTeam).filter(function (x) { return x.active; }), { colour: t.colour, canVote: false, title: t.name + ' line-up' });
+      var sh = $('.sq-shirt', row); if (sh) sh.textContent = p.shirt_no || '–';
+      if (input && (input.getAttribute('data-sf') === 'pos' || input.getAttribute('data-sf') === 'active')) sqRefresh();
+    });
+  }
+
+  function sqDelete(row) {
+    var pid = row.getAttribute('data-pid'), p = (D.players || []).filter(function (x) { return x.id === pid; })[0]; if (!p) return;
+    if (p.votes > 0 && !window.confirm(p.name + ' has ' + p.votes + ' votes. They will be hidden (not deleted) so the count is kept. Continue?')) return;
+    var copy = JSON.parse(JSON.stringify(p));
+    supabaseClient.rpc('unity_admin_delete_player', { p_id: pid }).then(function (r) {
+      if (r.error) { note(r.error.message, true); return; }
+      lastSig = '';
+      if (r.data === 'hidden') { p.active = false; sqRefresh(); toast(p.name + ' hidden (they have votes).'); return; }
+      D.players = D.players.filter(function (x) { return x.id !== pid; }); sqRefresh();
+      toast(p.name + ' removed.', function () {
+        savePlayer(null, copy.name, copy.team_id, copy.shirt_no, copy.position, 0, copy.active).then(function (r2) { if (r2.error) note(r2.error.message, true); else load(); });
       });
     });
-    rows.forEach(function (r, i) {
-      chain = chain.then(function () { var t = r.team ? find(r.team) : null; return savePlayer(null, r.name, t && t.id, r.shirt, r.pos, base + i, true).then(function (res) { if (res.error) throw res.error; }); });
+  }
+
+  function sqPaste() {
+    var ta = $('[data-sq-bulk]'), lines = (ta.value || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+    if (!lines.length) return;
+    var list = sqList(sqTeam).slice(), btn = $('[data-sq-paste]'); btn.disabled = true;
+    var rows = lines.map(function (l) {
+      var parts = l.split(/[,\t]/).map(function (x) { return x.trim(); }), r = { name: parts[0], num: '', pos: '' };
+      parts.slice(1).forEach(function (x) { if (/^#?\d{1,3}$/.test(x)) r.num = x.replace('#', ''); else if (x) r.pos = (POS.filter(function (q) { return UnityPitch.lineOf(x) === UnityPitch.lineOf(q[0]); })[0] || [x])[0]; });
+      if (!r.num) { r.num = String(nextNumber(list)); list.push({ shirt_no: r.num }); } else list.push({ shirt_no: r.num });
+      return r;
     });
-    return chain.then(function () { note(rows.length + (rows.length === 1 ? ' player' : ' players') + ' added' + (made ? ' (' + made + ' new ' + (made === 1 ? 'team' : 'teams') + ' created, give them colours and logos in Teams)' : '') + '.'); return load(); }).catch(fail);
+    var chain = Promise.resolve();
+    rows.forEach(function (r, i) { chain = chain.then(function () { return savePlayer(null, r.name, sqTeam, r.num, r.pos, sqList(sqTeam).length + i, true).then(function (res) { if (res.error) throw res.error; }); }); });
+    chain.then(function () { ta.value = ''; btn.disabled = false; toast(rows.length + (rows.length === 1 ? ' player added.' : ' players added.')); return load(); }).then(function () { sqBody(); }).catch(function (e) { btn.disabled = false; fail(e); load(); });
   }
 
   // ---------------------------------------------------------------------
@@ -399,32 +524,9 @@
       });
       saveSettings(p); return;
     }
-    if (t.closest('[data-ua-add-players]')) {
-      var lines = ($('[data-ua-bulk]').value || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
-      if (!lines.length) return;
-      addPlayers(lines);
-      return;
-    }
-    var sp = t.closest('[data-ua-save-player]');
-    if (sp) {
-      var row = sp.closest('[data-pid]'), get = function (k) { return $('[data-pf="' + k + '"]', row); };
-      savePlayer(row.getAttribute('data-pid'), get('name').value, get('team').value, get('shirt').value, get('position').value, null, get('active').checked).then(function (r) { if (r.error) fail(r.error); else { note('Saved.'); load(); } });
-      return;
-    }
-    var dp = t.closest('[data-ua-del-player]');
-    if (dp) {
-      var prow = dp.closest('[data-pid]'), pname = $('[data-pf="name"]', prow).value;
-      if (!window.confirm('Remove ' + pname + '? If they already have votes they are hidden instead, so the count is kept.')) return;
-      supabaseClient.rpc('unity_admin_delete_player', { p_id: prow.getAttribute('data-pid') }).then(function (r) { if (r.error) fail(r.error); else { note(r.data === 'hidden' ? 'Hidden (they have votes).' : 'Removed.'); load(); } });
-      return;
-    }
-    var en = t.closest('[data-ua-entry]');
-    if (en) {
-      var er = en.closest('[data-eid]'), st = en.getAttribute('data-ua-entry'), nt = null;
-      if (st === 'rejected') { nt = window.prompt('Why? (kept with the entry, e.g. "no donation found")', 'No matching donation found'); if (nt === null) return; }
-      supabaseClient.rpc('unity_admin_set_entry', { p_id: er.getAttribute('data-eid'), p_status: st, p_note: nt }).then(function (r) { if (r.error) fail(r.error); else load(); });
-      return;
-    }
+    var sc = t.closest('[data-sq-team]'); if (sc) { sqTeam = sc.getAttribute('data-sq-team'); $$('.sq-chip').forEach(function (c) { c.classList.toggle('is-active', c === sc); }); sqPos = null; sqBody(); return; }
+    if (t.closest('[data-sq-del]')) { sqDelete(t.closest('[data-pid]')); return; }
+    if (t.closest('[data-sq-paste]')) { sqPaste(); return; }
     var st = t.closest('[data-ua-save-team]'); if (st) { saveTeam(st.closest('[data-tid]'), st); return; }
     var dt = t.closest('[data-ua-del-team]');
     if (dt) {
@@ -472,6 +574,13 @@
     saveSettings(p);
   });
 
+  root.addEventListener('submit', function (e) { if (e.target.closest('[data-sq-add]')) { e.preventDefault(); sqAdd(e.target.closest('[data-sq-add]')); } });
+  root.addEventListener('change', function (e) {
+    if (e.target.name === 'pos' && e.target.closest('[data-sq-add]')) { sqPos = e.target.value; return; }
+    var f = e.target.closest('[data-sf]'); if (!f) return;
+    sqSaveRow(f.closest('[data-pid]'), f);
+  });
+  root.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest('.sq-row') && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') { e.preventDefault(); e.target.blur(); } });
   document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-ua-draw-close]')) closeDraw(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && overlay) closeDraw(); });
 
