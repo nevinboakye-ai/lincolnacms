@@ -30,11 +30,42 @@
   function shirtNum(p) { var n = parseInt(p.shirt_no, 10); return isNaN(n) ? 999 : n; }
   function byShirt(a, b) { return shirtNum(a) - shirtNum(b) || String(a.name).localeCompare(String(b.name)); }
 
-  function card(p, o) {
-    var inner = '<span class="up-shirt">' + esc(p.shirt_no || '') + '</span><span class="up-name">' + esc(p.name) + '</span>';
+  var ABBR = { gk: 'GK', def: 'DEF', mid: 'MID', fwd: 'FWD' };
+
+  // A little shirt in the team colour with the number on it.
+  var JERSEY = '<svg class="up-jersey" viewBox="0 0 64 56" aria-hidden="true"><path class="up-jersey-body" d="M21 3 8 9 1 24l11 5 4-6v31h32V23l4 6 11-5-7-15-13-6c-2 7-20 7-22 0z"/><path class="up-jersey-collar" d="M21 3c2 7 20 7 22 0-3 4-19 4-22 0z"/></svg>';
+
+  // One player standing on the pitch: shirt, then a dark name plate with the position underneath.
+  function card(p, o, key) {
+    var inner = '<span class="up-kit">' + JERSEY + '<b class="up-num">' + esc(p.shirt_no || '') + '</b></span>' +
+      '<span class="up-plate"><span class="up-pname">' + esc(p.name) + '</span><span class="up-ppos">' + esc(ABBR[key] || '') + '</span></span>';
     return o.canVote
       ? '<button type="button" class="up-card up-card--vote" data-vote-player="' + esc(p.id) + '" aria-label="Vote for ' + esc(p.name) + '">' + inner + '</button>'
       : '<div class="up-card">' + inner + '</div>';
+  }
+
+  // Where each player stands, as percentages of the flat pitch (0,0 = far left corner behind the goalkeeper).
+  function layout(rows, groups) {
+    // Every line of players is a "slot"; a crowded line (more than four) is split over two slots.
+    var slots = [];
+    rows.forEach(function (l, i) {
+      var list = groups[l.key].slice().sort(byShirt), k = list.length;
+      var parts = k > 4 ? [list.slice(0, Math.ceil(k / 2)), list.slice(Math.ceil(k / 2))] : [list];
+      parts.forEach(function (sub) { slots.push({ key: l.key, row: i, list: sub }); });
+    });
+    var n = slots.length, top = n === 1 ? 64 : 17, bottom = 87;
+    var m = n <= 4 ? 1 : Math.max(0.66, 4.2 / n);            // crowded pitch: slightly smaller cards so rows don't collide
+    var out = [];
+    slots.forEach(function (sl, i) {
+      var f = n === 1 ? 0.7 : i / (n - 1);                    // 0 = far end of the pitch, 1 = the near end
+      var y = n === 1 ? top : top + i * ((bottom - top) / (n - 1));
+      var s = 1.06 - 0.12 * f;                                // distant players are drawn a touch bigger so names stay readable
+      var cw = Math.min(16.5 * m, 70 / (sl.list.length * s));  // never wider than the gap between neighbours
+      sl.list.forEach(function (p, pi) {
+        out.push({ p: p, key: sl.key, x: 10 + (pi + 0.5) * (80 / sl.list.length), y: y, row: sl.row, s: s, cw: cw });
+      });
+    });
+    return out;
   }
 
   // players: [{id, name, shirt_no, position}], o: { colour, canVote, title }
@@ -46,16 +77,16 @@
     var style = o.colour ? ' style="--tc:' + esc(o.colour) + '"' : '';
     var out = '<div class="up"' + style + '>';
     if (rows.length) {
-      out += '<div class="up-pitch" role="group" aria-label="' + esc(o.title || 'Line-up') + '">' +
-        '<svg class="up-lines" viewBox="0 0 300 400" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6">' +
-        '<rect x="8" y="8" width="284" height="384" rx="3"/><line x1="8" y1="200" x2="292" y2="200"/><circle cx="150" cy="200" r="38"/><circle cx="150" cy="200" r="2.4" fill="currentColor"/>' +
-        '<rect x="70" y="8" width="160" height="62"/><rect x="108" y="8" width="84" height="26"/><path d="M118 70a34 34 0 0 0 64 0"/>' +
-        '<rect x="70" y="330" width="160" height="62"/><rect x="108" y="366" width="84" height="26"/><path d="M118 330a34 34 0 0 1 64 0"/></svg>' +
-        '<div class="up-rows" style="--n:' + rows.length + '">' +
-        rows.map(function (l) {
-          var list = groups[l.key].slice().sort(byShirt), n = list.length, per = n > 5 ? Math.ceil(n / 2) : n;
-          return '<div class="up-row up-row--' + l.key + (n > 5 ? ' is-two' : '') + '" style="--per:' + per + '" data-line="' + l.key + '">' + list.map(function (p) { return card(p, o); }).join('') + '</div>';
-        }).join('') + '</div></div>';
+      var spots = layout(rows, groups);
+      out += '<div class="up-stage"><div class="up-plane" role="group" aria-label="' + esc(o.title || 'Line-up') + '">' +
+        '<svg class="up-lines" viewBox="0 0 300 400" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">' +
+        '<rect x="8" y="8" width="284" height="384" rx="2"/><line x1="8" y1="200" x2="292" y2="200"/><circle cx="150" cy="200" r="38"/><circle cx="150" cy="200" r="2.6" fill="currentColor"/>' +
+        '<rect x="70" y="8" width="160" height="62"/><rect x="108" y="8" width="84" height="26"/><path d="M118 70a34 34 0 0 0 64 0"/><circle cx="150" cy="52" r="1.8" fill="currentColor"/>' +
+        '<rect x="70" y="330" width="160" height="62"/><rect x="108" y="366" width="84" height="26"/><path d="M118 330a34 34 0 0 1 64 0"/><circle cx="150" cy="348" r="1.8" fill="currentColor"/></svg>' +
+        '<span class="up-haze" aria-hidden="true"></span><span class="up-side" aria-hidden="true"></span>' +
+        spots.map(function (s) { return '<span class="up-spot" style="left:' + s.x.toFixed(2) + '%;top:' + s.y.toFixed(2) + '%" aria-hidden="true"></span>'; }).join('') +
+        spots.map(function (s, i) { return '<div class="up-pl" style="left:' + s.x.toFixed(2) + '%;top:' + s.y.toFixed(2) + '%;--d:' + (s.row * 0.09 + i * 0.015).toFixed(2) + 's;--s:' + s.s.toFixed(3) + ';--cw:' + s.cw.toFixed(2) + '">' + card(s.p, o, s.key) + '</div>'; }).join('') +
+        '</div></div>';
     } else {
       out += '<p class="uc-muted up-empty">Add each player\'s position (for example Goalkeeper, Defender, Midfielder, Forward) and the line-up appears here.</p>';
     }
