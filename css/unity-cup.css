@@ -577,3 +577,42 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
   .ua-team-fields { grid-template-columns: minmax(0, 1fr); }
   .ua-card { padding: var(--space-3); }
 }
+
+/* =========================================================
+   Line-up pitch (js/unity-pitch.js)
+   ========================================================= */
+.up { --tc: var(--uc-gold); }
+.up-pitch { position: relative; container-type: inline-size; aspect-ratio: 3 / 4; border-radius: var(--radius-md); overflow: hidden; color: rgba(245, 241, 230, 0.5);
+  background: repeating-linear-gradient(180deg, #0f3d24 0 8.333%, #134a2c 8.333% 16.666%); box-shadow: inset 0 0 0 2px rgba(212, 166, 43, 0.55), 0 14px 34px rgba(0, 0, 0, 0.35); }
+.up-pitch::after { content: ''; position: absolute; inset: 0; background: radial-gradient(120% 70% at 50% 0%, rgba(255, 255, 255, 0.1), transparent 60%), radial-gradient(100% 60% at 50% 110%, rgba(0, 0, 0, 0.35), transparent 70%); pointer-events: none; }
+.up-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+.up-rows { position: absolute; inset: 3% 3% 3%; z-index: 2; display: grid; grid-template-rows: repeat(var(--n), minmax(0, 1fr)); }
+.up-row { display: grid; grid-template-columns: repeat(var(--per), minmax(0, 1fr)); align-content: center; align-items: start; justify-items: center; gap: 6px 4px; padding-inline: 1%; }
+.up-card { display: grid; justify-items: center; gap: 3px; width: 100%; max-width: 110px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: center; cursor: default; }
+.up-shirt { display: grid; place-items: center; width: clamp(26px, 9.5cqw, 46px); height: clamp(26px, 9.5cqw, 46px); border-radius: 50%; color: #fff; font: 800 clamp(0.72rem, 3.4cqw, 1.05rem) var(--font-body); background: linear-gradient(145deg, var(--tc), color-mix(in srgb, var(--tc) 55%, #000)); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 4px 10px rgba(0, 0, 0, 0.45); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55); }
+.up-name { display: block; max-width: 100%; padding: 3px 7px 4px; border-radius: 4px; border-bottom: 2px solid var(--uc-gold); background: #f5f1e6; color: #17130a; font: 800 clamp(0.62rem, 3cqw, 0.8rem) / 1.15 var(--font-body); letter-spacing: 0.03em; text-transform: uppercase; overflow-wrap: anywhere; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); }
+.up-card--vote { cursor: pointer; transition: transform 0.2s var(--ease-standard); -webkit-tap-highlight-color: transparent; }
+.up-card--vote:hover, .up-card--vote:focus-visible { transform: translateY(-3px) scale(1.04); }
+.up-card--vote:hover .up-name, .up-card--vote:focus-visible .up-name { background: var(--uc-gold-hi); }
+.up-card--vote:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; border-radius: 8px; }
+.up-pitch { animation: uc-up 0.5s both; }
+.up-row .up-card { animation: up-drop 0.5s var(--ease-standard) both; }
+.up-row--def .up-card { animation-delay: 0.08s; } .up-row--mid .up-card { animation-delay: 0.16s; } .up-row--fwd .up-card { animation-delay: 0.24s; }
+@keyframes up-drop { from { opacity: 0; transform: translateY(-14px) scale(0.9); } }
+.up-extra { margin-top: var(--space-3); }
+.up-extra h4 { margin: 0 0 8px; font: 700 0.76rem var(--font-body); letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-gold-light); }
+.up-extra ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.up-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 12px 0 4px; border-radius: 999px; background: var(--color-bg-alt); border: 1px solid var(--color-border); color: var(--color-text); font: 600 0.85rem var(--font-body); }
+.up-chip b { display: grid; place-items: center; min-width: 26px; height: 26px; border-radius: 50%; background: var(--tc); color: #fff; font-size: 0.75rem; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+.up-chip--vote { cursor: pointer; }
+.up-chip--vote:hover { border-color: var(--color-gold); }
+.up-empty { padding: var(--space-4); text-align: center; border: 1px dashed var(--color-border-strong); border-radius: var(--radius-md); }
+@media (max-width: 520px) {
+  .up-pitch { aspect-ratio: 3 / 4.2; }
+  .up-row { gap: 4px 2px; }
+  .up-name { padding: 2px 4px 3px; }
+}
+@media (prefers-reduced-motion: reduce) { .up-pitch, .up-row .up-card { animation: none; } }
+.ua-preview { grid-column: 1 / -1; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--color-border); background: var(--color-surface); }
+.ua-preview summary { cursor: pointer; font-weight: 700; font-size: 0.9rem; }
+.ua-preview .up { max-width: 420px; margin: 12px auto 8px; }

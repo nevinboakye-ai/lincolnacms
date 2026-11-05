@@ -732,6 +732,7 @@
     var fx = (S.fixtures || []).filter(function (f) { return f.home_team_id === t.id || f.away_team_id === t.id; });
     var html = '<div class="uc-team-head" style="--tc:' + esc(t.colour) + '">' + crest(t, 'uc-crest--xl') + '<div><span class="uc-modal-eyebrow">' + (t.group_name ? esc(t.group_name) : 'Team') + '</span><h2 id="uc-modal-title" class="uc-modal-title">' + esc(t.name) + '</h2></div></div>' +
       (t.description ? '<p class="uc-modal-lede">' + esc(t.description) + '</p>' : '') +
+      (window.UnityPitch && squad.length ? '<h3 class="uc-sub">Line-up</h3>' + UnityPitch.html(squad, { colour: t.colour, canVote: canVote, title: t.name + ' line-up' }) : '') +
       '<h3 class="uc-sub">Squad</h3>' + (squad.length ? '<ul class="uc-squad">' + squad.map(function (p) {
         return '<li><span class="uc-shirt" style="--tc:' + esc(t.colour) + '">' + esc(p.shirt_no || '–') + '</span><span class="uc-squad-name"><strong>' + esc(p.name) + '</strong>' + (p.position ? '<small>' + esc(p.position) + '</small>' : '') + '</span>' +
           (canVote ? '<button type="button" class="uc-mini" data-vote-player="' + esc(p.id) + '">Vote</button>' : '') + '</li>';
