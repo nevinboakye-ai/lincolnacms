@@ -7329,32 +7329,46 @@
       });
     }
 
+    // Who is on the screen: one entry per person who has signed up, each with their answer for every feature.
+    function hubPerson(row, cells) {
+      return { id: row.user_id, hasAccount: true, name: row.full_name || row.email || 'Unnamed', email: row.email || '', status: row.account_status || '',
+        type: row.person_type, memberType: row.member_type, title: row.committee_role, course: row.course, year: row.year_of_study, cells: cells || {} };
+    }
+
     function loadHubAccess() {
       loadNetworkLaunch();
-      return Promise.all([
-        supabaseClient.rpc('president_get_hub_rules'),
-        supabaseClient.rpc('president_get_hub_access')
-      ]).then(function (res) {
-        if (res[0].error || res[1].error) {
-          var msg = (res[0].error || res[1].error).message;
-          console.error('Hub access failed to load:', msg);
-          showHubStatus("Couldn't load hub access - has migration 060 been run? (" + msg + ')');
+      var missing = function (err) { return err && /function|schema cache|does not exist|not found/i.test(err.message || ''); };
+      return supabaseClient.rpc('president_get_hub_rules').then(function (rulesRes) {
+        if (rulesRes.error) return { error: rulesRes.error };
+        // Normal path (migration 121): one row per person, so the list can never be cut short by the API's row limit.
+        return supabaseClient.rpc('president_get_hub_people').then(function (peopleRes) {
+          if (!peopleRes.error) {
+            return { rules: rulesRes.data || [], people: (peopleRes.data || []).map(function (r) { return hubPerson(r, r.cells); }) };
+          }
+          if (!missing(peopleRes.error)) return { error: peopleRes.error };
+          // Older database: one row per person per feature (can be cut off at 1,000 rows by the API).
+          return supabaseClient.rpc('president_get_hub_access').then(function (oldRes) {
+            if (oldRes.error) return { error: oldRes.error };
+            var byUser = {}, rows = oldRes.data || [];
+            rows.forEach(function (row) {
+              var key = row.person_key || row.user_id;
+              var p = byUser[key] || (byUser[key] = hubPerson(row, {}));
+              p.id = key;
+              p.cells[row.feature] = { allowed: row.allowed, via: row.via };
+            });
+            return { rules: rulesRes.data || [], people: Object.keys(byUser).map(function (k) { return byUser[k]; }), legacy: rows.length };
+          });
+        });
+      }).then(function (res) {
+        if (res.error) {
+          console.error('Hub access failed to load:', res.error.message);
+          showHubStatus("Couldn't load hub access - has migration 060 been run? (" + res.error.message + ')');
           return;
         }
-        showHubStatus('');
-        hubRules = res[0].data || [];
-        var byUser = {};
-        (res[1].data || []).forEach(function (row) {
-          // people who have no login yet have no user id; the database gives them an email-based key instead
-          var key = row.person_key || row.user_id;
-          var p = byUser[key];
-          if (!p) {
-            p = byUser[key] = { id: key, hasAccount: row.has_account !== false, name: row.full_name || row.email || 'Unnamed', email: row.email || '', status: row.account_status || '', type: row.person_type, memberType: row.member_type, title: row.committee_role, course: row.course, year: row.year_of_study, cells: {} };
-          }
-          p.cells[row.feature] = { allowed: row.allowed, via: row.via };
-        });
-        hubPeople = Object.keys(byUser).map(function (k) { return byUser[k]; })
-          .sort(function (a, b) { return a.name.localeCompare(b.name); });
+        hubRules = res.rules;
+        hubPeople = res.people.sort(function (a, b) { return a.name.localeCompare(b.name); });
+        if (res.legacy && res.legacy >= 1000) showHubStatus('Only part of the list could be loaded. Run db/migrations/121-hub-access-signed-up-people.sql in Supabase to see everyone.');
+        else showHubStatus('');
         renderHubRules();
         renderHubMatrix();
       });

@@ -1973,3 +1973,10 @@ The Network also shows people the committee added before they had an account (pe
 
 Run `db/migrations/120-unity-cup-captains.sql`. In **Squads**, each player has **C** (captain) and **VC** (vice-captain) buttons. A team has one of each: choosing a new captain replaces the old one, and a hidden or moved player stops being captain. Team managers can set them on their private page too. On the public page the captain wears a gold armband and a **C** badge on the 3D pitch, the vice-captain a silver armband and **VC**; there is a small legend under the pitch, and the squad list and vote cards carry a "Captain" / "Vice-captain" tag.
 
+## 173. Hub Access: back to the people who have signed up, one row each (migration 121)
+
+Run `db/migrations/121-hub-access-signed-up-people.sql`. This replaces the larger list from 118/119:
+- **Why only some people showed:** the screen was getting one database row for every person for every feature (70+ people x 27 features is nearly 2,000 rows), and Supabase quietly cuts an API response off at 1,000 rows, so only the first people alphabetically arrived. Now there is one row per person, carrying all their access answers together, so the list can't be cut short however many members or features there are.
+- **Who is listed:** every member who has signed up (active, pending or expired), plus Network professionals who have a login. Test and half-made logins, MMG guests and people who haven't signed up yet are no longer shown. (Choices saved against an email for someone who hadn't signed up still apply when they do.)
+- If the migration hasn't been run, the screen warns when its list was cut off and tells you which file to run.
+
