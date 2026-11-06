@@ -219,18 +219,12 @@
   var VIEWABLE_EXTS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'];
   function isLockedOut(r) { return !!(r && r.is_locked && !r.can_open); }
 
-  // Public / private (migration 123). Private = taken out of the library: only the person who shared it and the
-  // committee can see it. The committee's choice can't be undone by the author (the database enforces this too).
+  // Public / private (migrations 123 + 124). Private = taken out of the library and visible to NO ONE but the person
+  // who shared it - not even the committee. Only that person can switch it (the database enforces this too).
   var hiddenReady = true;
-  var hiddenCount = 0;
   var EYE_OFF_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 5c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
   function isPrivate(r) { return !!(r && r.is_hidden); }
-  function hiddenByCommittee(r) { return isPrivate(r) && r.hidden_by !== r.uploader_id; }
-  function canToggleVisibility(r) {
-    if (!hiddenReady || !r || r.status !== 'approved') return false;
-    if (isAdmin) return true;
-    return r.uploader_id === userId && !hiddenByCommittee(r);
-  }
+  function canToggleVisibility(r) { return !!(hiddenReady && r && r.status === 'approved' && r.uploader_id === userId); }
   function visibilityBtn(r) {
     if (!canToggleVisibility(r)) return '';
     return isPrivate(r)
@@ -239,15 +233,11 @@
   }
   function privateBadge(r) {
     if (!isPrivate(r)) return '';
-    return '<span class="res-badge res-badge--private" title="' + (hiddenByCommittee(r) ? 'Made private by the committee' : 'Only you and the committee can see this') + '">' + EYE_OFF_ICON + 'Private</span>';
+    return '<span class="res-badge res-badge--private" title="Only you can see this">' + EYE_OFF_ICON + 'Private</span>';
   }
   function privateNote(r, mode) {
     if (!isPrivate(r) || mode === 'review') return '';
-    var who = hiddenByCommittee(r) && r.uploader_id === userId
-      ? 'The committee made this private, so members can\'t find it in the library. Get in touch with the committee if you\'d like it public again.'
-      : mode === 'hidden' ? 'Not in the library. Only the person who shared it and the committee can see this. Make it public to put it back.'
-      : 'Private: members can\'t find this in the library. Only you and the committee can see it. Make it public any time.';
-    return '<p class="res-private-note">' + EYE_OFF_ICON + '<span>' + escapeHtml(who) + '</span></p>';
+    return '<p class="res-private-note">' + EYE_OFF_ICON + '<span>Private: only you can see this. It\'s not in the library and the committee can\'t see it either. Make it public any time.</span></p>';
   }
 
   // Attach url / file_path / preview_path and can_open to each row, in place.
@@ -547,22 +537,8 @@
       var rc = $('res-review-count');
       rc.hidden = !(isAdmin && pending > 0);
       rc.textContent = pending;
-      return loadHiddenCount();
     });
   }
-  // The committee's "Private" shortcut: how many resources are currently taken out of the library.
-  function loadHiddenCount() {
-    var link = $('res-hidden-link'), pill = $('res-hidden-count');
-    if (!link) return Promise.resolve();
-    if (!isAdmin || !hiddenReady) { link.hidden = true; return Promise.resolve(); }
-    return supabaseClient.from('resources').select('id', { count: 'exact', head: true }).eq('is_hidden', true).then(function (r) {
-      if (r.error) { hiddenReady = !/is_hidden|column|permission denied/i.test(r.error.message || ''); hiddenCount = 0; }
-      else hiddenCount = r.count || 0;
-      link.hidden = !(hiddenReady && hiddenCount > 0);
-      pill.hidden = !hiddenCount; pill.textContent = hiddenCount;
-    }, function () { link.hidden = true; });
-  }
-
   // Approved since the previous visit (not counting your own).
   function loadNewCounts() {
     newByCourse = {};
@@ -600,7 +576,6 @@
     var hash = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
     if (hash === 'review' && isAdmin) { showView('res-view-list'); openSpecial('review'); window.scrollTo({ top: 0 }); return; }
     if (hash === 'mine') { showView('res-view-list'); openSpecial('mine'); window.scrollTo({ top: 0 }); return; }
-    if (hash === 'private' && isAdmin) { showView('res-view-list'); openSpecial('hidden'); window.scrollTo({ top: 0 }); return; }
     var wanted = hash.indexOf('c=') === 0 ? hash.slice(2) : '';
     currentCourse = COURSES.some(function (c) { return c.name === wanted; }) ? wanted : '';
     showView('res-view-home');
@@ -747,40 +722,33 @@
 
   // ---- My submissions / Review queue ---------------------------------------------------
   function openSpecial(kind) {
-    var isReview = kind === 'review', isHiddenView = kind === 'hidden';
-    $('res-crumb-current').textContent = isReview ? 'Review queue' : isHiddenView ? 'Private resources' : 'My submissions';
-    $('res-list-title').textContent = isReview ? 'Review queue' : isHiddenView ? 'Private resources' : 'My submissions';
+    var isReview = kind === 'review';
+    $('res-crumb-current').textContent = isReview ? 'Review queue' : 'My submissions';
+    $('res-list-title').textContent = isReview ? 'Review queue' : 'My submissions';
     $('res-list-sub').textContent = 'Loading…';
     var impact = $('res-insights-summary');
     if (impact) { impact.hidden = true; impact.innerHTML = ''; }
     $('res-list').innerHTML = skeletonCards(2);
     $('res-empty').hidden = true;
     selectResources(function (q) {
-      return isReview ? q.eq('status', 'pending').order('created_at', { ascending: true })
-        : isHiddenView ? q.eq('is_hidden', true).order('hidden_at', { ascending: false })
-        : q.eq('uploader_id', userId).order('created_at', { ascending: false });
+      return isReview ? q.eq('status', 'pending').order('created_at', { ascending: true }) : q.eq('uploader_id', userId).order('created_at', { ascending: false });
     }).then(function (r) {
-      if (r.error) { $('res-list-sub').textContent = isHiddenView ? "Couldn't load: has migration 123-resources-public-private.sql been run? (" + r.error.message + ')' : "Couldn't load: " + r.error.message; $('res-list').innerHTML = ''; return; }
+      if (r.error) { $('res-list-sub').textContent = "Couldn't load: " + r.error.message; $('res-list').innerHTML = ''; return; }
       var rows = r.data || [];
-      if (isHiddenView) hiddenCount = rows.length;
-      $('res-list-sub').textContent = isHiddenView
-        ? (rows.length ? rows.length + (rows.length === 1 ? ' resource is' : ' resources are') + ' private: taken out of the library. Only the people who shared them and the committee can see them.' : '')
-        : isReview
+      $('res-list-sub').textContent = isReview
         ? (rows.length ? rows.length + ' waiting for review. Nothing here is visible to members until you approve it.' : '')
         : 'Everything you\'ve shared. New or edited resources are reviewed by the executive committee before they appear.';
-      renderCards($('res-list'), rows, { mode: isReview ? 'review' : isHiddenView ? 'hidden' : 'mine' });
-      if (!isReview && !isHiddenView && insights()) insights().loadMine(rows);
+      renderCards($('res-list'), rows, { mode: isReview ? 'review' : 'mine' });
+      if (!isReview && insights()) insights().loadMine(rows);
       var empty = $('res-empty');
       empty.hidden = rows.length > 0;
       if (!rows.length) {
-        empty.innerHTML = isHiddenView
-          ? emptyState('Nothing is private', 'Every resource is in the library. Use "Make private" on a resource to take it out without deleting it.', '')
-          : isReview
+        empty.innerHTML = isReview
           ? emptyState('All caught up', 'Nothing is waiting for review right now.', '')
           : emptyState('Nothing shared yet', 'Share a note, past paper or useful link and it will show up here.', '<button type="button" class="btn btn-primary" data-res-share>Share a resource</button>');
       }
       var mc = $('res-mine-count');
-      if (!isReview && !isHiddenView) { mc.hidden = !rows.length; mc.textContent = rows.length; }
+      if (!isReview) { mc.hidden = !rows.length; mc.textContent = rows.length; }
     });
   }
 
@@ -824,10 +792,9 @@
   }
 
   function statusBadge(r) {
-    if (r.status === 'approved' && isPrivate(r)) return privateBadge(r);
-    if (r.status === 'pending') return '<span class="res-badge res-badge--pending">Pending review</span>';
-    if (r.status === 'rejected') return '<span class="res-badge res-badge--rejected">Not approved</span>';
-    return '';
+    if (r.status === 'pending') return '<span class="res-badge res-badge--pending">Pending review</span>' + privateBadge(r);
+    if (r.status === 'rejected') return '<span class="res-badge res-badge--rejected">Not approved</span>' + privateBadge(r);
+    return privateBadge(r);
   }
 
   function cardHtml(r, mode, index) {
@@ -851,9 +818,6 @@
       actions = '<button type="button" class="btn btn-outline res-btn" data-res-preview>Preview</button>' +
         '<button type="button" class="btn btn-primary res-btn" data-res-approve>Approve</button>' +
         '<button type="button" class="btn btn-outline res-btn res-btn--danger" data-res-reject>Reject…</button>';
-    } else if (mode === 'hidden') {
-      actions = '<button type="button" class="btn btn-outline res-btn" data-res-preview>Preview</button>' + visibilityBtn(r) +
-        '<button type="button" class="btn btn-outline res-btn res-btn--danger" data-res-delete>Remove</button>';
     } else if (mode === 'mine') {
       if (r.status === 'approved') actions += '<button type="button" class="btn btn-outline res-btn res-btn--insights" data-ins-open="' + escapeHtml(r.id) + '">Insights</button>';
       actions += visibilityBtn(r) + '<button type="button" class="btn btn-outline res-btn" data-res-edit>Edit</button>' +
@@ -1580,9 +1544,9 @@
       if (!res.data || !res.data.length) { showToast("Couldn't change it. You may not have permission.", true); return; }
       r.is_hidden = hide;
       loadedAll = false;   // the library list must be fetched again next time it's shown
-      showToast(hide ? '"' + r.title + '" is now private. Only you and the committee can see it.' : '"' + r.title + '" is public again. Members can see it.');
+      showToast(hide ? '"' + r.title + '" is now private. Only you can see it.' : '"' + r.title + '" is public again. Members can see it.');
       var mode = card && card.parentNode && card.parentNode.getAttribute('data-mode');
-      // In the library it slides away when hidden; in the Private list when made public; in My submissions it just updates.
+      // In the library it slides away when made private; in My submissions it just updates.
       if (mode === 'mine') refreshCurrent(); else withLeave(r.id, refreshCurrent);
     });
   }
@@ -1617,7 +1581,6 @@
       var hash = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
       if (hash === 'review' && isAdmin) openSpecial('review');
       else if (hash === 'mine') openSpecial('mine');
-      else if (hash === 'private' && isAdmin) openSpecial('hidden');
       else { loadedAll = false; renderChips(); loadAll(); }
     });
   }
@@ -2041,7 +2004,6 @@
     $('res-share-btn').addEventListener('click', function () { openShareDialog(null); });
     $('res-mine-link').addEventListener('click', function () { go('mine'); });
     $('res-review-link').addEventListener('click', function () { go('review'); });
-    if ($('res-hidden-link')) $('res-hidden-link').addEventListener('click', function () { go('private'); });
     $('res-back-btn').addEventListener('click', function () { go(''); });
     $('res-whatsnew-jump').addEventListener('click', function () {
       $('res-browse-list').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });

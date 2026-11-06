@@ -2001,11 +2001,12 @@ Run `db/migrations/122-unity-cup-publish-fixtures.sql`. Before this, every fixtu
 - **Fixtures that already existed stay public** when the migration is run, so nothing disappears from the live page. Use **Hide all** if you want to start from a clean slate.
 - The rule is enforced in the database (the public page is only ever sent published fixtures), so it can't be bypassed. Until the migration is run, the Fixtures tab shows a reminder and everything behaves as before.
 
-## 176. Make a resource public or private (migration 123)
+## 176. Make a resource public or private (migrations 123 and 124)
 
-Run `db/migrations/123-resources-public-private.sql`. Every resource on **LACMS Resources** now has a public / private switch:
-- **Make private** takes it out of the library. Only the person who shared it and the executive committee can still see it (and open its file or link). **Nothing is deleted**: likes, comments and any PIN are kept, and **Make public** puts it straight back **without another review**.
-- **Where:** the button is on the resource's card in the library (for the person who shared it and for the committee) and in **My submissions**. Private ones show a grey **Private** badge and a short note. The committee also gets a **Private** button next to Review queue (appears once something is private) that lists everything currently private, with Make public / Remove.
-- **Who can switch it:** the person who shared it, and the committee. If the **committee** makes something private, the author **can't** undo it (their card says so); only the committee can make it public again.
-- **Enforced in the database,** not just the page: a private resource is invisible to other members in the table, its files and previews aren't readable, it isn't counted in the course tiles or the notification bell, and it can't be liked, commented on or have views recorded. The database also records who made it private and when.
-- Until the migration is run the page behaves exactly as before and shows no public/private buttons.
+Run `db/migrations/123-resources-public-private.sql`, then `db/migrations/124-resources-private-means-private.sql`. Every resource on **LACMS Resources** has a public / private switch:
+- **Make private** takes it out of the library, and **only the person who shared it can see it. Not even the committee.** It isn't in the library, the review queue or any list, its file and preview can't be opened by anyone else, and the committee can't edit or delete it. **Nothing is deleted**: likes, comments and any PIN are kept, and **Make public** puts it straight back **without another review**.
+- **Where:** a **Make private / Make public** button on the author's resource (in the library and in **My submissions**). A private one shows a grey **Private** badge and a note, in the author's My submissions.
+- **Only the person who shared it can switch it.** The committee can no longer make someone else's resource private (so there is no "Private" list for them). A committee member can make their own private like anyone else.
+- **Nothing can be slipped past review:** editing a resource still sends it back for review, private or not, so changing it in secret and then making it public doesn't put it in the library. The committee still reviews and removes public ones as before.
+- **Enforced in the database,** not just the page: row-level security, the file-storage rule, the course counts, the notification bell, and likes / comments / view-tracking all treat a private resource as invisible to everyone but its author.
+- If the committee had made anything private under 123, it stays private and now belongs to its author. Until the migrations are run, the page behaves exactly as before.
