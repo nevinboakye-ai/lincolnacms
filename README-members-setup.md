@@ -2080,7 +2080,7 @@ Run `db/migrations/126-unity-cup-match-control.sql` in the Supabase SQL Editor (
 - On the public page the scorers now also show the cards given (yellow and red squares beside each team).
 - The privacy notice has a new row for match voting. Its "last updated" date and version were **not** changed (that would ask every member to read it again): change them in the notice if you want to announce it. Voters' scrambled emails and sign-in codes for match voting are cleared together with the Player of the Tournament voter list (Settings -> Clean up old data, or automatically 30 days after the event).
 
-## 180. Private scorer links: let anyone keep score for a match (migration 127)
+## 180. Private scorer links: let anyone keep score for one match (migration 127)
 
 Run `db/migrations/127-unity-cup-scorer-links.sql` in the Supabase SQL Editor (after 114, 116 and 126; safe to run again). Nothing to re-deploy.
 
@@ -2100,3 +2100,14 @@ Run `db/migrations/127-unity-cup-scorer-links.sql` in the Supabase SQL Editor (a
 **How long links last:** a link stops working by itself **24 hours after the match's kick-off** (2 days after the event date if the match has no kick-off time). If you move the kick-off the deadline moves with it. Old links are also deleted by Settings -> Clean up old data.
 
 **Keeping them private:** the code is in the part of the link after `#`, so it is never sent to the website's server or to other sites, and the page is kept out of search engines. Treat the link like a password and send it only to the person keeping score. If one gets shared by mistake, turn it off or press **New link**. The "who is it for" label is only ever shown to the committee. Until the migration is run the match page shows a reminder instead of the Scorer links box.
+
+## 181. Referee links: one link for every match (migration 128)
+
+Run `db/migrations/128-unity-cup-referee-links.sql` in the Supabase SQL Editor (after 127; safe to run again). It lets a private link cover **every match**, which is what you want for two referees who move from game to game. Links made for a single match (section 180) still work.
+
+- **Make them:** Dashboard -> Unity Cup -> Fixtures -> **Referee links**. Type who it's for (or press **Make "Ref 1" and "Ref 2"**) and send each one with **Send...** (your phone's share sheet), **Copy link** or **Copy message**. Each link shows when it was last used and how many actions were made with it. **Turn off / on**, **New link** (the old one stops at once) and **Remove** are there too.
+- **What the referee sees:** they open the link on their phone (no account) and get **"Which match are you refereeing?"**: the live games first, then the ones coming up, then the finished ones (folded away). They tap a game and get the match control page (see 179): goals with the scorer, yellow and red cards with the sin bin, the clock, score and status. When the game ends they tap **Full time**, then **All matches** at the top (the phone's back button works too) and pick the next game. The match list updates by itself.
+- **What they can't do:** publish or hide a match, run or see Man of the Match, edit teams, players, kick-off times or settings, or make links. Checked in the database on every action.
+- **How long it lasts:** a referee link works until the **end of the day two days after the event date** (so the Saturday after a Friday event), then stops by itself. You can turn it off any time. Links for a single match still stop 24 hours after that match's kick-off.
+- Two referees can use their links at the same time. If both open the same match they will both be able to change it, so tell them which pitch or game each is on. Anything either of them records shows on the other's screen within about 5 seconds.
+- On a single match's page the old box is now called "Links for this match only" (for someone who should only ever see that one game).

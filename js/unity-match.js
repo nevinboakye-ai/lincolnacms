@@ -13,6 +13,10 @@
 // person needs no account: they get this same page for THAT match only (goals, scorers, cards, clock, score and
 // status). They cannot publish the match, see or run Man of the Match, or touch anything else. Every action goes
 // through unity_match_open / unity_match_do, which check the link in the database each time.
+//
+// REFEREE LINK (migration 128): a link can cover EVERY match. The referee opens it, sees the list of matches
+// (live first, then coming up, then finished), taps the game they are about to ref, and gets this page for it. The
+// "All matches" button in the top bar goes back to the list. The address stays the same except for ?m=<match id>.
 
 (function () {
   'use strict';
@@ -22,7 +26,8 @@
   var liveEl = document.getElementById('um-live');
   var FID = '', KEY = '', BADHASH = false;
   try {
-    FID = new URLSearchParams(window.location.search).get('id') || '';
+    var qp = new URLSearchParams(window.location.search);
+    FID = qp.get('id') || qp.get('m') || '';
     var hm = /^#([0-9a-f]{36})$/.exec(window.location.hash || '');
     if (hm) KEY = hm[1]; else if ((window.location.hash || '').length > 1 && !FID) BADHASH = true;
   } catch (e) { /* none */ }
@@ -52,6 +57,8 @@
     flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
     star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2 6.3 20.3l1.2-6.4L2.8 9.5l6.4-.8z" fill="currentColor"/></svg>',
     link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1 0l2.8-2.8a5 5 0 0 0-7.1-7.1l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.1 0L4.1 13.8a5 5 0 0 0 7.1 7.1l1.5-1.5"/></svg>',
+    go: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>',
     ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>'
   };
 
@@ -114,19 +121,20 @@
   var KEYERR = {
     bad_link: 'This link doesn\u2019t look right. Check you copied all of it, or ask for a new one.',
     link_off: 'The committee has switched this link off. Ask them for a new one if you\u2019re still keeping score.',
-    expired: 'This link has expired. Scorer links stop working 24 hours after kick-off.'
+    expired: 'This link has expired. Scorer links stop working 24 hours after kick-off, and referee links two days after the event date.',
+    no_match: 'That match couldn\u2019t be found. It may have been deleted.'
   };
   var KEYMAP = { unity_admin_add_goal: 'add_goal', unity_admin_remove_goal: 'remove_goal', unity_admin_set_goal_scorer: 'set_goal_scorer', unity_admin_add_card: 'add_card', unity_admin_remove_card: 'remove_card', unity_admin_set_clock: 'set_clock', unity_admin_set_score: 'set_score' };
   function unwrapKey(r) {
     if (r.error) return r;
     var d = r.data;
     if (d && d.ok === false) return { data: null, error: { message: KEYERR[d.error] || KEYERR.bad_link, keyError: d.error || 'bad_link' } };
-    if (d && d.ok === true && Object.prototype.hasOwnProperty.call(d, 'data') && !d.fixture) return { data: d.data, error: null };
+    if (d && d.ok === true && Object.prototype.hasOwnProperty.call(d, 'data') && !d.fixture && !d.fixtures) return { data: d.data, error: null };
     return r;
   }
   function api(fn, args) {
     if (!KEYMODE) return supabaseClient.rpc(fn, args);
-    if (fn === 'unity_admin_match') return supabaseClient.rpc('unity_match_open', { p_key: KEY }).then(unwrapKey);
+    if (fn === 'unity_admin_match') return supabaseClient.rpc('unity_match_open', { p_key: KEY, p_fixture: FID || null }).then(unwrapKey);
     var act = KEYMAP[fn];
     if (!act) return Promise.resolve({ data: null, error: { message: 'A private link can\u2019t do that.' } });
     return supabaseClient.rpc('unity_match_do', { p_key: KEY, p_action: act, p_args: args }).then(unwrapKey);
@@ -169,7 +177,7 @@
       var d = res.data || {};
       if (d.server_now) offset = Date.parse(d.server_now) - Date.now();
       if (d.missing) { showMissing(); return; }
-      var sig = JSON.stringify([d.fixture, d.teams, d.players, d.goals, d.cards, d.mom_votes, d.mom_voters, d.links, d.link_expires_at, d.label]);
+      var sig = JSON.stringify([d.fixture, d.teams, d.players, d.goals, d.cards, d.mom_votes, d.mom_voters, d.links, d.link_expires_at, d.label, d.fixtures]);
       var first = !M, changed = sig !== lastSig;
       M = d; lastSig = sig;
       if (first || (changed && !isTyping())) { render(); }
@@ -219,8 +227,11 @@
 
   // ---------------------------------------------------------------------
   // The page
+  function isList() { return !!M && KEYMODE && !M.fixture && !!M.fixtures; }
   function render() {
     if (!M) return;
+    syncTop();
+    if (isList()) { document.title = 'Choose a match - LACMS Unity Cup'; root.innerHTML = listPage(); return; }
     var f = F(), h = homeT(), a = awayT();
     document.title = (h.name || 'Home') + ' v ' + (a.name || 'Away') + ' - Match control';
     root.innerHTML = '<div class="um-a">' + keyBarHtml() + boardHtml() + visHtml() + controlsHtml() + '</div><div class="um-b">' + benchHtml() + eventsHtml() + momHtml() + linksHtml() + fixHtml() + footHtml() + '</div>';
@@ -258,11 +269,61 @@
       main + '</section>';
   }
 
+  // ---------------------------------------------------------------------
+  // Referee link: the list of matches to choose from, and moving between matches without leaving the page
+  function listHref() { return window.location.pathname.replace(/^.*\//, '') + '#' + KEY; }
+  function matchHref(id) { return window.location.pathname.replace(/^.*\//, '') + '?m=' + encodeURIComponent(id) + '#' + KEY; }
+  function listPage() {
+    var fs = (M.fixtures || []).filter(function (f) { return teamById(f.home_team_id) && teamById(f.away_team_id); });
+    var live = fs.filter(function (f) { return f.status === 'live'; });
+    var next = fs.filter(function (f) { return f.status === 'scheduled' || f.status === 'postponed'; });
+    var done = fs.filter(function (f) { return f.status === 'finished'; }).reverse();
+    var k = function (f) { return f.kickoff_at ? Date.parse(f.kickoff_at) : 9e15; };
+    live.sort(function (a, b) { return k(a) - k(b); }); next.sort(function (a, b) { return k(a) - k(b); });
+    function card(f) {
+      var h = teamById(f.home_team_id), a = teamById(f.away_team_id), has = f.status !== 'scheduled' && f.status !== 'postponed' && f.home_score != null && f.away_score != null;
+      var when = f.kickoff_at ? new Date(f.kickoff_at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : 'Time to be confirmed';
+      return '<li><a class="um-m is-' + esc(f.status) + '" href="' + esc(matchHref(f.id)) + '" data-um-open="' + esc(f.id) + '">' +
+        '<span class="um-m-top"><span class="um-pill is-' + esc(f.status) + '">' + (f.status === 'live' ? '<i></i>' : '') + esc(STATUS_TEXT[f.status] || f.status) + '</span><small>' + esc([f.stage, f.pitch, when].filter(Boolean).join(' \u00b7 ')) + '</small></span>' +
+        '<span class="um-m-team">' + crestHtml(h, 'sm') + '<strong>' + esc(h.name) + '</strong><b class="um-m-sc">' + (has ? f.home_score : '') + '</b></span>' +
+        '<span class="um-m-team">' + crestHtml(a, 'sm') + '<strong>' + esc(a.name) + '</strong><b class="um-m-sc">' + (has ? f.away_score : '') + '</b></span>' +
+        '<span class="um-m-go" aria-hidden="true">Run this match ' + ICON.go + '</span></a></li>';
+    }
+    function group(title, arr, cls) { return arr.length ? '<section class="um-mgroup ' + (cls || '') + '"><h2>' + title + '</h2><ul class="um-mlist">' + arr.map(card).join('') + '</ul></section>' : ''; }
+    return '<div class="um-pickpage">' + keyBarHtml() +
+      '<header class="um-lp-head"><h1>Which match are you refereeing?</h1><p>Tap the game you\u2019re about to start. You can come back to this list at any time with the <strong>All matches</strong> button at the top.</p></header>' +
+      (fs.length ? group('<i class="um-livedot"></i>Live now', live, 'is-live') + group('Coming up', next) +
+        (done.length ? '<details class="um-mgroup um-donegroup"' + (!live.length && !next.length ? ' open' : '') + '><summary><h2>Full time (' + done.length + ')</h2></summary><ul class="um-mlist">' + done.map(card).join('') + '</ul></details>' : '')
+        : '<p class="um-empty">There are no matches yet. The committee adds them in the dashboard.</p>') + '</div>';
+  }
+  function showLoadingMatch() { root.innerHTML = '<div class="um-loading"><span class="tm-spin" aria-hidden="true"></span><p>Opening the match&hellip;</p></div>'; }
+  function openMatch(id) {
+    if (sheet) closeSheet(true);
+    disarm(); FID = id; M = null; lastSig = '';
+    try { window.history.pushState(null, '', matchHref(id)); } catch (e) { /* ignore */ }
+    showLoadingMatch(); window.scrollTo(0, 0); load(true);
+  }
+  function goList() {
+    if (sheet) closeSheet(true);
+    disarm(); FID = ''; M = null; lastSig = '';
+    try { window.history.pushState(null, '', listHref()); } catch (e) { /* ignore */ }
+    showLoadingMatch(); window.scrollTo(0, 0); load(true);
+  }
+  // The top bar: committee = back to the dashboard; single-match link = the name; referee link = back to the list
+  function syncTop() {
+    if (!KEYMODE) return;
+    var back = $('.um-back'), brand = $('.um-brand'), tt = $('.um-top-title');
+    var inMatch = !!M && !!M.fixture && M.scope === 'all';
+    if (back) { back.style.display = inMatch ? '' : 'none'; back.setAttribute('href', listHref()); back.setAttribute('data-um-all', ''); var sp = $('span', back); if (sp) sp.textContent = 'All matches'; back.setAttribute('aria-label', 'Back to the list of all matches'); }
+    if (brand) brand.style.display = inMatch ? 'none' : '';
+    if (tt) tt.textContent = isList() ? 'Choose a match' : 'Scorer';
+  }
+
   // Shown to someone who opened a private scorer link
   function keyBarHtml() {
     if (!KEYMODE) return '';
     var exp = M.expires_at ? new Date(M.expires_at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-    return '<section class="um-note um-note--key"><p><strong>You\u2019re keeping score with a private link</strong>' + (M.label ? ' (' + esc(M.label) + ')' : '') + '. It only works for this match' + (exp ? ' and stops on ' + esc(exp) : '') + '. Please don\u2019t share it.</p></section>';
+    return '<section class="um-note um-note--key"><p><strong>You\u2019re keeping score with a private link</strong>' + (M.label ? ' (' + esc(M.label) + ')' : '') + (M.scope === 'all' ? '. It lets you run any match (use <strong>All matches</strong> at the top to switch games)' : '. It only works for this match') + (exp ? ' and stops on ' + esc(exp) : '') + '. Please don\u2019t share it.</p></section>';
   }
   function visHtml() {
     var f = F();
@@ -401,8 +462,8 @@
     if (KEYMODE) return '';
     if (M.links === undefined) return '<section class="um-note um-note--warn"><p><strong>One more step for scorer links.</strong> Run <code>127-unity-cup-scorer-links.sql</code> in the Supabase SQL Editor, then reload.</p></section>';
     var links = M.links || [];
-    return '<section class="um-card um-links" aria-label="Private scorer links"><div class="um-card-head"><h2>' + ICON.link + 'Scorer links</h2></div>' +
-      '<p class="um-fine">Send a private link to anyone who\u2019ll keep score for this match. They don\u2019t need an account or to be on the committee: they open it and get this page for <strong>this match only</strong> (goals, scorers, cards, the clock and the score). They can\u2019t publish it or see Man of the Match.</p>' +
+    return '<section class="um-card um-links" aria-label="Private scorer links"><div class="um-card-head"><h2>' + ICON.link + 'Links for this match only</h2></div>' +
+      '<p class="um-fine"><strong>Want one link for the referees to run every match?</strong> Make referee links on the dashboard (Unity Cup &rarr; Fixtures &rarr; Referee links). The ones below only open this match. Send a private link to anyone who\u2019ll keep score for just this match. They don\u2019t need an account or to be on the committee: they open it and get this page for <strong>this match only</strong> (goals, scorers, cards, the clock and the score). They can\u2019t publish it or see Man of the Match.</p>' +
       (links.length ? '<ul class="um-list">' + links.map(function (l, i) {
         var url = linkUrl(l);
         return '<li class="um-link' + (l.enabled ? '' : ' is-off') + '" data-lid="' + esc(l.id) + '"><div class="um-link-top"><strong>' + esc(l.label || 'Link ' + (i + 1)) + '</strong><span class="um-pill ' + (l.enabled ? 'is-live' : 'is-scheduled') + '">' + (l.enabled ? 'On' : 'Off') + '</span></div>' +
@@ -462,7 +523,7 @@
   }
 
   function footHtml() {
-    if (KEYMODE) return '<p class="um-foot"><a href="unity-cup-fixtures.html" target="_blank" rel="noopener">See it on the public page ' + ICON.ext + '</a></p>';
+    if (KEYMODE) return '<p class="um-foot">' + (M.scope === 'all' ? '<a href="' + esc(listHref()) + '" data-um-all>' + ICON.back + 'All matches</a>' : '') + '<a href="unity-cup-fixtures.html" target="_blank" rel="noopener">See it on the public page ' + ICON.ext + '</a></p>';
     return '<p class="um-foot"><a href="unity-cup-fixtures.html" target="_blank" rel="noopener">See it on the public page ' + ICON.ext + '</a><a href="president-dashboard.html#unity">Edit teams, time or pitch</a></p>';
   }
 
@@ -790,6 +851,17 @@
     disarm();
   });
 
+  document.addEventListener('click', function (e) {
+    if (!KEYMODE || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;
+    var all = e.target.closest && e.target.closest('[data-um-all]'); if (all) { e.preventDefault(); goList(); return; }
+    var om = e.target.closest && e.target.closest('[data-um-open]'); if (om) { e.preventDefault(); openMatch(om.getAttribute('data-um-open')); }
+  });
+  window.addEventListener('popstate', function () {
+    if (!KEYMODE) return;
+    var qp = new URLSearchParams(window.location.search);
+    if (sheet) closeSheet(true);
+    FID = qp.get('m') || ''; M = null; lastSig = ''; showLoadingMatch(); load(true);
+  });
   root.addEventListener('submit', function (e) {
     var f = e.target.closest && e.target.closest('[data-um-newlink]'); if (!f) return;
     e.preventDefault();
@@ -838,8 +910,9 @@
   // Start: sign-in and permission check, then show the match and keep it fresh
   function start() {
     if (KEYMODE) {
-      var back = $('.um-back'); if (back) { var brand = document.createElement('span'); brand.className = 'um-brand'; brand.textContent = 'LACMS Unity Cup'; back.parentNode.replaceChild(brand, back); }
-      var tt = $('.um-top-title'); if (tt) tt.textContent = 'Scorer';
+      var back = $('.um-back');
+      if (back && !$('.um-brand')) { var brand = document.createElement('span'); brand.className = 'um-brand'; brand.textContent = 'Unity Cup'; back.parentNode.insertBefore(brand, back); }
+      syncTop();
     }
     load(true);
     window.setInterval(tick, 250);

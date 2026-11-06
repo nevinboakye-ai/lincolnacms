@@ -549,40 +549,62 @@
         '<span class="ua-mrow-go" aria-hidden="true">Open &rsaquo;</span></a></li>';
     }).join('') + '</ul></div>';
   }
-  // Private scorer links: let people who aren't on the committee keep score for one match (migration 127)
+  // Referee links: one private link that lets a referee run ANY match (migrations 127 and 128)
   function matchLinkUrl(l) { return new URL('unity-match.html', window.location.href).href + '#' + l.token; }
-  function fixtureLabel(f) {
-    var h = teamById(f.home_team_id), a = teamById(f.away_team_id);
-    return (h ? h.name : '?') + ' v ' + (a ? a.name : '?');
+  function refLinks() { return (D.match_links || []).filter(function (l) { return !l.fixture_id; }); }
+  function refEndText() {
+    var d = D.settings && D.settings.event_date; if (!d) return '';
+    var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + 2);
+    return t.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
   }
-  function scorerLinksCard() {
-    var fs = (D.fixtures || []).filter(function (f) { return teamById(f.home_team_id) && teamById(f.away_team_id); });
-    if (!fs.length) return '';
-    if (!('match_links' in D)) return '<div class="ua-card ua-card--warn"><h3>One more step: scorer links</h3><p class="ua-hint">Run <code>127-unity-cup-scorer-links.sql</code> (from the <code>db/migrations</code> folder) in the Supabase SQL Editor, then reload, to send private scorer links.</p></div>';
-    var withLink = fs.filter(function (f) { return (D.match_links || []).some(function (l) { return l.fixture_id === f.id; }); }).length;
-    return '<div class="ua-card"><h3>Scorer links</h3><p class="ua-hint">Let someone who isn\u2019t on the committee keep score for a match: send them a private link. They open it on their phone and can add goals, scorers, cards, run the clock and fix the score for <strong>that match only</strong> (they can\u2019t publish it or see Man of the Match). Open a match above to make, send or switch off its links. Links stop working by themselves 24 hours after kick-off.</p>' +
-      '<p class="ua-hint"><strong>' + withLink + ' of ' + fs.length + '</strong> matches have a link.</p>' +
-      '<div class="ua-row"><button type="button" class="btn btn-primary" data-ua-ml-all' + (withLink === fs.length ? ' disabled' : '') + '>Make a link for every match without one</button>' +
-      '<button type="button" class="btn btn-outline" data-ua-ml-copy' + (withLink ? '' : ' disabled') + '>Copy all links as a message</button></div></div>';
+  function refMessage(l) {
+    return 'Hi' + (l.label ? ' ' + l.label : '') + '! Here’s your private referee link for the LACMS Unity Cup:\n' + matchLinkUrl(l) +
+      '\n\nOpen it on your phone. You’ll see all the matches: tap the one you’re about to ref, then use the big Goal and card buttons for each team (pick the player and it’s saved; there’s an Undo if you slip) and the match clock. When the game ends tap Full time, then “All matches” at the top to pick the next one. Please don’t share the link with anyone else.';
   }
-  function makeAllLinks(btn) {
-    var todo = (D.fixtures || []).filter(function (f) { return teamById(f.home_team_id) && teamById(f.away_team_id) && !(D.match_links || []).some(function (l) { return l.fixture_id === f.id; }); });
-    if (!todo.length) { toast('Every match already has a link.'); return; }
+  function refereeLinksCard() {
+    if (!(D.teams || []).length) return '';
+    if (!('match_links' in D)) return '<div class="ua-card ua-card--warn"><h3>One more step: referee links</h3><p class="ua-hint">Run <code>127-unity-cup-scorer-links.sql</code> and then <code>128-unity-cup-referee-links.sql</code> (from the <code>db/migrations</code> folder) in the Supabase SQL Editor, then reload, to send private referee links.</p></div>';
+    var links = refLinks(), single = (D.match_links || []).length - links.length, end = refEndText();
+    return '<div class="ua-card ua-card--refs"><h3>Referee links</h3><p class="ua-hint">One private link per referee. They don’t need an account or to be on the committee. They open it on their phone, see <strong>every match</strong>, tap the game they’re about to ref, and keep the score, scorers, cards and clock for it. Afterwards they tap <strong>All matches</strong> to pick the next game. They can’t publish matches or see Man of the Match, and can’t change teams, players or settings.</p>' +
+      (links.length ? '<ul class="ua-rlist">' + links.map(function (l, i) {
+        var url = matchLinkUrl(l);
+        return '<li class="ua-rlink' + (l.enabled ? '' : ' is-off') + '" data-rl-id="' + esc(l.id) + '"><div class="ua-rlink-top"><strong>' + esc(l.label || 'Referee link ' + (i + 1)) + '</strong><span class="ua-pill ' + (l.enabled ? 'is-live' : '') + '">' + (l.enabled ? 'On' : 'Off') + '</span></div>' +
+          '<small>' + (l.last_used_at ? 'Last used ' + esc(when(l.last_used_at)) + ' · ' + (l.uses || 0) + (l.uses === 1 ? ' action' : ' actions') : 'Not opened yet') + '</small>' +
+          '<input class="ua-rlink-url" readonly value="' + esc(url) + '" data-ua-url aria-label="Private referee link' + (l.label ? ' for ' + esc(l.label) : '') + '">' +
+          '<div class="ua-row">' + (navigator.share ? '<button type="button" class="btn btn-primary" data-ua-rl="share">Send…</button>' : '') +
+          '<button type="button" class="btn btn-outline" data-ua-rl="copy">Copy link</button><button type="button" class="btn btn-outline" data-ua-rl="copymsg">Copy message</button>' +
+          '<button type="button" class="btn btn-outline" data-ua-rl="' + (l.enabled ? 'disable' : 'enable') + '">' + (l.enabled ? 'Turn off' : 'Turn on') + '</button>' +
+          '<button type="button" class="btn btn-outline" data-ua-rl="regenerate">New link</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-rl="remove">Remove</button></div></li>';
+      }).join('') + '</ul>' : '<p class="ua-hint"><strong>No referee links yet.</strong></p>') +
+      '<form class="ua-rl-new" data-ua-rl-new><label class="ua-field"><span>Who is it for?</span><input type="text" maxlength="40" placeholder="e.g. Ref 1, or their name" data-ua-rl-label autocomplete="off"></label><button type="submit" class="btn btn-primary">Make a link</button>' +
+      (links.length ? '' : '<button type="button" class="btn btn-outline" data-ua-rl-two>Make “Ref 1” and “Ref 2”</button>') + '</form>' +
+      '<p class="ua-hint">' + (end ? 'Referee links work until the end of <strong>' + esc(end) + '</strong> (two days after the event date). ' : '') + 'Turn a link off or remove it at any time and it stops straight away.' + (single ? ' There ' + (single === 1 ? 'is also 1 link' : 'are also ' + single + ' links') + ' for single matches: open that match to manage ' + (single === 1 ? 'it' : 'them') + '.' : '') + '</p></div>';
+  }
+  function refAct(id, action, btn) {
+    var l = (D.match_links || []).filter(function (x) { return x.id === id; })[0]; if (!l) return;
+    if (action === 'copy' || action === 'copymsg') {
+      copyText(action === 'copy' ? matchLinkUrl(l) : refMessage(l)).then(function () { toast(action === 'copy' ? 'Link copied.' : 'Message copied. Paste it into WhatsApp or a text.'); }, function () { var inp = $('[data-ua-url]', btn.closest('[data-rl-id]')); if (inp) { inp.focus(); inp.select(); } toast('Select the link and copy it.'); });
+      return;
+    }
+    if (action === 'share') { navigator.share({ title: 'Unity Cup referee link', text: refMessage(l) }).catch(function () { /* cancelled */ }); return; }
+    if (action === 'regenerate' && !window.confirm('Make a new link' + (l.label ? ' for ' + l.label : '') + '? The old link stops working immediately, so you must send the new one.')) return;
+    if (action === 'remove' && !window.confirm('Remove this referee link? Whoever has it can no longer open it.')) return;
+    if (action === 'disable' && !window.confirm('Switch this link off? Whoever has it can no longer open it until you switch it back on.')) return;
     btn.disabled = true;
-    var chain = Promise.resolve(), failed = '';
-    todo.forEach(function (f) { chain = chain.then(function () { if (failed) return; return supabaseClient.rpc('unity_admin_match_link', { p_fixture: f.id, p_action: 'create', p_label: null, p_link: null }).then(function (r) { if (r.error) failed = r.error.message || 'Something went wrong.'; }); }); });
-    chain.then(function () { btn.disabled = false; lastSig = ''; return load(); }).then(function () { if (failed) toast(failed, null, true); else toast('Made ' + todo.length + (todo.length === 1 ? ' link' : ' links') + '. Open a match to send its link, or press \u201cCopy all links\u201d.'); });
-  }
-  function copyAllLinks() {
-    var fs = (D.fixtures || []).filter(function (f) { return teamById(f.home_team_id) && teamById(f.away_team_id); }).sort(function (a, b) { return (a.kickoff_at ? Date.parse(a.kickoff_at) : 9e15) - (b.kickoff_at ? Date.parse(b.kickoff_at) : 9e15); });
-    var blocks = [];
-    fs.forEach(function (f) {
-      var l = (D.match_links || []).filter(function (x) { return x.fixture_id === f.id && x.enabled; })[0]; if (!l) return;
-      var when = f.kickoff_at ? new Date(f.kickoff_at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-      blocks.push(fixtureLabel(f) + (when || f.pitch ? ' (' + [when, f.pitch].filter(Boolean).join(', ') + ')' : '') + (l.label ? ' \u2014 ' + l.label : '') + '\n' + matchLinkUrl(l));
+    supabaseClient.rpc('unity_admin_match_link', { p_fixture: null, p_action: action, p_label: null, p_link: id }).then(function (r) {
+      btn.disabled = false;
+      if (r.error) { fail(r.error); return; }
+      lastSig = ''; load().then(function () { toast(action === 'regenerate' ? 'New link made. The old one no longer works, so send the new one.' : action === 'remove' ? 'Link removed.' : action === 'disable' ? 'Link switched off.' : 'Link switched on.'); });
     });
-    if (!blocks.length) { toast('No links are switched on yet.', null, true); return; }
-    copyText('Private scorer links for the LACMS Unity Cup. Each one only works for its own match and stops 24 hours after kick-off. Please don\u2019t share them.\n\n' + blocks.join('\n\n')).then(function () { toast('Copied ' + blocks.length + (blocks.length === 1 ? ' link' : ' links') + '. Paste them into a message.'); }, function () { toast('Couldn\u2019t copy. Open each match to copy its link.', null, true); });
+  }
+  function makeRefLinks(labels, btn) {
+    if (btn) btn.disabled = true;
+    var chain = Promise.resolve(), failed = '';
+    labels.forEach(function (lb) { chain = chain.then(function () { if (failed) return; return supabaseClient.rpc('unity_admin_match_link', { p_fixture: null, p_action: 'create', p_label: lb || null, p_link: null }).then(function (r) { if (r.error) failed = r.error.message || 'Something went wrong.'; }); }); });
+    chain.then(function () { if (btn) btn.disabled = false; lastSig = ''; return load(); }).then(function () {
+      if (failed) toast(/schema cache|could not find the function|does not exist|null value/i.test(failed) ? 'Run migration 128-unity-cup-referee-links.sql in Supabase first.' : failed, null, true);
+      else toast(labels.length > 1 ? 'Links made. Send each one to its referee.' : 'Link made. Send it to the referee.');
+    });
   }
   function visibilityCard() {
     var fs = D.fixtures || [];
@@ -601,7 +623,7 @@
     var fs = D.fixtures || [], stages = []; fs.forEach(function (x) { if (x.stage && stages.indexOf(x.stage) < 0) stages.push(x.stage); });
     var dl = '<datalist id="ua-stages">' + stages.concat(['Group A', 'Group B', 'Quarter-final', 'Semi-final', 'Final', '3rd place']).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
     if ((D.teams || []).length < 2) return '<div class="ua-card"><h3>Fixtures</h3><p class="ua-hint">Add at least two teams (Teams tab) first.</p></div>';
-    return dl + matchesCard() + scorerLinksCard() + visibilityCard() + goalsNotice() + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
+    return dl + matchesCard() + refereeLinksCard() + visibilityCard() + goalsNotice() + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
       '<div class="ua-card"><h3>All fixtures (' + fs.length + ')</h3>' + (fs.length ? '<div class="ua-fx-list">' + fs.map(fixtureForm).join('') + '</div>' : '<p class="ua-hint">No fixtures yet.</p>') + '</div>';
   }
   function readFixture(row) {
@@ -1023,8 +1045,9 @@
       supabaseClient.rpc('unity_admin_delete_team', { p_id: tm.id }).then(function (r) { if (r.error) { fail(r.error); return; } if (r.data) supabaseClient.storage.from('unity-cup-gallery').remove([r.data]); note('Team deleted.'); load(); });
       return;
     }
-    var mla = t.closest('[data-ua-ml-all]'); if (mla) { if (!mla.disabled) makeAllLinks(mla); return; }
-    var mlc = t.closest('[data-ua-ml-copy]'); if (mlc) { if (!mlc.disabled) copyAllLinks(); return; }
+    var rla = t.closest('[data-ua-rl]'); if (rla) { refAct(rla.closest('[data-rl-id]').getAttribute('data-rl-id'), rla.getAttribute('data-ua-rl'), rla); return; }
+    var rl2 = t.closest('[data-ua-rl-two]'); if (rl2) { makeRefLinks(['Ref 1', 'Ref 2'], rl2); return; }
+    var rlu = t.closest('[data-ua-url]'); if (rlu) { rlu.select(); return; }
     var sf = t.closest('[data-ua-save-fx]'); if (sf) { saveFixture(sf.closest('[data-fid]'), sf); return; }
     var df = t.closest('[data-ua-del-fx]'); if (df) { if (window.confirm('Delete this fixture?')) supabaseClient.rpc('unity_admin_delete_fixture', { p_id: df.closest('[data-fid]').getAttribute('data-fid') }).then(function (r) { if (r.error) fail(r.error); else { note('Fixture deleted.'); load(); } }); return; }
     var fv = t.closest('[data-ua-fx-vis]');
@@ -1094,6 +1117,10 @@
     saveSettings(p);
   });
 
+  root.addEventListener('submit', function (e) {
+    var nf = e.target.closest && e.target.closest('[data-ua-rl-new]');
+    if (nf) { e.preventDefault(); var inp = $('[data-ua-rl-label]', nf); makeRefLinks([inp.value.trim()], $('button[type=submit]', nf)); return; }
+  });
   root.addEventListener('submit', function (e) { if (e.target.closest('[data-sq-add]')) { e.preventDefault(); sqAdd(e.target.closest('[data-sq-add]')); } });
   root.addEventListener('change', function (e) {
     if (e.target.name === 'pos' && e.target.closest('[data-sq-add]')) { sqPos = e.target.value; return; }
