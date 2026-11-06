@@ -8,13 +8,13 @@
 <meta name="description" content="The LACMS Unity Cup: vote for Player of the Tournament, enter the charity raffle and share your photos and videos from the day. Open to everyone, no account needed.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
 <link rel="stylesheet" href="css/styles.css?v=20260824-200">
-<link rel="stylesheet" href="css/unity-cup.css?v=20260824-202">
+<link rel="stylesheet" href="css/unity-cup.css?v=20260824-206">
 <meta property="og:title" content="LACMS Unity Cup">
 <meta property="og:description" content="Vote for Player of the Tournament, win a prize and share the day.">
 <meta property="og:image" content="https://lincolnacms.uk/Media/ACMS%20Branding/logo.png">
+<script>(function(){var m={fixtures:'unity-cup-fixtures.html',teams:'unity-cup-teams.html',vote:'unity-cup-vote.html',raffle:'unity-cup-raffle.html',moments:'unity-cup-photos.html',photos:'unity-cup-photos.html',essence:'unity-cup-essence.html'};var h=(location.hash||'').slice(1);if(m.hasOwnProperty(h))location.replace(m[h]);})();</script>
 </head>
-<body>
-
+<body class="uc-page">
 <div class="site-topbar">
 <div class="placeholder-banner">Built by Nevin Boakye.</div>
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -95,8 +95,8 @@
       <p class="uc-lede">One tournament, one community. Vote for your Player of the Tournament, win a prize while giving back, and share the day with everyone.</p>
       <div class="uc-meta" id="uc-hero-meta"></div>
       <div class="uc-hero-cta">
-        <a class="uc-btn uc-btn--gold" href="#vote" data-uc-jump="vote">Vote for Player of the Tournament</a>
-        <a class="uc-btn uc-btn--ghost" href="#raffle" data-uc-jump="raffle"><span>Win a <span data-uc-prize>prize</span></span></a>
+        <a class="uc-btn uc-btn--gold" href="unity-cup-vote.html">Vote for Player of the Tournament</a>
+        <a class="uc-btn uc-btn--ghost" href="unity-cup-raffle.html"><span>Win a <span data-uc-prize>prize</span></span></a>
       </div>
       <div class="uc-status" id="uc-hero-status"></div>
     </div>
@@ -110,176 +110,78 @@
 
 <nav class="uc-subnav" aria-label="Unity Cup sections">
   <div class="container uc-subnav-inner">
-    <a href="#fixtures" data-uc-jump="fixtures">Fixtures</a>
-    <a href="#teams" data-uc-jump="teams">Teams</a>
-    <a href="#vote" data-uc-jump="vote">Vote</a>
-    <a href="#raffle" data-uc-jump="raffle">Raffle</a>
-    <a href="#moments" data-uc-jump="moments">Your photos</a>
-    <a href="#essence" data-uc-jump="essence">Essence</a>
+    <a href="unity-cup.html" aria-current="page">Overview</a>
+    <a href="unity-cup-fixtures.html" data-uc-nav="fixtures">Fixtures</a>
+    <a href="unity-cup-teams.html" data-uc-nav="teams">Teams</a>
+    <a href="unity-cup-vote.html" data-uc-nav="vote">Vote</a>
+    <a href="unity-cup-raffle.html" data-uc-nav="raffle">Raffle</a>
+    <a href="unity-cup-photos.html" data-uc-nav="photos">Your photos</a>
+    <a href="unity-cup-essence.html" data-uc-nav="essence">Essence</a>
   </div>
 </nav>
 
-<!-- ============ Fixtures ============ -->
-<section class="uc-section" id="fixtures" aria-labelledby="uc-fx-h">
+<section class="uc-section uc-hub" aria-labelledby="uc-hub-h">
   <div class="container">
+    <div id="uc-hub-live"></div>
     <header class="uc-head" data-reveal>
-      <span class="uc-kicker">Match day</span>
-      <h2 id="uc-fx-h">Fixtures &amp; results</h2>
-      <p>Kick-off times, pitches and live scores. Tap a team to see its squad.</p>
+      <span class="uc-kicker">Everything in one place</span>
+      <h2 id="uc-hub-h">Explore the Unity Cup</h2>
+      <p>Pick a section to open it. Each one has its own page, so you can get straight to what you need.</p>
     </header>
-    <div id="uc-fx-next"></div>
-    <div class="uc-section-actions" id="uc-fx-share"></div>
-    <div class="uc-chips" id="uc-fx-tabs" role="group" aria-label="Fixtures or tables"></div>
-    <div id="uc-fx-list" class="uc-fixtures" data-uc-loading><div class="uc-skel"></div><div class="uc-skel"></div></div>
+    <ul class="uc-hub-grid">
+        <li data-reveal style="--d:0">
+          <a class="uc-hubcard" href="unity-cup-fixtures.html">
+            <span class="uc-hubcard-top"><span class="uc-hubcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/><path d="M8 14h3M13 14h3M8 17.5h3"/></svg></span><span class="uc-hubcard-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></span></span>
+            <h3>Fixtures &amp; results</h3>
+            <p>Kick-off times, pitches, live scores and the group tables.</p>
+            <span class="uc-hubcard-status" data-hub-status="fixtures">&nbsp;</span>
+          </a>
+        </li>
+        <li data-reveal style="--d:1">
+          <a class="uc-hubcard" href="unity-cup-teams.html">
+            <span class="uc-hubcard-top"><span class="uc-hubcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.4"/><path d="M2.6 20c0-3.6 2.9-6 6.4-6s6.4 2.4 6.4 6"/><circle cx="17.2" cy="9" r="2.6"/><path d="M17.6 14.2c2.5.3 3.9 2.1 3.9 4.8"/></svg></span><span class="uc-hubcard-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></span></span>
+            <h3>Teams</h3>
+            <p>Meet the squads, see each line-up and find out who is in which group.</p>
+            <span class="uc-hubcard-status" data-hub-status="teams">&nbsp;</span>
+          </a>
+        </li>
+        <li data-reveal style="--d:2">
+          <a class="uc-hubcard" href="unity-cup-vote.html">
+            <span class="uc-hubcard-top"><span class="uc-hubcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 9.2 8.3l-6.4 1 4.6 4.5-1.1 6.4L12 17.2l5.7 3-1.1-6.4 4.6-4.5-6.4-1z"/></svg></span><span class="uc-hubcard-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></span></span>
+            <h3>Vote</h3>
+            <p>Pick the player who stood out most. One vote each, and it&rsquo;s anonymous.</p>
+            <span class="uc-hubcard-status" data-hub-status="vote">&nbsp;</span>
+          </a>
+        </li>
+        <li data-reveal style="--d:3">
+          <a class="uc-hubcard" href="unity-cup-raffle.html">
+            <span class="uc-hubcard-top"><span class="uc-hubcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-3a2 2 0 0 1 0-6V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"/><path d="M13 5v2.5M13 10.8v2.4M13 16.5V19"/></svg></span><span class="uc-hubcard-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></span></span>
+            <h3>Charity raffle</h3>
+            <p>Donate, get your ticket and watch the wheel spin live.</p>
+            <span class="uc-hubcard-status" data-hub-status="raffle">&nbsp;</span>
+          </a>
+        </li>
+        <li data-reveal style="--d:4">
+          <a class="uc-hubcard" href="unity-cup-photos.html">
+            <span class="uc-hubcard-top"><span class="uc-hubcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3.2l1.6-2.5h4.4L16 7h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.8"/></svg></span><span class="uc-hubcard-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></span></span>
+            <h3>Your photos</h3>
+            <p>Send in your photos and videos, and see the best moments from the day.</p>
+            <span class="uc-hubcard-status" data-hub-status="photos">&nbsp;</span>
+          </a>
+        </li>
+        <li data-reveal style="--d:5">
+          <a class="uc-hubcard" href="unity-cup-essence.html">
+            <span class="uc-hubcard-top"><span class="uc-hubcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5.5l11-2V16"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></span><span class="uc-hubcard-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></span></span>
+            <h3>ESSENCE</h3>
+            <p>The All Black Party, Saturday 7 November at Circle Lincoln.</p>
+            <span class="uc-hubcard-status">Sat 7 Nov &middot; Circle Lincoln</span>
+          </a>
+        </li>
+    </ul>
   </div>
 </section>
 
-<!-- ============ Teams ============ -->
-<section class="uc-section uc-section--alt" id="teams" aria-labelledby="uc-teams-h">
-  <div class="container">
-    <header class="uc-head" data-reveal>
-      <span class="uc-kicker">The teams</span>
-      <h2 id="uc-teams-h">Meet the squads</h2>
-      <p>Tap a team to see its players, its group and its matches.</p>
-    </header>
-    <div id="uc-teams" class="uc-teams" data-uc-loading><div class="uc-skel"></div><div class="uc-skel"></div><div class="uc-skel"></div></div>
-  </div>
-</section>
-
-<!-- ============ Vote ============ -->
-<section class="uc-section" id="vote" aria-labelledby="uc-vote-h">
-  <div class="container">
-    <header class="uc-head" data-reveal>
-      <span class="uc-kicker">Player of the Tournament</span>
-      <h2 id="uc-vote-h">Who owned the pitch?</h2>
-      <p>Pick the player who stood out most. One vote each, and it&rsquo;s anonymous: all we ask for is an email address to keep it fair.</p>
-    </header>
-    <div id="uc-vote-banner"></div>
-    <div class="uc-chips" id="uc-team-filter" role="group" aria-label="Filter by team"></div>
-    <div id="uc-players" class="uc-players" data-uc-loading>
-      <div class="uc-skel"></div><div class="uc-skel"></div><div class="uc-skel"></div><div class="uc-skel"></div>
-    </div>
-  </div>
-  <div class="uc-votebar" id="uc-votebar" hidden>
-    <div class="container uc-votebar-inner">
-      <p>Your pick: <strong id="uc-votebar-name"></strong></p>
-      <button type="button" class="uc-btn uc-btn--gold" id="uc-votebar-go">Vote now</button>
-    </div>
-  </div>
-</section>
-
-<!-- ============ Raffle ============ -->
-<section class="uc-section uc-section--alt" id="raffle" aria-labelledby="uc-raffle-h">
-  <div class="container">
-    <header class="uc-head" data-reveal>
-      <span class="uc-kicker">Charity raffle</span>
-      <h2 id="uc-raffle-h">Give a little. Win a <span data-uc-prize>prize</span>.</h2>
-      <p>Donate at least <strong data-uc-min>£2.50</strong> to the LACMS JustGiving page and you&rsquo;re in the draw. Every pound helps, and one lucky person takes home a <span data-uc-prize>prize</span>.</p>
-    </header>
-    <div id="uc-raffle-banner"></div>
-    <div class="uc-raffle">
-      <div class="uc-wheel-card" data-reveal>
-        <div class="uc-wheel-wrap">
-          <div class="uc-wheel-lights" aria-hidden="true"></div>
-          <div class="uc-pointer" aria-hidden="true"></div>
-          <canvas id="uc-wheel" class="uc-wheel" aria-label="Raffle wheel showing the ticket numbers in the draw" role="img"></canvas>
-        </div>
-        <div class="uc-reveal" id="uc-reveal" hidden aria-live="polite">
-          <div id="uc-reveal-text" class="uc-reveal-text"></div>
-          <button type="button" class="uc-link" id="uc-reveal-close">Close</button>
-        </div>
-        <div class="uc-stats">
-          <div><b id="uc-stat-entries">0</b><span>entries</span></div>
-          <div><b id="uc-stat-prize">&nbsp;</b><span>to win</span></div>
-          <div><b id="uc-stat-min">£2.50</b><span>minimum</span></div>
-        </div>
-        <p class="uc-myticket" id="uc-myticket" hidden></p>
-      </div>
-      <div class="uc-steps" data-reveal>
-        <ol class="uc-step-list">
-          <li><span class="uc-step-n">1</span><div><h3>Donate</h3><p>Give <strong data-uc-min>£2.50</strong> or more on our JustGiving page. It&rsquo;s a quick, secure payment.</p>
-            <a class="uc-btn uc-btn--ghost" data-uc-jg href="https://www.justgiving.com/page/lincoln-african-caribbean-society-1?utm_medium=FA&amp;utm_source=CL" target="_blank" rel="noopener">Donate on JustGiving <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></div></li>
-          <li><span class="uc-step-n">2</span><div><h3>Enter your ticket</h3><p>Tell us who you are and what you gave. We&rsquo;ll check it against the donations and add your ticket to the wheel.</p>
-            <button type="button" class="uc-btn uc-btn--gold" id="uc-enter-btn" disabled>Enter the raffle</button></div></li>
-          <li><span class="uc-step-n">3</span><div><h3>Watch the draw</h3><p>The winner is drawn live at the tournament. Keep this page open to see the wheel spin.</p></div></li>
-        </ol>
-        <div id="uc-winners" class="uc-winners"></div>
-        <details class="uc-rules" id="uc-rules-box">
-          <summary>Raffle rules</summary>
-          <ul>
-            <li>You must donate at least the minimum shown to the LACMS JustGiving page to enter.</li>
-            <li>One entry per person (one email address). Entrants should be 18 or over.</li>
-            <li>The committee checks every entry against the JustGiving donations, and only checked entries go into the draw.</li>
-            <li>The winner is picked at random during the draw. The committee&rsquo;s decision on eligibility is final.</li>
-            <li>The winner is contacted by email and the prize is a gift card, with no cash alternative.</li>
-            <li>We delete raffle names and emails after the event. See the <a href="privacy.html#unity-cup">privacy notice</a>.</li>
-          </ul>
-        </details>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ Moments ============ -->
-<section class="uc-section" id="moments" aria-labelledby="uc-moments-h">
-  <div class="container">
-    <header class="uc-head" data-reveal>
-      <span class="uc-kicker">Your photos &amp; videos</span>
-      <h2 id="uc-moments-h">Share the moments</h2>
-      <p>Got a great goal, a funny moment or a crowd shot? Send it in. The committee checks everything before it shows up here.</p>
-    </header>
-    <div class="uc-upload" id="uc-upload-card" data-reveal>
-      <p class="uc-muted" id="uc-media-closed" hidden>Uploads are closed right now.</p>
-      <label class="uc-drop" id="uc-drop" for="uc-file">
-        <span class="uc-drop-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
-        <strong>Tap to choose, or drop files here</strong>
-        <small>Photos and videos &middot; up to 8 at a time &middot; videos up to 50&nbsp;MB</small>
-        <input type="file" id="uc-file" accept="image/*,video/mp4,video/quicktime,video/webm,.heic" multiple>
-      </label>
-      <ul class="uc-queue" id="uc-queue"></ul>
-      <div class="uc-upload-fields">
-        <div class="uc-field"><label class="uc-label" for="uc-caption">Caption <span class="uc-opt">(optional)</span></label><input class="uc-input" id="uc-caption" maxlength="200" placeholder="What&rsquo;s happening?"></div>
-        <div class="uc-field"><label class="uc-label" for="uc-credit">Credit <span class="uc-opt">(optional)</span></label><input class="uc-input" id="uc-credit" maxlength="60" placeholder="Name or Instagram handle"></div>
-        <input type="text" name="website" data-uc-hp-up tabindex="-1" autocomplete="off" aria-hidden="true" class="uc-hp">
-      </div>
-      <label class="uc-check"><input type="checkbox" id="uc-rights"><span>I took these, or have permission to share them, and the people in them are happy to appear. I understand LACMS may show them on this page and on its social media. If you want something removed, email <a href="mailto:acms@lincolnsu.com">acms@lincolnsu.com</a>.</span></label>
-      <p class="uc-fine">Please don&rsquo;t send anything that shows people in distress, or children without a parent&rsquo;s okay. <a href="privacy.html#unity-cup">Privacy</a>.</p>
-      <p class="uc-msg" id="uc-upload-msg" role="status"></p>
-      <button type="button" class="uc-btn uc-btn--gold" id="uc-send" disabled>Send to the committee</button>
-    </div>
-    <div class="uc-gallery" id="uc-gallery" data-uc-loading><div class="uc-skel"></div><div class="uc-skel"></div><div class="uc-skel"></div></div>
-  </div>
-</section>
-
-<!-- ============ Essence ============ -->
-<section class="uc-section uc-section--essence" id="essence" aria-labelledby="uc-essence-h">
-  <div class="container">
-    <div class="uc-essence" data-reveal>
-      <div class="uc-essence-poster">
-        <span class="uc-essence-tag">The next night</span>
-        <img src="Media/Unity%20Cup/essence-all-black-party.webp" alt="Poster for ESSENCE, The All Black Party, Saturday 7 November 2026 at Circle Lincoln. All star DJ lineup: Afrobeats, Amapiano, Bashment, Dancehall, Hip Hop and RnB." width="1526" height="848" loading="lazy">
-      </div>
-      <div class="uc-essence-copy">
-        <span class="uc-kicker">In collaboration with Spacecrafts</span>
-        <h2 id="uc-essence-h">Keep the energy going at ESSENCE</h2>
-        <p>The day after the Unity Cup, join our friends at Spacecrafts for <strong>ESSENCE: The All Black Party</strong>. An all star DJ lineup playing Afrobeats, Amapiano, Bashment, Dancehall, Hip Hop and RnB.</p>
-        <ul class="uc-facts"><li><span>When</span>Saturday 7 November 2026</li><li><span>Where</span>Circle Lincoln</li><li><span>Music</span>Afrobeats &middot; Amapiano &middot; Bashment &middot; Dancehall &middot; Hip Hop &middot; RnB</li></ul>
-        <a class="uc-btn uc-btn--gold" href="https://fatso.ma/flmvv" target="_blank" rel="noopener">Get tickets to ESSENCE <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
-        <p class="uc-fine">ESSENCE is run by Spacecrafts, not by LACMS. Tickets and entry rules are theirs.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="uc-lightbox" id="uc-lightbox" hidden role="dialog" aria-modal="true" aria-label="Photo viewer">
-  <button type="button" class="uc-lb-btn uc-lb-btn--x" data-lb-close aria-label="Close">&times;</button>
-  <button type="button" class="uc-lb-btn uc-lb-btn--prev" data-lb-prev aria-label="Previous">&#8249;</button>
-  <div class="uc-lb-body" id="uc-lb-body"></div>
-  <button type="button" class="uc-lb-btn uc-lb-btn--next" data-lb-next aria-label="Next">&#8250;</button>
 </div>
-</div>
-</main>
-
 </main>
 
 <footer class="site-footer">
@@ -357,7 +259,7 @@
 <script src="js/privacy.js?v=20260824-200"></script>
 <script src="js/unity-wheel.js?v=20260824-200"></script>
 <script src="js/unity-pitch.js?v=20260824-200"></script>
-<script src="js/unity-share.js?v=20260824-200"></script>
-<script src="js/unity-cup.js?v=20260824-200"></script>
+<script src="js/unity-share.js?v=20260824-206"></script>
+<script src="js/unity-cup.js?v=20260824-206"></script>
 </body>
 </html>

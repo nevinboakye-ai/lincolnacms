@@ -355,9 +355,9 @@
     els.m.querySelectorAll('[data-us-vi]').forEach(function (b) { b.classList.toggle('is-on', Number(b.getAttribute('data-us-vi')) === state.vi); b.setAttribute('aria-pressed', Number(b.getAttribute('data-us-vi')) === state.vi); });
     els.img.className = 'us-img us-img--' + state.fmt;
     var cap = caption();
-    els.m.querySelector('[data-us-wa]').href = 'https://wa.me/?text=' + encodeURIComponent(cap + ' ' + SITE);
-    els.m.querySelector('[data-us-x]').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(cap) + '&url=' + encodeURIComponent(SITE);
-    els.m.querySelector('[data-us-fb]').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(SITE) + '&quote=' + encodeURIComponent(cap);
+    els.m.querySelector('[data-us-wa]').href = 'https://wa.me/?text=' + encodeURIComponent(cap + ' ' + state.site);
+    els.m.querySelector('[data-us-x]').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(cap) + '&url=' + encodeURIComponent(state.site);
+    els.m.querySelector('[data-us-fb]').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(state.site) + '&quote=' + encodeURIComponent(cap);
     render(v.kind || state.kind, v.data, state.fmt).then(function (res) {
       if (token !== state.token) return;
       var blob = res.png; state.blob = blob; state.jpg = res.jpg; if (state.url) URL.revokeObjectURL(state.url); state.url = URL.createObjectURL(blob);
@@ -380,7 +380,7 @@
       say('Saved. If nothing downloaded, touch and hold the picture and choose Save image.'); return;
     }
     if (t.closest('[data-us-share]')) {
-      var data = state.canFiles ? { files: [file()], title: state.title, text: caption() } : { title: state.title, text: caption(), url: SITE };
+      var data = state.canFiles ? { files: [file()], title: state.title, text: caption() } : { title: state.title, text: caption(), url: state.site };
       navigator.share(data).then(function () { say(state.canFiles ? 'Shared!' : 'Shared the link. To include the picture, save it and add it to your post.'); }, function (err) { if (err && err.name !== 'AbortError') say('Couldn\'t open sharing. Try Save image instead.', true); });
       return;
     }
@@ -389,7 +389,7 @@
       return;
     }
     if (t.closest('[data-us-cap]')) {
-      var text = caption() + ' ' + SITE;
+      var text = caption() + ' ' + state.site;
       (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { say('Caption copied.'); }, function () { say('Couldn\'t copy. The caption is: ' + text, true); });
     }
   }
@@ -399,7 +399,7 @@
     lastFocus = document.activeElement;
     var variants = opts.variants && opts.variants.length ? opts.variants : [{ label: '', data: opts.data, kind: opts.kind, caption: opts.caption }];
     var fmt = 'post'; try { fmt = localStorage.getItem('lacms-share-fmt') === 'story' ? 'story' : 'post'; } catch (x) {}
-    state = { kind: opts.kind, variants: variants, vi: Math.max(0, Math.min(variants.length - 1, opts.start || 0)), fmt: fmt, title: opts.title || 'LACMS Unity Cup', filename: opts.filename || 'lacms-unity-cup', caption: opts.caption || '', token: 0, blob: null, url: null };
+    state = { kind: opts.kind, variants: variants, vi: Math.max(0, Math.min(variants.length - 1, opts.start || 0)), fmt: fmt, site: opts.url || SITE, title: opts.title || 'LACMS Unity Cup', filename: opts.filename || 'lacms-unity-cup', caption: opts.caption || '', token: 0, blob: null, url: null };
     els.title.textContent = opts.heading || 'Share this';
     els.variants.innerHTML = variants.length > 1 ? variants.map(function (v, i) { return '<button type="button" class="us-chip" data-us-vi="' + i + '">' + esc(v.label) + '</button>'; }).join('') : '';
     els.variants.hidden = variants.length < 2;

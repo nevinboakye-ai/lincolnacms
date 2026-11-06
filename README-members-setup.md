@@ -1925,7 +1925,7 @@ The full picture - what was checked, what the law and ULSU's policies require, w
 
 ## 168. Unity Cup portal (vote, raffle, photos)
 
-A public page, `unity-cup.html`, open to everyone with no account: **Player of the Tournament vote**, a **charity raffle** with a spin-the-wheel draw, and **photo/video sharing**, plus a sign-post to the ESSENCE night the next day (run by Spacecrafts). It is linked from the welcome screen, the homepage and the Events page (`js/unity-promo.js` switches the badge to "Tomorrow"/"Today" and hides the promos two weeks after the event).
+A public portal, starting at `unity-cup.html` (now an overview with a page per section, see section 177), open to everyone with no account: **Player of the Tournament vote**, a **charity raffle** with a spin-the-wheel draw, and **photo/video sharing**, plus a sign-post to the ESSENCE night the next day (run by Spacecrafts). It is linked from the welcome screen, the homepage and the Events page (`js/unity-promo.js` switches the badge to "Tomorrow"/"Today" and hides the promos two weeks after the event).
 
 **Set-up (do these before Friday, in this order):**
 1. **Supabase -> SQL Editor:** run `db/migrations/114-unity-cup.sql`.
@@ -2010,3 +2010,27 @@ Run `db/migrations/123-resources-public-private.sql`, then `db/migrations/124-re
 - **Nothing can be slipped past review:** editing a resource still sends it back for review, private or not, so changing it in secret and then making it public doesn't put it in the library. The committee still reviews and removes public ones as before.
 - **Enforced in the database,** not just the page: row-level security, the file-storage rule, the course counts, the notification bell, and likes / comments / view-tracking all treat a private resource as invisible to everyone but its author.
 - If the committee had made anything private under 123, it stays private and now belongs to its author. Until the migrations are run, the page behaves exactly as before.
+
+## 177. Unity Cup: a page for each section (no database change)
+
+The Unity Cup portal used to be one long page. It is now an **overview** plus **one page per section**, so a tap on a tab opens just that section:
+
+| Page | What is on it |
+|---|---|
+| `unity-cup.html` | Overview: the hero, a "live now / next up" match, and a card for every section with its live status (for example "Voting open", "14 entries") |
+| `unity-cup-fixtures.html` | Fixtures, results and group tables |
+| `unity-cup-teams.html` | The squads (tap a team for its line-up) |
+| `unity-cup-vote.html` | Player of the Tournament vote |
+| `unity-cup-raffle.html` | Charity raffle, the wheel and the winners |
+| `unity-cup-photos.html` | Share and browse photos and videos |
+| `unity-cup-essence.html` | The ESSENCE party the next night |
+
+- **Nothing to run.** No migration, no setting. Push to `main` as usual. The committee panel and every switch work exactly as before.
+- **Old links still work.** Anything shared as `unity-cup.html#vote` (or `#raffle`, `#fixtures`, `#teams`, `#moments`, `#essence`) is sent straight to the right page, so printed QR codes and old posts are fine. The QR code can keep pointing at `unity-cup.html`.
+- **Tabs on every page** (Overview, Fixtures, Teams, Vote, Raffle, Your photos, Essence) stay at the top of the screen as you scroll. A small green dot on a tab shows something is on right now: a live match, voting open, raffle open.
+- **Previous / next** links at the foot of every page lead on to the next section.
+- **Voting from a squad:** the Vote button on a team's squad (on the Teams or Fixtures pages) opens the Vote page with that player already picked.
+- **Raffle draw:** the wheel spins on the Raffle page. Anyone on another Unity Cup page when a draw starts sees a small "The raffle draw is happening" prompt with a Watch button.
+- **Share as a picture** now points people at the page that matches what they share (a line-up goes to Teams, fixtures and tables to Fixtures, the result to Vote, a raffle winner to Raffle).
+- The share-as-a-picture, Hub Access, private team links and committee panel are unchanged. `unity-team.html` (the private team page) is a separate page and is not part of this.
+- **If you add a section later:** the tab bar is written into each page (so it works before anything loads), so add a link in all of the `unity-cup*.html` pages.

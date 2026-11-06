@@ -1,8 +1,14 @@
-// Unity Cup portal (unity-cup.html) - open to everyone, no account needed.
+// Unity Cup portal - open to everyone, no account needed.
 //
-//   * Player of the Tournament vote  (email code, one vote per address, ballots anonymous)
-//   * Charity raffle                 (donation entry, wheel, committee-verified draw)
-//   * Share your photos and videos   (reviewed by the committee before they show)
+// The portal is an overview page (unity-cup.html) and one page per section:
+//   unity-cup-fixtures.html   fixtures, results and group tables
+//   unity-cup-teams.html      the squads
+//   unity-cup-vote.html       Player of the Tournament vote  (email code, one vote per address, ballots anonymous)
+//   unity-cup-raffle.html     charity raffle                 (donation entry, wheel, committee-verified draw)
+//   unity-cup-photos.html     share your photos and videos   (reviewed by the committee before they show)
+//   unity-cup-essence.html    the ESSENCE party the next night
+// This one script runs on all of them. Every render function looks for its own elements and quietly does
+// nothing when the page doesn't have them, so a page only ever shows (and updates) its own section.
 //
 // All data comes from, and goes to, the database functions in db/migrations/114-unity-cup.sql. The emailed
 // code is sent by the edge function supabase/functions/unity-cup-code. Nothing here is trusted: the
@@ -13,6 +19,8 @@
 
   var root = document.getElementById('uc-root');
   if (!root) return;
+
+  var PAGE = { fixtures: 'unity-cup-fixtures.html', teams: 'unity-cup-teams.html', vote: 'unity-cup-vote.html', raffle: 'unity-cup-raffle.html', photos: 'unity-cup-photos.html', essence: 'unity-cup-essence.html', hub: 'unity-cup.html' };
 
   var LS = { voted: 'lacms-unity-voted', ticket: 'lacms-unity-ticket', media: 'lacms-unity-media' };
   var POLL_MS = 15000;
@@ -69,7 +77,8 @@
     play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
     upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
     share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>',
-    ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>'
+    ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
+    arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>'
   };
 
   // ---------------------------------------------------------------------
@@ -83,7 +92,11 @@
       var first = !S;
       S = res.data;
       teamsById = {}; (S.teams || []).forEach(function (t) { teamsById[t.id] = t; });
-      if (first) { knownDraws = {}; (S.draws || []).forEach(function (d) { knownDraws[d.id] = 1; }); }
+      if (first) {
+        knownDraws = {}; (S.draws || []).forEach(function (d) { knownDraws[d.id] = 1; });
+        // a link from another page can pre-select a player (?player=) for the vote
+        if (selected && !(S.players || []).some(function (p) { return p.id === selected; })) selected = null;
+      }
       renderAll(first);
       if (!first) watchDraws();
       return true;
@@ -98,6 +111,8 @@
   // Rendering
   function renderAll(first) {
     renderHero();
+    renderNav();
+    renderHub();
     renderFixtures();
     renderTeams();
     renderVote();
@@ -131,8 +146,75 @@
     if (S.venue_text) when += '<span class="uc-meta-chip">' + esc(S.venue_text) + '</span>';
     var meta = $('#uc-hero-meta'); if (meta) meta.innerHTML = when;
     var st = $('#uc-hero-status');
-    if (st) st.innerHTML = chip(S.voting_open, 'Voting open', S.show_results ? 'Voting closed' : 'Voting opens soon') +
-      chip(S.raffle_open, 'Raffle open', 'Raffle opens soon') + chip(S.media_open, 'Share your moments', 'Uploads closed');
+    var votePill = chip(S.voting_open, 'Voting open', S.show_results ? 'Voting closed' : 'Voting opens soon');
+    var rafflePill = chip(S.raffle_open, 'Raffle open', 'Raffle opens soon');
+    var mediaPill = chip(S.media_open, 'Share your moments', 'Uploads closed');
+    if (st) st.innerHTML = votePill + rafflePill + mediaPill;
+    // the section pages show just the status that belongs to them
+    $$('[data-uc-status]').forEach(function (el) {
+      var k = el.getAttribute('data-uc-status'), h = '';
+      if (k === 'vote') h = votePill;
+      else if (k === 'raffle') h = rafflePill + (S.raffle_entries ? '<span class="uc-pill">' + S.raffle_entries + (S.raffle_entries === 1 ? ' entry' : ' entries') + ' so far</span>' : '');
+      else if (k === 'photos') h = mediaPill;
+      else if (k === 'fixtures') {
+        var lv = liveFixtures().length;
+        h = lv ? '<span class="uc-pill is-on"><i aria-hidden="true"></i>' + lv + (lv === 1 ? ' match live now' : ' matches live now') + '</span>' : '';
+      }
+      el.innerHTML = h;
+    });
+  }
+
+  // ----- Section navigation: live dots on the tabs, and the overview page -----
+  var navSig = '';
+  function liveFixtures() { return (S.fixtures || []).filter(function (f) { return f.status === 'live' && teamsById[f.home_team_id] && teamsById[f.away_team_id]; }); }
+  function renderNav() {
+    var dots = { fixtures: liveFixtures().length ? 'a match is live now' : '', vote: S.voting_open ? 'voting is open' : '', raffle: S.raffle_open ? 'the raffle is open' : '' };
+    var sig = JSON.stringify(dots);
+    if (sig === navSig) return;
+    navSig = sig;
+    $$('.uc-subnav [data-uc-nav]').forEach(function (a) {
+      $$('.uc-navdot, .uc-navtxt', a).forEach(function (n) { n.parentNode.removeChild(n); });
+      var k = a.getAttribute('data-uc-nav');
+      if (dots[k]) a.insertAdjacentHTML('beforeend', '<i class="uc-navdot" aria-hidden="true"></i><span class="uc-navtxt visually-hidden"> (' + dots[k] + ')</span>');
+    });
+  }
+
+  function nextUpFixtures(fx) {
+    var live = fx.filter(function (f) { return f.status === 'live'; });
+    var now = Date.now();
+    var upcoming = fx.filter(function (f) { return f.status === 'scheduled' && f.kickoff_at && new Date(f.kickoff_at).getTime() >= now - 20 * 60000; }).sort(function (a, b) { return new Date(a.kickoff_at) - new Date(b.kickoff_at); });
+    return { live: live, upcoming: upcoming, feature: live.length ? live : upcoming.slice(0, 1) };
+  }
+
+  function hubStatus(key, text, live) {
+    var el = $('[data-hub-status="' + key + '"]'); if (!el) return;
+    el.className = 'uc-hubcard-status' + (live ? ' is-live' : '');
+    el.innerHTML = (live ? '<i aria-hidden="true"></i>' : '') + esc(text);
+  }
+
+  function renderHub() {
+    var strip = $('#uc-hub-live');
+    if (!strip && !$('[data-hub-status]')) return;
+    var fx = (S.fixtures || []).filter(function (f) { return teamsById[f.home_team_id] && teamsById[f.away_team_id]; });
+    var nu = nextUpFixtures(fx);
+    if (strip) {
+      strip.innerHTML = nu.feature.length ? '<div class="uc-next"><span class="uc-next-label">' + (nu.live.length ? '<i></i>Live now' : 'Next up') + '</span><ul class="uc-fx-list">' + nu.feature.map(fixtureCard).join('') + '</ul>' +
+        '<a class="uc-next-more" href="' + PAGE.fixtures + '">All fixtures &amp; results ' + ICON.arrow + '</a></div>' : '';
+    }
+    var lv = nu.live[0], up = nu.upcoming[0];
+    if (lv) hubStatus('fixtures', 'Live: ' + teamsById[lv.home_team_id].name + ' ' + (lv.home_score == null ? 0 : lv.home_score) + '–' + (lv.away_score == null ? 0 : lv.away_score) + ' ' + teamsById[lv.away_team_id].name + (nu.live.length > 1 ? ' (+' + (nu.live.length - 1) + ' more)' : ''), true);
+    else if (up) hubStatus('fixtures', 'Next: ' + teamsById[up.home_team_id].name + ' v ' + teamsById[up.away_team_id].name + ' · ' + timeOf(kickDate(up)));
+    else if (fx.length) hubStatus('fixtures', fx.length + (fx.length === 1 ? ' match' : ' matches') + ' · ' + fx.filter(function (f) { return f.status === 'finished'; }).length + ' played');
+    else hubStatus('fixtures', 'Fixtures coming soon');
+    var tn = (S.teams || []).length, pn = (S.players || []).length;
+    hubStatus('teams', tn ? tn + (tn === 1 ? ' team' : ' teams') + (pn ? ' · ' + pn + (pn === 1 ? ' player' : ' players') : '') : 'Teams announced soon');
+    if (S.voting_open) hubStatus('vote', lsGet(LS.voted) ? 'Voting open · you\'ve voted' : 'Voting open', true);
+    else hubStatus('vote', S.show_results ? 'Voting closed · see the result' : 'Voting opens on the day');
+    var en = S.raffle_entries || 0;
+    if (S.raffle_open) hubStatus('raffle', (en ? en + (en === 1 ? ' entry' : ' entries') + ' · ' : '') + 'from ' + money(S.min_donation), true);
+    else hubStatus('raffle', (S.draws || []).length ? 'Winners drawn' : 'Raffle opens soon');
+    var mn = (S.media || []).length;
+    hubStatus('photos', mn ? mn + (mn === 1 ? ' photo or video' : ' photos & videos') + (S.media_open ? ' · share yours' : '') : (S.media_open ? 'Be the first to share' : 'Uploads closed'));
   }
 
   // ----- Vote -----
@@ -257,8 +339,20 @@
     });
   }
 
+  // On every page except the raffle, a draw is announced with a small prompt that leads to the wheel
+  function drawToast(d) {
+    var old = $('#uc-toast'); if (old) old.parentNode.removeChild(old);
+    var t = document.createElement('div');
+    t.id = 'uc-toast'; t.className = 'uc-toast'; t.setAttribute('role', 'status');
+    t.innerHTML = '<span class="uc-toast-ico" aria-hidden="true">&#127881;</span><span class="uc-toast-txt"><strong>The raffle draw is happening!</strong><small>Ticket #' + esc(d.ticket_no) + ' &middot; watch the wheel</small></span>' +
+      '<a class="uc-btn uc-btn--gold" href="' + PAGE.raffle + '">Watch</a><button type="button" class="uc-toast-x" data-uc-toast-close aria-label="Dismiss">' + ICON.close + '</button>';
+    document.body.appendChild(t);
+    requestAnimationFrame(function () { t.classList.add('is-in'); });
+    say('The raffle draw is happening now. Open the raffle page to watch the wheel.');
+  }
+
   function celebrateDraw(d) {
-    if (!wheel) return;
+    if (!wheel) { drawToast(d); return; }
     var sec = $('#raffle'); if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     var ov = $('#uc-reveal'); if (!ov) return;
     ov.hidden = false; ov.classList.remove('is-shown');
@@ -613,7 +707,7 @@
     $('[data-lb-close]', lb).focus();
   }
   function closeLightbox() {
-    var lb = $('#uc-lightbox'); if (lb.hidden) return;
+    var lb = $('#uc-lightbox'); if (!lb || lb.hidden) return;
     $('#uc-lb-body').innerHTML = '';
     lb.classList.remove('is-open'); lb.hidden = true; document.body.classList.remove('uc-modal-open');
     if (lastFocus && lastFocus.focus) lastFocus.focus();
@@ -751,19 +845,21 @@
     var d = kickDate(f), tm = d ? timeOf(d) : 'TBC';
     return { home: shareTeam(teamsById[f.home_team_id]), away: shareTeam(teamsById[f.away_team_id]), hs: f.home_score, as: f.away_score, status: f.status, time: tm, stage: f.stage || '', pitch: f.pitch || '', note: f.note || '' };
   }
+  // The address a shared picture points people to: the page that matches what is being shared
+  function pageUrl(key) { return (window.UnityShare ? UnityShare.SITE.replace(/[^\/]*$/, '') : 'https://lincolnacms.uk/') + PAGE[key || 'hub']; }
   function slug(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unity-cup'; }
 
   function shareLineup(id) {
     var t = teamsById[id]; if (!t || !window.UnityShare) return;
     var players = (S.players || []).filter(function (p) { return p.team_id === id; }).map(function (p) { return { id: p.id, name: p.name, shirt_no: p.shirt_no, position: p.position, captain: p.captain, active: true }; });
-    UnityShare.open({ kind: 'lineup', heading: t.name + ' line-up', title: t.name + ' line-up', filename: 'lacms-unity-cup-' + slug(t.name) + '-lineup',
+    UnityShare.open({ kind: 'lineup', url: pageUrl('teams'), heading: t.name + ' line-up', title: t.name + ' line-up', filename: 'lacms-unity-cup-' + slug(t.name) + '-lineup',
       caption: t.name + ' line-up for the LACMS Unity Cup ⚽',
       data: { team: shareTeam(t), group: t.group_name || '', players: players, hasRoles: players.some(function (p) { return !!p.captain; }) } });
   }
   function shareMatch(fid) {
     var f = (S.fixtures || []).filter(function (x) { return x.id === fid; })[0]; if (!f || !window.UnityShare) return;
     var d = shareFixture(f), has = f.home_score != null && f.away_score != null && f.status !== 'scheduled' && f.status !== 'postponed';
-    UnityShare.open({ kind: 'match', heading: d.home.name + ' v ' + d.away.name, title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-' + slug(d.home.name + '-v-' + d.away.name),
+    UnityShare.open({ kind: 'match', url: pageUrl('fixtures'), heading: d.home.name + ' v ' + d.away.name, title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-' + slug(d.home.name + '-v-' + d.away.name),
       caption: (f.status === 'finished' ? 'Full time: ' : f.status === 'live' ? 'Live: ' : '') + d.home.name + (has ? ' ' + f.home_score + '-' + f.away_score + ' ' : ' v ') + d.away.name + ' at the LACMS Unity Cup ⚽',
       data: { fixture: d } });
   }
@@ -782,13 +878,13 @@
     if (finished.length && days.length > 1) variants.push({ label: 'All results', kind: 'fixtures', caption: 'LACMS Unity Cup results so far ⚽', data: { title: 'Results', subtitle: 'So far', fixtures: finished.map(shareFixture) } });
     var start = 0, ti = days.findIndex(function (d) { return d.key === todayKey; });
     if (ti >= 0) start = ti; else { var up = days.findIndex(function (d) { return d.items.some(function (f) { return f.status !== 'finished'; }); }); start = up >= 0 ? up : days.length - 1; }
-    UnityShare.open({ kind: 'fixtures', heading: 'Share fixtures & results', title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-fixtures', variants: variants, start: start });
+    UnityShare.open({ kind: 'fixtures', url: pageUrl('fixtures'), heading: 'Share fixtures & results', title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-fixtures', variants: variants, start: start });
   }
   function shareTables() {
     if (!window.UnityShare) return;
     var groups = standings().map(function (g) { return { name: g.name, rows: g.rows.map(function (r) { return { t: shareTeam(r.t), p: r.p, w: r.w, d: r.d, l: r.l, gf: r.gf, ga: r.ga, pts: r.pts }; }) }; });
     if (!groups.length) return;
-    UnityShare.open({ kind: 'tables', heading: 'Share the tables', title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-tables', caption: 'LACMS Unity Cup group tables ⚽',
+    UnityShare.open({ kind: 'tables', url: pageUrl('fixtures'), heading: 'Share the tables', title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-tables', caption: 'LACMS Unity Cup group tables ⚽',
       data: { title: 'Group tables', subtitle: 'LACMS Unity Cup', groups: groups } });
   }
   function shareWinner() {
@@ -797,13 +893,13 @@
     var total = S.total_votes || players.reduce(function (n, p) { return n + (p.votes || 0); }, 0);
     function row(p) { var t = teamsById[p.team_id]; return { name: p.name, team: p.team || '', colour: t ? t.colour : '#d4a62b', votes: p.votes || 0, pct: total ? Math.round((p.votes || 0) / total * 100) : null }; }
     var w = row(players[0]), done = !S.voting_open;
-    UnityShare.open({ kind: 'winner', heading: done ? 'Share the result' : 'Share the standings', title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-player-of-the-tournament',
+    UnityShare.open({ kind: 'winner', url: pageUrl('vote'), heading: done ? 'Share the result' : 'Share the standings', title: 'LACMS Unity Cup', filename: 'lacms-unity-cup-player-of-the-tournament',
       caption: done ? w.name + ' is the LACMS Unity Cup Player of the Tournament ⭐' : 'Player of the Tournament so far at the LACMS Unity Cup: ' + w.name + ' ⭐',
       data: { winner: w, others: players.slice(1, 6).map(row), total: total } });
   }
   function shareDraw(id) {
     var d = (S.draws || []).filter(function (x) { return x.id === id; })[0]; if (!d || !window.UnityShare) return;
-    UnityShare.open({ kind: 'raffle', heading: 'Share the winner', title: 'LACMS Unity Cup raffle', filename: 'lacms-unity-cup-raffle-winner', caption: 'Ticket #' + d.ticket_no + ' wins ' + d.prize + ' in the LACMS Unity Cup charity raffle! 🎉',
+    UnityShare.open({ kind: 'raffle', url: pageUrl('raffle'), heading: 'Share the winner', title: 'LACMS Unity Cup raffle', filename: 'lacms-unity-cup-raffle-winner', caption: 'Ticket #' + d.ticket_no + ' wins ' + d.prize + ' in the LACMS Unity Cup charity raffle! 🎉',
       data: { ticket: d.ticket_no, name: d.name, prize: d.prize } });
   }
 
@@ -818,7 +914,13 @@
     if (team) { filterTeam = team.getAttribute('data-team'); renderVote(); return; }
     var to = t.closest('[data-team-open]'); if (to) { openTeam(to.getAttribute('data-team-open')); return; }
     var vp = t.closest('[data-vote-player]');
-    if (vp) { selected = vp.getAttribute('data-vote-player'); closeModal(true); renderVote(); var vs = document.getElementById('vote'); if (vs) vs.scrollIntoView({ behavior: 'smooth', block: 'start' }); say('Player selected. Press Vote now.'); return; }
+    if (vp) {
+      var pid = vp.getAttribute('data-vote-player');
+      var vs = document.getElementById('vote');
+      if (!vs) { location.href = PAGE.vote + '?player=' + encodeURIComponent(pid); return; }     // the vote has its own page now
+      selected = pid; closeModal(true); renderVote(); vs.scrollIntoView({ behavior: 'smooth', block: 'start' }); say('Player selected. Press Vote now.'); return;
+    }
+    if (t.closest('[data-uc-toast-close]')) { var tt = $('#uc-toast'); if (tt) { tt.classList.remove('is-in'); window.setTimeout(function () { if (tt.parentNode) tt.parentNode.removeChild(tt); }, 250); } return; }
     var ft = t.closest('[data-fx-tab]'); if (ft) { fxTab = ft.getAttribute('data-fx-tab'); fxSig = ''; renderFixtures(); return; }
     var sl = t.closest('[data-share-lineup]'); if (sl) { shareLineup(sl.getAttribute('data-share-lineup')); return; }
     var sm = t.closest('[data-share-match]'); if (sm) { shareMatch(sm.getAttribute('data-share-match')); return; }
@@ -841,13 +943,12 @@
       return;
     }
     if (t.closest('#uc-reveal-close')) { var ov = $('#uc-reveal'); ov.hidden = true; ov.classList.remove('is-shown'); return; }
-    var jump = t.closest('[data-uc-jump]');
-    if (jump) { e.preventDefault(); var dest = document.getElementById(jump.getAttribute('data-uc-jump')); if (dest) { dest.scrollIntoView({ behavior: 'smooth', block: 'start' }); history.replaceState(null, '', '#' + dest.id); } }
   });
 
+  function lightboxOpen() { var lb = $('#uc-lightbox'); return !!lb && !lb.hidden; }
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') { if (!$('#uc-lightbox').hidden) closeLightbox(); else closeModal(); return; }
-    if (!$('#uc-lightbox').hidden) { if (e.key === 'ArrowRight') stepLightbox(1); if (e.key === 'ArrowLeft') stepLightbox(-1); return; }
+    if (e.key === 'Escape') { if (lightboxOpen()) closeLightbox(); else closeModal(); return; }
+    if (lightboxOpen()) { if (e.key === 'ArrowRight') stepLightbox(1); if (e.key === 'ArrowLeft') stepLightbox(-1); return; }
     if (e.key === 'Tab' && modalEl) {          // keep focus inside the dialog
       var f = $$('a[href], button:not([disabled]), input:not([type=hidden]):not([data-uc-hp]), select, textarea', modalEl);
       if (!f.length) return;
@@ -879,21 +980,32 @@
     if ('IntersectionObserver' in window) {
       io = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('is-in'); io.unobserve(en.target); } }); }, { threshold: 0.12 });
       $$('[data-reveal]').forEach(function (n) { io.observe(n); });
-      var links = $$('.uc-subnav a'), map = {};
-      links.forEach(function (a) { map[a.getAttribute('data-uc-jump')] = a; });
-      var spy = new IntersectionObserver(function (entries) {
-        entries.forEach(function (en) { if (en.isIntersecting && map[en.target.id]) { links.forEach(function (a) { a.classList.remove('is-active'); }); map[en.target.id].classList.add('is-active'); } });
-      }, { rootMargin: '-35% 0px -55% 0px' });
-      Object.keys(map).forEach(function (id) { var s = document.getElementById(id); if (s) spy.observe(s); });
     } else $$('[data-reveal]').forEach(function (n) { n.classList.add('is-in'); });
+    wireSubnav();
+  }
+
+  // On a phone the tabs scroll sideways: bring the current one into view
+  function wireSubnav() {
+    var nav = $('.uc-subnav'); if (!nav) return;
+    var inner = $('.uc-subnav-inner', nav), cur = $('[aria-current="page"]', nav);
+    if (inner && cur && inner.scrollWidth > inner.clientWidth) inner.scrollLeft = Math.max(0, cur.offsetLeft - (inner.clientWidth - cur.offsetWidth) / 2);
   }
 
   // ---------------------------------------------------------------------
   // Start
+  var qs = null; try { qs = new URLSearchParams(location.search); } catch (e) {}
+  if (qs && qs.get('player') && document.getElementById('vote')) selected = qs.get('player');      // from a squad's "Vote" button on another page
   wireUpload();
   wireScroll();
   if (!ready()) { showUnavailable(); return; }
-  loadState().then(function () {
+  loadState().then(function (ok) {
+    if (!ok) return;
+    if (qs && qs.get('team') && teamsById[qs.get('team')]) openTeam(qs.get('team'));                // ?team= opens a squad
+    if (selected) {
+      var chosen = $('.uc-player.is-selected');
+      if (chosen) window.setTimeout(function () { chosen.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
+      if (window.history && history.replaceState) history.replaceState(null, '', location.pathname + location.hash);
+    }
     var h = (location.hash || '').replace('#', '');
     if (h && document.getElementById(h)) window.setTimeout(function () { document.getElementById(h).scrollIntoView({ behavior: 'smooth' }); }, 350);
   });
