@@ -8,6 +8,11 @@
 // Everything goes through the committee-only database functions (migrations 115, 122, 125 and 126). The page
 // checks the same permission as the dashboard (the president, or "Dashboard: Unity Cup" in Hub Access); the
 // database enforces it again on every call.
+//
+// PRIVATE SCORER LINK (migration 127): the committee can send anyone a link like unity-match.html#<code>. That
+// person needs no account: they get this same page for THAT match only (goals, scorers, cards, clock, score and
+// status). They cannot publish the match, see or run Man of the Match, or touch anything else. Every action goes
+// through unity_match_open / unity_match_do, which check the link in the database each time.
 
 (function () {
   'use strict';
@@ -15,8 +20,14 @@
   var root = document.getElementById('um-root');
   if (!root) return;
   var liveEl = document.getElementById('um-live');
-  var FID = '';
-  try { FID = new URLSearchParams(window.location.search).get('id') || ''; } catch (e) { /* none */ }
+  var FID = '', KEY = '', BADHASH = false;
+  try {
+    FID = new URLSearchParams(window.location.search).get('id') || '';
+    var hm = /^#([0-9a-f]{36})$/.exec(window.location.hash || '');
+    if (hm) KEY = hm[1]; else if ((window.location.hash || '').length > 1 && !FID) BADHASH = true;
+  } catch (e) { /* none */ }
+  var KEYMODE = !!KEY;         // opened with a private scorer link (no sign-in)
+  var dead = false;            // the link stopped working: stop talking to the database
 
   var POLL_MS = 5000;
   var SIN_BIN_MS = 2 * 60 * 1000;
@@ -40,6 +51,7 @@
     pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4.5" width="4.2" height="15" rx="1.2" fill="currentColor"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.2" fill="currentColor"/></svg>',
     flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
     star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2 6.3 20.3l1.2-6.4L2.8 9.5l6.4-.8z" fill="currentColor"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1 0l2.8-2.8a5 5 0 0 0-7.1-7.1l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.1 0L4.1 13.8a5 5 0 0 0 7.1 7.1l1.5-1.5"/></svg>',
     ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>'
   };
 
@@ -97,8 +109,39 @@
   function yellowsFor(pid) { return (M.cards || []).filter(function (c) { return c.kind === 'yellow' && c.player_id === pid; }).length; }
 
   // ---------------------------------------------------------------------
+  // Talking to the database. The committee calls the committee functions directly. A private link goes through
+  // unity_match_open / unity_match_do, which check the link and only allow this one match.
+  var KEYERR = {
+    bad_link: 'This link doesn\u2019t look right. Check you copied all of it, or ask for a new one.',
+    link_off: 'The committee has switched this link off. Ask them for a new one if you\u2019re still keeping score.',
+    expired: 'This link has expired. Scorer links stop working 24 hours after kick-off.'
+  };
+  var KEYMAP = { unity_admin_add_goal: 'add_goal', unity_admin_remove_goal: 'remove_goal', unity_admin_set_goal_scorer: 'set_goal_scorer', unity_admin_add_card: 'add_card', unity_admin_remove_card: 'remove_card', unity_admin_set_clock: 'set_clock', unity_admin_set_score: 'set_score' };
+  function unwrapKey(r) {
+    if (r.error) return r;
+    var d = r.data;
+    if (d && d.ok === false) return { data: null, error: { message: KEYERR[d.error] || KEYERR.bad_link, keyError: d.error || 'bad_link' } };
+    if (d && d.ok === true && Object.prototype.hasOwnProperty.call(d, 'data') && !d.fixture) return { data: d.data, error: null };
+    return r;
+  }
+  function api(fn, args) {
+    if (!KEYMODE) return supabaseClient.rpc(fn, args);
+    if (fn === 'unity_admin_match') return supabaseClient.rpc('unity_match_open', { p_key: KEY }).then(unwrapKey);
+    var act = KEYMAP[fn];
+    if (!act) return Promise.resolve({ data: null, error: { message: 'A private link can\u2019t do that.' } });
+    return supabaseClient.rpc('unity_match_do', { p_key: KEY, p_action: act, p_args: args }).then(unwrapKey);
+  }
+
+  // ---------------------------------------------------------------------
   // Messages shown instead of the match
   function showPlain(html) { root.innerHTML = '<div class="um-plain">' + html + '</div>'; }
+  function showKeyError(code) {
+    dead = true;
+    var title = code === 'expired' ? 'This link has expired' : code === 'link_off' ? 'This link has been switched off' : 'This link doesn\u2019t work';
+    showPlain('<h1>' + title + '</h1><p>' + esc(KEYERR[code] || KEYERR.bad_link) + '</p><p class="um-fine">Anything you already entered has been saved.</p>');
+    if (toastEl) hideToast();
+    if (sheet) closeSheet(true);
+  }
   function showSignIn() {
     var next = 'unity-match.html' + (FID ? '?id=' + encodeURIComponent(FID) : '');
     showPlain('<h1>Sign in to run this match</h1><p>This page is for the committee. Sign in with your members account and you’ll come straight back here.</p><a class="btn btn-primary" href="login.html?next=' + encodeURIComponent(next) + '">Sign in</a>');
@@ -113,19 +156,20 @@
   // ---------------------------------------------------------------------
   // Loading
   function load(force) {
-    if (loading || (!force && busyN > 0)) return Promise.resolve();
+    if (dead || loading || (!force && busyN > 0)) return Promise.resolve();
     loading = true;
-    return supabaseClient.rpc('unity_admin_match', { p_id: FID }).then(function (res) {
+    return api('unity_admin_match', { p_id: FID }).then(function (res) {
       loading = false;
       if (res.error) {
         var msg = res.error.message || '';
+        if (res.error.keyError) { showKeyError(res.error.keyError); return; }
         if (!M) { if (/schema cache|could not find the function|does not exist/i.test(msg)) showSetup(msg); else showPlain('<h1>Couldn’t open the match</h1><p>' + esc(msg || 'Please check your connection and try again.') + '</p><button type="button" class="btn btn-primary" data-um-reload>Try again</button>'); }
         return;
       }
       var d = res.data || {};
       if (d.server_now) offset = Date.parse(d.server_now) - Date.now();
       if (d.missing) { showMissing(); return; }
-      var sig = JSON.stringify([d.fixture, d.teams, d.players, d.goals, d.cards, d.mom_votes, d.mom_voters]);
+      var sig = JSON.stringify([d.fixture, d.teams, d.players, d.goals, d.cards, d.mom_votes, d.mom_voters, d.links, d.link_expires_at, d.label]);
       var first = !M, changed = sig !== lastSig;
       M = d; lastSig = sig;
       if (first || (changed && !isTyping())) { render(); }
@@ -137,7 +181,7 @@
   // One database call: counts as busy (so the 5-second refresh waits) and never throws
   function call(fn, args) {
     busyN++;
-    return supabaseClient.rpc(fn, args).then(function (r) { busyN--; return r; }, function () { busyN--; return { error: { message: 'No connection. Please check your signal and try again.' } }; });
+    return api(fn, args).then(function (r) { busyN--; if (r.error && r.error.keyError) showKeyError(r.error.keyError); return r; }, function () { busyN--; return { error: { message: 'No connection. Please check your signal and try again.' } }; });
   }
   function failMsg(err) {
     var m = (err && err.message) || '';
@@ -179,7 +223,7 @@
     if (!M) return;
     var f = F(), h = homeT(), a = awayT();
     document.title = (h.name || 'Home') + ' v ' + (a.name || 'Away') + ' - Match control';
-    root.innerHTML = '<div class="um-a">' + boardHtml() + visHtml() + controlsHtml() + '</div><div class="um-b">' + benchHtml() + eventsHtml() + momHtml() + fixHtml() + footHtml() + '</div>';
+    root.innerHTML = '<div class="um-a">' + keyBarHtml() + boardHtml() + visHtml() + controlsHtml() + '</div><div class="um-b">' + benchHtml() + eventsHtml() + momHtml() + linksHtml() + fixHtml() + footHtml() + '</div>';
     tick();
   }
 
@@ -214,9 +258,16 @@
       main + '</section>';
   }
 
+  // Shown to someone who opened a private scorer link
+  function keyBarHtml() {
+    if (!KEYMODE) return '';
+    var exp = M.expires_at ? new Date(M.expires_at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    return '<section class="um-note um-note--key"><p><strong>You\u2019re keeping score with a private link</strong>' + (M.label ? ' (' + esc(M.label) + ')' : '') + '. It only works for this match' + (exp ? ' and stops on ' + esc(exp) : '') + '. Please don\u2019t share it.</p></section>';
+  }
   function visHtml() {
     var f = F();
     if (isPublic()) return '';
+    if (KEYMODE) return '<section class="um-note"><p><strong>This match isn\u2019t public yet.</strong> The committee publishes it. Everything you enter is saved, and visitors will see it once it\u2019s published.</p></section>';
     var sched = f.publish_at && Date.parse(f.publish_at) > nowMs();
     return '<section class="um-note um-note--warn"><p><strong>' + (sched ? 'Not public yet.' : 'Hidden from the public.') + '</strong> Visitors can’t see this match, its score or its scorers, and Man of the Match voting stays closed' + (sched ? ' until it goes public at ' + esc(new Date(f.publish_at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })) : '') + '.</p>' +
       '<button type="button" class="um-btn um-btn--gold" data-um-publish>Publish now</button></section>';
@@ -299,6 +350,7 @@
 
   // Man of the Match
   function momHtml() {
+    if (KEYMODE) return '';
     var f = F(), votes = M.mom_votes || [], total = votes.reduce(function (n, v) { return n + v.votes; }, 0), voters = M.mom_voters || 0;
     var openNow = isPublic() && (f.status === 'live' || f.status === 'finished') && f.mom_open && !f.mom_show;
     var head, body = '', acts = '';
@@ -329,6 +381,75 @@
       '<div class="um-row um-row--wrap">' + acts + '</div></section>';
   }
 
+  // Private scorer links (committee only)
+  function linkUrl(l) { return new URL('unity-match.html', window.location.href).href + '#' + l.token; }
+  function expiresText() { return M.link_expires_at ? new Date(M.link_expires_at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''; }
+  function agoText(iso) {
+    if (!iso) return '';
+    var s = Math.max(0, (nowMs() - Date.parse(iso)) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.round(s / 60) + ' min ago';
+    if (s < 86400) return Math.round(s / 3600) + ' h ago';
+    return Math.round(s / 86400) + ' d ago';
+  }
+  function linkMessage(l) {
+    var f = F(), when = f.kickoff_at ? new Date(f.kickoff_at).toLocaleString('en-GB', { weekday: 'long', hour: '2-digit', minute: '2-digit' }) : '';
+    return 'Hi' + (l.label ? ' ' + l.label : '') + '! Here\u2019s your private link to keep score for ' + (homeT().name || 'Home') + ' v ' + (awayT().name || 'Away') + ' at the LACMS Unity Cup' + (when ? ' (' + when + (f.pitch ? ', ' + f.pitch : '') + ')' : '') + ':\n' + linkUrl(l) +
+      '\n\nOpen it on your phone. Tap Goal or a card for the right team, pick the player, and it\u2019s saved straight away (there\u2019s an Undo if you slip). You can also run the match clock. Please don\u2019t share the link' + (expiresText() ? ' \u2014 it stops working on ' + expiresText() : '') + '. Thank you!';
+  }
+  function linksHtml() {
+    if (KEYMODE) return '';
+    if (M.links === undefined) return '<section class="um-note um-note--warn"><p><strong>One more step for scorer links.</strong> Run <code>127-unity-cup-scorer-links.sql</code> in the Supabase SQL Editor, then reload.</p></section>';
+    var links = M.links || [];
+    return '<section class="um-card um-links" aria-label="Private scorer links"><div class="um-card-head"><h2>' + ICON.link + 'Scorer links</h2></div>' +
+      '<p class="um-fine">Send a private link to anyone who\u2019ll keep score for this match. They don\u2019t need an account or to be on the committee: they open it and get this page for <strong>this match only</strong> (goals, scorers, cards, the clock and the score). They can\u2019t publish it or see Man of the Match.</p>' +
+      (links.length ? '<ul class="um-list">' + links.map(function (l, i) {
+        var url = linkUrl(l);
+        return '<li class="um-link' + (l.enabled ? '' : ' is-off') + '" data-lid="' + esc(l.id) + '"><div class="um-link-top"><strong>' + esc(l.label || 'Link ' + (i + 1)) + '</strong><span class="um-pill ' + (l.enabled ? 'is-live' : 'is-scheduled') + '">' + (l.enabled ? 'On' : 'Off') + '</span></div>' +
+          '<small>' + (l.last_used_at ? 'Last used ' + esc(agoText(l.last_used_at)) + ' \u00b7 ' + (l.uses || 0) + (l.uses === 1 ? ' action' : ' actions') : 'Not opened yet') + '</small>' +
+          '<input class="um-url" readonly value="' + esc(url) + '" data-um-url aria-label="Private link' + (l.label ? ' for ' + esc(l.label) : '') + '">' +
+          '<div class="um-row um-row--wrap">' + (navigator.share ? '<button type="button" class="um-btn um-btn--gold um-btn--sm" data-um-link="share">Send\u2026</button>' : '') +
+          '<button type="button" class="um-btn um-btn--ghost um-btn--sm" data-um-link="copy">Copy link</button><button type="button" class="um-btn um-btn--ghost um-btn--sm" data-um-link="copymsg">Copy message</button>' +
+          '<button type="button" class="um-btn um-btn--ghost um-btn--sm" data-um-link="' + (l.enabled ? 'disable' : 'enable') + '">' + (l.enabled ? 'Turn off' : 'Turn on') + '</button>' +
+          '<button type="button" class="um-btn um-btn--ghost um-btn--sm" data-um-link="regenerate" data-um-arm="Tap again: old link stops">New link</button>' +
+          '<button type="button" class="um-btn um-btn--ghost um-btn--sm um-btn--danger" data-um-link="remove" data-um-arm="Tap again to remove">Remove</button></div></li>';
+      }).join('') + '</ul>' : '<p class="um-empty">No links yet.</p>') +
+      '<form class="um-newlink" data-um-newlink><label><span class="visually-hidden">Who is the link for?</span><input type="text" maxlength="40" placeholder="Who is it for? (optional, e.g. Sam)" data-um-newlabel autocomplete="off"></label><button type="submit" class="um-btn um-btn--gold">Make a link</button></form>' +
+      (expiresText() ? '<p class="um-fine">Links stop working by themselves on ' + esc(expiresText()) + ' (24 hours after kick-off). Turn one off or remove it any time and it stops straight away.</p>' : '') + '</section>';
+  }
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0;';
+      document.body.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (e) { /* ignore */ }
+      document.body.removeChild(ta); if (ok) resolve(); else reject();
+    });
+  }
+  function linkAct(lid, action) {
+    var l = (M.links || []).filter(function (x) { return x.id === lid; })[0]; if (!l) return;
+    if (action === 'copy' || action === 'copymsg') {
+      copyText(action === 'copy' ? linkUrl(l) : linkMessage(l)).then(function () { toast(action === 'copy' ? 'Link copied.' : 'Message copied. Paste it into WhatsApp or a text.'); }, function () { var inp = $('[data-um-url]', $('[data-lid="' + lid + '"]', root)); if (inp) { inp.focus(); inp.select(); } toast('Press and hold the link to copy it.'); });
+      return;
+    }
+    if (action === 'share') {
+      navigator.share({ title: 'Keep score: ' + (homeT().name || '') + ' v ' + (awayT().name || ''), text: linkMessage(l) }).catch(function () { /* cancelled */ });
+      return;
+    }
+    return call('unity_admin_match_link', { p_fixture: F().id, p_action: action, p_label: null, p_link: lid }).then(function (r) {
+      if (r.error) { toast(failMsg(r.error), null, true); return refresh(); }
+      toast({ enable: 'Link turned on.', disable: 'Link turned off. It stops working now.', regenerate: 'New link made. The old one stops working now, so send the new one.', remove: 'Link removed. It stops working now.' }[action] || 'Saved.');
+      return refresh();
+    });
+  }
+  function makeLink(label) {
+    return call('unity_admin_match_link', { p_fixture: F().id, p_action: 'create', p_label: label || null, p_link: null }).then(function (r) {
+      if (r.error) { toast(/schema cache|could not find the function|does not exist/i.test(r.error.message || '') ? 'Run migration 127-unity-cup-scorer-links.sql in Supabase first.' : failMsg(r.error), null, true); return refresh(); }
+      toast('Link made. Send it to the person keeping score.');
+      return refresh();
+    });
+  }
+
   // Fix the score / status by hand
   function fixHtml() {
     var f = F();
@@ -341,6 +462,7 @@
   }
 
   function footHtml() {
+    if (KEYMODE) return '<p class="um-foot"><a href="unity-cup-fixtures.html" target="_blank" rel="noopener">See it on the public page ' + ICON.ext + '</a></p>';
     return '<p class="um-foot"><a href="unity-cup-fixtures.html" target="_blank" rel="noopener">See it on the public page ' + ICON.ext + '</a><a href="president-dashboard.html#unity">Edit teams, time or pitch</a></p>';
   }
 
@@ -651,6 +773,12 @@
     if (ge) { var g = goalById(ge.closest('[data-gid]').getAttribute('data-gid')); if (g && !isTmp(g.id)) openSheet('goal', g.team_id, { mode: 'edit', goalId: g.id, minute: g.minute == null ? null : g.minute }); return; }
     var gd = t.closest('[data-um-goal-del]'); if (gd) { removeGoal(gd.closest('[data-gid]').getAttribute('data-gid')); return; }
     var cd = t.closest('[data-um-card-del]'); if (cd) { removeCard(cd.closest('[data-cid]').getAttribute('data-cid')); return; }
+    var lk = t.closest('[data-um-link]');
+    if (lk) {
+      if (lk.hasAttribute('data-um-arm') && !arm(lk, lk.getAttribute('data-um-arm'))) return;
+      linkAct(lk.closest('[data-lid]').getAttribute('data-lid'), lk.getAttribute('data-um-link')); return;
+    }
+    var urlIn = t.closest('[data-um-url]'); if (urlIn) { urlIn.select(); return; }
     var mo = t.closest('[data-um-mom]');
     if (mo) { if (mo.hasAttribute('data-um-arm') && !arm(mo, mo.getAttribute('data-um-arm'))) return; momAct(mo.getAttribute('data-um-mom')); return; }
     if (t.closest('[data-um-save-fix]')) {
@@ -660,6 +788,13 @@
       setScoreStatus(h, a2, s, 'Saved.'); return;
     }
     disarm();
+  });
+
+  root.addEventListener('submit', function (e) {
+    var f = e.target.closest && e.target.closest('[data-um-newlink]'); if (!f) return;
+    e.preventDefault();
+    var inp = $('[data-um-newlabel]', f), btn = $('button[type=submit]', f); btn.disabled = true;
+    makeLink(inp.value.trim()).then(function () { btn.disabled = false; });
   });
 
   document.addEventListener('click', function (e) {
@@ -702,12 +837,18 @@
   // ---------------------------------------------------------------------
   // Start: sign-in and permission check, then show the match and keep it fresh
   function start() {
+    if (KEYMODE) {
+      var back = $('.um-back'); if (back) { var brand = document.createElement('span'); brand.className = 'um-brand'; brand.textContent = 'LACMS Unity Cup'; back.parentNode.replaceChild(brand, back); }
+      var tt = $('.um-top-title'); if (tt) tt.textContent = 'Scorer';
+    }
     load(true);
     window.setInterval(tick, 250);
     window.setInterval(function () { if (!document.hidden && !sheet) load(false); }, POLL_MS);
     document.addEventListener('visibilitychange', function () { if (!document.hidden) { load(false); tick(); } });
   }
   if (!ready()) { showPlain('<h1>The page can’t reach the database</h1><p>Please check your connection and reload.</p>'); return; }
+  if (KEYMODE) { start(); return; }                // a private link needs no sign-in
+  if (BADHASH) { showKeyError('bad_link'); return; }
   if (!FID) { showNoId(); return; }
   supabaseClient.auth.getSession().then(function (r) {
     if (!r.data || !r.data.session) { showSignIn(); return; }

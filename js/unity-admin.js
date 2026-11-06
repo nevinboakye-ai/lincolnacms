@@ -540,12 +540,49 @@
       var h = teamById(f.home_team_id), a = teamById(f.away_team_id), has = f.status !== 'scheduled' && f.status !== 'postponed' && f.home_score != null && f.away_score != null;
       var when = f.kickoff_at ? new Date(f.kickoff_at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Time to be confirmed';
       var vis = needs122() ? '' : visOf(f) === 'public' ? '' : '<span class="ua-pill ua-vis-pill is-' + visOf(f) + '">' + VIS_LABEL[visOf(f)] + '</span>';
+      var nl = (D.match_links || []).filter(function (l) { return l.fixture_id === f.id && l.enabled; }).length;
+      vis += nl ? '<span class="ua-pill ua-link-pill" title="Someone has a private link to keep score for this match">Scorer link' + (nl > 1 ? ' \u00d7' + nl : '') + '</span>' : '';
       return '<li><a class="ua-mrow is-' + esc(f.status) + '" href="unity-match.html?id=' + encodeURIComponent(f.id) + '">' +
         '<span class="ua-mrow-top"><span class="ua-pill is-' + esc(f.status) + '">' + esc((STATUS.filter(function (x) { return x[0] === f.status; })[0] || [0, f.status])[1]) + '</span>' + vis + '<small>' + esc([f.stage, f.pitch, when].filter(Boolean).join(' \u00b7 ')) + '</small></span>' +
         '<span class="ua-mrow-team">' + crestHtml(h).replace('uc-crest--lg', 'uc-crest--sm') + '<strong>' + esc(h.name) + '</strong><b class="ua-mrow-sc">' + (has ? f.home_score : '') + '</b></span>' +
         '<span class="ua-mrow-team">' + crestHtml(a).replace('uc-crest--lg', 'uc-crest--sm') + '<strong>' + esc(a.name) + '</strong><b class="ua-mrow-sc">' + (has ? f.away_score : '') + '</b></span>' +
         '<span class="ua-mrow-go" aria-hidden="true">Open &rsaquo;</span></a></li>';
     }).join('') + '</ul></div>';
+  }
+  // Private scorer links: let people who aren't on the committee keep score for one match (migration 127)
+  function matchLinkUrl(l) { return new URL('unity-match.html', window.location.href).href + '#' + l.token; }
+  function fixtureLabel(f) {
+    var h = teamById(f.home_team_id), a = teamById(f.away_team_id);
+    return (h ? h.name : '?') + ' v ' + (a ? a.name : '?');
+  }
+  function scorerLinksCard() {
+    var fs = (D.fixtures || []).filter(function (f) { return teamById(f.home_team_id) && teamById(f.away_team_id); });
+    if (!fs.length) return '';
+    if (!('match_links' in D)) return '<div class="ua-card ua-card--warn"><h3>One more step: scorer links</h3><p class="ua-hint">Run <code>127-unity-cup-scorer-links.sql</code> (from the <code>db/migrations</code> folder) in the Supabase SQL Editor, then reload, to send private scorer links.</p></div>';
+    var withLink = fs.filter(function (f) { return (D.match_links || []).some(function (l) { return l.fixture_id === f.id; }); }).length;
+    return '<div class="ua-card"><h3>Scorer links</h3><p class="ua-hint">Let someone who isn\u2019t on the committee keep score for a match: send them a private link. They open it on their phone and can add goals, scorers, cards, run the clock and fix the score for <strong>that match only</strong> (they can\u2019t publish it or see Man of the Match). Open a match above to make, send or switch off its links. Links stop working by themselves 24 hours after kick-off.</p>' +
+      '<p class="ua-hint"><strong>' + withLink + ' of ' + fs.length + '</strong> matches have a link.</p>' +
+      '<div class="ua-row"><button type="button" class="btn btn-primary" data-ua-ml-all' + (withLink === fs.length ? ' disabled' : '') + '>Make a link for every match without one</button>' +
+      '<button type="button" class="btn btn-outline" data-ua-ml-copy' + (withLink ? '' : ' disabled') + '>Copy all links as a message</button></div></div>';
+  }
+  function makeAllLinks(btn) {
+    var todo = (D.fixtures || []).filter(function (f) { return teamById(f.home_team_id) && teamById(f.away_team_id) && !(D.match_links || []).some(function (l) { return l.fixture_id === f.id; }); });
+    if (!todo.length) { toast('Every match already has a link.'); return; }
+    btn.disabled = true;
+    var chain = Promise.resolve(), failed = '';
+    todo.forEach(function (f) { chain = chain.then(function () { if (failed) return; return supabaseClient.rpc('unity_admin_match_link', { p_fixture: f.id, p_action: 'create', p_label: null, p_link: null }).then(function (r) { if (r.error) failed = r.error.message || 'Something went wrong.'; }); }); });
+    chain.then(function () { btn.disabled = false; lastSig = ''; return load(); }).then(function () { if (failed) toast(failed, null, true); else toast('Made ' + todo.length + (todo.length === 1 ? ' link' : ' links') + '. Open a match to send its link, or press \u201cCopy all links\u201d.'); });
+  }
+  function copyAllLinks() {
+    var fs = (D.fixtures || []).filter(function (f) { return teamById(f.home_team_id) && teamById(f.away_team_id); }).sort(function (a, b) { return (a.kickoff_at ? Date.parse(a.kickoff_at) : 9e15) - (b.kickoff_at ? Date.parse(b.kickoff_at) : 9e15); });
+    var blocks = [];
+    fs.forEach(function (f) {
+      var l = (D.match_links || []).filter(function (x) { return x.fixture_id === f.id && x.enabled; })[0]; if (!l) return;
+      var when = f.kickoff_at ? new Date(f.kickoff_at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+      blocks.push(fixtureLabel(f) + (when || f.pitch ? ' (' + [when, f.pitch].filter(Boolean).join(', ') + ')' : '') + (l.label ? ' \u2014 ' + l.label : '') + '\n' + matchLinkUrl(l));
+    });
+    if (!blocks.length) { toast('No links are switched on yet.', null, true); return; }
+    copyText('Private scorer links for the LACMS Unity Cup. Each one only works for its own match and stops 24 hours after kick-off. Please don\u2019t share them.\n\n' + blocks.join('\n\n')).then(function () { toast('Copied ' + blocks.length + (blocks.length === 1 ? ' link' : ' links') + '. Paste them into a message.'); }, function () { toast('Couldn\u2019t copy. Open each match to copy its link.', null, true); });
   }
   function visibilityCard() {
     var fs = D.fixtures || [];
@@ -564,7 +601,7 @@
     var fs = D.fixtures || [], stages = []; fs.forEach(function (x) { if (x.stage && stages.indexOf(x.stage) < 0) stages.push(x.stage); });
     var dl = '<datalist id="ua-stages">' + stages.concat(['Group A', 'Group B', 'Quarter-final', 'Semi-final', 'Final', '3rd place']).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
     if ((D.teams || []).length < 2) return '<div class="ua-card"><h3>Fixtures</h3><p class="ua-hint">Add at least two teams (Teams tab) first.</p></div>';
-    return dl + matchesCard() + visibilityCard() + goalsNotice() + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
+    return dl + matchesCard() + scorerLinksCard() + visibilityCard() + goalsNotice() + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
       '<div class="ua-card"><h3>All fixtures (' + fs.length + ')</h3>' + (fs.length ? '<div class="ua-fx-list">' + fs.map(fixtureForm).join('') + '</div>' : '<p class="ua-hint">No fixtures yet.</p>') + '</div>';
   }
   function readFixture(row) {
@@ -986,6 +1023,8 @@
       supabaseClient.rpc('unity_admin_delete_team', { p_id: tm.id }).then(function (r) { if (r.error) { fail(r.error); return; } if (r.data) supabaseClient.storage.from('unity-cup-gallery').remove([r.data]); note('Team deleted.'); load(); });
       return;
     }
+    var mla = t.closest('[data-ua-ml-all]'); if (mla) { if (!mla.disabled) makeAllLinks(mla); return; }
+    var mlc = t.closest('[data-ua-ml-copy]'); if (mlc) { if (!mlc.disabled) copyAllLinks(); return; }
     var sf = t.closest('[data-ua-save-fx]'); if (sf) { saveFixture(sf.closest('[data-fid]'), sf); return; }
     var df = t.closest('[data-ua-del-fx]'); if (df) { if (window.confirm('Delete this fixture?')) supabaseClient.rpc('unity_admin_delete_fixture', { p_id: df.closest('[data-fid]').getAttribute('data-fid') }).then(function (r) { if (r.error) fail(r.error); else { note('Fixture deleted.'); load(); } }); return; }
     var fv = t.closest('[data-ua-fx-vis]');

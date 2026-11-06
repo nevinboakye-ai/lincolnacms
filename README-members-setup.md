@@ -2079,3 +2079,24 @@ Run `db/migrations/126-unity-cup-match-control.sql` in the Supabase SQL Editor (
 - **Committee controls** are in the **Man of the Match** box on the match page, and the live totals are visible to the committee only: **Close voting**, **Close and reveal winner** (tap twice), **Re-open voting**, **Hide the winner**, or switch voting off for a match. When revealed, the winner (and "shared" if tied) appears on that match's public card. Results stay private until you reveal them.
 - On the public page the scorers now also show the cards given (yellow and red squares beside each team).
 - The privacy notice has a new row for match voting. Its "last updated" date and version were **not** changed (that would ask every member to read it again): change them in the notice if you want to announce it. Voters' scrambled emails and sign-in codes for match voting are cleared together with the Player of the Tournament voter list (Settings -> Clean up old data, or automatically 30 days after the event).
+
+## 180. Private scorer links: let anyone keep score for a match (migration 127)
+
+Run `db/migrations/127-unity-cup-scorer-links.sql` in the Supabase SQL Editor (after 114, 116 and 126; safe to run again). Nothing to re-deploy.
+
+**What it does:** you can send a private link for a match to anyone (a volunteer, a team captain, a friend with a phone). They don't need an account and don't have to be on the committee. They open the link on their phone and get the match control page (see 179) for **that match only**: goals and scorers, yellow and red cards (with the 2 minute sin bin), the clock, the score and the match status.
+
+**Making and sending links**
+- Open a match (Dashboard -> Unity Cup -> Fixtures -> tap the match) and scroll to **Scorer links**. Type who it's for (optional, e.g. "Sam, pitch 1") and press **Make a link**. A match can have up to 10 links, so two people can keep score at once, and each is separate.
+- **Send...** opens your phone's share sheet (WhatsApp, text, email) with a ready-written message; **Copy link** copies just the link; **Copy message** copies the message. Each link also shows when it was last used and how many actions were made with it.
+- **Turn off / Turn on** stops or restores a link straight away. **New link** replaces it (the old one stops at once, so send the new one). **Remove** deletes it.
+- On the Fixtures tab, **Scorer links** can **make a link for every match without one** and **copy all links as a message** (one block per match, ready to paste). Matches with a link show a green "Scorer link" tag in the "Run a match" list.
+
+**What a link holder can and can't do**
+- They see the match page with a green bar: "You're keeping score with a private link". They can record goals (with the scorer), cards, run the clock, change the status and fix the score, with the same Undo messages.
+- They **can't**: publish or hide the match, run or even see Man of the Match (the voting controls and totals are not shown to them), edit teams, times or players, make links, or touch any other match or anything else on the dashboard. This is enforced in the database on every action, not just hidden in the page: a link for one match is refused if it tries to change another.
+- If the match isn't public yet they're told so. What they record is saved and appears publicly once the committee publishes it (see 175).
+
+**How long links last:** a link stops working by itself **24 hours after the match's kick-off** (2 days after the event date if the match has no kick-off time). If you move the kick-off the deadline moves with it. Old links are also deleted by Settings -> Clean up old data.
+
+**Keeping them private:** the code is in the part of the link after `#`, so it is never sent to the website's server or to other sites, and the page is kept out of search engines. Treat the link like a password and send it only to the person keeping score. If one gets shared by mistake, turn it off or press **New link**. The "who is it for" label is only ever shown to the committee. Until the migration is run the match page shows a reminder instead of the Scorer links box.

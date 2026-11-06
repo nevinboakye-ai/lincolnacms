@@ -831,6 +831,26 @@ body.uc-page .back-to-top { display: none; }           /* it sat on top of the V
 .um-foot a { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-muted); }
 .um-foot svg { width: 14px; height: 14px; }
 
+/* Private scorer links */
+.um-brand { justify-self: start; padding-left: 8px; font: 700 0.9rem var(--font-body); color: var(--color-gold-light); letter-spacing: 0.02em; }
+.um-note--key { border-color: rgba(79, 209, 134, 0.5); background: rgba(79, 209, 134, 0.08); }
+.um-card h2 svg.um-ico, .um-links h2 svg { width: 20px; height: 20px; color: var(--color-gold); }
+.um-link { display: grid; gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-bg-alt); }
+.um-link.is-off { opacity: 0.75; }
+.um-link-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.um-link-top strong { min-width: 0; overflow-wrap: anywhere; }
+.um-link small { color: var(--color-text-faint); font-size: 0.78rem; }
+.um-url { width: 100%; min-width: 0; min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1.5px solid var(--color-border-strong); background: var(--color-bg); color: var(--color-text-muted); font: 500 0.8rem var(--font-body); text-overflow: ellipsis; }
+.um-url:focus { outline: 2px solid var(--color-focus); outline-offset: 1px; color: var(--color-text); }
+.um-btn--sm { min-height: 44px; padding: 0 14px; font-size: 0.88rem; border-radius: 12px; }
+.um-btn--danger:hover { border-color: rgba(217, 45, 45, 0.8); color: #ff6b6f; }
+.um-newlink { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.um-newlink input { width: 100%; min-width: 0; min-height: 52px; padding: 0 14px; border-radius: 12px; border: 1.5px solid var(--color-border-strong); background: var(--color-bg); color: var(--color-text); font: 500 1rem var(--font-body); }
+.um-newlink input:focus { outline: 2px solid var(--color-focus); outline-offset: 1px; border-color: var(--color-gold); }
+@media (max-width: 420px) { .um-newlink { grid-template-columns: 1fr; } }
+[data-theme="light"] .um-brand { color: #8a6512; }
+[data-theme="light"] .um-note--key { background: rgba(30, 138, 77, 0.08); }
+
 /* Player sheet: a bottom sheet on a phone, a centred panel on a big screen */
 body.um-sheet-open { overflow: hidden; }
 .um-sheet { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; justify-content: center; pointer-events: none; }
@@ -1377,3 +1397,6 @@ body:has(.uc-votebar:not([hidden]):not(.is-away)) .uc-toast { bottom: calc(92px 
 [data-theme="light"] .uc-mom-btn > svg:last-child, [data-theme="light"] .uc-mom > svg:first-child, [data-theme="light"] .uc-mombar-head > svg { color: #8a6512; }
 [data-theme="light"] .uc-mom.is-result b { color: #8a6512; }
 @media (prefers-reduced-motion: reduce) { .uc-mom-btn, .uc-mom-p { transition: none; } }
+
+.ua-link-pill { background: rgba(79, 209, 134, 0.16); color: #4fd186; }
+[data-theme="light"] .ua-link-pill { color: #1d8a4d; }
