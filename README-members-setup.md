@@ -2111,3 +2111,16 @@ Run `db/migrations/128-unity-cup-referee-links.sql` in the Supabase SQL Editor (
 - **How long it lasts:** a referee link works until the **end of the day two days after the event date** (so the Saturday after a Friday event), then stops by itself. You can turn it off any time. Links for a single match still stop 24 hours after that match's kick-off.
 - Two referees can use their links at the same time. If both open the same match they will both be able to change it, so tell them which pitch or game each is on. Anything either of them records shows on the other's screen within about 5 seconds.
 - On a single match's page the old box is now called "Links for this match only" (for someone who should only ever see that one game).
+
+## 182. Line-ups on the match page, with a referee check-in (migration 129)
+
+Run `db/migrations/129-unity-cup-lineup-checkin.sql` in the Supabase SQL Editor (after 126, 127 and 128; safe to run again). Nothing to re-deploy. Until it is run the line-ups can still be read, but the ticks are switched off and a reminder is shown.
+
+**For the referee (or the committee) on the match page:** tap **Line-ups** under the clock. It opens a full-screen sheet with a tab for each team:
+- **Check in:** every player on the squad list, in shirt-number order, with their position and captain/vice-captain. Tap a player to tick them as **on the pitch**; tap again to untick. **Everyone's here** ticks the whole team in one tap, **Clear ticks** unticks them. The tab shows how many are ticked (for example "9/10").
+- **Pitch:** the same line-up picture as the public Teams page, showing **only the players you have ticked** (the whole squad until you tick someone). Players are placed by their position (set in the Squads tab).
+- Players who have been **sent off** are crossed out and flagged in red, and anyone in the **sin bin** or carrying yellows is flagged, so the line-up always matches what has happened in the game.
+- The ticks are saved **per match** and shared with everyone running it (two phones, or a referee and a committee member, see each other's ticks within about 5 seconds). The Line-ups button on the scoreboard shows the totals at a glance (for example "10/10 · 9/11 confirmed").
+- If any ticks have been made for a team, a player who isn't ticked gets a small **Not checked in** note in the Goal / card pickers. They can still be picked: it is only a prompt to double-check.
+
+Works for the committee, single-match scorer links and referee links alike (a link can tick players for the match(es) it covers). The ticks are not shown on the public page. If a player is missing from a squad, add them in the dashboard's Squads tab first.

@@ -14,6 +14,10 @@
 // status). They cannot publish the match, see or run Man of the Match, or touch anything else. Every action goes
 // through unity_match_open / unity_match_do, which check the link in the database each time.
 //
+// LINE-UPS (migration 129): the "Line-ups" button on the scoreboard opens each team's players with a tick for the
+// ones the referee has confirmed are on the pitch (saved per match and shared with everyone running it), and a pitch
+// picture of the confirmed players. Without the migration the squads are still shown, just without the ticks.
+//
 // REFEREE LINK (migration 128): a link can cover EVERY match. The referee opens it, sees the list of matches
 // (live first, then coming up, then finished), taps the game they are about to ref, and gets this page for it. The
 // "All matches" button in the top bar goes back to the list. The address stays the same except for ?m=<match id>.
@@ -56,6 +60,8 @@
     pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4.5" width="4.2" height="15" rx="1.2" fill="currentColor"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1.2" fill="currentColor"/></svg>',
     flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
     star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2 6.3 20.3l1.2-6.4L2.8 9.5l6.4-.8z" fill="currentColor"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>',
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
     link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1 0l2.8-2.8a5 5 0 0 0-7.1-7.1l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.1 0L4.1 13.8a5 5 0 0 0 7.1 7.1l1.5-1.5"/></svg>',
     go: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>',
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>',
@@ -124,7 +130,7 @@
     expired: 'This link has expired. Scorer links stop working 24 hours after kick-off, and referee links two days after the event date.',
     no_match: 'That match couldn\u2019t be found. It may have been deleted.'
   };
-  var KEYMAP = { unity_admin_add_goal: 'add_goal', unity_admin_remove_goal: 'remove_goal', unity_admin_set_goal_scorer: 'set_goal_scorer', unity_admin_add_card: 'add_card', unity_admin_remove_card: 'remove_card', unity_admin_set_clock: 'set_clock', unity_admin_set_score: 'set_score' };
+  var KEYMAP = { unity_admin_add_goal: 'add_goal', unity_admin_remove_goal: 'remove_goal', unity_admin_set_goal_scorer: 'set_goal_scorer', unity_admin_add_card: 'add_card', unity_admin_remove_card: 'remove_card', unity_admin_set_clock: 'set_clock', unity_admin_set_score: 'set_score', unity_admin_set_lineup: 'set_lineup', unity_admin_set_lineup_team: 'set_lineup_team' };
   function unwrapKey(r) {
     if (r.error) return r;
     var d = r.data;
@@ -177,10 +183,10 @@
       var d = res.data || {};
       if (d.server_now) offset = Date.parse(d.server_now) - Date.now();
       if (d.missing) { showMissing(); return; }
-      var sig = JSON.stringify([d.fixture, d.teams, d.players, d.goals, d.cards, d.mom_votes, d.mom_voters, d.links, d.link_expires_at, d.label, d.fixtures]);
+      var sig = JSON.stringify([d.fixture, d.teams, d.players, d.goals, d.cards, d.mom_votes, d.mom_voters, d.links, d.link_expires_at, d.label, d.fixtures, d.lineup]);
       var first = !M, changed = sig !== lastSig;
       M = d; lastSig = sig;
-      if (first || (changed && !isTyping())) { render(); }
+      if (first || (changed && !isTyping())) { render(); renderLineup(); }
     }, function () { loading = false; });
   }
   function refresh() { lastSig = ''; if (loading) return new Promise(function (r) { window.setTimeout(r, 200); }).then(function () { return refresh(); }); return load(true); }
@@ -266,7 +272,7 @@
         '<div class="um-tm" style="--tc:' + esc(a.colour || '#d4a62b') + '">' + crestHtml(a, 'lg') + '<strong>' + esc(a.name || 'Away') + '</strong></div>' +
       '</div>' +
       '<div class="um-clock' + (running ? ' is-running' : '') + '"><span class="um-clock-label">Match clock</span><b data-um-clock-text>' + mmss(el) + '</b><span class="um-clock-state">' + (running ? 'running' : started ? 'paused' : 'not started') + '</span></div>' +
-      main + '</section>';
+      lineupBtnHtml() + main + '</section>';
   }
 
   // ---------------------------------------------------------------------
@@ -555,6 +561,98 @@
   }
 
   // ---------------------------------------------------------------------
+  // Line-ups: who is on the pitch (the referee ticks players off, saved per match)
+  var lineup = null;            // { el, team, mode: 'check' | 'pitch' } while the line-up sheet is open
+  function lineupOn() { return M && M.lineup !== undefined; }          // false until migration 129 is run
+  function isChecked(pid) { return !!M.lineup && M.lineup.indexOf(pid) >= 0; }
+  function teamPlayers(tid) {
+    return (M.players || []).filter(function (p) { return p.team_id === tid; }).sort(function (a, b) {
+      var an = parseInt(a.shirt_no, 10), bn = parseInt(b.shirt_no, 10);
+      if (isFinite(an) && isFinite(bn) && an !== bn) return an - bn;
+      if (isFinite(an) !== isFinite(bn)) return isFinite(an) ? -1 : 1;
+      return String(a.name).localeCompare(String(b.name));
+    });
+  }
+  function teamChecked(tid) { return teamPlayers(tid).filter(function (p) { return isChecked(p.id); }).length; }
+  function lineupBtnHtml() {
+    var f = F(), h = f.home_team_id, a = f.away_team_id;
+    var hn = teamPlayers(h).length, an = teamPlayers(a).length;
+    var sum = lineupOn() ? teamChecked(h) + '/' + hn + ' · ' + teamChecked(a) + '/' + an + ' confirmed' : hn + ' · ' + an + ' players';
+    var done = lineupOn() && hn + an > 0 && teamChecked(h) + teamChecked(a) > 0;
+    return '<button type="button" class="um-btn um-btn--ghost um-lineup-btn' + (done ? ' is-done' : '') + '" data-um-lineup>' + ICON.users + '<span>Line-ups</span><small>' + esc(sum) + '</small></button>';
+  }
+  function openLineup(team) {
+    if (lineup) return;
+    lastFocus = document.activeElement;
+    var f = F();
+    lineup = { team: team || f.home_team_id, mode: 'check', el: null };
+    var el = document.createElement('div');
+    el.className = 'um-sheet um-lineup';
+    el.innerHTML = '<div class="um-sheet-back" data-um-lu-close></div><div class="um-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="um-lu-title" tabindex="-1"></div>';
+    document.body.appendChild(el); document.body.classList.add('um-sheet-open');
+    lineup.el = el; renderLineup();
+    window.requestAnimationFrame(function () { el.classList.add('is-open'); $('.um-sheet-panel', el).focus({ preventScroll: true }); });
+  }
+  function closeLineup() {
+    if (!lineup) return;
+    var el = lineup.el; lineup = null;
+    document.body.classList.remove('um-sheet-open');
+    el.classList.remove('is-open');
+    window.setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+    if (lastFocus && lastFocus.focus && lastFocus.isConnected) { try { lastFocus.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
+  }
+  function renderLineup() {
+    if (!lineup || !M || !M.fixture) return;
+    var panel = $('.um-sheet-panel', lineup.el), keep = $('[data-um-lu-body]', lineup.el), scroll = keep ? keep.scrollTop : 0;
+    var f = F(), tm = teamById(lineup.team) || {}, on = lineupOn(), ps = teamPlayers(lineup.team), n = teamChecked(lineup.team);
+    function tab(id) {
+      var t = teamById(id) || {};
+      return '<button type="button" role="tab" class="um-lu-tab' + (id === lineup.team ? ' is-on' : '') + '" aria-selected="' + (id === lineup.team) + '" data-um-lu-team="' + esc(id) + '" style="--tc:' + esc(t.colour || '#d4a62b') + '">' + crestHtml(t, 'sm') + '<span>' + esc(t.name || '') + '</span>' + (on ? '<small>' + teamChecked(id) + '/' + teamPlayers(id).length + '</small>' : '') + '</button>';
+    }
+    var body;
+    if (lineup.mode === 'pitch') {
+      var shown = on && n > 0 ? ps.filter(function (p) { return isChecked(p.id); }) : ps;
+      body = (window.UnityPitch && shown.length ? '<div class="um-lu-pitch">' + UnityPitch.html(shown.map(function (p) { return { id: p.id, name: p.name, shirt_no: p.shirt_no, position: p.position, captain: p.captain, active: true }; }), { colour: tm.colour, canVote: false, title: (tm.name || '') + ' line-up' }) + '</div>' : '<p class="um-pk-none">No players to show.</p>') +
+        '<p class="um-fine">' + (on ? (n > 0 ? 'Showing the ' + n + ' player' + (n === 1 ? '' : 's') + ' you’ve confirmed. Players are placed by their position.' : 'Showing the whole squad. Tick players in <strong>Check in</strong> and this will show only who is on the pitch.') : 'Showing the whole squad. Players are placed by their position.') + '</p>';
+    } else {
+      body = (on ? '' : '<p class="um-note um-note--warn"><strong>Ticking players needs one more step.</strong> Run <code>129-unity-cup-lineup-checkin.sql</code> in Supabase, then reload. You can still read the squads.</p>') +
+        (ps.length ? '<ul class="um-lu-list">' + ps.map(function (p) {
+          var off = isSentOff(p), sb = !off && sinBinFor(p.id), y = yellowsFor(p.id), ck = isChecked(p.id), tags = [];
+          if (p.position) tags.push(esc(p.position));
+          if (p.captain) tags.push(p.captain === 'vice' ? 'Vice-captain' : 'Captain');
+          if (off) tags.push('<b class="um-tg um-tg--red">Sent off</b>'); else if (sb) tags.push('<b class="um-tg um-tg--yellow">In the sin bin</b>'); else if (y) tags.push('<b class="um-tg um-tg--yellow">' + y + ' yellow' + (y > 1 ? 's' : '') + '</b>');
+          return '<li><button type="button" class="um-lu-p' + (ck ? ' is-on' : '') + (off ? ' is-off' : '') + '" data-um-lu-toggle="' + esc(p.id) + '" role="checkbox" aria-checked="' + ck + '"' + (on ? '' : ' disabled') + '>' +
+            '<span class="um-pk-no">' + esc(p.shirt_no || '–') + '</span><span class="um-pk-txt"><span class="um-pk-name">' + esc(p.name) + '</span>' + (tags.length ? '<span class="um-pk-tag">' + tags.join(' · ') + '</span>' : '') + '</span>' +
+            '<span class="um-lu-tick" aria-hidden="true">' + (ck ? ICON.check : '') + '</span></button></li>';
+        }).join('') + '</ul>' : '<p class="um-pk-none">No players have been added for ' + esc(tm.name || 'this team') + ' yet.</p>');
+    }
+    var foot = lineup.mode === 'check' && on && ps.length ? '<div class="um-sheet-foot"><button type="button" class="um-btn um-btn--gold" data-um-lu-all' + (n === ps.length ? ' disabled' : '') + '>Everyone’s here</button><button type="button" class="um-btn um-btn--ghost" data-um-lu-none' + (n === 0 ? ' disabled' : '') + '>Clear ticks</button></div>' : '';
+    panel.innerHTML = '<div class="um-sheet-head"><div><h2 id="um-lu-title">Line-ups</h2><p>' + esc((homeT().name || '') + ' v ' + (awayT().name || '')) + (on && lineup.mode === 'check' ? ' · tick each player you can see on the pitch' : '') + '</p></div><button type="button" class="um-x" data-um-lu-close aria-label="Close">' + ICON.close + '</button></div>' +
+      '<div class="um-lu-tabs" role="tablist">' + tab(f.home_team_id) + tab(f.away_team_id) + '</div>' +
+      '<div class="um-lu-modes" role="group" aria-label="View"><button type="button" class="' + (lineup.mode === 'check' ? 'is-on' : '') + '" data-um-lu-mode="check" aria-pressed="' + (lineup.mode === 'check') + '">Check in</button><button type="button" class="' + (lineup.mode === 'pitch' ? 'is-on' : '') + '" data-um-lu-mode="pitch" aria-pressed="' + (lineup.mode === 'pitch') + '">Pitch</button></div>' +
+      '<div class="um-lu-body" data-um-lu-body>' + body + '</div>' + foot;
+    var nb = $('[data-um-lu-body]', lineup.el); if (nb && scroll) nb.scrollTop = scroll;
+  }
+  function setChecked(pid, on) {
+    if (!lineupOn()) return;
+    var i = M.lineup.indexOf(pid);
+    if (on && i < 0) M.lineup.push(pid); else if (!on && i >= 0) M.lineup.splice(i, 1); else return;
+    renderLineup(); render();
+    call('unity_admin_set_lineup', { p_fixture: F().id, p_player: pid, p_on: on }).then(function (r) { if (r.error) { toast(failMsg(r.error), null, true); refresh(); } });
+  }
+  function setTeamChecked(on) {
+    if (!lineupOn()) return;
+    var ids = teamPlayers(lineup.team).map(function (p) { return p.id; });
+    M.lineup = (M.lineup || []).filter(function (id) { return ids.indexOf(id) < 0; });
+    if (on) M.lineup = M.lineup.concat(ids);
+    renderLineup(); render();
+    call('unity_admin_set_lineup_team', { p_fixture: F().id, p_team: lineup.team, p_on: on }).then(function (r) {
+      if (r.error) { toast(failMsg(r.error), null, true); return refresh(); }
+      toast(on ? 'Everyone ticked for ' + ((teamById(lineup.team) || {}).name || 'the team') + '.' : 'Ticks cleared.');
+    });
+  }
+
+  // ---------------------------------------------------------------------
   // The player sheet
   function openSheet(kind, team, opts) {
     opts = opts || {};
@@ -642,6 +740,7 @@
         if (off) tags.push('<b class="um-tg um-tg--red">Sent off</b>');
         else if (sb) tags.push('<b class="um-tg um-tg--yellow">In the sin bin</b>');
         else if (y) tags.push('<b class="um-tg um-tg--yellow">' + y + ' yellow' + (y > 1 ? 's' : '') + '</b>');
+        if (!off && M.lineup && M.lineup.length && teamChecked(p.team_id) > 0 && !isChecked(p.id)) tags.push('<b class="um-tg">Not checked in</b>');
         return row(p.shirt_no || '–', esc(p.name), tags.join(' · '), (g.own ? ' is-own' : '') + (off ? ' is-off' : ''), off);
       }).join('');
     }).join('');
@@ -816,6 +915,7 @@
   root.addEventListener('click', function (e) {
     var t = e.target;
     if (t.closest('[data-um-reload]')) { window.location.reload(); return; }
+    if (t.closest('[data-um-lineup]')) { openLineup(); return; }
     var act = t.closest('[data-um-act]');
     if (act) { openSheet(act.getAttribute('data-um-act'), act.closest('[data-team]').getAttribute('data-team')); return; }
     if (t.closest('[data-um-undo]')) { var ub = t.closest('[data-um-undo]'); if (!ub.disabled) undoLast(ub.closest('[data-team]').getAttribute('data-team')); return; }
@@ -869,6 +969,27 @@
     makeLink(inp.value.trim()).then(function () { btn.disabled = false; });
   });
 
+  document.addEventListener('click', function (e) {
+    if (!lineup) return;
+    var t = e.target;
+    if (t.closest('[data-um-lu-close]')) { closeLineup(); return; }
+    var tm = t.closest('[data-um-lu-team]'); if (tm) { lineup.team = tm.getAttribute('data-um-lu-team'); renderLineup(); return; }
+    var md = t.closest('[data-um-lu-mode]'); if (md) { lineup.mode = md.getAttribute('data-um-lu-mode'); renderLineup(); return; }
+    var tg = t.closest('[data-um-lu-toggle]'); if (tg && !tg.disabled) { setChecked(tg.getAttribute('data-um-lu-toggle'), !isChecked(tg.getAttribute('data-um-lu-toggle'))); return; }
+    var al = t.closest('[data-um-lu-all]'); if (al && !al.disabled) { setTeamChecked(true); return; }
+    var nn = t.closest('[data-um-lu-none]'); if (nn && !nn.disabled) { setTeamChecked(false); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!lineup || sheet) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeLineup(); return; }
+    if (e.key === 'Tab') {
+      var f = $$('button:not([disabled]), [tabindex="0"]', lineup.el).filter(function (x) { return x.offsetParent !== null; });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !lineup.el.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
   document.addEventListener('click', function (e) {
     if (!sheet) return;
     var t = e.target;

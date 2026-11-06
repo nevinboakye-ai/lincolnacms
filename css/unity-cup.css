@@ -916,6 +916,36 @@ body.um-sheet-open { overflow: hidden; }
 .um-sheet-foot { display: grid; gap: 8px; grid-auto-flow: column; grid-auto-columns: 1fr; }
 .um-sheet-foot .um-btn { min-height: 50px; padding: 0 12px; font-size: 0.95rem; }
 
+/* Line-ups: who is on the pitch */
+.um-lineup-btn { width: 100%; min-height: 56px; justify-content: flex-start; padding: 0 16px; text-align: left; }
+.um-lineup-btn svg { width: 22px; height: 22px; }
+.um-lineup-btn span { flex: 1; }
+.um-lineup-btn small { color: var(--color-text-muted); font: 700 0.78rem var(--font-body); }
+.um-lineup-btn.is-done { border-color: rgba(79, 209, 134, 0.6); }
+.um-lineup-btn.is-done small { color: var(--um-green); }
+.um-lu-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.um-lu-tab { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; padding: 6px 10px; border-radius: 14px; border: 1.5px solid var(--color-border); border-top: 4px solid var(--tc, var(--color-gold)); background: var(--color-bg-alt); color: var(--color-text); font: 700 0.92rem/1.2 var(--font-body); cursor: pointer; text-align: left; min-width: 0; -webkit-tap-highlight-color: transparent; }
+.um-lu-tab span { min-width: 0; overflow-wrap: break-word; flex: 1; font-size: 0.9rem; }
+.um-lu-tab small { color: var(--color-text-muted); font: 800 0.8rem var(--font-body); font-variant-numeric: tabular-nums; }
+.um-lu-tab.is-on { border-color: var(--color-gold); background: rgba(212, 166, 43, 0.14); }
+.um-lu-modes { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; gap: 4px; border-radius: 14px; background: var(--color-bg); border: 1px solid var(--color-border); }
+.um-lu-modes button { min-height: 44px; border-radius: 10px; border: 0; background: transparent; color: var(--color-text-muted); font: 800 0.92rem var(--font-body); cursor: pointer; }
+.um-lu-modes button.is-on { background: var(--color-gold-fill); color: var(--color-on-gold); }
+.um-lu-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 10px; -webkit-overflow-scrolling: touch; }
+.um-lu-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.um-lu-p { display: grid; grid-template-columns: 2.8rem minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; min-height: 62px; padding: 6px 12px; border-radius: 14px; border: 1.5px solid var(--color-border); background: var(--color-bg-alt); color: var(--color-text); text-align: left; font: 700 1.05rem var(--font-body); cursor: pointer; -webkit-tap-highlight-color: transparent; transition: border-color 0.12s, background 0.12s; }
+.um-lu-p:active { transform: scale(0.99); }
+.um-lu-p:disabled { cursor: default; opacity: 0.8; }
+.um-lu-p:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+.um-lu-p.is-on { border-color: rgba(79, 209, 134, 0.75); background: rgba(79, 209, 134, 0.12); }
+.um-lu-p.is-off { border-color: rgba(217, 45, 45, 0.6); }
+.um-lu-p.is-off .um-pk-name { text-decoration: line-through; text-decoration-thickness: 2px; }
+.um-lu-tick { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--color-border-strong); color: transparent; }
+.um-lu-p.is-on .um-lu-tick { background: var(--um-green); border-color: var(--um-green); color: #06210f; }
+.um-lu-tick svg { width: 16px; height: 16px; }
+.um-lu-pitch { border-radius: 14px; overflow: hidden; }
+.um-tg:not(.um-tg--yellow):not(.um-tg--red) { background: var(--color-surface-raised); color: var(--color-text-muted); }
+
 /* Message at the bottom of the screen */
 .um-toast { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); z-index: 1100; display: none; align-items: center; gap: 10px; width: max-content; max-width: min(560px, calc(100vw - 20px)); padding: 10px 8px 10px 16px; border-radius: 16px; border: 1px solid var(--color-border-strong); background: var(--color-surface-raised); color: var(--color-text); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45); font: 700 0.95rem/1.35 var(--font-body); transform: translateX(-50%); }
 .um-toast.is-in { display: flex; animation: um-toast-in 0.2s ease-out; }
