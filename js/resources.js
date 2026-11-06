@@ -203,9 +203,10 @@
   // behaviour and the lock option simply isn't offered.
   // =======================================================================
   var RES_COLS_BASE = 'id, title, description, resource_type, source_type, source_credit, topic, kind, file_name, file_size, file_mime, uploader_id, uploader_name, uploader_detail, status, reviewed_by, reviewed_at, approved_at, reject_reason, created_at, updated_at, courses, years, is_locked';
-  var RES_COLS = RES_COLS_BASE + ', allow_download';
-  // 2 = with allow_download (migration 076), 1 = with is_locked (073), 0 = the old '*'.
-  var colsLevel = 2;
+  var RES_COLS_V2 = RES_COLS_BASE + ', allow_download';
+  var RES_COLS = RES_COLS_V2 + ', is_hidden, hidden_by, hidden_at';
+  // 3 = with public/private (migration 123), 2 = with allow_download (076), 1 = with is_locked (073), 0 = the old '*'.
+  var colsLevel = 3;
   var pinsReady = true;
   var chatAvailable = false;
   var LOCK_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
@@ -217,6 +218,37 @@
   function isViewOnly(r) { return hasViewOnlyFlag(r) && r.uploader_id !== userId && !isAdmin; }
   var VIEWABLE_EXTS = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif'];
   function isLockedOut(r) { return !!(r && r.is_locked && !r.can_open); }
+
+  // Public / private (migration 123). Private = taken out of the library: only the person who shared it and the
+  // committee can see it. The committee's choice can't be undone by the author (the database enforces this too).
+  var hiddenReady = true;
+  var hiddenCount = 0;
+  var EYE_OFF_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 5c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12A3 3 0 1 1 9.88 9.88"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  function isPrivate(r) { return !!(r && r.is_hidden); }
+  function hiddenByCommittee(r) { return isPrivate(r) && r.hidden_by !== r.uploader_id; }
+  function canToggleVisibility(r) {
+    if (!hiddenReady || !r || r.status !== 'approved') return false;
+    if (isAdmin) return true;
+    return r.uploader_id === userId && !hiddenByCommittee(r);
+  }
+  function visibilityBtn(r) {
+    if (!canToggleVisibility(r)) return '';
+    return isPrivate(r)
+      ? '<button type="button" class="btn btn-primary res-btn res-btn--vis" data-res-visibility>Make public</button>'
+      : '<button type="button" class="btn btn-outline res-btn res-btn--vis" data-res-visibility>' + EYE_OFF_ICON + 'Make private</button>';
+  }
+  function privateBadge(r) {
+    if (!isPrivate(r)) return '';
+    return '<span class="res-badge res-badge--private" title="' + (hiddenByCommittee(r) ? 'Made private by the committee' : 'Only you and the committee can see this') + '">' + EYE_OFF_ICON + 'Private</span>';
+  }
+  function privateNote(r, mode) {
+    if (!isPrivate(r) || mode === 'review') return '';
+    var who = hiddenByCommittee(r) && r.uploader_id === userId
+      ? 'The committee made this private, so members can\'t find it in the library. Get in touch with the committee if you\'d like it public again.'
+      : mode === 'hidden' ? 'Not in the library. Only the person who shared it and the committee can see this. Make it public to put it back.'
+      : 'Private: members can\'t find this in the library. Only you and the committee can see it. Make it public any time.';
+    return '<p class="res-private-note">' + EYE_OFF_ICON + '<span>' + escapeHtml(who) + '</span></p>';
+  }
 
   // Attach url / file_path / preview_path and can_open to each row, in place.
   function hydrateLocations(rows) {
@@ -240,11 +272,12 @@
 
   // Read resources (apply() adds the filters/ordering) with their locations.
   function selectResources(apply) {
-    return apply(supabaseClient.from('resources').select(colsLevel === 2 ? RES_COLS : colsLevel === 1 ? RES_COLS_BASE : '*')).then(function (r) {
-      if (r.error && colsLevel > 0 && /is_locked|allow_download|column|permission denied/i.test(r.error.message || '')) {
+    return apply(supabaseClient.from('resources').select(colsLevel === 3 ? RES_COLS : colsLevel === 2 ? RES_COLS_V2 : colsLevel === 1 ? RES_COLS_BASE : '*')).then(function (r) {
+      if (r.error && colsLevel > 0 && /is_locked|allow_download|is_hidden|hidden_by|hidden_at|column|permission denied/i.test(r.error.message || '')) {
         // A newer migration isn't there yet - step down to what the database has.
         colsLevel -= 1;
         pinsReady = colsLevel > 0;
+        hiddenReady = colsLevel >= 3;
         return selectResources(apply);
       }
       if (r.error || !pinsReady) return r;
@@ -514,7 +547,20 @@
       var rc = $('res-review-count');
       rc.hidden = !(isAdmin && pending > 0);
       rc.textContent = pending;
+      return loadHiddenCount();
     });
+  }
+  // The committee's "Private" shortcut: how many resources are currently taken out of the library.
+  function loadHiddenCount() {
+    var link = $('res-hidden-link'), pill = $('res-hidden-count');
+    if (!link) return Promise.resolve();
+    if (!isAdmin || !hiddenReady) { link.hidden = true; return Promise.resolve(); }
+    return supabaseClient.from('resources').select('id', { count: 'exact', head: true }).eq('is_hidden', true).then(function (r) {
+      if (r.error) { hiddenReady = !/is_hidden|column|permission denied/i.test(r.error.message || ''); hiddenCount = 0; }
+      else hiddenCount = r.count || 0;
+      link.hidden = !(hiddenReady && hiddenCount > 0);
+      pill.hidden = !hiddenCount; pill.textContent = hiddenCount;
+    }, function () { link.hidden = true; });
   }
 
   // Approved since the previous visit (not counting your own).
@@ -522,9 +568,10 @@
     newByCourse = {};
     newTotal = 0;
     if (!prevSeen) return Promise.resolve();
-    return supabaseClient.from('resources').select('courses, approved_at, uploader_id').eq('status', 'approved').gt('approved_at', prevSeen).then(function (r) {
+    return supabaseClient.from('resources').select(hiddenReady ? 'courses, approved_at, uploader_id, is_hidden' : 'courses, approved_at, uploader_id').eq('status', 'approved').gt('approved_at', prevSeen).then(function (r) {
+      if (r.error && hiddenReady) { hiddenReady = false; return loadNewCounts(); }
       (r.data || []).forEach(function (row) {
-        if (row.uploader_id === userId) return;
+        if (row.uploader_id === userId || row.is_hidden) return;
         (row.courses || []).forEach(function (c) { newByCourse[c] = (newByCourse[c] || 0) + 1; });
         newTotal++;
       });
@@ -553,6 +600,7 @@
     var hash = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
     if (hash === 'review' && isAdmin) { showView('res-view-list'); openSpecial('review'); window.scrollTo({ top: 0 }); return; }
     if (hash === 'mine') { showView('res-view-list'); openSpecial('mine'); window.scrollTo({ top: 0 }); return; }
+    if (hash === 'private' && isAdmin) { showView('res-view-list'); openSpecial('hidden'); window.scrollTo({ top: 0 }); return; }
     var wanted = hash.indexOf('c=') === 0 ? hash.slice(2) : '';
     currentCourse = COURSES.some(function (c) { return c.name === wanted; }) ? wanted : '';
     showView('res-view-home');
@@ -617,7 +665,7 @@
         $('res-browse-list').innerHTML = '';
         return;
       }
-      allItems = r.data || [];
+      allItems = (r.data || []).filter(function (x) { return !x.is_hidden; });
       loadedAll = true;
       renderBrowse();
       // Counts for every resource (not just the visible page) so "Most
@@ -699,33 +747,40 @@
 
   // ---- My submissions / Review queue ---------------------------------------------------
   function openSpecial(kind) {
-    var isReview = kind === 'review';
-    $('res-crumb-current').textContent = isReview ? 'Review queue' : 'My submissions';
-    $('res-list-title').textContent = isReview ? 'Review queue' : 'My submissions';
+    var isReview = kind === 'review', isHiddenView = kind === 'hidden';
+    $('res-crumb-current').textContent = isReview ? 'Review queue' : isHiddenView ? 'Private resources' : 'My submissions';
+    $('res-list-title').textContent = isReview ? 'Review queue' : isHiddenView ? 'Private resources' : 'My submissions';
     $('res-list-sub').textContent = 'Loading…';
     var impact = $('res-insights-summary');
     if (impact) { impact.hidden = true; impact.innerHTML = ''; }
     $('res-list').innerHTML = skeletonCards(2);
     $('res-empty').hidden = true;
     selectResources(function (q) {
-      return isReview ? q.eq('status', 'pending').order('created_at', { ascending: true }) : q.eq('uploader_id', userId).order('created_at', { ascending: false });
+      return isReview ? q.eq('status', 'pending').order('created_at', { ascending: true })
+        : isHiddenView ? q.eq('is_hidden', true).order('hidden_at', { ascending: false })
+        : q.eq('uploader_id', userId).order('created_at', { ascending: false });
     }).then(function (r) {
-      if (r.error) { $('res-list-sub').textContent = "Couldn't load: " + r.error.message; $('res-list').innerHTML = ''; return; }
+      if (r.error) { $('res-list-sub').textContent = isHiddenView ? "Couldn't load: has migration 123-resources-public-private.sql been run? (" + r.error.message + ')' : "Couldn't load: " + r.error.message; $('res-list').innerHTML = ''; return; }
       var rows = r.data || [];
-      $('res-list-sub').textContent = isReview
+      if (isHiddenView) hiddenCount = rows.length;
+      $('res-list-sub').textContent = isHiddenView
+        ? (rows.length ? rows.length + (rows.length === 1 ? ' resource is' : ' resources are') + ' private: taken out of the library. Only the people who shared them and the committee can see them.' : '')
+        : isReview
         ? (rows.length ? rows.length + ' waiting for review. Nothing here is visible to members until you approve it.' : '')
         : 'Everything you\'ve shared. New or edited resources are reviewed by the executive committee before they appear.';
-      renderCards($('res-list'), rows, { mode: isReview ? 'review' : 'mine' });
-      if (!isReview && insights()) insights().loadMine(rows);
+      renderCards($('res-list'), rows, { mode: isReview ? 'review' : isHiddenView ? 'hidden' : 'mine' });
+      if (!isReview && !isHiddenView && insights()) insights().loadMine(rows);
       var empty = $('res-empty');
       empty.hidden = rows.length > 0;
       if (!rows.length) {
-        empty.innerHTML = isReview
+        empty.innerHTML = isHiddenView
+          ? emptyState('Nothing is private', 'Every resource is in the library. Use "Make private" on a resource to take it out without deleting it.', '')
+          : isReview
           ? emptyState('All caught up', 'Nothing is waiting for review right now.', '')
           : emptyState('Nothing shared yet', 'Share a note, past paper or useful link and it will show up here.', '<button type="button" class="btn btn-primary" data-res-share>Share a resource</button>');
       }
       var mc = $('res-mine-count');
-      if (!isReview) { mc.hidden = !rows.length; mc.textContent = rows.length; }
+      if (!isReview && !isHiddenView) { mc.hidden = !rows.length; mc.textContent = rows.length; }
     });
   }
 
@@ -769,6 +824,7 @@
   }
 
   function statusBadge(r) {
+    if (r.status === 'approved' && isPrivate(r)) return privateBadge(r);
     if (r.status === 'pending') return '<span class="res-badge res-badge--pending">Pending review</span>';
     if (r.status === 'rejected') return '<span class="res-badge res-badge--rejected">Not approved</span>';
     return '';
@@ -795,13 +851,16 @@
       actions = '<button type="button" class="btn btn-outline res-btn" data-res-preview>Preview</button>' +
         '<button type="button" class="btn btn-primary res-btn" data-res-approve>Approve</button>' +
         '<button type="button" class="btn btn-outline res-btn res-btn--danger" data-res-reject>Reject…</button>';
+    } else if (mode === 'hidden') {
+      actions = '<button type="button" class="btn btn-outline res-btn" data-res-preview>Preview</button>' + visibilityBtn(r) +
+        '<button type="button" class="btn btn-outline res-btn res-btn--danger" data-res-delete>Remove</button>';
     } else if (mode === 'mine') {
       if (r.status === 'approved') actions += '<button type="button" class="btn btn-outline res-btn res-btn--insights" data-ins-open="' + escapeHtml(r.id) + '">Insights</button>';
-      actions += '<button type="button" class="btn btn-outline res-btn" data-res-edit>Edit</button>' +
+      actions += visibilityBtn(r) + '<button type="button" class="btn btn-outline res-btn" data-res-edit>Edit</button>' +
         '<button type="button" class="btn btn-outline res-btn res-btn--danger" data-res-delete>Delete</button>';
     } else if (isAdmin || r.uploader_id === userId) {
       if (r.uploader_id === userId && r.status === 'approved') actions += '<button type="button" class="btn btn-outline res-btn res-btn--insights" data-ins-open="' + escapeHtml(r.id) + '">Insights</button>';
-      actions += '<button type="button" class="btn btn-outline res-btn res-btn--danger" data-res-delete>Remove</button>';
+      actions += visibilityBtn(r) + '<button type="button" class="btn btn-outline res-btn res-btn--danger" data-res-delete>Remove</button>';
     }
 
     var reject = mode === 'mine' && r.status === 'rejected' && r.reject_reason
@@ -826,6 +885,7 @@
       (details.length ? '<p class="res-meta res-meta--faint">' + details.join(' · ') + '</p>' : '') +
       (mode === 'mine' && r.status === 'approved' ? '<div class="res-metrics" data-metrics="' + escapeHtml(r.id) + '" aria-label="How it\'s doing"></div>' : '') +
       reject +
+      privateNote(r, mode) +
       '<div class="res-card-foot">' + (r.status === 'approved' ? socialHtml(r.id) : '<span></span>') +
       '<div class="res-actions">' + actions + '</div></div>' +
       '</div>' +
@@ -1411,7 +1471,9 @@
     var head = '<button type="button" class="guide-close" data-dialog-close aria-label="Close">&times;</button>' +
       '<span class="guide-eyebrow">' + escapeHtml(TYPES[r.resource_type] || 'Resource') + ' · ' + escapeHtml(coursesLabel(r)) + (yearsOf(r).length ? ' · ' + escapeHtml(yearsLabel(yearsOf(r))) : '') + '</span>' +
       '<h2 class="guide-title">' + escapeHtml(r.title) + '</h2>' + bylineHtml(r, 'lg') + thanksHtml(r);
-    var social = r.status === 'approved'
+    var social = r.status === 'approved' && isPrivate(r)
+      ? '<p class="res-meta res-meta--faint">Likes and comments are paused while this resource is private.</p>'
+      : r.status === 'approved'
       ? '<div class="res-pv-social">' + socialHtml(r.id) + '</div>' +
         '<section class="res-comments" aria-labelledby="pv-comments-title"><h3 id="pv-comments-title" class="res-comments-title">Comments</h3>' +
         '<ul class="res-comment-list" id="pv-comments" aria-live="polite"><li class="res-comments-empty">Loading comments…</li></ul>' +
@@ -1474,7 +1536,7 @@
   function wirePreviewOpen(dlg, r, opts) {
     var openBtn = dlg.dialog.querySelector('[data-pv-open]');
     if (openBtn) openBtn.addEventListener('click', function () { openResource(r); });
-    if (r.status === 'approved') {
+    if (r.status === 'approved' && !isPrivate(r)) {
       wireComments(dlg, r, !!(opts && opts.focusComments));
       var likeBtn = dlg.dialog.querySelector('[data-res-like]');
       if (likeBtn) likeBtn.addEventListener('click', function () { toggleLike(r.id); });
@@ -1500,6 +1562,28 @@
       if (paths.length) supabaseClient.storage.from(BUCKET).remove(paths);
       showToast('Deleted.');
       withLeave(r.id, refreshCurrent);
+    });
+  }
+
+  // Public <-> private. Nothing is deleted and nothing goes back for review; the database checks who may do it.
+  function toggleVisibility(r) {
+    var hide = !isPrivate(r), card = document.querySelector('.res-card[data-id="' + r.id + '"]');
+    var btn = card && card.querySelector('[data-res-visibility]');
+    if (btn) btn.disabled = true;
+    supabaseClient.from('resources').update({ is_hidden: hide }).eq('id', r.id).select('id, is_hidden').then(function (res) {
+      if (btn) btn.disabled = false;
+      if (res.error) {
+        var m = res.error.message || '';
+        showToast(/is_hidden|column|schema cache/i.test(m) ? 'Run migration 123-resources-public-private.sql in Supabase first.' : m, true);
+        return;
+      }
+      if (!res.data || !res.data.length) { showToast("Couldn't change it. You may not have permission.", true); return; }
+      r.is_hidden = hide;
+      loadedAll = false;   // the library list must be fetched again next time it's shown
+      showToast(hide ? '"' + r.title + '" is now private. Only you and the committee can see it.' : '"' + r.title + '" is public again. Members can see it.');
+      var mode = card && card.parentNode && card.parentNode.getAttribute('data-mode');
+      // In the library it slides away when hidden; in the Private list when made public; in My submissions it just updates.
+      if (mode === 'mine') refreshCurrent(); else withLeave(r.id, refreshCurrent);
     });
   }
 
@@ -1533,6 +1617,7 @@
       var hash = decodeURIComponent((window.location.hash || '').replace(/^#/, ''));
       if (hash === 'review' && isAdmin) openSpecial('review');
       else if (hash === 'mine') openSpecial('mine');
+      else if (hash === 'private' && isAdmin) openSpecial('hidden');
       else { loadedAll = false; renderChips(); loadAll(); }
     });
   }
@@ -1948,6 +2033,7 @@
     else if (e.target.closest('[data-res-approve]')) reviewResource(r, 'approved');
     else if (e.target.closest('[data-res-reject]')) openRejectDialog(r);
     else if (e.target.closest('[data-res-edit]')) openShareDialog(r);
+    else if (e.target.closest('[data-res-visibility]')) toggleVisibility(r);
     else if (e.target.closest('[data-res-delete]')) deleteResource(r);
   }
 
@@ -1955,6 +2041,7 @@
     $('res-share-btn').addEventListener('click', function () { openShareDialog(null); });
     $('res-mine-link').addEventListener('click', function () { go('mine'); });
     $('res-review-link').addEventListener('click', function () { go('review'); });
+    if ($('res-hidden-link')) $('res-hidden-link').addEventListener('click', function () { go('private'); });
     $('res-back-btn').addEventListener('click', function () { go(''); });
     $('res-whatsnew-jump').addEventListener('click', function () {
       $('res-browse-list').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });

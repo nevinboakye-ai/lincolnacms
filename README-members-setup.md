@@ -2000,3 +2000,12 @@ Run `db/migrations/122-unity-cup-publish-fixtures.sql`. Before this, every fixtu
 - The live-scoring cards warn "Visitors can't see this match yet" if you kick off a hidden match, with a Publish now button next to it.
 - **Fixtures that already existed stay public** when the migration is run, so nothing disappears from the live page. Use **Hide all** if you want to start from a clean slate.
 - The rule is enforced in the database (the public page is only ever sent published fixtures), so it can't be bypassed. Until the migration is run, the Fixtures tab shows a reminder and everything behaves as before.
+
+## 176. Make a resource public or private (migration 123)
+
+Run `db/migrations/123-resources-public-private.sql`. Every resource on **LACMS Resources** now has a public / private switch:
+- **Make private** takes it out of the library. Only the person who shared it and the executive committee can still see it (and open its file or link). **Nothing is deleted**: likes, comments and any PIN are kept, and **Make public** puts it straight back **without another review**.
+- **Where:** the button is on the resource's card in the library (for the person who shared it and for the committee) and in **My submissions**. Private ones show a grey **Private** badge and a short note. The committee also gets a **Private** button next to Review queue (appears once something is private) that lists everything currently private, with Make public / Remove.
+- **Who can switch it:** the person who shared it, and the committee. If the **committee** makes something private, the author **can't** undo it (their card says so); only the committee can make it public again.
+- **Enforced in the database,** not just the page: a private resource is invisible to other members in the table, its files and previews aren't readable, it isn't counted in the course tiles or the notification bell, and it can't be liked, commented on or have views recorded. The database also records who made it private and when.
+- Until the migration is run the page behaves exactly as before and shows no public/private buttons.

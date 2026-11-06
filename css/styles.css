@@ -7514,6 +7514,12 @@ body.guide-open { overflow: hidden; }
 .res-badge--course { background: rgba(var(--gold-rgb), 0.16); color: var(--color-gold-light); }
 .res-badge--pending { background: rgba(var(--gold-rgb), 0.22); color: var(--color-gold-light); }
 .res-badge--rejected { background: rgba(193, 39, 45, 0.2); color: var(--accent-red); }
+.res-badge--private { display: inline-flex; align-items: center; gap: 5px; background: rgba(148, 148, 160, 0.2); color: var(--color-text-muted); }
+.res-badge--private .icon { width: 13px; height: 13px; }
+.res-private-note { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0 0; padding: 9px 12px; border-radius: 10px; border: 1px dashed var(--color-border-strong); background: rgba(148, 148, 160, 0.08); color: var(--color-text-muted); font-size: 0.88rem; line-height: 1.45; }
+.res-private-note .icon { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+.res-btn--vis { display: inline-flex; align-items: center; gap: 6px; }
+.res-btn--vis .icon { width: 14px; height: 14px; }
 .res-title { margin: 0; font-size: 1.05rem; line-height: 1.3; font-family: var(--font-display); }
 .res-desc { margin: 0; font-size: 0.9rem; color: var(--color-text-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
 .res-desc--full { display: block; -webkit-line-clamp: unset; margin: var(--space-3) 0 var(--space-2); }
