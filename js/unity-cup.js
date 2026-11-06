@@ -22,7 +22,7 @@
 
   var PAGE = { fixtures: 'unity-cup-fixtures.html', teams: 'unity-cup-teams.html', vote: 'unity-cup-vote.html', raffle: 'unity-cup-raffle.html', photos: 'unity-cup-photos.html', essence: 'unity-cup-essence.html', hub: 'unity-cup.html' };
 
-  var LS = { voted: 'lacms-unity-voted', ticket: 'lacms-unity-ticket', media: 'lacms-unity-media' };
+  var LS = { voted: 'lacms-unity-voted', ticket: 'lacms-unity-ticket', media: 'lacms-unity-media', momToken: 'lacms-unity-mom-token', momVotes: 'lacms-unity-mom-votes' };
   var POLL_MS = 15000;
   var MAX_FILES = 8, MAX_BYTES = 50 * 1024 * 1024;
   var ALLOWED_EXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm' };
@@ -32,6 +32,7 @@
     bad_email: 'That email address doesn\'t look right. Please check it.',
     disposable: 'Please use a real email address that you check, not a temporary one.',
     bad_player: 'That player isn\'t available. Please pick again.',
+    bad_token: 'Your sign-in has run out. Please verify your email again.',
     already_voted: 'This email address has already been used to vote. It\'s one vote each!',
     already_entered: 'This email address has already entered the raffle.',
     no_code: 'Please ask for a code first.',
@@ -78,6 +79,7 @@
     upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
     share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>',
     ext: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
+    star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2 6.3 20.3l1.2-6.4L2.8 9.5l6.4-.8z" fill="currentColor"/></svg>',
     arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>'
   };
 
@@ -114,6 +116,7 @@
     renderNav();
     renderHub();
     renderFixtures();
+    renderMomBanner();
     renderTeams();
     renderVote();
     renderRaffle(first);
@@ -168,7 +171,7 @@
   var navSig = '';
   function liveFixtures() { return (S.fixtures || []).filter(function (f) { return f.status === 'live' && teamsById[f.home_team_id] && teamsById[f.away_team_id]; }); }
   function renderNav() {
-    var dots = { fixtures: liveFixtures().length ? 'a match is live now' : '', vote: S.voting_open ? 'voting is open' : '', raffle: S.raffle_open ? 'the raffle is open' : '' };
+    var dots = { fixtures: liveFixtures().length ? 'a match is live now' : momOpenFixtures().length ? 'Man of the Match voting is open' : '', vote: S.voting_open ? 'voting is open' : '', raffle: S.raffle_open ? 'the raffle is open' : '' };
     var sig = JSON.stringify(dots);
     if (sig === navSig) return;
     navSig = sig;
@@ -206,6 +209,7 @@
     else if (up) hubStatus('fixtures', 'Next: ' + teamsById[up.home_team_id].name + ' v ' + teamsById[up.away_team_id].name + ' · ' + timeOf(kickDate(up)));
     else if (fx.length) hubStatus('fixtures', fx.length + (fx.length === 1 ? ' match' : ' matches') + ' · ' + fx.filter(function (f) { return f.status === 'finished'; }).length + ' played');
     else hubStatus('fixtures', 'Fixtures coming soon');
+    if (!lv && momOpenFixtures().length) hubStatus('fixtures', 'Vote for Man of the Match · ' + momOpenFixtures().length + (momOpenFixtures().length === 1 ? ' game' : ' games'), true);
     var tn = (S.teams || []).length, pn = (S.players || []).length;
     hubStatus('teams', tn ? tn + (tn === 1 ? ' team' : ' teams') + (pn ? ' · ' + pn + (pn === 1 ? ' player' : ' players') : '') : 'Teams announced soon');
     if (S.voting_open) hubStatus('vote', lsGet(LS.voted) ? 'Voting open · you\'ve voted' : 'Voting open', true);
@@ -437,7 +441,7 @@
       '<label class="uc-label" for="uc-code">6-digit code</label>' +
       '<input class="uc-input uc-code-input" id="uc-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" autofocus>' +
       '<div data-uc-msg></div>' +
-      '<button type="submit" class="uc-btn uc-btn--gold uc-btn--block">' + (kind === 'vote' ? 'Confirm my vote' : 'Confirm my entry') + '</button>' +
+      '<button type="submit" class="uc-btn uc-btn--gold uc-btn--block">' + (kind === 'vote' ? 'Confirm my vote' : kind === 'mom' ? 'Confirm and vote' : 'Confirm my entry') + '</button>' +
       '<div class="uc-modal-links"><button type="button" class="uc-link" data-uc-resend disabled>Send a new code <span data-uc-cool>(30)</span></button><button type="button" class="uc-link" data-uc-back>Use a different email</button></div></form>';
   }
 
@@ -502,13 +506,13 @@
       e.preventDefault();
       var code = input.value.trim();
       if (!/^\d{6}$/.test(code)) { setMsg('Enter the 6-digit code from the email.', true); return; }
-      if (kind === 'vote') castVote(code); else submitEntry(code);
+      if (kind === 'vote') castVote(code); else if (kind === 'mom') momVerify(code); else submitEntry(code);
     });
     $('[data-uc-back]', form).addEventListener('click', function () {
-      if (kind === 'vote') { setModal(voteForm(voteCtx.player)); wireVote(); } else { setModal(raffleForm()); wireRaffle(); }
+      if (kind === 'vote') { setModal(voteForm(voteCtx.player)); wireVote(); } else if (kind === 'mom') { setModal(momEmailStep()); wireMomEmail(); } else { setModal(raffleForm()); wireRaffle(); }
     });
     $('[data-uc-resend]', form).addEventListener('click', function () {
-      var ctx = kind === 'vote' ? voteCtx : raffleCtx, b = $('[data-uc-resend]', form);
+      var ctx = kind === 'vote' ? voteCtx : kind === 'mom' ? momCtx : raffleCtx, b = $('[data-uc-resend]', form);
       b.disabled = true;
       requestCode(ctx.email, kind).then(function (r) { if (!r.ok) setMsg(errText(r.error), true); else { setMsg('A new code is on its way.', false); } cooldown(); });
     });
@@ -536,6 +540,132 @@
     if (window.UnityFx) UnityFx.confetti();
     say('Your vote has been counted.');
     selected = null;
+    loadState(true);
+  }
+
+  // ---------------------------------------------------------------------
+  // Man of the match flow: pick a player, verify the email ONCE (then it is one tap in every game), vote
+  var momCtx = null;
+  function startMom(fid) {
+    var f = fixtureById(fid);
+    if (!f || !f.mom_open) { say('Man of the match voting for this game has closed.'); loadState(true); return; }
+    momCtx = { fid: fid, pid: null, email: '' };
+    openModal(momPickStep(f)); wireMomPick();
+  }
+  function momTeamPlayers(tid) {
+    return (S.players || []).filter(function (p) { return p.team_id === tid; }).sort(function (a, b) {
+      var an = parseInt(a.shirt_no, 10), bn = parseInt(b.shirt_no, 10);
+      if (isFinite(an) && isFinite(bn) && an !== bn) return an - bn;
+      if (isFinite(an) !== isFinite(bn)) return isFinite(an) ? -1 : 1;
+      return String(a.name).localeCompare(String(b.name));
+    });
+  }
+  function momPickStep(f) {
+    var h = teamsById[f.home_team_id], a = teamsById[f.away_team_id];
+    function group(t) {
+      var ps = momTeamPlayers(t.id);
+      return '<div class="uc-mom-group"><h3>' + crest(t, 'uc-crest--sm') + '<span>' + esc(t.name) + '</span></h3>' + (ps.length ? '<div class="uc-mom-players">' + ps.map(function (p) {
+        return '<button type="button" class="uc-mom-p" style="--tc:' + esc(t.colour || '#d4a62b') + '" data-mom-pick="' + esc(p.id) + '" aria-pressed="false"><span class="uc-avatar">' + esc(initials(p.name)) + '</span><span class="uc-mom-pn"><strong>' + esc(p.name) + '</strong><small>' + esc([p.shirt_no ? '#' + p.shirt_no : '', p.position || '', p.captain ? 'Captain' : ''].filter(Boolean).join(' \u00b7 ')) + '</small></span><i class="uc-mom-tick" aria-hidden="true">' + ICON.check + '</i></button>';
+      }).join('') + '</div>' : '<p class="uc-fine">No players listed yet.</p>') + '</div>';
+    }
+    return '<span class="uc-modal-eyebrow">Man of the match</span>' +
+      '<h2 id="uc-modal-title" class="uc-modal-title">' + esc(h.name) + ' v ' + esc(a.name) + '</h2>' +
+      '<p class="uc-modal-lede">Who was the star of this game? Pick one player from either team. <strong>One vote per game</strong>, and the winner is announced by the committee.</p>' +
+      group(h) + group(a) +
+      '<div class="uc-mom-foot"><div data-uc-msg></div><button type="button" class="uc-btn uc-btn--gold uc-btn--block" data-mom-go disabled>Pick a player</button></div>';
+  }
+  function wireMomPick() {
+    if (!modalEl || modalEl._momWired) return;        // the modal's click handler is added once; it looks the buttons up each time
+    modalEl._momWired = true;
+    modalEl.addEventListener('click', function (e) {
+      var go = $('[data-mom-go]', modalEl), pk = e.target.closest('[data-mom-pick]');
+      if (pk && go) {
+        momCtx.pid = pk.getAttribute('data-mom-pick');
+        $$('[data-mom-pick]', modalEl).forEach(function (b) { var on = b === pk; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+        go.disabled = false; go.textContent = 'Vote for ' + (playerName(momCtx.pid) || 'this player'); setMsg('');
+        return;
+      }
+      var gb = e.target.closest('[data-mom-go]');
+      if (gb && !gb.disabled && momCtx.pid) { if (momToken()) momCast(); else { setModal(momEmailStep()); wireMomEmail(); } }
+    });
+  }
+  function momEmailStep() {
+    var needCode = S.require_email_code, p = momCtx.pid ? playerName(momCtx.pid) : '';
+    return '<span class="uc-modal-eyebrow">Man of the match</span>' +
+      '<h2 id="uc-modal-title" class="uc-modal-title">Verify your email, once</h2>' +
+      (p ? '<div class="uc-pick"><span class="uc-avatar">' + esc(initials(p)) + '</span><div><strong>' + esc(p) + '</strong><small>Your pick</small></div></div>' : '') +
+      '<form data-uc-mom-form novalidate>' +
+      '<label class="uc-label" for="uc-email">Your email address</label>' +
+      '<input class="uc-input" id="uc-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" autofocus value="' + esc(momCtx.email) + '">' +
+      '<input type="text" name="website" data-uc-hp tabindex="-1" autocomplete="off" aria-hidden="true" class="uc-hp">' +
+      '<p class="uc-fine">' + (needCode ? 'We email you a code to check the address is real. ' : '') + '<strong>You only do this once</strong>: after that you can vote in every game with one tap on this device. One vote per game. We keep only a scrambled version of your email, so <strong>nobody can see who voted for whom</strong>. <a href="privacy.html#unity-cup" target="_blank" rel="noopener">How we use it</a></p>' +
+      '<div data-uc-msg></div>' +
+      '<button type="submit" class="uc-btn uc-btn--gold uc-btn--block">' + (needCode ? 'Email me a code' : 'Verify and vote') + '</button></form>';
+  }
+  function wireMomEmail() {
+    var form = $('[data-uc-mom-form]', modalEl); if (!form) return;
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var email = $('#uc-email', form).value.trim();
+      if ($('[data-uc-hp]', form).value) { momDone(); return; }
+      if (!validEmail(email)) { setMsg(errText('bad_email'), true); return; }
+      momCtx.email = email;
+      if (!S.require_email_code) { momVerify(''); return; }
+      var btn = $('button[type=submit]', form); busy(btn, true, 'Sending…');
+      requestCode(email, 'mom').then(function (r) {
+        busy(btn, false);
+        if (!r.ok) { setMsg(errText(r.error), true); return; }
+        setModal(codeStep('mom', email)); wireCode('mom'); cooldown();
+      });
+    });
+  }
+  function momVerify(code) {
+    var btn = $('button[type=submit]', modalEl); busy(btn, true, 'Checking…');
+    supabaseClient.rpc('unity_mom_verify', { p_email: momCtx.email, p_code: code }).then(function (res) {
+      busy(btn, false);
+      if (res.error || !res.data) { setMsg(errText('server'), true); return; }
+      if (!res.data.ok) { setMsg(errText(res.data.error), true); return; }
+      lsSet(LS.momToken, res.data.token);
+      (res.data.voted || []).forEach(function (id) { if (!momVoted(id)) momRemember(id, ''); });
+      if (momVoted(momCtx.fid)) { momAlready(); return; }
+      momCast();
+    }, function () { busy(btn, false); setMsg(errText('server'), true); });
+  }
+  function momCast() {
+    var go = $('[data-mom-go]', modalEl); if (go) busy(go, true, 'Voting…');
+    else setModal('<div class="uc-success"><h2 id="uc-modal-title" class="uc-modal-title">Counting your vote…</h2></div>');
+    supabaseClient.rpc('unity_mom_vote', { p_token: momToken(), p_fixture: momCtx.fid, p_player: momCtx.pid }).then(function (res) {
+      if (res.error || !res.data) { momBack(errText('server')); return; }
+      var d = res.data;
+      if (d.ok) { momRemember(momCtx.fid, momCtx.pid); momDone(); return; }
+      if (d.error === 'bad_token') { lsSet(LS.momToken, ''); setModal(momEmailStep()); wireMomEmail(); setMsg(errText('bad_token'), true); return; }
+      if (d.error === 'already_voted') { momRemember(momCtx.fid, ''); momAlready(); return; }
+      if (d.error === 'closed') { momBack('Man of the match voting for this game has just closed.'); loadState(true); return; }
+      momBack(errText(d.error));
+    }, function () { momBack(errText('server')); });
+  }
+  function momBack(msg) {
+    var f = fixtureById(momCtx.fid);
+    if (!f || !f.mom_open) { setModal('<h2 id="uc-modal-title" class="uc-modal-title">Voting has closed</h2><p class="uc-modal-lede">' + esc(msg) + '</p><button type="button" class="uc-btn uc-btn--ghost uc-btn--block" data-uc-close>Close</button>'); return; }
+    setModal(momPickStep(f)); wireMomPick();
+    var pk = momCtx.pid && $('[data-mom-pick="' + momCtx.pid + '"]', modalEl); if (pk) pk.click();
+    setMsg(msg, true);
+  }
+  function momAlready() {
+    var f = fixtureById(momCtx.fid), v = momVoted(momCtx.fid);
+    setModal('<div class="uc-success"><div class="uc-success-ring">' + ICON.check + '</div><h2 id="uc-modal-title" class="uc-modal-title">You\u2019ve already voted in this game</h2>' +
+      '<p class="uc-modal-lede">' + (playerName(v) ? 'You backed <strong>' + esc(playerName(v)) + '</strong>. ' : '') + 'It\u2019s one vote per game. You can still vote in the others.</p>' +
+      '<div class="uc-success-actions"><button type="button" class="uc-btn uc-btn--gold" data-uc-close>Done</button></div></div>');
+    fxSig = ''; renderFixtures(); renderMomBanner();
+  }
+  function momDone() {
+    var p = playerName(momCtx.pid), more = momOpenFixtures().filter(function (f) { return !momVoted(f.id); });
+    setModal('<div class="uc-success"><div class="uc-success-ring">' + ICON.check + '</div><h2 id="uc-modal-title" class="uc-modal-title">Vote counted!</h2>' +
+      '<p class="uc-modal-lede">Thank you for backing <strong>' + esc(p || 'your man of the match') + '</strong>. You\u2019re verified on this device, so you can vote in every other game with one tap.</p>' +
+      '<div class="uc-success-actions">' + (more.length ? '<button type="button" class="uc-btn uc-btn--gold" data-mom-open="' + esc(more[0].id) + '">Vote in ' + esc(teamsById[more[0].home_team_id].name) + ' v ' + esc(teamsById[more[0].away_team_id].name) + '</button>' : '') + '<button type="button" class="uc-btn uc-btn--ghost" data-uc-close>Done</button></div></div>');
+    if (window.UnityFx) UnityFx.confetti();
+    say('Your man of the match vote has been counted.');
+    fxSig = ''; renderFixtures(); renderMomBanner();
     loadState(true);
   }
 
@@ -750,6 +880,41 @@
   }
   function scorerText(m) { return m.name + (m.og ? ' (OG)' : '') + (m.mins.length ? ' ' + m.mins.map(function (x) { return x + '\u2032'; }).join(', ') : ''); }
 
+  // ----- Man of the match: the block on each match card -----
+  function momOpenFixtures() { return (S && S.fixtures || []).filter(function (f) { return f.mom_open && teamsById[f.home_team_id] && teamsById[f.away_team_id]; }); }
+  function fixtureById(id) { return (S && S.fixtures || []).filter(function (f) { return f.id === id; })[0]; }
+  function momToken() { return lsGet(LS.momToken) || ''; }
+  function momVotes() { try { return JSON.parse(lsGet(LS.momVotes) || '{}') || {}; } catch (e) { return {}; } }
+  function momVoted(fid) { return momVotes()[fid] || ''; }
+  function momRemember(fid, pid) { var v = momVotes(); v[fid] = pid || '1'; lsSet(LS.momVotes, JSON.stringify(v)); }
+  function playerName(id) { var p = (S.players || []).filter(function (x) { return x.id === id; })[0]; return p ? p.name : ''; }
+  function momBlock(f) {
+    if (f.mom_show && f.mom && f.mom.top && f.mom.top.length) {
+      var best = f.mom.top[0].votes, win = f.mom.top.filter(function (x) { return x.votes === best; });
+      var tn = win.map(function (w) { var t = teamsById[w.team_id]; return t ? t.name : ''; }).filter(Boolean).filter(function (x, i, a) { return a.indexOf(x) === i; }).join(' / ');
+      return '<div class="uc-mom is-result">' + ICON.star + '<span><small>Man of the match' + (win.length > 1 ? ' (shared)' : '') + '</small><b>' + win.map(function (w) { return esc(w.name); }).join(' &amp; ') + '</b>' + (tn ? '<em>' + esc(tn) + '</em>' : '') + '</span></div>';
+    }
+    if (!f.mom_open) return '';
+    var v = momVoted(f.id);
+    if (v) return '<div class="uc-mom is-voted">' + ICON.check + '<span><small>Man of the match</small><b>' + (playerName(v) ? 'You voted for ' + esc(playerName(v)) : 'You\u2019ve voted in this game') + '</b></span></div>';
+    return '<button type="button" class="uc-mom uc-mom-btn" data-mom-open="' + esc(f.id) + '">' + ICON.star + '<span><b>Vote: Man of the match</b><small>Open now \u00b7 one vote per game</small></span>' + ICON.arrow + '</button>';
+  }
+  // The "voting is open" banner at the top of the Fixtures and Overview pages
+  function renderMomBanner() {
+    var el = $('#uc-mom-banner'); if (!el) return;
+    var open = momOpenFixtures();
+    var sig = JSON.stringify([open.map(function (f) { return [f.id, momVoted(f.id)]; })]);
+    if (el.getAttribute('data-sig') === sig) return;
+    el.setAttribute('data-sig', sig);
+    if (!open.length) { el.innerHTML = ''; return; }
+    var left = open.filter(function (f) { return !momVoted(f.id); });
+    el.innerHTML = '<div class="uc-mombar" role="region" aria-label="Man of the match voting"><div class="uc-mombar-head">' + ICON.star + '<div><strong>Man of the match voting is open</strong><span>' + (left.length ? 'Pick your star player. One vote per game.' : 'You\u2019ve voted in every open game. Thank you!') + '</span></div></div>' +
+      '<div class="uc-mombar-list">' + open.map(function (f) {
+        var h = teamsById[f.home_team_id], a = teamsById[f.away_team_id], nm = esc(h.name) + ' v ' + esc(a.name);
+        return momVoted(f.id) ? '<span class="uc-mombar-done">' + ICON.check + nm + '</span>' : '<button type="button" data-mom-open="' + esc(f.id) + '"><span>' + nm + '</span><b>Vote</b></button>';
+      }).join('') + '</div></div>';
+  }
+
   function fixtureCard(f) {
     var h = teamsById[f.home_team_id], a = teamsById[f.away_team_id];
     if (!h || !a) return '';
@@ -759,9 +924,11 @@
     var win = has && f.status === 'finished' ? (f.home_score > f.away_score ? 'h' : f.home_score < f.away_score ? 'a' : '') : '';
     function scorers(t) {
       if (!has) return '';
-      var gs = scorerGroups(f, t.id);
-      return gs.length ? '<ul class="uc-fx-goals" aria-label="Goals for ' + esc(t.name) + '">' + gs.map(function (m) {
+      var gs = scorerGroups(f, t.id), cs = (f.cards || []).filter(function (c) { return c && c.name && c.team_id === t.id; });
+      return gs.length || cs.length ? '<ul class="uc-fx-goals" aria-label="Goals and cards for ' + esc(t.name) + '">' + gs.map(function (m) {
         return '<li>' + ICON.ball + '<span><b>' + esc(m.name) + '</b>' + (m.og ? ' <em>OG</em>' : '') + (m.mins.length ? ' <small>' + m.mins.map(function (x) { return x + '\u2032'; }).join(', ') + '</small>' : '') + '</span></li>';
+      }).join('') + cs.map(function (c) {
+        return '<li><i class="uc-sq uc-sq--' + (c.kind === 'red' ? 'red' : 'yellow') + '" role="img" aria-label="' + (c.kind === 'red' ? 'Red card' : 'Yellow card') + '"></i><span><b>' + esc(c.name) + '</b>' + (c.minute != null ? ' <small>' + c.minute + '\u2032</small>' : '') + '</span></li>';
       }).join('') + '</ul>' : '';
     }
     function line(t, score, isWin) {
@@ -771,6 +938,7 @@
     return '<li class="uc-fx' + (live ? ' is-live' : '') + (f.status === 'finished' ? ' is-done' : '') + '">' +
       '<div class="uc-fx-top">' + state + '<span class="uc-fx-meta">' + (f.stage ? esc(f.stage) : '') + (f.stage && f.pitch ? ' &middot; ' : '') + (f.pitch ? esc(f.pitch) : '') + '</span>' + (window.UnityShare ? '<button type="button" class="uc-share uc-share--icon" data-share-match="' + esc(f.id) + '" aria-label="Share this match as a picture" title="Share as a picture">' + ICON.share + '</button>' : '') + '</div>' +
       '<div class="uc-fx-lines">' + line(h, f.home_score, win === 'h') + line(a, f.away_score, win === 'a') + '</div>' +
+      momBlock(f) +
       (f.note ? '<p class="uc-fx-note">' + esc(f.note) + '</p>' : '') + '</li>';
   }
 
@@ -934,6 +1102,7 @@
     if (pl && !pl.disabled) { selected = selected === pl.getAttribute('data-player') ? null : pl.getAttribute('data-player'); renderVote(); return; }
     var team = t.closest('[data-team]');
     if (team) { filterTeam = team.getAttribute('data-team'); renderVote(); return; }
+    var mo = t.closest('[data-mom-open]'); if (mo) { startMom(mo.getAttribute('data-mom-open')); return; }
     var to = t.closest('[data-team-open]'); if (to) { openTeam(to.getAttribute('data-team-open')); return; }
     var vp = t.closest('[data-vote-player]');
     if (vp) {

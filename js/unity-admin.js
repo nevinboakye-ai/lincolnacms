@@ -17,6 +17,7 @@
 
   var D = null;               // last unity_admin_get() result
   var tab = 'setup';
+  try { var savedTab = window.sessionStorage.getItem('lacms-ua-tab'); if (savedTab && /^(setup|teams|players|fixtures|raffle|media)$/.test(savedTab)) tab = savedTab; } catch (e) { /* ignore */ }
   var timer = null;
   var loading = false;
   var wheel = null, overlay = null, lastSig = '';
@@ -493,7 +494,7 @@
     var isNew = !f, id = f ? f.id : 'new';
     var stages = []; (D.fixtures || []).forEach(function (x) { if (x.stage && stages.indexOf(x.stage) < 0) stages.push(x.stage); });
     var sc = function (v) { return v == null ? '' : v; };
-    return '<div class="ua-fx" data-ua-ctx="form" data-fid="' + esc(id) + '"><div class="ua-fx-grid">' +
+    return '<div class="ua-fx" data-ua-ctx="form" data-fid="' + esc(id) + '">' + (isNew ? '' : '<a class="ua-open-match" href="unity-match.html?id=' + encodeURIComponent(id) + '">Open the match page &rsaquo;</a>') + '<div class="ua-fx-grid">' +
       '<label class="ua-field"><span>Home team</span><select data-ff="home">' + teamOptions(f && f.home_team_id) + '</select></label>' +
       '<label class="ua-field"><span>Away team</span><select data-ff="away">' + teamOptions(f && f.away_team_id) + '</select></label>' +
       '<label class="ua-field"><span>Round / stage</span><input data-ff="stage" maxlength="40" list="ua-stages" value="' + esc(f && f.stage || '') + '" placeholder="Group A, Semi-final…"></label>' +
@@ -519,9 +520,32 @@
       return '<div class="ua-live" data-ua-ctx="live" data-fid="' + esc(f.id) + '" data-hs="' + hs + '" data-as="' + as + '"><div class="ua-live-top"><span class="ua-pill is-' + esc(f.status) + '">' + esc((STATUS.filter(function (x) { return x[0] === f.status; })[0] || [0, f.status])[1]) + '</span><small>' + esc([f.stage, f.pitch, f.kickoff_at ? new Date(f.kickoff_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')) + '</small></div>' +
         (needs122() || visOf(f) === 'public' ? '' : '<p class="ua-vis-warn">' + visPill(f) + ' <span>Visitors can\'t see this match yet.</span> <button type="button" class="btn btn-outline" data-ua-fx-vis="now">Publish now</button></p>') +
         '<div class="ua-live-sides">' + side(h, hs, 'h') + side(a, as, 'a') + '</div>' +
+        '<a class="ua-open-match" href="unity-match.html?id=' + encodeURIComponent(f.id) + '">Open the full match page (cards, clock, Man of the Match) &rsaquo;</a>' +
         (needs125() ? '' : goalRowsHtml(f) + pickerHtml(f, 'live')) +
         '<div class="ua-actions">' + (f.status !== 'live' ? '<button type="button" class="btn btn-primary" data-ua-status="live">Kick off (go live)</button>' : '') + (f.status === 'live' ? '<button type="button" class="btn btn-primary" data-ua-status="finished">Full time</button>' : '') + '</div></div>';
     }).join('') + '</div></div>';
+  }
+  // "Run a match": every fixture as a big tappable row that opens its own control page (unity-match.html).
+  function matchesCard() {
+    var fs = (D.fixtures || []).filter(function (f) { return teamById(f.home_team_id) && teamById(f.away_team_id); });
+    if (!fs.length) return '';
+    var rank = { live: 0, scheduled: 1, postponed: 2, finished: 3 };
+    fs = fs.slice().sort(function (a, b) {
+      var ra = rank[a.status] == null ? 1 : rank[a.status], rb = rank[b.status] == null ? 1 : rank[b.status];
+      if (ra !== rb) return ra - rb;
+      var ka = a.kickoff_at ? Date.parse(a.kickoff_at) : 9e15, kb = b.kickoff_at ? Date.parse(b.kickoff_at) : 9e15;
+      return ra === 3 ? kb - ka : ka - kb;
+    });
+    return '<div class="ua-card ua-card--matches"><h3>Run a match</h3><p class="ua-hint">Tap a match to open its own page: goals with the scorer, yellow and red cards, the clock, the score and Man of the Match. Made for your phone.</p><ul class="ua-mlist">' + fs.map(function (f) {
+      var h = teamById(f.home_team_id), a = teamById(f.away_team_id), has = f.status !== 'scheduled' && f.status !== 'postponed' && f.home_score != null && f.away_score != null;
+      var when = f.kickoff_at ? new Date(f.kickoff_at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Time to be confirmed';
+      var vis = needs122() ? '' : visOf(f) === 'public' ? '' : '<span class="ua-pill ua-vis-pill is-' + visOf(f) + '">' + VIS_LABEL[visOf(f)] + '</span>';
+      return '<li><a class="ua-mrow is-' + esc(f.status) + '" href="unity-match.html?id=' + encodeURIComponent(f.id) + '">' +
+        '<span class="ua-mrow-top"><span class="ua-pill is-' + esc(f.status) + '">' + esc((STATUS.filter(function (x) { return x[0] === f.status; })[0] || [0, f.status])[1]) + '</span>' + vis + '<small>' + esc([f.stage, f.pitch, when].filter(Boolean).join(' \u00b7 ')) + '</small></span>' +
+        '<span class="ua-mrow-team">' + crestHtml(h).replace('uc-crest--lg', 'uc-crest--sm') + '<strong>' + esc(h.name) + '</strong><b class="ua-mrow-sc">' + (has ? f.home_score : '') + '</b></span>' +
+        '<span class="ua-mrow-team">' + crestHtml(a).replace('uc-crest--lg', 'uc-crest--sm') + '<strong>' + esc(a.name) + '</strong><b class="ua-mrow-sc">' + (has ? f.away_score : '') + '</b></span>' +
+        '<span class="ua-mrow-go" aria-hidden="true">Open &rsaquo;</span></a></li>';
+    }).join('') + '</ul></div>';
   }
   function visibilityCard() {
     var fs = D.fixtures || [];
@@ -540,7 +564,7 @@
     var fs = D.fixtures || [], stages = []; fs.forEach(function (x) { if (x.stage && stages.indexOf(x.stage) < 0) stages.push(x.stage); });
     var dl = '<datalist id="ua-stages">' + stages.concat(['Group A', 'Group B', 'Quarter-final', 'Semi-final', 'Final', '3rd place']).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
     if ((D.teams || []).length < 2) return '<div class="ua-card"><h3>Fixtures</h3><p class="ua-hint">Add at least two teams (Teams tab) first.</p></div>';
-    return dl + visibilityCard() + goalsNotice() + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
+    return dl + matchesCard() + visibilityCard() + goalsNotice() + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
       '<div class="ua-card"><h3>All fixtures (' + fs.length + ')</h3>' + (fs.length ? '<div class="ua-fx-list">' + fs.map(fixtureForm).join('') + '</div>' : '<p class="ua-hint">No fixtures yet.</p>') + '</div>';
   }
   function readFixture(row) {
@@ -935,7 +959,7 @@
   // ---------------------------------------------------------------------
   root.addEventListener('click', function (e) {
     var t = e.target;
-    var tb = t.closest('[data-ua-tab]'); if (tb) { tab = tb.getAttribute('data-ua-tab'); picker = null; render(); return; }
+    var tb = t.closest('[data-ua-tab]'); if (tb) { tab = tb.getAttribute('data-ua-tab'); try { window.sessionStorage.setItem('lacms-ua-tab', tab); } catch (e) { /* ignore */ } picker = null; render(); return; }
     if (t.closest('[data-ua-save-settings]')) {
       var p = {};
       $$('[data-ua-f]').forEach(function (el) {

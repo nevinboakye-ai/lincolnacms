@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<script>(function(){try{var t=localStorage.getItem('lacms-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Match control - LACMS Unity Cup</title>
+<meta name="description" content="Committee page to run one Unity Cup match: goals, cards, the clock and Man of the Match.">
+<!-- Committee only: keep it out of search engines -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="icon" href="Media/ACMS%20Branding/logo.png">
+<link rel="stylesheet" href="css/styles.css?v=20260824-208">
+<link rel="stylesheet" href="css/unity-cup.css?v=20260824-208">
+</head>
+<body class="um-body">
+
+<a class="skip-link" href="#um-root">Skip to the match</a>
+<header class="um-top">
+  <div class="um-top-inner">
+    <a class="um-back" href="president-dashboard.html#unity" aria-label="Back to the dashboard fixtures">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Matches</span>
+    </a>
+    <strong class="um-top-title">Match control</strong>
+    <button type="button" class="theme-toggle um-theme" data-um-theme aria-label="Switch between light and dark mode">
+      <svg class="icon icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/></svg>
+      <svg class="icon icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="um-main">
+  <div id="um-root" aria-live="off">
+    <div class="um-loading"><span class="tm-spin" aria-hidden="true"></span><p>Opening the match&hellip;</p></div>
+  </div>
+</main>
+
+<div class="visually-hidden" id="um-live" role="status" aria-live="polite"></div>
+
+<script src="js/vendor/supabase-js-2.118.0.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/unity-match.js?v=20260824-208"></script>
+</body>
+</html>

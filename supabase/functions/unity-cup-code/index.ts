@@ -1,7 +1,7 @@
 // Supabase Edge Function: unity-cup-code
 //
-// Emails a 6-digit code to someone who wants to vote in the Unity Cup Player of the Tournament poll or
-// enter the Unity Cup raffle, so we know the address is a real inbox they can read. Sent through Resend,
+// Emails a 6-digit code to someone who wants to vote in the Unity Cup Player of the Tournament poll, vote for
+// Man of the Match, or enter the Unity Cup raffle, so we know the address is a real inbox they can read. Sent through Resend,
 // the same as send-account-email.
 //
 // ---------------------------------------------------------------------
@@ -13,10 +13,12 @@
 //      -> Details). Voters have no account, so there is no login token to check. Everything the function
 //      can do is limited by the database (see below), and it only ever emails the address it was given.
 //   5. It uses the same secrets as the other functions (RESEND_API_KEY, RESEND_FROM_EMAIL), nothing new.
-//   6. Run db/migrations/114-unity-cup.sql first.
+//   6. Run db/migrations/114-unity-cup.sql first (and 126-unity-cup-match-control.sql for Man of the Match voting).
+//   7. Already deployed before Man of the Match voting existed? Open the function, paste this whole file over the
+//      old one and Deploy again. Nothing else changes.
 //
 // What stops it being abused: the database function unity_request_code decides whether to issue a code
-// (voting/raffle must be open, one address can ask only 3 times per 15 minutes, the whole site is capped
+// (voting/raffle/a match must be open, one address can ask only 3 times per 15 minutes, the whole site is capped
 // at 600 codes per 10 minutes, throwaway email domains and addresses that have already voted/entered are
 // refused). The code itself is stored only as a hash and is never returned to the browser.
 
@@ -44,7 +46,9 @@ const SERIF = 'Georgia, "Times New Roman", serif';
 const SANS = '-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
 
 function renderEmail(code: string, purpose: string) {
-  const what = purpose === 'raffle' ? 'enter the Unity Cup raffle' : 'vote in the Unity Cup Player of the Tournament poll';
+  const what = purpose === 'raffle' ? 'enter the Unity Cup raffle'
+    : purpose === 'mom' ? 'vote for Man of the Match in the Unity Cup'
+    : 'vote in the Unity Cup Player of the Tournament poll';
   return (
     '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>' +
     '<body style="margin:0; padding:0; background:#0a0a0c;">' +
@@ -74,7 +78,7 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch (_e) { return json({ ok: false, error: 'bad_request' }, 400); }
   const email = String(body.email ?? '').trim();
   const purpose = String(body.purpose ?? '');
-  if (!email || email.length > 254 || (purpose !== 'vote' && purpose !== 'raffle')) return json({ ok: false, error: 'bad_request' }, 400);
+  if (!email || email.length > 254 || (purpose !== 'vote' && purpose !== 'raffle' && purpose !== 'mom')) return json({ ok: false, error: 'bad_request' }, 400);
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
   const { data, error } = await admin.rpc('unity_request_code', { p_email: email, p_purpose: purpose });
