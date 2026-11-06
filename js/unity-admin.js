@@ -59,6 +59,7 @@
       '<p class="ua-msg" data-ua-msg role="status"></p><div class="ua-pane">' + ({ setup: setupHtml, teams: teamsHtml, players: playersHtml, fixtures: fixturesHtml, raffle: raffleHtml, media: mediaHtml }[tab])() + '</div>';
     if (tab === 'media') loadThumbs();
     if (tab === 'players') sqBody();
+    pickerAfterRender();
   }
 
   function liveLine() {
@@ -492,7 +493,7 @@
     var isNew = !f, id = f ? f.id : 'new';
     var stages = []; (D.fixtures || []).forEach(function (x) { if (x.stage && stages.indexOf(x.stage) < 0) stages.push(x.stage); });
     var sc = function (v) { return v == null ? '' : v; };
-    return '<div class="ua-fx" data-fid="' + esc(id) + '"><div class="ua-fx-grid">' +
+    return '<div class="ua-fx" data-ua-ctx="form" data-fid="' + esc(id) + '"><div class="ua-fx-grid">' +
       '<label class="ua-field"><span>Home team</span><select data-ff="home">' + teamOptions(f && f.home_team_id) + '</select></label>' +
       '<label class="ua-field"><span>Away team</span><select data-ff="away">' + teamOptions(f && f.away_team_id) + '</select></label>' +
       '<label class="ua-field"><span>Round / stage</span><input data-ff="stage" maxlength="40" list="ua-stages" value="' + esc(f && f.stage || '') + '" placeholder="Group A, Semi-final…"></label>' +
@@ -504,20 +505,21 @@
       '<label class="ua-field ua-field--wide"><span>Note (optional)</span><input data-ff="note" maxlength="120" value="' + esc(f && f.note || '') + '" placeholder="e.g. Won on penalties"></label>' +
       (isNew && !needs122() ? '<label class="ua-field"><span>On the public page</span><select data-ff="vis"><option value="hidden">Keep hidden for now</option><option value="now">Publish straight away</option><option value="at">Schedule for…</option></select></label>' +
         '<label class="ua-field" data-ff-pubwrap hidden><span>Goes public at</span><input type="datetime-local" data-ff="pubat"></label>' : '') + '</div>' +
-      (isNew ? '' : visBar(f)) +
+      (isNew ? '' : goalsBlock(f) + visBar(f)) +
       '<div class="ua-actions">' + (isNew ? '<button type="button" class="btn btn-primary" data-ua-save-fx>Add fixture</button>' : '<button type="button" class="btn btn-outline" data-ua-save-fx>Save</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-del-fx>Delete</button>') + '</div></div>';
   }
   function liveScoring() {
     var now = new Date(), startDay = new Date(now); startDay.setHours(0, 0, 0, 0); var endDay = new Date(startDay); endDay.setDate(endDay.getDate() + 1);
     var list = (D.fixtures || []).filter(function (f) { return f.status === 'live' || (f.status === 'scheduled' && f.kickoff_at && new Date(f.kickoff_at) >= startDay && new Date(f.kickoff_at) < endDay); });
     if (!list.length) return '';
-    return '<div class="ua-card ua-card--live"><h3>Live scoring</h3><p class="ua-hint">Tap + when a goal goes in. It shows on the public page within about 15 seconds.</p><div class="ua-live-list">' + list.map(function (f) {
+    return '<div class="ua-card ua-card--live"><h3>Live scoring</h3><p class="ua-hint">' + (needs125() ? 'Tap + when a goal goes in.' : 'Tap + when a goal goes in, then pick who scored. Tap &minus; to take the last goal back off.') + ' It shows on the public page within about 15 seconds.</p><div class="ua-live-list">' + list.map(function (f) {
       var h = teamById(f.home_team_id), a = teamById(f.away_team_id); if (!h || !a) return '';
       var hs = f.home_score == null ? 0 : f.home_score, as = f.away_score == null ? 0 : f.away_score;
-      function side(t, v, k) { return '<div class="ua-side">' + crestHtml(t).replace('uc-crest--lg', 'uc-crest--sm') + '<strong>' + esc(t.name) + '</strong><div class="ua-step"><button type="button" data-ua-goal="' + k + '" data-d="-1" aria-label="Minus one for ' + esc(t.name) + '">&minus;</button><b>' + v + '</b><button type="button" data-ua-goal="' + k + '" data-d="1" aria-label="Plus one for ' + esc(t.name) + '">+</button></div></div>'; }
-      return '<div class="ua-live" data-fid="' + esc(f.id) + '" data-hs="' + hs + '" data-as="' + as + '"><div class="ua-live-top"><span class="ua-pill is-' + esc(f.status) + '">' + esc((STATUS.filter(function (x) { return x[0] === f.status; })[0] || [0, f.status])[1]) + '</span><small>' + esc([f.stage, f.pitch, f.kickoff_at ? new Date(f.kickoff_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')) + '</small></div>' +
+      function side(t, v, k) { return '<div class="ua-side">' + crestHtml(t).replace('uc-crest--lg', 'uc-crest--sm') + '<strong>' + esc(t.name) + '</strong><div class="ua-step"><button type="button" data-ua-goal="' + k + '" data-d="-1" aria-label="' + (needs125() ? 'Minus one for ' : 'Take the last goal off for ') + esc(t.name) + '">&minus;</button><b>' + v + '</b><button type="button" data-ua-goal="' + k + '" data-d="1" aria-label="' + (needs125() ? 'Plus one for ' : 'Add a goal for ') + esc(t.name) + '">+</button></div></div>'; }
+      return '<div class="ua-live" data-ua-ctx="live" data-fid="' + esc(f.id) + '" data-hs="' + hs + '" data-as="' + as + '"><div class="ua-live-top"><span class="ua-pill is-' + esc(f.status) + '">' + esc((STATUS.filter(function (x) { return x[0] === f.status; })[0] || [0, f.status])[1]) + '</span><small>' + esc([f.stage, f.pitch, f.kickoff_at ? new Date(f.kickoff_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''].filter(Boolean).join(' · ')) + '</small></div>' +
         (needs122() || visOf(f) === 'public' ? '' : '<p class="ua-vis-warn">' + visPill(f) + ' <span>Visitors can\'t see this match yet.</span> <button type="button" class="btn btn-outline" data-ua-fx-vis="now">Publish now</button></p>') +
         '<div class="ua-live-sides">' + side(h, hs, 'h') + side(a, as, 'a') + '</div>' +
+        (needs125() ? '' : goalRowsHtml(f) + pickerHtml(f, 'live')) +
         '<div class="ua-actions">' + (f.status !== 'live' ? '<button type="button" class="btn btn-primary" data-ua-status="live">Kick off (go live)</button>' : '') + (f.status === 'live' ? '<button type="button" class="btn btn-primary" data-ua-status="finished">Full time</button>' : '') + '</div></div>';
     }).join('') + '</div></div>';
   }
@@ -538,7 +540,7 @@
     var fs = D.fixtures || [], stages = []; fs.forEach(function (x) { if (x.stage && stages.indexOf(x.stage) < 0) stages.push(x.stage); });
     var dl = '<datalist id="ua-stages">' + stages.concat(['Group A', 'Group B', 'Quarter-final', 'Semi-final', 'Final', '3rd place']).filter(function (x, i, a) { return a.indexOf(x) === i; }).map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>';
     if ((D.teams || []).length < 2) return '<div class="ua-card"><h3>Fixtures</h3><p class="ua-hint">Add at least two teams (Teams tab) first.</p></div>';
-    return dl + visibilityCard() + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
+    return dl + visibilityCard() + goalsNotice() + liveScoring() + '<div class="ua-card"><h3>Add a fixture</h3>' + fixtureForm(null) + '</div>' +
       '<div class="ua-card"><h3>All fixtures (' + fs.length + ')</h3>' + (fs.length ? '<div class="ua-fx-list">' + fs.map(fixtureForm).join('') + '</div>' : '<p class="ua-hint">No fixtures yet.</p>') + '</div>';
   }
   function readFixture(row) {
@@ -572,6 +574,246 @@
   function setScore(fid, hs, as, status) {
     var f = (D.fixtures || []).filter(function (x) { return x.id === fid; })[0]; if (f) { f.home_score = hs; f.away_score = as; f.status = status; render(); }   // show it at once
     return supabaseClient.rpc('unity_admin_set_score', { p_id: fid, p_home_score: hs, p_away_score: as, p_status: status }).then(function (r) { if (r.error) { fail(r.error); } return load(); });
+  }
+
+  // ---------------------------------------------------------------------
+  // Goalscorers (migration 125)
+  // Live scoring: "+" opens a search over the players of the two teams in the match, and one tap on a name records the goal
+  // and moves the score up. "-" takes the latest goal for that team back off. Each match in the All fixtures list also has a
+  // Goalscorers box (add, change or remove a goal; fill in scorers for a result that was typed in earlier). A typed score
+  // still works and never touches the list. Without migration 125 the buttons fall back to plain +1 / -1.
+  var picker = null;      // { fid, ctx: 'live' | 'form', team, mode: 'add' | 'edit', goalId, bump, q, minute, active, focus }
+  var busy = 0, toastEl = null, toastTimer = null;
+
+  function needs125() { return !D || !('goals' in D); }
+  function fixtureById(id) { return (D.fixtures || []).filter(function (x) { return x.id === id; })[0]; }
+  function playerById(id) { return (D.players || []).filter(function (x) { return x.id === id; })[0]; }
+  function goalById(id) { return (D.goals || []).filter(function (x) { return x.id === id; })[0]; }
+  function goalOrder(a, b) { var am = a.minute == null ? 1e9 : a.minute, bm = b.minute == null ? 1e9 : b.minute; return am - bm || String(a.created_at).localeCompare(String(b.created_at)); }
+  function goalsOf(fid) { return (D.goals || []).filter(function (g) { return g.fixture_id === fid; }).sort(goalOrder); }
+  function goalsFor(fid, team) { return goalsOf(fid).filter(function (g) { return g.team_id === team; }); }
+  function latestGoal(fid, team) { return goalsFor(fid, team).sort(function (a, b) { return String(b.created_at).localeCompare(String(a.created_at)); })[0]; }
+  function scoreOf(f, team) { return (team === f.home_team_id ? f.home_score : f.away_score) || 0; }
+  function scorerName(g) { var p = g.player_id && playerById(g.player_id); return (p && p.name) || g.scorer_name || ''; }
+  function norm(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+  function minuteText(m) { return m == null ? '' : m + '′'; }
+  function parseMinute(v) { v = String(v == null ? '' : v).trim(); if (v === '') return null; var n = Number(v); return isFinite(n) && n >= 0 && n <= 150 && Math.floor(n) === n ? n : false; }
+  function isTmp(id) { return /^tmp-/.test(String(id)); }
+
+  // A small message at the bottom of the screen (the page can be scrolled well away from the usual message line), with an optional Undo.
+  function hideToast() { if (toastEl) { toastEl.className = 'ua-toast'; toastEl._undo = null; } }
+  function toast(text, undo, bad) {
+    if (!toastEl) {
+      toastEl = document.createElement('div'); toastEl.className = 'ua-toast'; toastEl.setAttribute('role', 'status'); toastEl.setAttribute('aria-live', 'polite');
+      document.body.appendChild(toastEl);
+      toastEl.addEventListener('click', function (e) {
+        if (e.target.closest('[data-ua-toast-undo]') && toastEl._undo) { var fn = toastEl._undo; hideToast(); fn(); }
+        else if (e.target.closest('[data-ua-toast-x]')) hideToast();
+      });
+    }
+    toastEl._undo = undo || null;
+    toastEl.className = 'ua-toast is-in' + (bad ? ' is-bad' : '');
+    toastEl.innerHTML = '<span>' + esc(text) + '</span>' + (undo ? '<button type="button" data-ua-toast-undo>Undo</button>' : '') + '<button type="button" class="ua-toast-x" data-ua-toast-x aria-label="Dismiss">&times;</button>';
+    window.clearTimeout(toastTimer); toastTimer = window.setTimeout(hideToast, undo ? 10000 : bad ? 9000 : 4500);
+  }
+  function goalFail(err) {
+    var m = (err && err.message) || '';
+    toast(/schema cache|could not find the function|does not exist/i.test(m) ? 'Run migration 125-unity-cup-goalscorers.sql in Supabase first.' : (m || 'That didn’t save. Please try again.'), null, true);
+  }
+  // Reload from the database; waits if a refresh is already in flight so the screen always ends on the saved state.
+  function refresh() { lastSig = ''; if (loading) return new Promise(function (r) { window.setTimeout(r, 250); }).then(refresh); return load(); }
+
+  function bumpScore(f, team, d) {
+    if (f.home_score == null) f.home_score = 0; if (f.away_score == null) f.away_score = 0;
+    if (team === f.home_team_id) f.home_score = Math.max(0, f.home_score + d); else f.away_score = Math.max(0, f.away_score + d);
+  }
+
+  // ----- saving (each one updates the screen at once, then confirms with the database) -----
+  function recordGoal(o) {
+    var f = fixtureById(o.fid); if (!f) return;
+    var pl = o.player || null, t = teamById(o.team) || {};
+    (D.goals = D.goals || []).push({ id: 'tmp-' + Date.now(), fixture_id: f.id, team_id: o.team, player_id: pl ? pl.id : null, scorer_name: pl ? pl.name : (o.name || null), own_goal: !!(pl && pl.team_id !== o.team), minute: o.minute, created_at: new Date().toISOString() });
+    if (o.bump) { bumpScore(f, o.team, 1); if (f.status === 'scheduled') f.status = 'live'; }
+    picker = null; render();
+    busy++;
+    return supabaseClient.rpc('unity_admin_add_goal', { p_fixture: f.id, p_team: o.team, p_player: pl ? pl.id : null, p_name: pl ? null : (o.name || null), p_minute: o.minute, p_bump: !!o.bump }).then(function (r) {
+      busy--;
+      if (r.error) { goalFail(r.error); return refresh(); }
+      var nm = pl ? pl.name : (o.name || ''), own = !!(pl && pl.team_id !== o.team), gid = r.data;
+      var msg = o.bump ? 'Goal for ' + (t.name || 'the team') + (nm ? ': ' + nm + (own ? ' (own goal)' : '') : ' (scorer not recorded)') + '.' : 'Scorer saved: ' + nm + (own ? ' (own goal)' : '') + '.';
+      toast(msg, o.bump && gid ? function () { removeGoal(gid, true); } : null);
+      return refresh();
+    }, function () { busy--; toast('No connection. That goal may not have saved.', null, true); return refresh(); });
+  }
+  function removeGoal(gid, quiet) {
+    if (isTmp(gid)) return;
+    var g = goalById(gid); if (!g) return;
+    var f = fixtureById(g.fixture_id), t = teamById(g.team_id) || {}, pl = g.player_id ? playerById(g.player_id) : null, nm = scorerName(g);
+    D.goals = (D.goals || []).filter(function (x) { return x.id !== gid; });
+    if (f) bumpScore(f, g.team_id, -1);
+    picker = null; render();
+    busy++;
+    return supabaseClient.rpc('unity_admin_remove_goal', { p_id: gid }).then(function (r) {
+      busy--;
+      if (r.error) { goalFail(r.error); return refresh(); }
+      toast(quiet ? 'Goal taken off.' : 'Took off ' + (nm ? nm + '’s goal' : 'a goal') + ' for ' + (t.name || 'the team') + '. The score went down by one.',
+        quiet ? null : function () { recordGoal({ fid: g.fixture_id, team: g.team_id, player: pl || null, name: pl ? null : (nm || null), minute: g.minute, bump: true }); });
+      return refresh();
+    }, function () { busy--; toast('No connection. That may not have saved.', null, true); return refresh(); });
+  }
+  function setScorer(gid, pl, name, minute) {
+    if (isTmp(gid)) return;
+    var g = goalById(gid); if (!g) return;
+    g.player_id = pl ? pl.id : null; g.scorer_name = pl ? pl.name : (name || null); g.own_goal = !!(pl && pl.team_id !== g.team_id); g.minute = minute;
+    picker = null; render();
+    busy++;
+    return supabaseClient.rpc('unity_admin_set_goal_scorer', { p_id: gid, p_player: pl ? pl.id : null, p_name: pl ? null : (name || null), p_minute: minute }).then(function (r) {
+      busy--;
+      if (r.error) { goalFail(r.error); return refresh(); }
+      var nm = pl ? pl.name : (name || '');
+      toast(nm ? 'Scorer saved: ' + nm + (g.own_goal ? ' (own goal)' : '') + '.' : 'Scorer removed. The goal is still in the score.');
+      return refresh();
+    }, function () { busy--; toast('No connection. That may not have saved.', null, true); return refresh(); });
+  }
+
+  // ----- the lists -----
+  function goalRowsHtml(f) {
+    var gs = goalsOf(f.id); if (!gs.length) return '';
+    return '<ol class="ua-glist" aria-label="Goals so far">' + gs.map(function (g) {
+      var t = teamById(g.team_id) || {}, nm = scorerName(g);
+      return '<li class="ua-goal' + (nm ? '' : ' is-unnamed') + '" data-gid="' + esc(g.id) + '">' +
+        '<i class="ua-gdot" style="background:' + esc(t.colour || '#d4a62b') + '" aria-hidden="true"></i>' +
+        '<span class="ua-gwho"><span class="ua-gline">' + (g.minute != null ? '<b class="ua-gmin">' + esc(minuteText(g.minute)) + '</b>' : '') + (nm ? '<strong>' + esc(nm) + '</strong>' + (g.own_goal ? '<em>own goal</em>' : '') : '<span>Scorer not recorded</span>') + '</span><small>' + esc(t.name || '') + '</small></span>' +
+        '<span class="ua-gacts"><button type="button" class="ua-gbtn' + (nm ? '' : ' is-primary') + '" data-ua-goal-edit aria-label="' + (nm ? 'Change who scored this goal for ' : 'Add the scorer for this goal for ') + esc(t.name || 'the team') + '">' + (nm ? 'Edit' : 'Add scorer') + '</button>' +
+        '<button type="button" class="ua-gbtn ua-gbtn--x" data-ua-goal-del aria-label="Remove this goal for ' + esc(t.name || 'the team') + '. The score goes down by one." title="Remove this goal (the score goes down by one)">&times;</button></span></li>';
+    }).join('') + '</ol>';
+  }
+  // The box under each match in the All fixtures list.
+  function goalsBlock(f) {
+    if (needs125()) return '';
+    var h = teamById(f.home_team_id), a = teamById(f.away_team_id); if (!h || !a) return '';
+    var hs = f.home_score || 0, as = f.away_score || 0, hr = goalsFor(f.id, h.id).length, ar = goalsFor(f.id, a.id).length, un = Math.max(0, hs - hr) + Math.max(0, as - ar);
+    var hints = [];
+    if (!hr && !ar && !hs && !as) hints.push('No goals yet. Add them here, or tap + under Live scoring while the match is on.');
+    if (un) hints.push(un + (un === 1 ? ' goal in the score has' : ' goals in the score have') + ' no scorer listed yet. “+ Scorer for…” fills one in without changing the score.');
+    if (hr > hs || ar > as) hints.push('More goals are listed than the score shows. Remove the extras or change the score.');
+    function add(t, k, score, rows) { return '<button type="button" class="btn btn-outline" data-ua-gp-open="' + k + '">' + (rows < score ? '+ Scorer for ' : '+ Goal for ') + esc(t.name) + '</button>'; }
+    return '<div class="ua-goals"><div class="ua-goals-top"><h4>Goalscorers</h4><div class="ua-goals-add">' + add(h, 'h', hs, hr) + add(a, 'a', as, ar) + '</div></div>' +
+      goalRowsHtml(f) + hints.map(function (x) { return '<p class="ua-hint">' + esc(x) + '</p>'; }).join('') + pickerHtml(f, 'form') + '</div>';
+  }
+  function goalsNotice() {
+    if (!needs125() || !(D.fixtures || []).length) return '';
+    return '<div class="ua-card ua-card--warn"><h3>One more step: who scored</h3><p class="ua-hint">Run <code>125-unity-cup-goalscorers.sql</code> (from the <code>db/migrations</code> folder) in the Supabase SQL Editor, then reload. Until then the + and &minus; buttons only change the score.</p></div>';
+  }
+
+  // ----- the player search -----
+  function pickModel() {
+    var p = picker, f = fixtureById(p.fid), toks = norm(p.q).split(/\s+/).filter(Boolean), groups = [], flat = [];
+    var other = p.team === f.home_team_id ? f.away_team_id : f.home_team_id;
+    [[p.team, false], [other, true]].forEach(function (pair) {
+      var rows = (D.players || []).filter(function (x) { return x.team_id === pair[0] && x.active !== false; }), hits = [];
+      rows.forEach(function (x) {
+        var n = norm(x.name), sh = norm(x.shirt_no), rank = 0;
+        if (toks.length) {
+          if (!toks.every(function (tk) { return n.indexOf(tk) >= 0 || (sh && /^\d+$/.test(tk) && sh === tk); })) return;
+          rank = (n.split(/\s+/).some(function (w) { return w.indexOf(toks[0]) === 0; }) || sh === toks[0]) ? 0 : 1;   // names that start with it come first
+        }
+        hits.push({ x: x, rank: rank });
+      });
+      if (toks.length) hits.sort(function (a, b) { return a.rank - b.rank; });
+      groups.push({ team: teamById(pair[0]) || {}, own: pair[1], total: rows.length, rows: hits.map(function (s) { return s.x; }) });
+    });
+    groups.forEach(function (g) { g.rows.forEach(function (x) { flat.push({ player: x, own: g.own }); }); });
+    var q = String(p.q || '').trim(), guest = null;
+    if (q.length >= 2 && !flat.some(function (it) { return norm(it.player.name) === norm(q); })) { guest = q.slice(0, 60); flat.push({ guest: guest }); }
+    return { groups: groups, flat: flat, guest: guest, q: q };
+  }
+  function pickListHtml() {
+    var p = picker, m = pickModel(), i = 0, cred = teamById(p.team) || {};
+    if (p.active == null || p.active >= m.flat.length) p.active = m.q && m.flat.length ? 0 : -1;
+    function row(no, name, meta, cls) {
+      var idx = i++;
+      return '<button type="button" role="option" id="ua-gp-o' + idx + '" class="ua-pk-row' + (cls || '') + (idx === p.active ? ' is-active' : '') + '" aria-selected="' + (idx === p.active) + '" data-ua-gp-pick="' + idx + '">' +
+        '<span class="ua-pk-no">' + esc(no) + '</span><span class="ua-pk-txt"><span class="ua-pk-name">' + name + '</span>' + (meta ? '<span class="ua-pk-meta">' + esc(meta) + '</span>' : '') + '</span></button>';
+    }
+    var html = m.groups.map(function (g) {
+      if (!g.rows.length && g.total) return '';   // nobody in this team matches what was typed
+      var head = '<div class="ua-pk-group' + (g.own ? ' is-own' : '') + '" role="presentation"><i style="background:' + esc(g.team.colour || '#d4a62b') + '"></i><span>' + esc(g.team.name || '') + '</span>' + (g.own ? '<small>own goal for ' + esc(cred.name || '') + '</small>' : '') + '</div>';
+      if (!g.total) return head + '<p class="ua-pk-none">No players added for ' + esc(g.team.name || 'this team') + ' yet (Squads tab). You can still type a name below.</p>';
+      return head + g.rows.map(function (x) { return row(x.shirt_no || '–', esc(x.name), [x.position, x.captain ? 'Captain' : ''].filter(Boolean).join(' · '), g.own ? ' is-own' : ''); }).join('');
+    }).join('');
+    if (m.q && !m.flat.some(function (it) { return it.player; })) html += '<p class="ua-pk-none">No one on the squad lists matches “' + esc(m.q) + '”.</p>';
+    if (m.guest) html += '<div class="ua-pk-group" role="presentation"><span>Not on the list?</span></div>' + row('+', 'Use “' + esc(m.guest) + '”', 'type-in scorer', ' ua-pk-guest');
+    return html;
+  }
+  function pickerHtml(f, ctx) {
+    var p = picker; if (!p || p.fid !== f.id || p.ctx !== ctx) return '';
+    var cred = teamById(p.team) || {}, g = p.mode === 'edit' ? goalById(p.goalId) : null;
+    var info = p.mode === 'edit' ? 'Pick the right name. The score stays as it is.' : p.bump ? 'This adds 1 to the score for ' + cred.name + '.' : 'This goal is already in the score, so the score won’t change.';
+    var none = p.mode === 'edit' ? (g && scorerName(g) ? 'Remove the scorer (keep the goal)' : '') : 'Record the goal without a name';
+    return '<div class="ua-pick" data-ua-pick role="group" aria-label="Choose who scored">' +
+      '<div class="ua-pick-head"><div><strong>Who scored for ' + esc(cred.name) + '?</strong><small>' + esc(info) + '</small></div><button type="button" class="ua-gbtn ua-gbtn--x" data-ua-gp-close aria-label="Close without saving">&times;</button></div>' +
+      '<div class="ua-pick-find"><label><span class="visually-hidden">Search players in either team</span><input type="search" data-ua-gp-q placeholder="Search both teams…" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" role="combobox" aria-expanded="true" aria-controls="ua-gp-list" aria-autocomplete="list" value="' + esc(p.q) + '"></label>' +
+      '<label><span class="visually-hidden">Minute (optional)</span><input type="number" data-ua-gp-min min="0" max="150" inputmode="numeric" placeholder="Min" value="' + esc(p.minute) + '"></label></div>' +
+      '<div class="ua-pick-list" id="ua-gp-list" role="listbox" aria-label="Players" data-ua-gp-list>' + pickListHtml() + '</div>' +
+      '<p class="visually-hidden" role="status" data-ua-gp-count></p>' +
+      '<div class="ua-pick-foot">' + (none ? '<button type="button" class="btn btn-outline" data-ua-gp-none>' + esc(none) + '</button>' : '') + '<button type="button" class="btn btn-outline" data-ua-gp-close>Cancel</button></div></div>';
+  }
+  function refreshPickList() {
+    var l = $('[data-ua-gp-list]'); if (!l || !picker) return;
+    picker.active = pickModel().flat.length && picker.q.trim() ? 0 : -1;
+    l.innerHTML = pickListHtml();
+    var n = $$('.ua-pk-row', l).length, c = $('[data-ua-gp-count]'); if (c) c.textContent = n + (n === 1 ? ' result' : ' results');
+    var qi = $('[data-ua-gp-q]'); if (qi) { if (picker.active >= 0) qi.setAttribute('aria-activedescendant', 'ua-gp-o' + picker.active); else qi.removeAttribute('aria-activedescendant'); }
+  }
+  function moveActive(d) {
+    var rows = $$('.ua-pk-row', $('[data-ua-gp-list]')); if (!rows.length || !picker) return;
+    var n = picker.active < 0 ? (d > 0 ? 0 : rows.length - 1) : Math.max(0, Math.min(rows.length - 1, picker.active + d));
+    picker.active = n;
+    rows.forEach(function (r, i) { r.classList.toggle('is-active', i === n); r.setAttribute('aria-selected', i === n ? 'true' : 'false'); });
+    rows[n].scrollIntoView({ block: 'nearest' });
+    var qi = $('[data-ua-gp-q]'); if (qi) qi.setAttribute('aria-activedescendant', 'ua-gp-o' + n);
+  }
+  function closePicker() { picker = null; var el = $('[data-ua-pick]'); if (el) el.remove(); }
+
+  // The Goalscorers box lives inside a form with unsaved edits; redrawing it would throw those away, so ask for a save first.
+  function formGuard(fid) {
+    var row = root.querySelector('.ua-fx[data-fid="' + fid + '"]'), f = fixtureById(fid); if (!row || !f) return false;
+    var v = readFixture(row), same = function (a, b) { return (a == null ? '' : String(a)) === (b == null ? '' : String(b)); };
+    var k1 = v.kickoff ? Math.floor(new Date(v.kickoff).getTime() / 60000) : '', k2 = f.kickoff_at ? Math.floor(new Date(f.kickoff_at).getTime() / 60000) : '';
+    var dirty = !(same(v.stage, f.stage) && same(v.home, f.home_team_id) && same(v.away, f.away_team_id) && same(v.pitch, f.pitch) && same(v.status, f.status) && same(v.hs, f.home_score) && same(v.as, f.away_score) && same(v.note, f.note) && k1 === k2);
+    if (dirty) toast('Save your changes to this match first (Save button below), then add or change goals.', null, true);
+    return dirty;
+  }
+  function openPicker(fid, team, ctx, mode, goalId) {
+    var f = fixtureById(fid); if (!f) return;
+    var g = mode === 'edit' ? goalById(goalId) : null;
+    picker = { fid: fid, ctx: ctx, team: team, mode: mode, goalId: goalId || null, bump: !(mode === 'add' && ctx === 'form' && goalsFor(fid, team).length < scoreOf(f, team)), q: '', minute: g && g.minute != null ? String(g.minute) : '', active: -1, focus: true };
+    render();
+  }
+  function pickChoose(idx) {
+    var p = picker; if (!p) return;
+    var it = pickModel().flat[idx]; if (!it) return;
+    var minute = parseMinute(p.minute); if (minute === false) { toast('The minute must be a whole number from 0 to 150 (or leave it empty).', null, true); return; }
+    if (p.ctx === 'form' && formGuard(p.fid)) return;
+    if (p.mode === 'edit') setScorer(p.goalId, it.player || null, it.guest || null, minute);
+    else recordGoal({ fid: p.fid, team: p.team, player: it.player || null, name: it.guest || null, minute: minute, bump: p.bump });
+  }
+  function pickNone() {
+    var p = picker; if (!p) return;
+    var minute = parseMinute(p.minute); if (minute === false) { toast('The minute must be a whole number from 0 to 150 (or leave it empty).', null, true); return; }
+    if (p.ctx === 'form' && formGuard(p.fid)) return;
+    if (p.mode === 'edit') setScorer(p.goalId, null, null, minute);
+    else recordGoal({ fid: p.fid, team: p.team, player: null, name: null, minute: minute, bump: p.bump });
+  }
+  // After a redraw: if the search was just opened, bring it into view and (on a keyboard device) put the cursor in it.
+  function pickerAfterRender() {
+    if (!picker || !picker.focus) return;
+    picker.focus = false;
+    var host = $('[data-ua-pick]'); if (!host) return;
+    try { host.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { host.scrollIntoView(); }
+    var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;   // on a phone the keyboard would hide the list, so tap the box to type
+    var qi = $('[data-ua-gp-q]'); if (qi && !coarse) qi.focus({ preventScroll: true });
   }
 
   // ---------------------------------------------------------------------
@@ -693,7 +935,7 @@
   // ---------------------------------------------------------------------
   root.addEventListener('click', function (e) {
     var t = e.target;
-    var tb = t.closest('[data-ua-tab]'); if (tb) { tab = tb.getAttribute('data-ua-tab'); render(); return; }
+    var tb = t.closest('[data-ua-tab]'); if (tb) { tab = tb.getAttribute('data-ua-tab'); picker = null; render(); return; }
     if (t.closest('[data-ua-save-settings]')) {
       var p = {};
       $$('[data-ua-f]').forEach(function (el) {
@@ -731,8 +973,27 @@
       if (all && mode === 'hide' && !window.confirm('Hide every fixture from the public page? Visitors will see no fixtures, results or tables until you publish again.')) return;
       setVis(all ? null : [frow.getAttribute('data-fid')], mode, when, fv); return;
     }
+    var gpo = t.closest('[data-ua-gp-open]');
+    if (gpo) { var gfid = gpo.closest('[data-fid]').getAttribute('data-fid'), gfx = fixtureById(gfid); if (gfx && !formGuard(gfid)) openPicker(gfid, gpo.getAttribute('data-ua-gp-open') === 'h' ? gfx.home_team_id : gfx.away_team_id, 'form', 'add'); return; }
+    if (t.closest('[data-ua-gp-close]')) { closePicker(); return; }
+    var gpp = t.closest('[data-ua-gp-pick]'); if (gpp) { pickChoose(Number(gpp.getAttribute('data-ua-gp-pick'))); return; }
+    if (t.closest('[data-ua-gp-none]')) { pickNone(); return; }
+    var ge = t.closest('[data-ua-goal-edit]');
+    if (ge) { var gr = ge.closest('[data-gid]'), gg = goalById(gr.getAttribute('data-gid')), gc = ge.closest('[data-ua-ctx]').getAttribute('data-ua-ctx'); if (gg && !isTmp(gg.id) && !(gc === 'form' && formGuard(gg.fixture_id))) openPicker(gg.fixture_id, gg.team_id, gc, 'edit', gg.id); return; }
+    var gx = t.closest('[data-ua-goal-del]');
+    if (gx) { var gid = gx.closest('[data-gid]').getAttribute('data-gid'), g0 = goalById(gid); if (g0 && !(gx.closest('[data-ua-ctx]').getAttribute('data-ua-ctx') === 'form' && formGuard(g0.fixture_id))) removeGoal(gid); return; }
     var gl = t.closest('[data-ua-goal]');
-    if (gl) { var lv = gl.closest('[data-fid]'), hs = Number(lv.getAttribute('data-hs')), as = Number(lv.getAttribute('data-as')), d = Number(gl.getAttribute('data-d')); if (gl.getAttribute('data-ua-goal') === 'h') hs = Math.max(0, Math.min(99, hs + d)); else as = Math.max(0, Math.min(99, as + d)); var fx0 = (D.fixtures || []).filter(function (x) { return x.id === lv.getAttribute('data-fid'); })[0]; setScore(lv.getAttribute('data-fid'), hs, as, fx0 && fx0.status === 'scheduled' ? 'live' : (fx0 ? fx0.status : 'live')); return; }
+    if (gl) {
+      var lv = gl.closest('[data-fid]'), lfid = lv.getAttribute('data-fid'), fx0 = fixtureById(lfid), side = gl.getAttribute('data-ua-goal'), d = Number(gl.getAttribute('data-d'));
+      if (!needs125() && fx0) {
+        var tid = side === 'h' ? fx0.home_team_id : fx0.away_team_id;
+        if (d > 0) { openPicker(lfid, tid, 'live', 'add'); return; }
+        var lg = latestGoal(lfid, tid); if (lg) { removeGoal(lg.id); return; }   // no goal listed for them: fall through to a plain -1
+      }
+      var hs = Number(lv.getAttribute('data-hs')), as = Number(lv.getAttribute('data-as'));
+      if (side === 'h') hs = Math.max(0, Math.min(99, hs + d)); else as = Math.max(0, Math.min(99, as + d));
+      setScore(lfid, hs, as, fx0 && fx0.status === 'scheduled' ? 'live' : (fx0 ? fx0.status : 'live')); return;
+    }
     var ss = t.closest('[data-ua-status]');
     if (ss) { var lv2 = ss.closest('[data-fid]'); setScore(lv2.getAttribute('data-fid'), Number(lv2.getAttribute('data-hs')), Number(lv2.getAttribute('data-as')), ss.getAttribute('data-ua-status')); return; }
     if (t.closest('[data-ua-draw]')) { openDraw(); return; }
@@ -777,6 +1038,26 @@
     sqSaveRow(f.closest('[data-pid]'), f);
   });
   root.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.closest('.sq-row') && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') { e.preventDefault(); e.target.blur(); } });
+  // The goalscorer search: type to filter, arrows + Enter to choose, Escape to clear / close.
+  root.addEventListener('input', function (e) {
+    if (!picker || !e.target.closest) return;
+    if (e.target.closest('[data-ua-gp-q]')) { picker.q = e.target.value; refreshPickList(); }
+    else if (e.target.closest('[data-ua-gp-min]')) picker.minute = e.target.value;
+  });
+  root.addEventListener('keydown', function (e) {
+    if (!picker || !e.target.closest) return;
+    var qi = e.target.closest('[data-ua-gp-q]'), mi = e.target.closest('[data-ua-gp-min]');
+    if (e.key === 'Escape' && (qi || mi || e.target.closest('[data-ua-pick]'))) {
+      e.preventDefault();
+      if (qi && picker.q) { picker.q = ''; qi.value = ''; refreshPickList(); } else closePicker();
+      return;
+    }
+    if (qi) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); moveActive(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); moveActive(-1); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (picker.active >= 0) pickChoose(picker.active); }
+    } else if (mi && e.key === 'Enter') { e.preventDefault(); var q2 = $('[data-ua-gp-q]'); if (q2) q2.focus(); }
+  });
   document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-ua-draw-close]')) closeDraw(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && overlay) closeDraw(); });
 
@@ -797,5 +1078,5 @@
       load(true);
     });
   });
-  timer = window.setInterval(function () { if (visible() && !overlay && !document.hidden) load(true); }, 10000);
+  timer = window.setInterval(function () { if (visible() && !overlay && !document.hidden && !busy) load(true); }, 10000);
 })();

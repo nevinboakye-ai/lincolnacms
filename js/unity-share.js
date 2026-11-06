@@ -201,7 +201,9 @@
   R.match = function (ctx, H, d, o, imgs) {
     var f = d.fixture, a = frame(ctx, H, o, imgs), st = statusOf(f), has = scoreOf(f);
     var r = o.story ? 150 : 132, sub = [f.stage, f.pitch, f.status === 'scheduled' ? '' : f.time].filter(Boolean).join(' · ');
-    var block = 64 + 56 + 70 + r * 2 + 130 + (f.note ? 60 : 0), top = a.top + Math.max(10, (a.bottom - a.top - block) / 2) - 20;
+    // Who scored: up to four names under each team (the rest are summarised)
+    var sg = has && f.goals ? f.goals : { h: [], a: [] }, sRows = Math.min(5, Math.max(sg.h.length, sg.a.length)), sH = sRows ? 34 + sRows * 46 : 0;
+    var block = 64 + 56 + 70 + r * 2 + 130 + (f.note ? 60 : 0) + sH, top = a.top + Math.max(10, (a.bottom - a.top - block) / 2) - 20;
     var cy = top + 64 + 56 + 70 + r;
     pill(ctx, st.text, W / 2, top, { bg: st.bg, color: st.color, font: F(800, 34), h: 64, align: 'center' });
     if (sub) txt(ctx, sub, W / 2, top + 64 + 50, { font: F(600, 30), color: MUTED, align: 'center', maxW: W - PAD * 2 });
@@ -214,7 +216,15 @@
       txt(ctx, '-', W / 2, cy + 6, { font: F(700, 90, DISPLAY), color: MUTED, align: 'center', base: 'middle' });
       txt(ctx, String(f.as), W / 2 + 78, cy + 6, { font: F(800, 170, DISPLAY), color: f.status === 'live' ? '#4fd186' : INK, align: 'center', base: 'middle', shadow: 10 });
     } else txt(ctx, 'v', W / 2, cy, { font: F(700, 90, DISPLAY), color: MUTED, align: 'center', base: 'middle' });
-    if (f.note) txt(ctx, f.note, W / 2, cy + r + 150, { font: F(600, 30), color: MUTED, align: 'center', maxW: W - PAD * 2 });
+    if (sRows) {
+      var sy = cy + r + 150;
+      [[sg.h, lx], [sg.a, rx]].forEach(function (col) {
+        var list = col[0].slice(0, sRows);
+        if (col[0].length > sRows) list[sRows - 1] = '+ ' + (col[0].length - sRows + 1) + ' more';
+        list.forEach(function (line, i) { txt(ctx, line, col[1], sy + i * 46, { font: F(600, 32), color: INK, align: 'center', base: 'middle', maxW: 420 }); });
+      });
+    }
+    if (f.note) txt(ctx, f.note, W / 2, cy + r + 150 + sH, { font: F(600, 30), color: MUTED, align: 'center', maxW: W - PAD * 2 });
   };
 
   R.tables = function (ctx, H, d, o, imgs) {

@@ -736,6 +736,20 @@
   }
   function timeOf(d) { return d ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'TBC'; }
 
+  // Who scored for a team in a match, one entry per player with all their minutes (a goal counts for the team it was
+  // given to, so an own goal is listed under the other side). Only goals with a name are sent to the public page.
+  function scorerGroups(f, teamId) {
+    var order = [], by = {};
+    (f.goals || []).forEach(function (g) {
+      if (!g || !g.name || g.team_id !== teamId) return;
+      var k = (g.player_id || g.name) + (g.own_goal ? '|og' : '');
+      if (!by[k]) { by[k] = { name: g.name, og: !!g.own_goal, mins: [] }; order.push(k); }
+      if (g.minute != null) by[k].mins.push(g.minute);
+    });
+    return order.map(function (k) { return by[k]; });
+  }
+  function scorerText(m) { return m.name + (m.og ? ' (OG)' : '') + (m.mins.length ? ' ' + m.mins.map(function (x) { return x + '\u2032'; }).join(', ') : ''); }
+
   function fixtureCard(f) {
     var h = teamsById[f.home_team_id], a = teamsById[f.away_team_id];
     if (!h || !a) return '';
@@ -743,9 +757,16 @@
     var live = f.status === 'live';
     var state = live ? '<span class="uc-fx-state is-live"><i></i>Live</span>' : f.status === 'finished' ? '<span class="uc-fx-state">Full time</span>' : f.status === 'postponed' ? '<span class="uc-fx-state is-off">Postponed</span>' : '<span class="uc-fx-state is-time">' + esc(timeOf(d)) + '</span>';
     var win = has && f.status === 'finished' ? (f.home_score > f.away_score ? 'h' : f.home_score < f.away_score ? 'a' : '') : '';
+    function scorers(t) {
+      if (!has) return '';
+      var gs = scorerGroups(f, t.id);
+      return gs.length ? '<ul class="uc-fx-goals" aria-label="Goals for ' + esc(t.name) + '">' + gs.map(function (m) {
+        return '<li>' + ICON.ball + '<span><b>' + esc(m.name) + '</b>' + (m.og ? ' <em>OG</em>' : '') + (m.mins.length ? ' <small>' + m.mins.map(function (x) { return x + '\u2032'; }).join(', ') + '</small>' : '') + '</span></li>';
+      }).join('') + '</ul>' : '';
+    }
     function line(t, score, isWin) {
       return '<div class="uc-fx-line' + (isWin ? ' is-win' : '') + '"><button type="button" class="uc-fx-team" data-team-open="' + esc(t.id) + '">' + crest(t) + '<span>' + esc(t.name) + '</span></button>' +
-        '<b class="uc-fx-sc' + (live ? ' is-live' : '') + '">' + (has ? score : '') + '</b></div>';
+        '<b class="uc-fx-sc' + (live ? ' is-live' : '') + '">' + (has ? score : '') + '</b>' + scorers(t) + '</div>';
     }
     return '<li class="uc-fx' + (live ? ' is-live' : '') + (f.status === 'finished' ? ' is-done' : '') + '">' +
       '<div class="uc-fx-top">' + state + '<span class="uc-fx-meta">' + (f.stage ? esc(f.stage) : '') + (f.stage && f.pitch ? ' &middot; ' : '') + (f.pitch ? esc(f.pitch) : '') + '</span>' + (window.UnityShare ? '<button type="button" class="uc-share uc-share--icon" data-share-match="' + esc(f.id) + '" aria-label="Share this match as a picture" title="Share as a picture">' + ICON.share + '</button>' : '') + '</div>' +
@@ -843,7 +864,8 @@
   function shareTeam(t) { return t ? { name: t.name, short_name: t.short_name, colour: t.colour, logo: logoUrl(t) || null } : { name: '?', colour: '#d4a62b' }; }
   function shareFixture(f) {
     var d = kickDate(f), tm = d ? timeOf(d) : 'TBC';
-    return { home: shareTeam(teamsById[f.home_team_id]), away: shareTeam(teamsById[f.away_team_id]), hs: f.home_score, as: f.away_score, status: f.status, time: tm, stage: f.stage || '', pitch: f.pitch || '', note: f.note || '' };
+    return { home: shareTeam(teamsById[f.home_team_id]), away: shareTeam(teamsById[f.away_team_id]), hs: f.home_score, as: f.away_score, status: f.status, time: tm, stage: f.stage || '', pitch: f.pitch || '', note: f.note || '',
+      goals: { h: scorerGroups(f, f.home_team_id).map(scorerText), a: scorerGroups(f, f.away_team_id).map(scorerText) } };
   }
   // The address a shared picture points people to: the page that matches what is being shared
   function pageUrl(key) { return (window.UnityShare ? UnityShare.SITE.replace(/[^\/]*$/, '') : 'https://lincolnacms.uk/') + PAGE[key || 'hub']; }

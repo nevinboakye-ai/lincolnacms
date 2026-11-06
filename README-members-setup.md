@@ -2034,3 +2034,26 @@ The Unity Cup portal used to be one long page. It is now an **overview** plus **
 - **Share as a picture** now points people at the page that matches what they share (a line-up goes to Teams, fixtures and tables to Fixtures, the result to Vote, a raffle winner to Raffle).
 - The share-as-a-picture, Hub Access, private team links and committee panel are unchanged. `unity-team.html` (the private team page) is a separate page and is not part of this.
 - **If you add a section later:** the tab bar is written into each page (so it works before anything loads), so add a link in all of the `unity-cup*.html` pages.
+
+## 178. Who scored the goal (migration 125)
+
+Run `db/migrations/125-unity-cup-goalscorers.sql` in the Supabase SQL Editor (after 115, 116, 120 and 122; safe to run again). It adds one table (`unity_goals`) and four committee-only functions, and the public Unity Cup page now shows the scorers.
+
+**On the day (Dashboard -> Unity Cup -> Fixtures -> Live scoring)**
+- Tap **+** next to a team when a goal goes in. A search box opens listing the players of **both teams in that match** (the scoring team first). Type part of a name or a shirt number, then tap the name (or press Enter on a computer; arrow keys move up and down, Escape clears or closes). The goal is saved and that team's score goes up by one in the same step.
+- **Minute** is optional: type it in the small box first.
+- Picking a player from the **other** team records an **own goal**: it counts for the team they were playing against and is marked "own goal".
+- Someone not on the squad list? Type their name and choose **Use "name"**.
+- No time to look it up? **Record the goal without a name** adds the goal and the score; add the name afterwards with **Add scorer**.
+- Tap **-** to take the most recent goal for that team back off (the score goes down by one). A message at the bottom of the screen has an **Undo** for about 10 seconds.
+
+**Afterwards (All fixtures list)**
+- Each match has a **Goalscorers** box under the score boxes: edit a scorer or minute (**Edit**), remove a goal (**x**, which also lowers the score by one), or add one.
+- For a result that was **typed in without scorers**, the buttons say **+ Scorer for ...**: they fill in a scorer for a goal that is already in the score and leave the score alone. When every goal has a scorer they change to **+ Goal for ...**, which adds a new goal and raises the score.
+- If you have unsaved changes in a match's form, you are asked to save first (adding a goal redraws that match).
+
+**Good to know**
+- Typing a score in by hand still works and never touches the goal list. The Goalscorers box points out when the score and the list don't match.
+- **On the public page** each team's scorers appear under its score (for example "Marcus Tolliver 12'", "(OG)" for own goals), and the "Share as a picture" result card lists them too. Only goals with a name are sent, and only for fixtures that are public (see 175), so hidden fixtures never leak their scorers.
+- Player names shown are the ones already on the public squads. If a player is deleted later, the goal keeps the name it had.
+- Until the migration is run the dashboard shows a reminder and + / - only change the score, as before.
