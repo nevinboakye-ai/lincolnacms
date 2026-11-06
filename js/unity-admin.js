@@ -91,9 +91,6 @@
       field('Minimum donation (£)', '<input type="number" step="0.01" min="0" data-ua-f="min_donation" value="' + esc(s.min_donation) + '">') +
       field('JustGiving link', '<input type="url" data-ua-f="justgiving_url" value="' + esc(s.justgiving_url) + '">') +
       '</div><button type="button" class="btn btn-primary" data-ua-save-settings>Save details</button></div>' +
-      '<div class="ua-card ua-card--warn"><h3>Email check</h3>' +
-      sw('require_email_code', 'Email a code before voting or entering', 'Keeps voting fair. Only switch this off if the emails stop arriving: one vote per address still applies, but fake addresses become possible.', s.require_email_code) +
-      '</div>' +
       '<div class="ua-card"><h3>Tidy up</h3><p class="ua-hint">After the event: delete raffle names and emails and the "who voted" list (kept to stop double voting), and old unreviewed uploads. Done automatically 30 days after the event date if you run it then.</p>' +
       '<div class="ua-row"><button type="button" class="btn btn-outline" data-ua-purge>Clean up old data</button><button type="button" class="btn btn-outline sh-btn-danger" data-ua-reset>Clear all votes (testing)</button></div></div>';
   }
@@ -1112,7 +1109,6 @@
     var sw = e.target.closest('[data-ua-set]');
     if (!sw) return;
     var key = sw.getAttribute('data-ua-set'), p = {}; p[key] = sw.checked;
-    if (key === 'require_email_code' && !sw.checked && !window.confirm('Switch OFF the emailed code? Anyone can then vote with any made-up address (still one vote per address). Only do this if emails are not arriving.')) { sw.checked = true; return; }
     if (key === 'show_results' && sw.checked && D.settings.voting_open && !window.confirm('Voting is still open. Show the results to everyone now?')) { sw.checked = false; return; }
     saveSettings(p);
   });

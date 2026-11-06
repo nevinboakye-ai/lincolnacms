@@ -35,18 +35,14 @@
     bad_token: 'Your sign-in has run out. Please verify your email again.',
     already_voted: 'This email address has already been used to vote. It\'s one vote each!',
     already_entered: 'This email address has already entered the raffle.',
-    no_code: 'Please ask for a code first.',
-    code_expired: 'That code has expired. Ask for a new one.',
-    too_many_attempts: 'Too many wrong tries. Please ask for a new code.',
-    bad_code: 'That code isn\'t right. Check the email and try again.',
-    rate_limited: 'You\'ve asked for a few codes already. Please wait a few minutes (and check your spam folder).',
     busy: 'It\'s very busy right now. Please try again in a minute.',
-    send_failed: 'We couldn\'t send the email. Please check the address and try again.',
     not_confirmed: 'Please tick the box to confirm.',
     amount_too_low: 'The minimum donation to enter is shown above.',
     bad_name: 'Please enter your name.',
     missing_file: 'That upload didn\'t finish. Please try again.',
     bad_path: 'That file couldn\'t be accepted.',
+    network: 'We couldn\u2019t reach the server. Please check your connection and try again. If it keeps happening, message us on Instagram or email acms@lincolnsu.com.',
+    timeout: 'That is taking longer than it should. Please check your connection and try again.',
     server: 'Something went wrong on our side. Please try again in a moment.'
   };
 
@@ -423,38 +419,32 @@
   }
   function msgBox(text, bad) { return '<p class="uc-msg' + (bad ? ' is-bad' : '') + '" role="' + (bad ? 'alert' : 'status') + '">' + esc(text) + '</p>'; }
   function setMsg(text, bad) { var el = $('[data-uc-msg]', modalEl); if (el) el.innerHTML = text ? msgBox(text, bad) : ''; }
-  function busy(btn, on, label) { if (!btn) return; btn.disabled = on; if (label != null) { if (on) { btn.dataset.l = btn.textContent; btn.textContent = label; } else if (btn.dataset.l) btn.textContent = btn.dataset.l; } }
-
-  // ---------------------------------------------------------------------
-  // Emailed code (shared by vote and raffle)
-  function requestCode(email, purpose) {
-    return supabaseClient.functions.invoke('unity-cup-code', { body: { email: email, purpose: purpose } }).then(function (res) {
-      if (res.error && !res.data) return { ok: false, error: 'server' };
-      return res.data || { ok: false, error: 'server' };
-    }, function () { return { ok: false, error: 'server' }; });
-  }
-
-  function codeStep(kind, email, extra) {
-    return '<h2 id="uc-modal-title" class="uc-modal-title">Check your email</h2>' +
-      '<p class="uc-modal-lede">We sent a 6-digit code to <strong>' + esc(email) + '</strong>. It works for 10 minutes. Look in spam or promotions if it doesn&rsquo;t show up.</p>' +
-      '<form data-uc-code-form novalidate>' +
-      '<label class="uc-label" for="uc-code">6-digit code</label>' +
-      '<input class="uc-input uc-code-input" id="uc-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="000000" autofocus>' +
-      '<div data-uc-msg></div>' +
-      '<button type="submit" class="uc-btn uc-btn--gold uc-btn--block">' + (kind === 'vote' ? 'Confirm my vote' : kind === 'mom' ? 'Confirm and vote' : 'Confirm my entry') + '</button>' +
-      '<div class="uc-modal-links"><button type="button" class="uc-link" data-uc-resend disabled>Send a new code <span data-uc-cool>(30)</span></button><button type="button" class="uc-link" data-uc-back>Use a different email</button></div></form>';
-  }
-
-  function cooldown() {
-    var btn = $('[data-uc-resend]', modalEl), cool = $('[data-uc-cool]', modalEl);
+  // Greys a button out while something is happening and shows `label` on it. Turning it off puts the original label back
+  // (it used to only do this when a label was passed, so after any error the button stayed stuck on "Sending...").
+  function busy(btn, on, label) {
     if (!btn) return;
-    var n = 30; btn.disabled = true;
-    var iv = window.setInterval(function () {
-      if (!modalEl || !btn.isConnected) { window.clearInterval(iv); return; }
-      n--; if (cool) cool.textContent = n > 0 ? '(' + n + ')' : '';
-      if (n <= 0) { btn.disabled = false; window.clearInterval(iv); }
-    }, 1000);
+    btn.disabled = on;
+    if (on) {
+      if (btn.dataset.l == null) btn.dataset.l = btn.textContent;
+      if (label != null) btn.textContent = label;
+      btn.setAttribute('aria-busy', 'true');
+    } else {
+      if (btn.dataset.l != null) { btn.textContent = btn.dataset.l; delete btn.dataset.l; }
+      btn.removeAttribute('aria-busy');
+    }
   }
+
+  // A database call that gives up after 20 seconds instead of leaving a button stuck for ever.
+  function rpcT(fn, args) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var timer = window.setTimeout(function () { finish({ data: null, error: { message: 'timeout' }, timeout: true }); }, 20000);
+      function finish(v) { if (done) return; done = true; window.clearTimeout(timer); resolve(v); }
+      try { supabaseClient.rpc(fn, args).then(finish, function () { finish({ data: null, error: { message: 'network' }, network: true }); }); }
+      catch (e) { finish({ data: null, error: { message: 'server' } }); }
+    });
+  }
+  function rpcFail(res) { return res && res.timeout ? errText('timeout') : res && res.network ? errText('network') : errText('server'); }
 
   // ---------------------------------------------------------------------
   // Vote flow
@@ -468,7 +458,6 @@
     wireVote();
   }
   function voteForm(p) {
-    var needCode = S.require_email_code;
     return '<span class="uc-modal-eyebrow">Player of the Tournament</span>' +
       '<h2 id="uc-modal-title" class="uc-modal-title">Your vote</h2>' +
       '<div class="uc-pick"><span class="uc-avatar">' + esc(initials(p.name)) + (p.shirt_no ? '<b>' + esc(p.shirt_no) + '</b>' : '') + '</span><div><strong>' + esc(p.name) + '</strong>' + (p.team ? '<small>' + esc(p.team) + '</small>' : '') + '</div></div>' +
@@ -476,9 +465,9 @@
       '<label class="uc-label" for="uc-email">Your email address</label>' +
       '<input class="uc-input" id="uc-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" autofocus value="' + esc(voteCtx.email) + '">' +
       '<input type="text" name="website" data-uc-hp tabindex="-1" autocomplete="off" aria-hidden="true" class="uc-hp">' +
-      '<p class="uc-fine">' + (needCode ? 'We email you a code to check the address is real. ' : '') + 'One vote per email address. We keep only a scrambled version of it to stop double voting, so <strong>nobody can see who voted for whom</strong>. <a href="privacy.html#unity-cup" target="_blank" rel="noopener">How we use it</a>.</p>' +
+      '<p class="uc-fine">One vote per email address. We keep only a scrambled version of it to stop double voting, so <strong>nobody can see who voted for whom</strong>. <a href="privacy.html#unity-cup" target="_blank" rel="noopener">How we use it</a>.</p>' +
       '<div data-uc-msg></div>' +
-      '<button type="submit" class="uc-btn uc-btn--gold uc-btn--block">' + (needCode ? 'Email me a code' : 'Cast my vote') + '</button></form>';
+      '<button type="submit" class="uc-btn uc-btn--gold uc-btn--block">Cast my vote</button></form>';
   }
   function wireVote() {
     var form = $('[data-uc-vote-form]', modalEl); if (!form) return;
@@ -488,40 +477,14 @@
       if ($('[data-uc-hp]', form).value) { voteDone(); return; }       // a bot filled the hidden field: pretend it worked
       if (!validEmail(email)) { setMsg(errText('bad_email'), true); return; }
       voteCtx.email = email;
-      var btn = $('button[type=submit]', form);
-      if (!S.require_email_code) { castVote(''); return; }
-      busy(btn, true, 'Sending…');
-      requestCode(email, 'vote').then(function (r) {
-        busy(btn, false);
-        if (!r.ok) { setMsg(errText(r.error), true); return; }
-        setModal(codeStep('vote', email)); wireCode('vote'); cooldown();
-      });
-    });
-  }
-  function wireCode(kind) {
-    var form = $('[data-uc-code-form]', modalEl); if (!form) return;
-    var input = $('#uc-code', form);
-    input.addEventListener('input', function () { input.value = input.value.replace(/\D/g, '').slice(0, 6); if (input.value.length === 6) form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true })); });
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var code = input.value.trim();
-      if (!/^\d{6}$/.test(code)) { setMsg('Enter the 6-digit code from the email.', true); return; }
-      if (kind === 'vote') castVote(code); else if (kind === 'mom') momVerify(code); else submitEntry(code);
-    });
-    $('[data-uc-back]', form).addEventListener('click', function () {
-      if (kind === 'vote') { setModal(voteForm(voteCtx.player)); wireVote(); } else if (kind === 'mom') { setModal(momEmailStep()); wireMomEmail(); } else { setModal(raffleForm()); wireRaffle(); }
-    });
-    $('[data-uc-resend]', form).addEventListener('click', function () {
-      var ctx = kind === 'vote' ? voteCtx : kind === 'mom' ? momCtx : raffleCtx, b = $('[data-uc-resend]', form);
-      b.disabled = true;
-      requestCode(ctx.email, kind).then(function (r) { if (!r.ok) setMsg(errText(r.error), true); else { setMsg('A new code is on its way.', false); } cooldown(); });
+      castVote('');
     });
   }
   function castVote(code) {
     var btn = $('button[type=submit]', modalEl); busy(btn, true, 'Checking…');
-    supabaseClient.rpc('unity_cast_vote', { p_email: voteCtx.email, p_code: code, p_player: voteCtx.player.id }).then(function (res) {
+    rpcT('unity_cast_vote', { p_email: voteCtx.email, p_code: code, p_player: voteCtx.player.id }).then(function (res) {
       busy(btn, false);
-      if (res.error || !res.data) { setMsg(errText('server'), true); return; }
+      if (res.error || !res.data) { setMsg(rpcFail(res), true); return; }
       if (!res.data.ok) {
         if (res.data.error === 'already_voted') lsSet(LS.voted, '1');
         setMsg(errText(res.data.error), true);
@@ -530,7 +493,7 @@
       }
       lsSet(LS.voted, '1');
       voteDone();
-    }, function () { busy(btn, false); setMsg(errText('server'), true); });
+    });
   }
   function voteDone() {
     var p = voteCtx.player;
@@ -590,17 +553,17 @@
     });
   }
   function momEmailStep() {
-    var needCode = S.require_email_code, p = momCtx.pid ? playerName(momCtx.pid) : '';
+    var p = momCtx.pid ? playerName(momCtx.pid) : '';
     return '<span class="uc-modal-eyebrow">Man of the match</span>' +
-      '<h2 id="uc-modal-title" class="uc-modal-title">Verify your email, once</h2>' +
+      '<h2 id="uc-modal-title" class="uc-modal-title">Your email, once</h2>' +
       (p ? '<div class="uc-pick"><span class="uc-avatar">' + esc(initials(p)) + '</span><div><strong>' + esc(p) + '</strong><small>Your pick</small></div></div>' : '') +
       '<form data-uc-mom-form novalidate>' +
       '<label class="uc-label" for="uc-email">Your email address</label>' +
       '<input class="uc-input" id="uc-email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" autofocus value="' + esc(momCtx.email) + '">' +
       '<input type="text" name="website" data-uc-hp tabindex="-1" autocomplete="off" aria-hidden="true" class="uc-hp">' +
-      '<p class="uc-fine">' + (needCode ? 'We email you a code to check the address is real. ' : '') + '<strong>You only do this once</strong>: after that you can vote in every game with one tap on this device. One vote per game. We keep only a scrambled version of your email, so <strong>nobody can see who voted for whom</strong>. <a href="privacy.html#unity-cup" target="_blank" rel="noopener">How we use it</a></p>' +
+      '<p class="uc-fine"><strong>You only do this once</strong>: after that you can vote in every game with one tap on this device. One vote per game. We keep only a scrambled version of your email, so <strong>nobody can see who voted for whom</strong>. <a href="privacy.html#unity-cup" target="_blank" rel="noopener">How we use it</a></p>' +
       '<div data-uc-msg></div>' +
-      '<button type="submit" class="uc-btn uc-btn--gold uc-btn--block">' + (needCode ? 'Email me a code' : 'Verify and vote') + '</button></form>';
+      '<button type="submit" class="uc-btn uc-btn--gold uc-btn--block">Continue and vote</button></form>';
   }
   function wireMomEmail() {
     var form = $('[data-uc-mom-form]', modalEl); if (!form) return;
@@ -610,39 +573,33 @@
       if ($('[data-uc-hp]', form).value) { momDone(); return; }
       if (!validEmail(email)) { setMsg(errText('bad_email'), true); return; }
       momCtx.email = email;
-      if (!S.require_email_code) { momVerify(''); return; }
-      var btn = $('button[type=submit]', form); busy(btn, true, 'Sending…');
-      requestCode(email, 'mom').then(function (r) {
-        busy(btn, false);
-        if (!r.ok) { setMsg(errText(r.error), true); return; }
-        setModal(codeStep('mom', email)); wireCode('mom'); cooldown();
-      });
+      momVerify('');
     });
   }
   function momVerify(code) {
     var btn = $('button[type=submit]', modalEl); busy(btn, true, 'Checking…');
-    supabaseClient.rpc('unity_mom_verify', { p_email: momCtx.email, p_code: code }).then(function (res) {
+    rpcT('unity_mom_verify', { p_email: momCtx.email, p_code: code }).then(function (res) {
       busy(btn, false);
-      if (res.error || !res.data) { setMsg(errText('server'), true); return; }
+      if (res.error || !res.data) { setMsg(rpcFail(res), true); return; }
       if (!res.data.ok) { setMsg(errText(res.data.error), true); return; }
       lsSet(LS.momToken, res.data.token);
       (res.data.voted || []).forEach(function (id) { if (!momVoted(id)) momRemember(id, ''); });
       if (momVoted(momCtx.fid)) { momAlready(); return; }
       momCast();
-    }, function () { busy(btn, false); setMsg(errText('server'), true); });
+    });
   }
   function momCast() {
     var go = $('[data-mom-go]', modalEl); if (go) busy(go, true, 'Voting…');
     else setModal('<div class="uc-success"><h2 id="uc-modal-title" class="uc-modal-title">Counting your vote…</h2></div>');
-    supabaseClient.rpc('unity_mom_vote', { p_token: momToken(), p_fixture: momCtx.fid, p_player: momCtx.pid }).then(function (res) {
-      if (res.error || !res.data) { momBack(errText('server')); return; }
+    rpcT('unity_mom_vote', { p_token: momToken(), p_fixture: momCtx.fid, p_player: momCtx.pid }).then(function (res) {
+      if (res.error || !res.data) { momBack(rpcFail(res)); return; }
       var d = res.data;
       if (d.ok) { momRemember(momCtx.fid, momCtx.pid); momDone(); return; }
       if (d.error === 'bad_token') { lsSet(LS.momToken, ''); setModal(momEmailStep()); wireMomEmail(); setMsg(errText('bad_token'), true); return; }
       if (d.error === 'already_voted') { momRemember(momCtx.fid, ''); momAlready(); return; }
       if (d.error === 'closed') { momBack('Man of the match voting for this game has just closed.'); loadState(true); return; }
       momBack(errText(d.error));
-    }, function () { momBack(errText('server')); });
+    });
   }
   function momBack(msg) {
     var f = fixtureById(momCtx.fid);
@@ -679,7 +636,7 @@
     wireRaffle();
   }
   function raffleForm() {
-    var c = raffleCtx, needCode = S.require_email_code;
+    var c = raffleCtx;
     return '<span class="uc-modal-eyebrow">Charity raffle</span>' +
       '<h2 id="uc-modal-title" class="uc-modal-title">Enter the raffle</h2>' +
       '<p class="uc-modal-lede">Donated at least ' + esc(money(S.min_donation)) + ' to our JustGiving page? Pop your details in. If you haven&rsquo;t yet, <a href="' + esc(S.justgiving_url) + '" target="_blank" rel="noopener">donate here first</a>.</p>' +
@@ -690,9 +647,9 @@
       '<div class="uc-field"><label class="uc-label" for="uc-r-donor">Name on the donation <span class="uc-opt">(if different)</span></label><input class="uc-input" id="uc-r-donor" maxlength="80" placeholder="As shown on JustGiving" value="' + esc(c.donor) + '"></div></div>' +
       '<input type="text" name="website" data-uc-hp tabindex="-1" autocomplete="off" aria-hidden="true" class="uc-hp">' +
       '<label class="uc-check"><input type="checkbox" id="uc-r-confirm"><span>I confirm I have donated at least <strong>' + esc(money(S.min_donation)) + '</strong> to the LACMS JustGiving page, and I have read the <a href="#uc-rules" data-uc-rules>raffle rules</a>.</span></label>' +
-      '<p class="uc-fine">The committee checks each entry against the JustGiving donations before the draw. We use your name and email only to run the raffle and contact a winner, and delete them after the event. ' + (needCode ? 'We email a code to check the address is real. ' : '') + '<a href="privacy.html#unity-cup" target="_blank" rel="noopener">Privacy</a>.</p>' +
+      '<p class="uc-fine">The committee checks each entry against the JustGiving donations before the draw. We use your name and email only to run the raffle and contact a winner, and delete them after the event. <a href="privacy.html#unity-cup" target="_blank" rel="noopener">Privacy</a>.</p>' +
       '<div data-uc-msg></div>' +
-      '<button type="submit" class="uc-btn uc-btn--gold uc-btn--block">' + (needCode ? 'Email me a code' : 'Enter the raffle') + '</button></form>';
+      '<button type="submit" class="uc-btn uc-btn--gold uc-btn--block">Enter the raffle</button></form>';
   }
   function wireRaffle() {
     var form = $('[data-uc-raffle-form]', modalEl); if (!form) return;
@@ -708,25 +665,18 @@
       if (!validEmail(c.email)) { setMsg(errText('bad_email'), true); return; }
       if (!(Number(c.amount) >= Number(S.min_donation))) { setMsg('The minimum donation to enter is ' + money(S.min_donation) + '.', true); return; }
       if (!$('#uc-r-confirm', form).checked) { setMsg(errText('not_confirmed'), true); return; }
-      var btn = $('button[type=submit]', form);
-      if (!S.require_email_code) { submitEntry(''); return; }
-      busy(btn, true, 'Sending…');
-      requestCode(c.email, 'raffle').then(function (r) {
-        busy(btn, false);
-        if (!r.ok) { setMsg(errText(r.error), true); return; }
-        setModal(codeStep('raffle', c.email)); wireCode('raffle'); cooldown();
-      });
+      submitEntry('');
     });
   }
   function submitEntry(code) {
     var c = raffleCtx, btn = $('button[type=submit]', modalEl); busy(btn, true, 'Entering…');
-    supabaseClient.rpc('unity_enter_raffle', { p_name: c.name, p_email: c.email, p_code: code, p_donor_name: c.donor || null, p_amount: Number(c.amount), p_confirm: true }).then(function (res) {
+    rpcT('unity_enter_raffle', { p_name: c.name, p_email: c.email, p_code: code, p_donor_name: c.donor || null, p_amount: Number(c.amount), p_confirm: true }).then(function (res) {
       busy(btn, false);
-      if (res.error || !res.data) { setMsg(errText('server'), true); return; }
+      if (res.error || !res.data) { setMsg(rpcFail(res), true); return; }
       if (!res.data.ok) { setMsg(errText(res.data.error), true); return; }
       lsSet(LS.ticket, String(res.data.ticket_no));
       raffleDone(res.data.ticket_no);
-    }, function () { busy(btn, false); setMsg(errText('server'), true); });
+    });
   }
   function raffleDone(ticket) {
     setModal('<div class="uc-success"><div class="uc-ticket"><span>Your ticket</span><b>#' + esc(ticket || '—') + '</b></div><h2 id="uc-modal-title" class="uc-modal-title">You&rsquo;re in!</h2>' +

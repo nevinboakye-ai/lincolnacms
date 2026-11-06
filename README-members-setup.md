@@ -1929,7 +1929,7 @@ A public portal, starting at `unity-cup.html` (now an overview with a page per s
 
 **Set-up (do these before Friday, in this order):**
 1. **Supabase -> SQL Editor:** run `db/migrations/114-unity-cup.sql`.
-2. **Edge function (needed for the emailed code):** Dashboard -> Edge Functions -> deploy a new function named exactly `unity-cup-code`, paste `supabase/functions/unity-cup-code/index.ts`, and **turn OFF "Enforce JWT verification"** for it (voters have no login). It uses the same Resend secrets as the other functions. Until it is deployed, voting and raffle entry show "couldn't send the email". As an emergency fallback you can switch the emailed code off in the dashboard (Settings -> Email check), but fake addresses become possible.
+**(Superseded by section 183: the email function is no longer used, so skip this step.)** 2. **Edge function (needed for the emailed code):** Dashboard -> Edge Functions -> deploy a new function named exactly `unity-cup-code`, paste `supabase/functions/unity-cup-code/index.ts`, and **turn OFF "Enforce JWT verification"** for it (voters have no login). It uses the same Resend secrets as the other functions. Until it is deployed, voting and raffle entry show "couldn't send the email". As an emergency fallback you can switch the emailed code off in the dashboard (Settings -> Email check), but fake addresses become possible.
 3. **Dashboard -> Unity Cup** (president only): add the players (Players & votes, paste "Name, Team, Number" lines), set the date/kick-off/venue, then switch on **Voting**, **Raffle** and **Uploads** when you are ready. Everything starts closed except uploads.
 4. **Test it with your own email**, then press "Clear all votes (testing)" so the real count starts at zero.
 
@@ -2060,7 +2060,7 @@ Run `db/migrations/125-unity-cup-goalscorers.sql` in the Supabase SQL Editor (af
 
 ## 179. Match control page, cards, clock and Man of the Match (migration 126)
 
-Run `db/migrations/126-unity-cup-match-control.sql` in the Supabase SQL Editor (after 114 to 116, 120, 122 and 125; safe to run again). **Then re-deploy the emailed-code function once:** Supabase Dashboard -> Edge Functions -> `unity-cup-code` -> open it, paste in the whole of `supabase/functions/unity-cup-code/index.ts` (it now accepts a third purpose, "mom") and Deploy. Leave "Enforce JWT verification" OFF as before. Until that is done, visitors can't be emailed a code to vote for Man of the Match (the rest of the page works).
+Run `db/migrations/126-unity-cup-match-control.sql` in the Supabase SQL Editor (after 114 to 116, 120, 122 and 125; safe to run again). **(The re-deploy instruction that used to be here is no longer needed: see section 183.)** Old text: re-deploy the emailed-code function once: Supabase Dashboard -> Edge Functions -> `unity-cup-code` -> open it, paste in the whole of `supabase/functions/unity-cup-code/index.ts` (it now accepts a third purpose, "mom") and Deploy. Leave "Enforce JWT verification" OFF as before. Until that is done, visitors can't be emailed a code to vote for Man of the Match (the rest of the page works).
 
 **The match page (committee)**
 - **Dashboard -> Unity Cup -> Fixtures -> "Run a match"** lists every fixture as a big tappable row (live ones first). Tap one to open `unity-match.html?id=...`: one page for just that match, built for a phone (two columns of big buttons on a computer). Each fixture in the lists below also has an "Open the match page" link. The page is private to the committee: it asks you to sign in, and needs "Dashboard: Unity Cup" (or the president), exactly like the dashboard. The back arrow returns to the Fixtures tab.
@@ -2074,7 +2074,7 @@ Run `db/migrations/126-unity-cup-match-control.sql` in the Supabase SQL Editor (
 
 **Man of the Match (public)**
 - Every public match that is **live or finished** takes Man of the Match votes by default. On the public Fixtures page each such match card has a gold **"Vote: Man of the match"** button, and a banner at the top of the Fixtures, Overview and Vote pages says voting is open and lists the games (the Fixtures tab also gets a green dot).
-- A visitor picks any player from either team, then verifies their email **once** with the same emailed code as the other votes. After that, their browser is signed in and every other game is one tap. One vote per game. Their pick is shown back to them ("You voted for ...").
+- A visitor picks any player from either team, then types their email **once** (no code any more, see section 183). After that, their browser is signed in and every other game is one tap. One vote per game. Their pick is shown back to them ("You voted for ...").
 - It is anonymous like the Player of the Tournament vote: we keep a scrambled email, a private sign-in code (stored in their browser), which games it has voted in and a total per player per game, never who voted for whom. If the committee has switched the email check off in Settings, voting only asks for the email address.
 - **Committee controls** are in the **Man of the Match** box on the match page, and the live totals are visible to the committee only: **Close voting**, **Close and reveal winner** (tap twice), **Re-open voting**, **Hide the winner**, or switch voting off for a match. When revealed, the winner (and "shared" if tied) appears on that match's public card. Results stay private until you reveal them.
 - On the public page the scorers now also show the cards given (yellow and red squares beside each team).
@@ -2124,3 +2124,17 @@ Run `db/migrations/129-unity-cup-lineup-checkin.sql` in the Supabase SQL Editor 
 - If any ticks have been made for a team, a player who isn't ticked gets a small **Not checked in** note in the Goal / card pickers. They can still be picked: it is only a prompt to double-check.
 
 Works for the committee, single-match scorer links and referee links alike (a link can tick players for the match(es) it covers). The ticks are not shown on the public page. If a player is missing from a squad, add them in the dashboard's Squads tab first.
+
+
+## 183. No more emailed codes: entering and voting just work (migration 130)
+
+Run `db/migrations/130-unity-cup-no-email-codes.sql` in the Supabase SQL Editor (after 114, 116 and 126; safe to run again). **Run it before the raffle is used**: until it is run the database still asks for a code, and the entry form (which no longer shows a code step) will be refused.
+
+**Why:** the raffle and the votes asked people to type a 6-digit code emailed to them. That needed the `unity-cup-code` email function to be deployed in Supabase. It wasn't (the live address answered "function not found"), so every entry failed. Separately, a bug in the page left the button stuck on "Sending..." after any error, so people could not tell anything had gone wrong. Both are fixed.
+
+**What changed**
+- **Raffle:** name, email, donation amount and the tick box are enough. The entry is saved straight away and the person gets their ticket number. You still check every entry against the JustGiving donations (Dashboard -> Unity Cup -> Raffle) before the draw, so an entry with no real donation behind it never wins. Still in place: one entry per email address, the minimum donation, the "no more than 60 entries a minute" cap, and the hidden spam-trap field.
+- **Player of the Tournament vote** and **Man of the Match:** same, no code. Still one vote per email address (and per game for Man of the Match), still anonymous, still no throwaway email domains.
+- **The trade-off, plainly:** without a code nothing proves someone owns the address they typed, so a determined person could vote more than once by making up addresses. Votes are a fun extra, not money, so this is usually fine; keep an eye on the vote totals. The raffle is protected by your donation check.
+- **Buttons never get stuck:** every entry or vote button now goes back to normal after an error and shows what went wrong, and a request that takes more than 20 seconds gives up with a clear message instead of waiting for ever.
+- **Cleaned up:** the "Email a code" switch is gone from Settings, the `unity-cup-code` function is deleted from the repo and the two code functions are dropped from the database. **You can delete `unity-cup-code` in Supabase (Edge Functions) if it exists.** The privacy notice no longer mentions emailed codes.
