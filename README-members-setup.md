@@ -2179,7 +2179,7 @@ Run `db/migrations/132-member-of-the-semester.sql` in the Supabase SQL Editor (s
 
 **What people see**
 - **`wrapped.html`**: a full-screen, one-question-at-a-time vote (dark, colourful, big buttons, works on a phone with a thumb or on a laptop with a keyboard). Every question is optional. At the end people give an email address (one vote per email; stored only as a scrambled code) and say whether they are a member, not a member, or not sure. No account needed. Their half-finished vote is kept in their own browser until they send it.
-- **Promos:** a card at the top of the welcome screen ("Where would you like to go?") and a purple band on the homepage above the launch section. Both are hidden until the vote is open, show "N days left" from the closing time, and switch to "See the results" if you reveal the results after closing. Code: `js/wrapped-promo.js`.
+- **Promos:** a card at the top of the welcome screen ("Where would you like to go?") and a purple band on the homepage above the launch section. Both are hidden until the vote is open, show "N days left" from the closing time, and switch to "See the results" if you reveal the results after closing. It also shows as a band at the top of the **Members Hub** (`member-hub.html`). Code: `js/wrapped-promo.js`.
 - **The questions (editable):** Member of the Semester (type a name), Favourite event (built from the Events on the site that took place in the date window), Moment of the semester, Song of the semester, One word for LACMS, What you value most about LACMS (pick one), a Semester Two wishlist (pick up to 3), and a 1 to 10 rating of your semester.
 
 **Running it** (Dashboard -> LACMS Wrapped)
