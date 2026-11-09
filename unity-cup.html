@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <script>(function(){try{var t=localStorage.getItem('lacms-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Unity Cup - LACMS</title>
-<meta name="description" content="The LACMS Unity Cup: vote for Player of the Tournament, enter the charity raffle and share your photos and videos from the day. Open to everyone, no account needed.">
+<title>Unity Cup 2026: final results - LACMS</title>
+<meta name="description" content="The LACMS Unity Cup 2026 final results: Islamic Society are the champions. See the awards, the top scorers, the final group tables and every result from the tournament.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
 <link rel="stylesheet" href="css/styles.css?v=20260824-200">
-<link rel="stylesheet" href="css/unity-cup.css?v=20260824-212">
-<meta property="og:title" content="LACMS Unity Cup">
-<meta property="og:description" content="Vote for Player of the Tournament, win a prize and share the day.">
+<link rel="stylesheet" href="css/unity-cup.css?v=20260824-213">
+<meta property="og:title" content="LACMS Unity Cup 2026: final results">
+<meta property="og:description" content="Islamic Society are the Unity Cup champions. The awards, top scorers, tables and every result.">
 <meta property="og:image" content="https://lincolnacms.uk/Media/ACMS%20Branding/logo.png">
 <script>(function(){var m={fixtures:'unity-cup-fixtures.html',teams:'unity-cup-teams.html',vote:'unity-cup-vote.html',raffle:'unity-cup-raffle.html',moments:'unity-cup-photos.html',photos:'unity-cup-photos.html',essence:'unity-cup-essence.html'};var h=(location.hash||'').slice(1);if(m.hasOwnProperty(h))location.replace(m[h]);})();</script>
 </head>
@@ -90,15 +90,14 @@
   </div>
   <div class="container uc-hero-inner">
     <div class="uc-hero-copy">
-      <span class="uc-eyebrow">LACMS presents</span>
+      <span class="uc-eyebrow">Final results</span>
       <h1 class="uc-title" id="uc-title"><span>Unity</span> <span>Cup</span></h1>
-      <p class="uc-lede">One tournament, one community. Vote for your Player of the Tournament, win a prize while giving back, and share the day with everyone.</p>
-      <div class="uc-meta" id="uc-hero-meta"></div>
+      <p class="uc-lede" data-ur-lede>The Unity Cup is over. Here is how the whole tournament finished: the champions, the awards, the top scorers and every result.</p>
+      <div class="uc-meta" data-ur-meta></div>
       <div class="uc-hero-cta">
-        <a class="uc-btn uc-btn--gold" href="unity-cup-vote.html">Vote for Player of the Tournament</a>
-        <a class="uc-btn uc-btn--ghost" href="unity-cup-raffle.html"><span>Win a <span data-uc-prize>prize</span></span></a>
+        <a class="uc-btn uc-btn--gold" href="#ur-champs">See the champions</a>
+        <a class="uc-btn uc-btn--ghost" href="#ur-all"><span>All the results</span></a>
       </div>
-      <div class="uc-status" id="uc-hero-status"></div>
     </div>
     <div class="uc-hero-ball" aria-hidden="true">
       <div class="uc-ball-shadow"></div>
@@ -120,21 +119,26 @@
   </div>
 </nav>
 
-<section class="uc-section uc-hub" aria-labelledby="uc-hub-h">
+<section class="uc-section ur" id="uc-results" aria-label="Final results">
+  <div class="container" id="ur-body">
+    <div class="uc-skel"></div><div class="uc-skel"></div>
+    <noscript><p class="uc-empty">The final results need JavaScript. Islamic Society won the LACMS Unity Cup 2026, beating Black Student Network 4&ndash;2 in the final.</p></noscript>
+  </div>
+</section>
+
+<section class="uc-section uc-section--alt uc-hub" aria-labelledby="uc-hub-h">
   <div class="container">
-    <div id="uc-mom-banner"></div>
-    <div id="uc-hub-live"></div>
     <header class="uc-head" data-reveal>
-      <span class="uc-kicker">Everything in one place</span>
-      <h2 id="uc-hub-h">Explore the Unity Cup</h2>
-      <p>Pick a section to open it. Each one has its own page, so you can get straight to what you need.</p>
+      <span class="uc-kicker">More from the Unity Cup</span>
+      <h2 id="uc-hub-h">Look back on the day</h2>
+      <p>Every part of the tournament still has its own page.</p>
     </header>
     <ul class="uc-hub-grid">
         <li data-reveal style="--d:0">
           <a class="uc-hubcard" href="unity-cup-fixtures.html">
             <span class="uc-hubcard-top"><span class="uc-hubcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/><path d="M8 14h3M13 14h3M8 17.5h3"/></svg></span><span class="uc-hubcard-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></span></span>
             <h3>Fixtures &amp; results</h3>
-            <p>Kick-off times, pitches, live scores and the group tables.</p>
+            <p>Every match, with the group tables and who scored.</p>
             <span class="uc-hubcard-status" data-hub-status="fixtures">&nbsp;</span>
           </a>
         </li>
@@ -149,8 +153,8 @@
         <li data-reveal style="--d:2">
           <a class="uc-hubcard" href="unity-cup-vote.html">
             <span class="uc-hubcard-top"><span class="uc-hubcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 9.2 8.3l-6.4 1 4.6 4.5-1.1 6.4L12 17.2l5.7 3-1.1-6.4 4.6-4.5-6.4-1z"/></svg></span><span class="uc-hubcard-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></span></span>
-            <h3>Vote</h3>
-            <p>Pick the player who stood out most. One vote each, and it&rsquo;s anonymous.</p>
+            <h3>Player of the Tournament</h3>
+            <p>Voting is closed. See who took the title.</p>
             <span class="uc-hubcard-status" data-hub-status="vote">&nbsp;</span>
           </a>
         </li>
@@ -166,7 +170,7 @@
           <a class="uc-hubcard" href="unity-cup-photos.html">
             <span class="uc-hubcard-top"><span class="uc-hubcard-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3.2l1.6-2.5h4.4L16 7h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="3.8"/></svg></span><span class="uc-hubcard-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg></span></span>
             <h3>Your photos</h3>
-            <p>Send in your photos and videos, and see the best moments from the day.</p>
+            <p>The best moments from the day, and a place to send in yours.</p>
             <span class="uc-hubcard-status" data-hub-status="photos">&nbsp;</span>
           </a>
         </li>
@@ -260,7 +264,9 @@
 <script src="js/privacy.js?v=20260824-200"></script>
 <script src="js/unity-wheel.js?v=20260824-200"></script>
 <script src="js/unity-pitch.js?v=20260824-200"></script>
-<script src="js/unity-share.js?v=20260824-212"></script>
-<script src="js/unity-cup.js?v=20260824-212"></script>
+<script src="js/unity-share.js?v=20260824-213"></script>
+<script src="js/unity-results-data.js?v=20260824-213"></script>
+<script src="js/unity-results.js?v=20260824-213"></script>
+<script src="js/unity-cup.js?v=20260824-213"></script>
 </body>
 </html>

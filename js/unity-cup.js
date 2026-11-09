@@ -23,6 +23,9 @@
   var PAGE = { fixtures: 'unity-cup-fixtures.html', teams: 'unity-cup-teams.html', vote: 'unity-cup-vote.html', raffle: 'unity-cup-raffle.html', photos: 'unity-cup-photos.html', essence: 'unity-cup-essence.html', hub: 'unity-cup.html' };
 
   var LS = { voted: 'lacms-unity-voted', ticket: 'lacms-unity-ticket', media: 'lacms-unity-media', momToken: 'lacms-unity-mom-token', momVotes: 'lacms-unity-mom-votes' };
+  // The tournament is over (js/unity-results-data.js says so): voting and Man of the Match are closed on every page,
+  // whatever the database still says, and the pages show the results instead of asking for votes.
+  var RES = window.UNITY_RESULTS || null, OVER = !!(RES && RES.over);
   var POLL_MS = 15000;
   var MAX_FILES = 8, MAX_BYTES = 50 * 1024 * 1024;
   var ALLOWED_EXT = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic', mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm' };
@@ -89,6 +92,7 @@
       if (res.error || !res.data) { if (!S) showUnavailable(); return false; }
       var first = !S;
       S = res.data;
+      if (OVER) { S.voting_open = false; (S.fixtures || []).forEach(function (f) { f.mom_open = false; }); }
       teamsById = {}; (S.teams || []).forEach(function (t) { teamsById[t.id] = t; });
       if (first) {
         knownDraws = {}; (S.draws || []).forEach(function (d) { knownDraws[d.id] = 1; });
@@ -145,7 +149,7 @@
     if (S.venue_text) when += '<span class="uc-meta-chip">' + esc(S.venue_text) + '</span>';
     var meta = $('#uc-hero-meta'); if (meta) meta.innerHTML = when;
     var st = $('#uc-hero-status');
-    var votePill = chip(S.voting_open, 'Voting open', S.show_results ? 'Voting closed' : 'Voting opens soon');
+    var votePill = chip(S.voting_open, 'Voting open', OVER || S.show_results ? 'Voting closed' : 'Voting opens soon');
     var rafflePill = chip(S.raffle_open, 'Raffle open', 'Raffle opens soon');
     var mediaPill = chip(S.media_open, 'Share your moments', 'Uploads closed');
     if (st) st.innerHTML = votePill + rafflePill + mediaPill;
@@ -203,12 +207,13 @@
     var lv = nu.live[0], up = nu.upcoming[0];
     if (lv) hubStatus('fixtures', 'Live: ' + teamsById[lv.home_team_id].name + ' ' + (lv.home_score == null ? 0 : lv.home_score) + '–' + (lv.away_score == null ? 0 : lv.away_score) + ' ' + teamsById[lv.away_team_id].name + (nu.live.length > 1 ? ' (+' + (nu.live.length - 1) + ' more)' : ''), true);
     else if (up) hubStatus('fixtures', 'Next: ' + teamsById[up.home_team_id].name + ' v ' + teamsById[up.away_team_id].name + ' · ' + timeOf(kickDate(up)));
-    else if (fx.length) hubStatus('fixtures', fx.length + (fx.length === 1 ? ' match' : ' matches') + ' · ' + fx.filter(function (f) { return f.status === 'finished'; }).length + ' played');
+    else if (fx.length) hubStatus('fixtures', OVER ? fx.length + ' matches played' : fx.length + (fx.length === 1 ? ' match' : ' matches') + ' · ' + fx.filter(function (f) { return f.status === 'finished'; }).length + ' played');
     else hubStatus('fixtures', 'Fixtures coming soon');
-    if (!lv && momOpenFixtures().length) hubStatus('fixtures', 'Vote for Man of the Match · ' + momOpenFixtures().length + (momOpenFixtures().length === 1 ? ' game' : ' games'), true);
+    if (!OVER && !lv && momOpenFixtures().length) hubStatus('fixtures', 'Vote for Man of the Match · ' + momOpenFixtures().length + (momOpenFixtures().length === 1 ? ' game' : ' games'), true);
     var tn = (S.teams || []).length, pn = (S.players || []).length;
     hubStatus('teams', tn ? tn + (tn === 1 ? ' team' : ' teams') + (pn ? ' · ' + pn + (pn === 1 ? ' player' : ' players') : '') : 'Teams announced soon');
     if (S.voting_open) hubStatus('vote', lsGet(LS.voted) ? 'Voting open · you\'ve voted' : 'Voting open', true);
+    else if (OVER && RES.awards && RES.awards.playerOfTournament) hubStatus('vote', 'Winner: ' + RES.awards.playerOfTournament.name);
     else hubStatus('vote', S.show_results ? 'Voting closed · see the result' : 'Voting opens on the day');
     var en = S.raffle_entries || 0;
     if (S.raffle_open) hubStatus('raffle', (en ? en + (en === 1 ? ' entry' : ' entries') + ' · ' : '') + 'from ' + money(S.min_donation), true);
@@ -228,7 +233,12 @@
 
     if (banner) {
       var msg = '';
-      if (results) msg = '<div class="uc-banner uc-banner--done"><strong>Voting is closed.</strong> Here is how the Player of the Tournament vote finished.</div>';
+      if (OVER && RES.awards && RES.awards.playerOfTournament) {
+        var pot = RES.awards.playerOfTournament, pt = (RES.teams || []).filter(function (t) { return t.id === pot.team; })[0];
+        msg = '<div class="uc-winner"><span class="uc-winner-star" aria-hidden="true">' + ICON.star + '</span><div><small>Voting is closed &middot; Player of the Tournament</small><strong>' + esc(pot.name) + '</strong>' + (pt ? '<span>' + esc(pt.name) + '</span>' : '') + '</div>' +
+          '<a class="uc-btn uc-btn--gold" href="unity-cup.html#ur-champs">See all the results</a></div>';
+      }
+      else if (results) msg = '<div class="uc-banner uc-banner--done"><strong>Voting is closed.</strong> Here is how the Player of the Tournament vote finished.</div>';
       else if (!S.voting_open) msg = '<div class="uc-banner"><strong>Voting isn&rsquo;t open yet.</strong> It opens during the tournament, so check back on the day. The players are below.</div>';
       else if (voted) msg = '<div class="uc-banner uc-banner--done"><span class="uc-tick">' + ICON.check + '</span><span><strong>You&rsquo;ve voted. Thank you!</strong> One vote each.</span></div>';
       banner.innerHTML = msg;
