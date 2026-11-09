@@ -178,3 +178,75 @@
 
 /* the hidden attribute must win over the display rules above */
 .wr-progress[hidden], .wr-other[hidden], .wr-msg[hidden] { display: none; }
+
+/* =========================================================
+   Wrapped as an installed app (js/wrapped-app.js, wrapped.webmanifest)
+   ========================================================= */
+
+/* Behave like an app, not a document: no rubber-banding or pull-to-refresh, no double-tap zoom delay. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overscroll-behavior: none; }
+.wr-body { overscroll-behavior: none; }
+.wr-body button, .wr-body a, .wr-body label, .wr-body input { touch-action: manipulation; }
+
+/* Opened from the home screen (html.is-app): nothing to "close", and the interface is not selectable text. */
+.is-app .wr-close { display: none; }
+.is-app .wr-brand { pointer-events: none; }
+.is-app .wr-body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.is-app .wr-input { -webkit-user-select: text; user-select: text; }
+
+/* Offline notice */
+.wr-offline { margin: 10px 0 0; padding: 9px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.26); font: 600 0.82rem/1.4 var(--font-body); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.wr-offline[hidden] { display: none; }
+
+/* "Add to home screen": a button on the first screen and a card on the thank-you screen */
+.wr-install-slot { display: block; }
+.wr-install-slot[hidden] { display: none; }
+.wr-install { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 20px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); border: 1.5px solid rgba(255, 255, 255, 0.34); color: #fff; font: 800 0.98rem var(--font-body); cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: transform 0.12s, background 0.18s; }
+.wr-install:hover { background: rgba(255, 255, 255, 0.22); }
+.wr-install:active { transform: scale(0.97); }
+.wr-install:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.wr-install svg { width: 20px; height: 20px; flex: none; }
+.wr-install-slot > .wr-install { width: 100%; }
+.wr-install--sm { min-height: 44px; padding: 0 20px; background: #fff; color: #14110a; border-color: #fff; }
+.wr-install--sm:hover { background: #fff; }
+.wr-install-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 22px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.22); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.wr-install-card img { width: 52px; height: 52px; border-radius: 13px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); }
+.wr-install-card b { display: block; font: 800 0.98rem/1.25 var(--font-body); }
+.wr-install-card span { display: block; margin-top: 3px; font: 500 0.82rem/1.4 var(--font-body); color: var(--wr-muted); }
+@media (max-width: 380px) {
+  .wr-install-card { grid-template-columns: auto minmax(0, 1fr); }
+  .wr-install-card .wr-install { grid-column: 1 / -1; }
+}
+
+/* Small confirmation message */
+.wr-toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 92px); z-index: 60; max-width: calc(100vw - 40px); margin: 0; padding: 12px 20px; border-radius: 999px; background: #fff; color: #14110a; font: 800 0.92rem var(--font-body); text-align: center; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45); opacity: 0; transform: translate(-50%, 12px); pointer-events: none; transition: opacity 0.25s, transform 0.25s; }
+.wr-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+.wr-toast[hidden] { display: none; }
+
+/* "How to add it" bottom sheet */
+.wr-sheet { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.wr-sheet[hidden] { display: none; }
+.wr-sheet-back { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.62); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.28s; }
+.wr-sheet.is-open .wr-sheet-back { opacity: 1; }
+.wr-sheet-card { position: relative; display: grid; gap: 16px; width: min(100%, 520px); max-height: 92vh; max-height: 92dvh; overflow-y: auto; padding: 8px 22px max(22px, env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0; background: linear-gradient(180deg, #2c1316, #130a0c 72%); border: 1px solid rgba(255, 255, 255, 0.16); border-bottom: 0; box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.5); color: var(--wr-ink); transform: translateY(100%); transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1); outline: none; }
+.wr-sheet.is-open .wr-sheet-card { transform: none; }
+.wr-sheet-drag { display: grid; gap: 12px; padding-top: 4px; touch-action: none; cursor: grab; }
+.wr-sheet-grab { justify-self: center; width: 44px; height: 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.32); }
+.wr-sheet-head { display: flex; align-items: center; gap: 14px; }
+.wr-sheet-head img { flex: none; width: 56px; height: 56px; border-radius: 14px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
+.wr-sheet-head h2 { margin: 0; font: 700 1.3rem/1.15 var(--font-display); }
+.wr-sheet-head p { margin: 4px 0 0; color: var(--wr-muted); font-size: 0.92rem; line-height: 1.45; }
+.wr-steps { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.wr-steps li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 14px; align-items: center; padding: 12px 14px; border-radius: 18px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.14); }
+.wr-step-ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.14); color: #fff; }
+.wr-step-ico svg { width: 22px; height: 22px; }
+.wr-steps b { display: block; font: 800 1rem/1.3 var(--font-body); }
+.wr-steps small { display: block; margin-top: 2px; color: var(--wr-muted); font: 500 0.82rem/1.4 var(--font-body); }
+@media (min-width: 700px) {
+  .wr-sheet { align-items: center; }
+  .wr-sheet-card { border-radius: 28px; border-bottom: 1px solid rgba(255, 255, 255, 0.16); transform: translateY(24px); opacity: 0; transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.25s; padding-bottom: 22px; }
+  .wr-sheet.is-open .wr-sheet-card { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wr-sheet-back, .wr-sheet-card, .wr-toast { transition: none; }
+}

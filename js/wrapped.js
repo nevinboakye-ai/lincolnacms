@@ -22,7 +22,8 @@
   var $progress = document.getElementById('wr-progress');
   var $live = document.getElementById('wr-live');
 
-  var S = { data: null, steps: [], i: 0, ans: {}, oth: {}, email: '', member: '', sending: false, err: '' };
+  var SNAP_KEY = 'lacms-wrapped-snapshot';
+  var S = { data: null, steps: [], i: 0, ans: {}, oth: {}, email: '', member: '', sending: false, err: '', stale: false, locked: false };
 
   // ---------------------------------------------------------------------
   // Small helpers
@@ -32,6 +33,10 @@
   function say(t) { if ($live) { $live.textContent = ''; window.setTimeout(function () { $live.textContent = t; }, 40); } }
   function fmtDate(iso) { try { return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }); } catch (e) { return ''; } }
   function reduced() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  // App helpers live in wrapped-app.js; if that file did not load, these quietly do nothing.
+  function buzz(p) { if (window.WrappedApp) window.WrappedApp.buzz(p); }
+  function app(kind) { return window.WrappedApp ? window.WrappedApp.slot(kind) : ''; }
+  function appSync() { if (window.WrappedApp) window.WrappedApp.sync(); }
 
   var ICON = {
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 12.5 10 17.5 19 7"/></svg>',
@@ -48,7 +53,9 @@
       var timer = window.setTimeout(function () { finish({ data: null, error: { message: 'timeout' }, timeout: true }); }, 20000);
       function finish(v) { if (done) return; done = true; window.clearTimeout(timer); resolve(v); }
       if (typeof supabaseClient === 'undefined' || !supabaseClient) { finish({ data: null, error: { message: 'unconfigured' }, network: true }); return; }
-      try { supabaseClient.rpc(fn, args || {}).then(finish, function () { finish({ data: null, error: { message: 'network' }, network: true }); }); }
+      // supabase-js reports a dead connection as a normal { error } result rather than throwing, so look for it there too.
+      function dead(err) { return navigator.onLine === false || /fetch|network|load failed/i.test(String((err && err.message) || '')); }
+      try { supabaseClient.rpc(fn, args || {}).then(function (r) { if (r && r.error && dead(r.error)) r.network = true; finish(r); }, function () { finish({ data: null, error: { message: 'network' }, network: true }); }); }
       catch (e) { finish({ data: null, error: { message: 'server' } }); }
     });
   }
@@ -81,6 +88,20 @@
     return out;
   }
 
+  // The last questions we fetched, kept for ten days, so the app still opens (and can be filled in) with no signal.
+  function saveSnap(d) {
+    if (!d || !d.ok || !d.campaign || !d.campaign.open) return;
+    lsSet(SNAP_KEY, JSON.stringify({ t: Date.now(), d: { ok: true, campaign: d.campaign, categories: d.categories } }));
+  }
+  function loadSnap() {
+    var raw = lsGet(SNAP_KEY); if (!raw) return null;
+    try {
+      var o = JSON.parse(raw);
+      if (!o || !o.d || !o.d.campaign || !o.d.campaign.open || !Array.isArray(o.d.categories) || Date.now() - o.t > 10 * 86400000) return null;
+      return o.d;
+    } catch (e) { return null; }
+  }
+
   function saveDraft() {
     lsSet(DRAFT_KEY, JSON.stringify({ ans: S.ans, oth: S.oth, email: S.email, member: S.member }));
   }
@@ -107,6 +128,7 @@
   function theme(i) {
     var t = THEMES[i % THEMES.length], b = document.body.style;
     b.setProperty('--wr-1', t[0]); b.setProperty('--wr-2', t[1]); b.setProperty('--wr-3', t[2]);
+    var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', t[1]);
   }
   function drawProgress() {
     var n = S.steps.filter(function (s) { return s.t !== 'done' && s.t !== 'msg'; }).length;
@@ -144,13 +166,32 @@
     b.innerHTML = navLabel() + ICON.next;
   }
 
-  function go(i, back) {
+  // The phone's back button (or edge swipe) walks back through the questions instead of closing the app. Each forward step
+  // adds a history entry; going back from the screen's own Back button uses the same route so the two never disagree.
+  function hist(i, replace) {
+    try { if (replace) history.replaceState({ wr: i }, ''); else history.pushState({ wr: i }, ''); } catch (e) { /* ignore */ }
+  }
+  function go(i, back, fromHistory) {
     if (i < 0 || i >= S.steps.length) return;
     S.i = i; S.err = '';
+    if (!back && !fromHistory) hist(i);
     render(!!back);
   }
+  function stepBack() {
+    if (S.i > 0 && history.state && history.state.wr === S.i) { history.back(); return; }
+    go(S.i - 1, true);
+  }
+  window.addEventListener('popstate', function (e) {
+    if (!S.steps.length) return;
+    if (S.locked) { history.back(); return; }     // after the thank-you (or on a results/closed screen), back leaves
+    var j = e.state && typeof e.state.wr === 'number' ? e.state.wr : 0;
+    if (j === S.i) return;
+    if (S.sending) { hist(S.i); return; }
+    go(Math.min(j, S.steps.length - 1), j < S.i, true);
+  });
   function render(back) {
     var s = S.steps[S.i];
+    S.locked = s.t === 'done' || s.t === 'msg';
     theme(S.i);
     drawProgress();
     var html = '';
@@ -163,7 +204,7 @@
     $screen.innerHTML = html;
     // stagger the entrance of each block
     Array.prototype.forEach.call($screen.children, function (el, n) { el.style.setProperty('--n', n); });
-    drawNav();
+    drawNav(); appSync();
     $stage.scrollTop = 0;
     var h = $screen.querySelector('[data-focus]');
     if (h) { h.setAttribute('tabindex', '-1'); try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
@@ -179,6 +220,7 @@
     var chips = '<span class="wr-chip"><i></i>Voting is open</span>';
     if (c.closes_at) chips += '<span class="wr-chip">Closes ' + esc(fmtDate(c.closes_at)) + '</span>';
     chips += '<span class="wr-chip">About a minute</span>';
+    if (S.stale) chips += '<span class="wr-chip">Saved copy</span>';
     var title = esc(c.title || 'LACMS Wrapped');
     var parts = title.replace(/^LACMS\s+/i, '');
     var big = /^LACMS\s+/i.test(c.title || '') ? '<span>LACMS</span>' + parts : title;
@@ -187,7 +229,7 @@
       '<p class="wr-sub">' + esc(c.intro || 'We are making a look back at the semester. Tell us what should be in it: who made it, what you loved and what to do next. Everyone can vote, member or not.') + '</p>' +
       '<div class="wr-chips">' + chips + '</div>' +
       '<p class="wr-sub">' + n + ' quick questions. Every one is optional, so skip anything you like. No account needed.</p>' +
-      '<div class="wr-actions"><button type="button" class="wr-btn wr-btn--main wr-btn--block" data-act="next">Let&rsquo;s go' + ICON.next + '</button></div>';
+      '<div class="wr-actions"><button type="button" class="wr-btn wr-btn--main wr-btn--block" data-act="next">Let&rsquo;s go' + ICON.next + '</button></div>' + app('pill');
   }
 
   function catHtml(c, idx) {
@@ -248,13 +290,13 @@
       '<h1 class="wr-q" data-focus>You&rsquo;re in. Thank you!</h1>' +
       '<p class="wr-sub">Your votes will help shape the ' + esc(c.title || 'LACMS Wrapped') + '. Know someone who should have a say? Send them the link.</p>' +
       '<div class="wr-actions"><button type="button" class="wr-btn wr-btn--main" data-act="share">' + ICON.share + 'Share with friends</button>' +
-      '<a class="wr-btn wr-btn--ghost" href="index.html">Back to the website</a></div>' + results +
+      '<a class="wr-btn wr-btn--ghost" href="index.html">Back to the website</a></div>' + results + app('card') +
       '<p class="wr-fine" id="wr-shared" role="status"></p>';
   }
 
-  function msgScreen(kicker, title, text, extra) {
+  function msgScreen(kicker, title, text, extra, tail) {
     return { t: 'msg', html: '<p class="wr-kicker">' + esc(kicker) + '</p><h1 class="wr-q" data-focus>' + esc(title) + '</h1><p class="wr-sub">' + esc(text) + '</p>' +
-      '<div class="wr-actions">' + (extra || '') + '<a class="wr-btn wr-btn--ghost" href="index.html">Back to the website</a></div>' };
+      '<div class="wr-actions">' + (extra || '') + '<a class="wr-btn wr-btn--ghost" href="index.html">Back to the website</a></div>' + (tail || '') };
   }
 
   function resultsHtml() {
@@ -303,7 +345,7 @@
       Array.prototype.forEach.call(list.querySelectorAll('.wr-opt'), function (b) { setOn(b, on && b === btn); });
       showOther(on && key === 'other');
     }
-    saveDraft(); refreshNavLabel();
+    buzz(8); saveDraft(); refreshNavLabel();
   }
   function flashPicks() {
     var p = document.getElementById('wr-picks'); if (!p || reduced()) return;
@@ -335,7 +377,7 @@
     }
   }
   function showErr(t) {
-    S.err = t;
+    S.err = t; if (t) buzz([25, 40, 25]);
     var e = document.getElementById('wr-err');
     if (e) { e.textContent = t; e.hidden = !t; if (t) e.scrollIntoView({ block: 'center', behavior: reduced() ? 'auto' : 'smooth' }); }
   }
@@ -369,7 +411,7 @@
     lsSet(VOTED_KEY, '1');
     try { window.localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ }
     S.ans = {}; S.oth = {};
-    go(S.steps.length - 1);
+    go(S.steps.length - 1); buzz([12, 50, 18]);
     if (window.UnityFx) window.UnityFx.confetti({ count: 190 });
   }
 
@@ -396,11 +438,11 @@
       S.ans[c.key] = same ? undefined : n;
       Array.prototype.forEach.call($screen.querySelectorAll('[data-rate]'), function (b) { var on = !same && Number(b.getAttribute('data-rate')) === n; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', String(on)); });
       var f = document.getElementById('wr-face'); if (f) f.textContent = same ? '' : FACES[n];
-      saveDraft(); refreshNavLabel(); return;
+      buzz(8); saveDraft(); refreshNavLabel(); return;
     }
     var act = t.getAttribute('data-act');
     if (act === 'next') next();
-    else if (act === 'back') go(S.i - 1, true);
+    else if (act === 'back') stepBack();
     else if (act === 'send') send();
     else if (act === 'share') share();
     else if (act === 'retry') load();
@@ -426,6 +468,25 @@
     }
   });
 
+  // Swipe left for the next question, right to go back. Never from the very edges of the screen (those belong to the
+  // phone's own back gesture), never on a text field, and only for a clear, quick, mostly sideways flick.
+  (function () {
+    var x0 = 0, y0 = 0, t0 = 0, ok = false;
+    $stage.addEventListener('touchstart', function (e) {
+      var t = e.touches[0];
+      ok = e.touches.length === 1 && t.clientX > 28 && t.clientX < window.innerWidth - 28 && !(e.target.closest && e.target.closest('input, textarea, select'));
+      x0 = t.clientX; y0 = t.clientY; t0 = Date.now();
+    }, { passive: true });
+    $stage.addEventListener('touchend', function (e) {
+      if (!ok) return; ok = false;
+      var t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      if (Date.now() - t0 > 600 || Math.abs(dx) < 90 || Math.abs(dy) > Math.abs(dx) * 0.5) return;
+      var s = cur(); if (!s || S.sending) return;
+      if (dx < 0 && (s.t === 'intro' || s.t === 'cat')) next();
+      else if (dx > 0 && (s.t === 'cat' || s.t === 'send')) stepBack();
+    }, { passive: true });
+  })();
+
   // ---------------------------------------------------------------------
   // Start
   function buildSteps() {
@@ -437,7 +498,7 @@
     }
     if (lsGet(VOTED_KEY) === '1') {
       var extra = c.show_results && d.results ? '<button type="button" class="wr-btn wr-btn--main" data-act="results">See the results</button>' : '';
-      S.steps = [msgScreen('Already voted', 'You’ve already voted. Thank you!', 'Each email address can vote once. Want to help more? Send the link to a friend.', '<button type="button" class="wr-btn wr-btn--main" data-act="share">' + ICON.share + 'Share with friends</button>' + extra)];
+      S.steps = [msgScreen('Already voted', 'You’ve already voted. Thank you!', 'Each email address can vote once. Want to help more? Send the link to a friend.', '<button type="button" class="wr-btn wr-btn--main" data-act="share">' + ICON.share + 'Share with friends</button>' + extra, app('card'))];
       return;
     }
     if (!hasCats) { S.steps = [msgScreen('Coming soon', 'Not quite ready', 'The questions are still being set up. Please check back soon.')]; return; }
@@ -447,11 +508,20 @@
   }
 
   function load() {
+    S.stale = false;
     $nav.hidden = true; $progress.hidden = true;
     $screen.className = 'wr-screen';
     $screen.innerHTML = '<div class="wr-loading"><span class="wr-spin" aria-hidden="true"></span><p>Getting your Wrapped ready&hellip;</p></div>';
     rpcT('wrapped_get').then(function (res) {
       var d = res.data;
+      if ((res.error || !d) && (res.network || res.timeout)) {
+        var snap = loadSnap();
+        if (snap) {
+          S.data = snap; S.stale = true;
+          document.title = (snap.campaign.title || 'LACMS Wrapped') + ': have your say - LACMS';
+          loadDraft(); buildSteps(); S.i = 0; hist(0, true); render(false); return;
+        }
+      }
       if (res.error || !d) {
         S.steps = [msgScreen(res.network || res.timeout ? 'Offline?' : 'Not available', res.network || res.timeout ? 'We could not load it' : 'Wrapped is not open yet', res.network || res.timeout ? 'Check your connection and try again.' : 'Come back soon: voting for the LACMS Wrapped will open shortly.', '<button type="button" class="wr-btn wr-btn--main" data-act="retry">Try again</button>')];
         S.i = 0; render(false); return;
@@ -461,8 +531,11 @@
         S.i = 0; render(false); return;
       }
       S.data = d; document.title = (d.campaign.title || 'LACMS Wrapped') + ': have your say - LACMS';
-      loadDraft(); buildSteps(); S.i = 0; render(false);
+      saveSnap(d);
+      loadDraft(); buildSteps(); S.i = 0; hist(0, true); render(false);
     });
   }
+  // Opened with no signal and showing the saved copy? Pick up the live questions as soon as we are back online.
+  window.addEventListener('online', function () { if (S.stale && S.i === 0 && !S.sending) load(); });
   load();
 })();

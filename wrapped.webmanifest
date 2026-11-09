@@ -1,0 +1,21 @@
+{
+  "id": "./wrapped.html",
+  "name": "LACMS Wrapped",
+  "short_name": "Wrapped",
+  "description": "Have your say in the LACMS Wrapped: vote for Member of the Semester, favourite event, song of the semester and more.",
+  "lang": "en-GB",
+  "dir": "ltr",
+  "start_url": "./wrapped.html?source=app",
+  "scope": "./wrapped.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0c",
+  "theme_color": "#5b1013",
+  "categories": ["education", "social"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "Media/wrapped-app/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "Media/wrapped-app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "Media/wrapped-app/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
