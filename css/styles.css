@@ -12386,3 +12386,14 @@ html.fb-embed main { padding-top: var(--space-3); }
 @media (prefers-reduced-motion: reduce) {
   .intro-card--wrapped, .intro-card-icon--wrapped rect, .wrp-bars rect, .wrp-glow, .wrp-badge i { animation: none; }
 }
+
+/* Members Hub: on a phone the Wrapped band shrinks to a slim strip (badge, title, arrow) so the hub stays up front */
+@media (max-width: 760px) {
+  .wrp-wrap--hub { padding-block: var(--space-3) 0; }
+  .wrp-wrap--hub .wrp { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 16px; border-radius: var(--radius-md); }
+  .wrp-wrap--hub .wrp-bars, .wrp-wrap--hub .wrp-text, .wrp-wrap--hub .wrp-chips, .wrp-wrap--hub .wrp-title span { display: none; }
+  .wrp-wrap--hub .wrp-body { gap: 4px; }
+  .wrp-wrap--hub .wrp-title { font-size: 1.25rem; }
+  .wrp-wrap--hub .wrp-badge { padding: 2px 10px; font-size: 0.68rem; }
+  .wrp-wrap--hub .wrp-go { padding: 10px 16px; font-size: 0.88rem; }
+}
