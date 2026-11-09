@@ -2188,3 +2188,5 @@ Run `db/migrations/132-member-of-the-semester.sql` in the Supabase SQL Editor (s
 - **Questions:** change wording and emoji, hide a question without losing its answers, set how many people can pick, add or remove the answers in a pick list, or add a whole new question.
 
 **Good to know:** the vote and the "who voted" check use the same safeguards as the Unity Cup vote (throw-away emails refused, a rate cap, a hidden trap field for bots). Answers are never stored with an email or name. The privacy notice has a new row for it and a retention row for the scrambled emails. To give another committee member access, use Hub Access -> **Dashboard: LACMS Wrapped**.
+
+**Favourite business partner (migration 134):** run `db/migrations/134-wrapped-favourite-partner.sql` once, after 133, to add a "Favourite business partner" question (pick one, or type another) just after "Favourite event". Its answers are copied from the businesses currently on the Perks page, names only (never the codes). It is then an ordinary question: in Dashboard -> LACMS Wrapped -> Questions you can rename, hide or remove businesses and add new ones. Safe to run again.
