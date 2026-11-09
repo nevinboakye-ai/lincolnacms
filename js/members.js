@@ -5111,13 +5111,13 @@
     // The five sections non-presidents can be given (by Hub Access rules),
     // and which rule feature controls each.
     var DASH_SHARED_SECTIONS = ['mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery',
-      'activity', 'webactivity', 'requests', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners', 'qr', 'unity'];
+      'activity', 'webactivity', 'requests', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners', 'qr', 'unity', 'wrapped'];
     // The original five, which the Executive Committee got by default; used only if Hub Access can't be loaded.
     var DASH_LEGACY_SECTIONS = ['mmg', 'sankofa', 'motm', 'events', 'gallery'];
     var DASH_FEATURE_FOR = {
       mmg: 'dash_mmg', sankofa: 'dash_sankofa', sankofahub: 'sankofa_hub', motm: 'dash_motm', events: 'dash_events', gallery: 'dash_gallery',
       activity: 'dash_activity', webactivity: 'dash_webactivity', requests: 'dash_requests', pending: 'dash_pending', chatreports: 'dash_chatreports',
-      sitestats: 'dash_sitestats', create: 'dash_create', manage: 'dash_manage', email: 'dash_email', feedback: 'dash_feedback', partners: 'dash_partners', qr: 'dash_qr', unity: 'dash_unity'
+      sitestats: 'dash_sitestats', create: 'dash_create', manage: 'dash_manage', email: 'dash_email', feedback: 'dash_feedback', partners: 'dash_partners', qr: 'dash_qr', unity: 'dash_unity', wrapped: 'dash_wrapped'
     };
     var dashAllowed = {};
     // President: everything. Anyone else: only the shared sections the
@@ -5228,7 +5228,7 @@
     // Data for every section still loads together up front (cheap — a
     // handful of indexed RPC calls), only the *display* is split by
     // section; #<section> in the URL deep-links straight to one. ----
-    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'privacy', 'unity', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners', 'qr'];
+    var DASH_SECTIONS = ['activity', 'webactivity', 'mmg', 'sankofa', 'sankofahub', 'motm', 'events', 'gallery', 'requests', 'access', 'privacy', 'unity', 'wrapped', 'pending', 'chatreports', 'sitestats', 'create', 'manage', 'email', 'feedback', 'partners', 'qr'];
     var dashLanding = document.getElementById('dash-landing');
     var currentOpenSection = null;
     function showDashSection(section) {
@@ -7253,6 +7253,7 @@
       { key: 'dash_create', label: 'Dashboard: Create Accounts', short: 'Create', desc: 'Create a member, professional or guest login directly. Sensitive: they can add anyone.', dash: true },
       { key: 'dash_manage', label: 'Dashboard: Manage Accounts', short: 'Manage', desc: 'Edit or remove any member, professional or guest account. Sensitive: they can change or delete anyone.', dash: true },
       { key: 'dash_unity', label: 'Dashboard: Unity Cup', short: 'Unity Cup', desc: 'Run the Unity Cup page: teams, players, fixtures and live scores, voting, the charity raffle and live draw, photo and video approvals, and the private links teams use to enter their own players. Raffle entrants\' names and emails are visible. Closed by default: the president can always do it.', dash: true },
+      { key: 'dash_wrapped', label: 'Dashboard: LACMS Wrapped', short: 'Wrapped', desc: 'Run the LACMS Wrapped vote: open and close it, watch the results come in, change the questions and answers, reveal the results and export them. Votes are anonymous. Closed by default: the president can always do it.', dash: true },
       { key: 'dash_qr', label: 'Dashboard: QR codes', short: 'QR codes', desc: 'Design QR codes (colours, logo, caption), put any link behind them, track scans, and keep a library. The Executive Committee has it by default.', dash: true },
       { key: 'dash_partners', label: 'Dashboard: Partners', short: 'Partners', desc: 'Create private, read-only spaces so collaborating partners can follow the feedback and numbers for shared events. Closed by default: it shares information outside LACMS.', dash: true },
       { key: 'dash_feedback', label: 'Dashboard: Feedback', short: 'Feedback', desc: 'What people said about each event: ratings, comments, the feedback link and QR code. Guests\' emails are visible. Anonymous members show no name.', dash: true },
@@ -7389,8 +7390,8 @@
 
       var html = HUB_FEATURES.map(function (f) {
         var rule = hubRules.filter(function (r) { return r.feature === f.key; })[0];
-        if (!rule && f.key === 'dash_unity') {
-          return '<div class="hub-rule-card"><div class="hub-rule-head"><div class="hub-rule-headtext"><h3 class="hub-rule-title">' + escapeHtml(f.label) + '</h3><p class="hub-rule-desc">Not set up in the database yet. In Supabase (SQL Editor), run <code>db/migrations/116-unity-cup-access-and-team-links.sql</code>, then reload this page and it will appear here with the other access rules.</p></div></div></div>';
+        if (!rule && (f.key === 'dash_unity' || f.key === 'dash_wrapped')) {
+          return '<div class="hub-rule-card"><div class="hub-rule-head"><div class="hub-rule-headtext"><h3 class="hub-rule-title">' + escapeHtml(f.label) + '</h3><p class="hub-rule-desc">Not set up in the database yet. In Supabase (SQL Editor), run <code>' + (f.key === 'dash_wrapped' ? 'db/migrations/133-lacms-wrapped.sql' : 'db/migrations/116-unity-cup-access-and-team-links.sql') + '</code>, then reload this page and it will appear here with the other access rules.</p></div></div></div>';
         }
         if (!rule) return '';
         var withAccess = hubPeople.filter(function (p) { return p.cells[f.key] && p.cells[f.key].allowed; }).length;

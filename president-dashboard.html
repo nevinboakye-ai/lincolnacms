@@ -9,7 +9,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
 <link rel="stylesheet" href="css/styles.css?v=20260824-199">
-<link rel="stylesheet" href="css/unity-cup.css?v=20260824-213">
+<link rel="stylesheet" href="css/unity-cup.css?v=20260824-216">
 </head>
 <body>
 
@@ -193,6 +193,12 @@
               <span class="dash-nav-card-title">Unity Cup</span>
               <span class="dash-nav-card-desc">Player of the Tournament vote, charity raffle and live draw, and the photos and videos people send in</span>
               <span class="dash-nav-card-count" id="dash-count-unity">&nbsp;</span>
+            </button>
+            <button type="button" class="dash-nav-card" data-dash-section="wrapped">
+              <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="20" x2="5" y2="13"/><line x1="10" y1="20" x2="10" y2="5"/><line x1="15" y1="20" x2="15" y2="10"/><line x1="20" y1="20" x2="20" y2="3"/></svg></span>
+              <span class="dash-nav-card-title">LACMS Wrapped</span>
+              <span class="dash-nav-card-desc">The semester vote: Member of the Semester, favourite event and more. Watch the results, edit the questions, reveal and export</span>
+              <span class="dash-nav-card-count" id="dash-count-wrapped">&nbsp;</span>
             </button>
             <button type="button" class="dash-nav-card" data-dash-section="sitestats">
               <span class="dash-nav-card-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
@@ -565,6 +571,18 @@
             <div id="unity-root" class="ua"><p class="sh-muted">Loading&hellip;</p></div>
           </div>
 
+          <div class="dash-panel" id="dash-panel-wrapped" style="display:none;">
+            <button type="button" class="dash-panel-back" data-dash-back>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              All sections
+            </button>
+            <div class="section-head">
+              <span class="eyebrow">LACMS Wrapped</span>
+              <h2>Semester vote</h2>
+            </div>
+            <div id="wrapped-root" class="ua"><p class="sh-muted">Loading&hellip;</p></div>
+          </div>
+
           <div class="dash-panel" id="dash-panel-sitestats" style="display:none;">
             <button type="button" class="dash-panel-back" data-dash-back>
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -909,7 +927,7 @@
 <script src="js/view-as.js?v=20260824-215"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/main.js?v=20260824-199"></script>
-<script src="js/members.js?v=20260824-215"></script>
+<script src="js/members.js?v=20260824-216"></script>
 <script src="js/account-edit.js?v=20260824-199"></script>
 <script src="js/notifications.js?v=20260824-215"></script>
 <script src="js/guidance.js?v=20260824-215"></script>
@@ -934,6 +952,7 @@
 <script src="js/unity-wheel.js?v=20260824-199"></script>
 <script src="js/unity-pitch.js?v=20260824-199"></script>
 <script src="js/unity-admin.js?v=20260824-213"></script>
+<script src="js/wrapped-admin.js?v=20260824-216"></script>
 <script src="js/privacy.js?v=20260824-199"></script>
 </body>
 </html>

@@ -2172,3 +2172,19 @@ Run `db/migrations/132-member-of-the-semester.sql` in the Supabase SQL Editor (s
 **Entering a winner:** in Table Editor -> `motm_winners`, put the semester in **month_label** (for example `Semester A 2026/27`); it shows on the badge and the homepage teaser. See section 14.
 
 **Redeploy the email function once:** the "thanks for nominating" email is sent by `supabase/functions/send-member-email`. Its text now says Member of the Semester and "nominated in <month>", so open the function in Supabase (Edge Functions), paste in the updated `index.ts` and deploy it again. Until you do, nomination emails still say Member of the Month.
+
+## 186. LACMS Wrapped: members and non-members vote on what goes in the Semester One Wrapped (migration 133)
+
+**One-off setup:** run `db/migrations/133-lacms-wrapped.sql` in the Supabase SQL Editor (safe to run again; it needs 114 and 116 first). It creates the Wrapped tables, the questions below, and a new Hub Access feature **Dashboard: LACMS Wrapped** (closed by default; the president can always run it). Until it is run, the promos stay hidden and the vote page says it is not open yet.
+
+**What people see**
+- **`wrapped.html`**: a full-screen, one-question-at-a-time vote (dark, colourful, big buttons, works on a phone with a thumb or on a laptop with a keyboard). Every question is optional. At the end people give an email address (one vote per email; stored only as a scrambled code) and say whether they are a member, not a member, or not sure. No account needed. Their half-finished vote is kept in their own browser until they send it.
+- **Promos:** a card at the top of the welcome screen ("Where would you like to go?") and a purple band on the homepage above the launch section. Both are hidden until the vote is open, show "N days left" from the closing time, and switch to "See the results" if you reveal the results after closing. Code: `js/wrapped-promo.js`.
+- **The questions (editable):** Member of the Semester (type a name), Favourite event (built from the Events on the site that took place in the date window), Moment of the semester, Song of the semester, One word for LACMS, What you value most about LACMS (pick one), a Semester Two wishlist (pick up to 3), and a 1 to 10 rating of your semester.
+
+**Running it** (Dashboard -> LACMS Wrapped)
+- **Overview:** votes so far (members / not members / not sure); the switches **Voting is open** and **Show results to everyone**; title, subtitle, welcome message, an optional automatic closing time, and the dates the favourite-event list covers; the share link; **Download results (CSV)**; **Forget emails** (after closing: removes the scrambled emails; answers stay); **Clear all votes (testing)** (type RESET). Do a test vote, then clear votes before announcing it.
+- **Results:** live ranking for every question (a bar chart per question and the rating spread). Typed answers are grouped when they match exactly ignoring capital letters, so add together the same name spelt two ways when you write the Wrapped.
+- **Questions:** change wording and emoji, hide a question without losing its answers, set how many people can pick, add or remove the answers in a pick list, or add a whole new question.
+
+**Good to know:** the vote and the "who voted" check use the same safeguards as the Unity Cup vote (throw-away emails refused, a rate cap, a hidden trap field for bots). Answers are never stored with an email or name. The privacy notice has a new row for it and a retention row for the scrambled emails. To give another committee member access, use Hub Access -> **Dashboard: LACMS Wrapped**.

@@ -180,8 +180,9 @@
       function onKey(e) {
         if (e.key === 'Escape') { dismissIntro(); return; }
         // keep Tab inside the welcome screen while it is open
-        if (e.key === 'Tab' && choices.length) {
-          var first = choices[0], last = choices[choices.length - 1];
+        var shown = Array.prototype.filter.call(choices, function (el) { return el.offsetParent !== null; });
+        if (e.key === 'Tab' && shown.length) {
+          var first = shown[0], last = shown[shown.length - 1];
           if (!splash.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
           else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
           else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
@@ -194,7 +195,7 @@
         if (!link) return;
         var choice = link.getAttribute('data-intro-choice');
         var remember = splash.querySelector('[data-intro-remember]');
-        if (choice !== 'unity' && remember && remember.checked) { try { localStorage.setItem('lacmsEntryPref', choice); } catch (err) {} }
+        if (choice !== 'unity' && choice !== 'wrapped' && remember && remember.checked) { try { localStorage.setItem('lacmsEntryPref', choice); } catch (err) {} }
         if (choice === 'site') { e.preventDefault(); dismissIntro(); }
         // "hub" follows its link to member-hub.html
       });

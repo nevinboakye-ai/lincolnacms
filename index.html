@@ -7,7 +7,7 @@
 <title>LACMS - Lincoln African Caribbean Medical Society</title>
 <meta name="description" content="LACMS is the student-led community for African and Caribbean heritage students pursuing medicine and healthcare careers at the University of Lincoln.">
 <link rel="icon" href="Media/ACMS%20Branding/logo.png">
-<link rel="stylesheet" href="css/styles.css?v=20260824-186">
+<link rel="stylesheet" href="css/styles.css?v=20260824-216">
 </head>
 <body>
 
@@ -31,6 +31,14 @@
   <div class="intro-choices">
     <p class="intro-ask">Where would you like to go?</p>
     <div class="intro-cards">
+      <a class="intro-card intro-card--wrapped" href="wrapped.html" data-intro-choice="wrapped" data-wr-promo hidden>
+        <span class="intro-card-badge intro-card-badge--wrapped"><i aria-hidden="true"></i><span data-wr-badge>Vote now</span></span>
+        <span class="intro-card-icon intro-card-icon--wrapped" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><rect x="8" y="30" width="9" height="26" rx="4.5" fill="currentColor" stroke="none"/><rect x="22" y="14" width="9" height="42" rx="4.5" fill="currentColor" stroke="none"/><rect x="36" y="24" width="9" height="32" rx="4.5" fill="currentColor" stroke="none"/><rect x="50" y="8" width="9" height="48" rx="4.5" fill="currentColor" stroke="none"/></svg></span>
+        <span class="intro-card-title">LACMS Wrapped</span>
+        <span class="intro-card-short">Vote for the semester&rsquo;s best</span>
+        <span class="intro-card-text" data-wr-card-text>Help build our Semester One Wrapped: Member of the Semester, favourite event, song of the semester and more. Members and non-members can vote.</span>
+        <span class="intro-card-go" aria-hidden="true" data-wr-go>Vote &rarr;</span>
+      </a>
       <a class="intro-card intro-card--hub" href="member-hub.html" data-intro-choice="hub">
         <span class="intro-card-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
         <span class="intro-card-title">Enter the Member Hub</span>
@@ -133,6 +141,22 @@
           <a class="btn btn-outline" href="about.html">Discover LACMS</a>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="wrp-wrap" data-wr-promo aria-label="LACMS Wrapped" hidden>
+    <div class="container">
+      <a class="wrp" href="wrapped.html">
+        <span class="wrp-glow" aria-hidden="true"></span>
+        <span class="wrp-bars" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"><rect x="8" y="30" width="9" height="26" rx="4.5" fill="currentColor" stroke="none"/><rect x="22" y="14" width="9" height="42" rx="4.5" fill="currentColor" stroke="none"/><rect x="36" y="24" width="9" height="32" rx="4.5" fill="currentColor" stroke="none"/><rect x="50" y="8" width="9" height="48" rx="4.5" fill="currentColor" stroke="none"/></svg></span>
+        <span class="wrp-body">
+          <span class="wrp-badge"><i aria-hidden="true"></i><span data-wr-badge>Vote now</span></span>
+          <strong class="wrp-title">LACMS <em>Wrapped</em> <span data-wr-sub>Semester One</span></strong>
+          <span class="wrp-text" data-wr-text>Our Semester One look-back is coming, and you decide what goes in it. Vote for Member of the Semester, your favourite event, the song of the semester and more. Members and non-members, no account needed.</span>
+          <span class="wrp-chips"><span>Takes about a minute</span><span>Every question optional</span><span data-wr-count hidden></span></span>
+        </span>
+        <span class="wrp-go" data-wr-go2>Have your say <span aria-hidden="true">&rarr;</span></span>
+      </a>
     </div>
   </section>
 
@@ -530,7 +554,8 @@
 <script src="js/vendor/supabase-js-2.118.0.min.js"></script>
 <script src="js/view-as.js?v=20260824-215"></script>
 <script src="js/supabase-client.js"></script>
-<script src="js/members.js?v=20260824-215"></script>
+<script src="js/wrapped-promo.js?v=20260824-216"></script>
+<script src="js/members.js?v=20260824-216"></script>
 <script src="js/notifications.js?v=20260824-215"></script>
 <script src="js/guidance.js?v=20260824-215"></script>
 <script src="js/chat.js?v=20260824-186"></script>

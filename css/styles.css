@@ -12333,3 +12333,56 @@ html.fb-embed main { padding-top: var(--space-3); }
 .hub-row--noaccount .hub-matrix-name { font-style: italic; }
 .hub-row--noaccount .hub-matrix-name::after { content: 'no account yet'; margin-left: 8px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--color-border-strong); font: 600 0.62rem var(--font-body); font-style: normal; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-faint); vertical-align: middle; }
 .hub-row--noaccount .hub-cell { opacity: 0.8; }
+
+/* =========================================================
+   LACMS Wrapped promos: welcome-screen card and homepage band (the vote itself is css/wrapped.css)
+   Both stay hidden until js/wrapped-promo.js sees the vote is open.
+   ========================================================= */
+.intro-card--wrapped[hidden], .wrp-wrap[hidden] { display: none; }
+.intro-card--wrapped { grid-column: 1 / -1; order: -1; position: relative; overflow: hidden; color: #f5f1e6; border: 1.5px solid transparent;
+  background: linear-gradient(#150f2b, #150f2b) padding-box, linear-gradient(110deg, #8b6cf0, #e0414a, #d4a62b, #2fbf71, #8b6cf0) border-box; background-size: 100% 100%, 300% 100%; animation: ucp-border 6s linear infinite; }
+.intro-card--wrapped:hover, .intro-card--wrapped:focus-visible { background: linear-gradient(#1c1440, #1c1440) padding-box, linear-gradient(110deg, #8b6cf0, #e0414a, #d4a62b, #2fbf71, #8b6cf0) border-box; background-size: 100% 100%, 300% 100%; border-color: transparent; }
+.intro-card--wrapped .intro-card-text { color: rgba(245, 241, 230, 0.8); }
+.intro-card-icon--wrapped { color: #f1d77f; }
+.intro-card-icon--wrapped svg { width: 36px; height: 36px; }
+.intro-card-icon--wrapped rect { transform-box: fill-box; transform-origin: bottom; animation: wrp-eq 1.6s ease-in-out infinite; }
+.intro-card-icon--wrapped rect:nth-child(2), .wrp-bars rect:nth-child(2) { animation-delay: -0.4s; }
+.intro-card-icon--wrapped rect:nth-child(3), .wrp-bars rect:nth-child(3) { animation-delay: -0.8s; }
+.intro-card-icon--wrapped rect:nth-child(4), .wrp-bars rect:nth-child(4) { animation-delay: -1.2s; }
+.intro-card-badge--wrapped { background: linear-gradient(100deg, #8b6cf0, #e0414a); }
+@keyframes wrp-eq { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.55); } }
+@media (max-width: 600px) {
+  .intro-card--wrapped .intro-card-badge { position: static; grid-column: 1; grid-row: 1; justify-self: start; margin-bottom: 4px; }
+  .intro-card--wrapped .intro-card-title, .intro-card--wrapped .intro-card-short { grid-column: 1; }
+  .intro-card--wrapped .intro-card-go { grid-row: 1 / span 3; }
+}
+
+.wrp-wrap { padding-block: var(--space-5) 0; }
+.wrp { position: relative; isolation: isolate; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-4); padding: clamp(1.25rem, 3vw, 2rem) clamp(1.25rem, 3vw, 2.25rem); border-radius: var(--radius-lg); overflow: hidden; text-decoration: none; color: #f5f1e6;
+  background: radial-gradient(100% 150% at 0% 0%, #3a1f78, #120b26 62%), #120b26; border: 1px solid rgba(139, 108, 240, 0.6); box-shadow: 0 18px 50px rgba(20, 10, 60, 0.45); transition: transform 0.3s var(--ease-standard), box-shadow 0.3s, border-color 0.3s; }
+.wrp:hover, .wrp:focus-visible { transform: translateY(-3px); border-color: #b9a3ff; box-shadow: 0 24px 60px rgba(139, 108, 240, 0.3); }
+.wrp:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+.wrp-glow { position: absolute; inset: -40% -10% auto auto; width: 60%; height: 160%; z-index: -1; background: conic-gradient(from 200deg at 50% 0%, transparent 40%, rgba(224, 65, 74, 0.22) 50%, transparent 60%); animation: ucp-sweep 7s ease-in-out infinite alternate; transform-origin: 50% 0; }
+.wrp-bars { width: clamp(64px, 9vw, 96px); color: #f1d77f; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.5)); }
+.wrp-bars svg { width: 100%; height: auto; display: block; }
+.wrp-bars rect { transform-box: fill-box; transform-origin: bottom; animation: wrp-eq 1.6s ease-in-out infinite; }
+.wrp-body { display: grid; gap: 8px; min-width: 0; }
+.wrp-badge { justify-self: start; display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px; border-radius: 999px; font: 700 0.74rem var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; background: linear-gradient(100deg, #8b6cf0, #e0414a); color: #fff; }
+.wrp-badge i { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: ucp-blink 1.4s infinite; }
+.wrp-title { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.6rem, 4.5vw, 2.6rem); line-height: 1.05; }
+.wrp-title em { font-style: normal; background: linear-gradient(100deg, #b9a3ff, #e0414a, #f1d77f); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.wrp-title span { display: inline-block; margin-left: 0.15em; font-size: 0.5em; font-weight: 700; color: rgba(245, 241, 230, 0.8); letter-spacing: 0.02em; white-space: nowrap; }
+.wrp-text { max-width: 62ch; font-size: 0.98rem; line-height: 1.55; color: rgba(245, 241, 230, 0.84); }
+.wrp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wrp-chips span { padding: 4px 11px; border-radius: 999px; font: 600 0.78rem var(--font-body); background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); }
+.wrp-chips span[hidden] { display: none; }
+.wrp-go { align-self: center; padding: 14px 22px; border-radius: 999px; font: 700 0.95rem var(--font-body); white-space: nowrap; background: linear-gradient(180deg, #ffffff, #d9cdfc); color: #1a1033; box-shadow: 0 6px 20px rgba(139, 108, 240, 0.4); transition: transform 0.2s; }
+.wrp:hover .wrp-go { transform: translateX(3px); }
+@media (max-width: 760px) {
+  .wrp { grid-template-columns: 1fr; gap: var(--space-3); }
+  .wrp-bars { width: 60px; }
+  .wrp-go { text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-card--wrapped, .intro-card-icon--wrapped rect, .wrp-bars rect, .wrp-glow, .wrp-badge i { animation: none; }
+}

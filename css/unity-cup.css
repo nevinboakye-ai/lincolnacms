@@ -1648,3 +1648,30 @@ body:has(.uc-votebar:not([hidden]):not(.is-away)) .uc-toast { bottom: calc(92px 
 .uc-winner strong { font: 700 clamp(1.6rem, 5vw, 2.2rem)/1.1 var(--font-display); }
 .uc-winner > div span { color: var(--color-text-muted); }
 [data-theme="light"] .uc-winner small { color: #8a6512; }
+
+/* =========================================================
+   Dashboard -> LACMS Wrapped (js/wrapped-admin.js); builds on the .ua-* panel styles above
+   ========================================================= */
+.wa-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: var(--space-3); }
+.wa-stat { display: grid; gap: 2px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--color-surface-raised); text-align: center; }
+.wa-stat b { font: 800 1.9rem/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.wa-stat span { font-size: 0.8rem; color: var(--color-text-muted); }
+.wa-link, .wa-new, .wa-opts input[data-wa-olabel] { flex: 1 1 220px; min-width: 0; min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1.5px solid var(--color-border-strong); background: var(--color-bg); color: var(--color-text); font: 500 0.95rem var(--font-body); }
+.wa-link:focus, .wa-new:focus, .wa-opts input[data-wa-olabel]:focus { outline: none; border-color: var(--uc-gold); box-shadow: 0 0 0 3px rgba(212, 166, 43, 0.25); }
+.wa-q-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.wa-opts, .wa-evs, .wa-rank { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.wa-opts li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.wa-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; white-space: nowrap; }
+.wa-evs li { padding: 8px 12px; border-radius: 10px; background: var(--color-surface-raised); }
+.wa-evs small { color: var(--color-text-muted); margin-left: 6px; }
+.wa-rank li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; }
+.wa-pos { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface-raised); font: 700 0.82rem var(--font-body); }
+.wa-rank li:first-child .wa-pos { background: var(--uc-gold); color: #17130a; }
+.wa-bar-top { display: flex; justify-content: space-between; gap: 12px; font-size: 0.95rem; }
+.wa-bar-top strong { overflow-wrap: anywhere; }
+.wa-bar .ua-bar { margin-top: 6px; height: 10px; }
+.wa-avg { margin: 0; font-size: 0.95rem; color: var(--color-text-muted); }
+.wa-avg b { font: 800 2rem var(--font-display); color: var(--color-text); }
+.wa-dist { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: center; font-size: 0.8rem; }
+.wa-dist .ua-bar { margin: 0; height: 18px; }
+.wa-dist .ua-bar b { line-height: 18px; }
