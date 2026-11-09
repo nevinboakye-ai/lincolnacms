@@ -2150,6 +2150,8 @@ Run `db/migrations/131-unity-cup-close-voting.sql` in the Supabase SQL Editor (s
 
 **Where the numbers come from:** `js/unity-results-data.js` is a snapshot of the finished tournament (teams, squads, every match with its scorers and cards) taken from the database on 9 November 2026. The page is built from it by `js/unity-results.js`, so it keeps working after "Clean up old data" removes the live records. Standings, the top scorers, the Golden Boot, best attack and defence, and every record are **worked out from the recorded matches**; only the Player of the Tournament is typed in (it is not in the match data).
 
+**Attendance** ("100+ attendees") is typed in as `event.attendees` (set `event.attendeesPlus` to `false` to drop the "+"); it is the first tile in the numbers and a chip under the hero.
+
 **To correct something:** edit `js/unity-results-data.js` and push. A wrong score or scorer is in the `fixtures` list; the Player of the Tournament is `awards.playerOfTournament`; to hand the Golden Boot to someone other than the recorded top scorer, set `awards.goldenBootOverride` to `{"name":"...","team":"<team id>","goals":N}`. To bring the live tournament pages back, set `over` to `false` and reopen voting in the dashboard.
 
 **Worth knowing:** the recorded goals put Joel Yeboah (Black Student Network) top with 9 goals; the two Islamic Society players called Sami have 4 (shirt 4) and 2 (shirt 8), so the Golden Boot shows Joel. "Best defence" is goals conceded per game, so a team that went out early can't win it by playing fewer matches.

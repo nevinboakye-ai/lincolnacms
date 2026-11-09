@@ -180,12 +180,13 @@
     return '<section class="ur-block" aria-labelledby="ur-awards-h"><header class="uc-head ur-reveal"><span class="uc-kicker">The awards</span><h2 id="ur-awards-h">Stars of the tournament</h2></header><ul class="ur-awards">' + cards + '</ul></section>';
   }
 
-  function tile(value, label, sub, dec) {
-    return '<li class="ur-tile ur-reveal"><b data-ur-count="' + value + '"' + (dec ? ' data-dec="' + dec + '"' : '') + '>' + (dec ? Number(value).toFixed(dec) : value) + '</b><span>' + esc(label) + '</span>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</li>';
+  function tile(value, label, sub, dec, suffix) {
+    return '<li class="ur-tile ur-reveal"><b data-ur-count="' + value + '"' + (dec ? ' data-dec="' + dec + '"' : '') + (suffix ? ' data-suffix="' + esc(suffix) + '"' : '') + '>' + (dec ? Number(value).toFixed(dec) : value) + (suffix || '') + '</b><span>' + esc(label) + '</span>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</li>';
   }
   function recordRow(label, html) { return '<div class="ur-rec ur-reveal"><dt>' + esc(label) + '</dt><dd>' + html + '</dd></div>'; }
   function numbersHtml() {
-    var tiles = tile(R.teams.length, 'Teams') + tile(R.players.length, 'Players', 'on the squad lists') + tile(F.length, 'Matches', 'on the day') + tile(totalGoals, 'Goals') +
+    var att = R.event && R.event.attendees ? tile(R.event.attendees, 'Attendees', 'came to the Unity Cup', 0, R.event.attendeesPlus ? '+' : '') : '';
+    var tiles = att + tile(R.teams.length, 'Teams', plural(R.players.length, 'player') + ' on the squad lists') + tile(F.length, 'Matches', 'on the day') + tile(totalGoals, 'Goals') +
       tile(F.length ? totalGoals / F.length : 0, 'Goals per match', '', 1) + tile(cleanSheets, 'Clean sheets') + tile(hatTricks.length, hatTricks.length === 1 ? 'Hat-trick' : 'Hat-tricks') +
       tile(yellow + red, 'Cards shown', yellow + ' yellow · ' + red + ' red');
     var recs = '';
@@ -272,15 +273,15 @@
   var lede = document.querySelector('[data-ur-lede]'); if (lede) lede.textContent = champ.name + ' are the Unity Cup champions. Here is how the whole tournament finished: the awards, the top scorers and every result.';
   var meta = document.querySelector('[data-ur-meta]');
   if (meta) meta.innerHTML = '<span class="uc-meta-chip">' + esc(new Date((R.event.date || '2026-11-06') + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })) + '</span>' +
-    '<span class="uc-meta-chip">' + plural(R.teams.length, 'team') + '</span><span class="uc-meta-chip">' + plural(F.length, 'match', 'matches') + '</span><span class="uc-meta-chip">' + plural(totalGoals, 'goal') + '</span>';
+    (R.event && R.event.attendees ? '<span class="uc-meta-chip">' + R.event.attendees + (R.event.attendeesPlus ? '+' : '') + ' attendees</span>' : '') + '<span class="uc-meta-chip">' + plural(R.teams.length, 'team') + '</span><span class="uc-meta-chip">' + plural(F.length, 'match', 'matches') + '</span><span class="uc-meta-chip">' + plural(totalGoals, 'goal') + '</span>';
 
   // Scroll reveals and number count-ups (everything is simply shown when motion is reduced)
   var nodes = Array.prototype.slice.call(body.querySelectorAll('.ur-reveal'));
   function countUp(el) {
-    var to = Number(el.getAttribute('data-ur-count')), dec = Number(el.getAttribute('data-dec') || 0);
-    if (REDUCED || !isFinite(to)) { el.textContent = dec ? to.toFixed(dec) : String(to); return; }
+    var to = Number(el.getAttribute('data-ur-count')), dec = Number(el.getAttribute('data-dec') || 0), suf = el.getAttribute('data-suffix') || '';
+    if (REDUCED || !isFinite(to)) { el.textContent = (dec ? to.toFixed(dec) : String(to)) + suf; return; }
     var start = null, dur = 1100;
-    function step(ts) { if (start === null) start = ts; var k = Math.min(1, (ts - start) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = (to * e).toFixed(dec); if (k < 1) window.requestAnimationFrame(step); else el.textContent = dec ? to.toFixed(dec) : String(to); }
+    function step(ts) { if (start === null) start = ts; var k = Math.min(1, (ts - start) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = (to * e).toFixed(dec) + (k < 1 ? '' : suf); if (k < 1) window.requestAnimationFrame(step); else el.textContent = (dec ? to.toFixed(dec) : String(to)) + suf; }
     el.textContent = dec ? (0).toFixed(dec) : '0'; window.requestAnimationFrame(step);
   }
   var confettiDone = false;
