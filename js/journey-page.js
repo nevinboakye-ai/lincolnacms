@@ -36,7 +36,7 @@
     ['Join LACMS', '+10'], ['Each month as a member (first year)', '+5'], ['Visit the Members Hub (once a day)', '+2'],
     ['Add a bio to your profile', '+15'], ['Add your LinkedIn', '+10'], ['Register for an event', '+10 each'],
     ['Reveal a member discount', '+3 each'], ['Use a member discount', '+5 each'], ['Share a resource (once approved)', '+25 each'],
-    ['Like, comment on or use a resource', '+1 / +2 / +1'], ['Nominate for Member of the Month', '+15 each'], ['Like or comment on news', '+1 / +2'],
+    ['Like, comment on or use a resource', '+1 / +2 / +1'], ['Nominate for Member of the Semester', '+15 each'], ['Like or comment on news', '+1 / +2'],
     ['Apply for Sankofa', '+20'], ['Send your first message in the Network', '+10']
   ];
 

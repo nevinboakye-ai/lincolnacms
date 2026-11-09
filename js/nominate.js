@@ -1,4 +1,4 @@
-// Member of the Month, made easy (migration 099). One shared script that:
+// Member of the Semester, made easy (migration 099). One shared script that:
 //
 //   * opens a one-tap "Nominate <person>" dialog from anywhere on the site - any
 //     element with data-nominate-user="<account id>" data-nominate-name="<name>"
@@ -172,7 +172,7 @@
           '<span class="motm-praise-star" aria-hidden="true">★</span>' +
           '<div class="motm-praise-body">' +
           '<h3>Someone thinks you’ve been making a difference</h3>' +
-          '<p>' + (n === 1 ? 'A member has' : n + ' members have') + ' nominated you for Member of the Month' +
+          '<p>' + (n === 1 ? 'A member has' : n + ' members have') + ' nominated you for Member of the Semester' +
           (named.length ? ' (' + named.join(', ') + ' wanted you to know)' : '') + '. Here’s what stood out:</p>' +
           (tags.length ? '<ul class="motm-praise-tags">' + tags.map(function (t) { return '<li>' + esc(reasonLabel(t)) + '</li>'; }).join('') + '</ul>' : '') +
           quotes +
@@ -359,13 +359,13 @@
 
     function shell(inner) { dlg.innerHTML = closeBtn + inner; }
     function message(title, text, extra) {
-      shell('<span class="guide-eyebrow">Member of the Month</span><h2 class="guide-title" id="motm-nom-title">' + title + '</h2>' +
+      shell('<span class="guide-eyebrow">Member of the Semester</span><h2 class="guide-title" id="motm-nom-title">' + title + '</h2>' +
         '<p class="guide-text">' + text + '</p>' + (extra || '') +
         '<div class="guide-actions"><button type="button" class="btn btn-outline" data-nom-close>Close</button></div>');
       var b = dlg.querySelector('[data-nom-close].btn'); if (b) b.focus();
     }
 
-    shell('<span class="guide-eyebrow">Member of the Month</span><h2 class="guide-title" id="motm-nom-title">One moment…</h2>' +
+    shell('<span class="guide-eyebrow">Member of the Semester</span><h2 class="guide-title" id="motm-nom-title">One moment…</h2>' +
       '<div class="motm-nom-wait"><span class="auth-gate-spinner" aria-hidden="true"></span></div>');
 
     Promise.all([getMe(), canNominate(), loadGoal(true)]).then(function (res) {
@@ -390,7 +390,7 @@
     function showForm(me, goal) {
       var title = name ? 'Nominate ' + esc(name) : 'Nominate someone';
       shell(
-        '<span class="guide-eyebrow">Member of the Month</span>' +
+        '<span class="guide-eyebrow">Member of the Semester</span>' +
         '<h2 class="guide-title" id="motm-nom-title">' + title + '</h2>' +
         '<p class="guide-text">' + (name ? 'What stood out about ' + esc(first) + '?' : 'Who, and what stood out?') + ' Pick up to three – it takes ten seconds.</p>' +
         '<form class="guide-form motm-nom-form" novalidate>' +
@@ -453,8 +453,8 @@
         '<span class="motm-nom-tick" aria-hidden="true">★</span>' +
         '<h2 class="guide-title" id="motm-nom-title">' + esc(f) + ' has been nominated</h2>' +
         '<p class="guide-text">' + (linked
-          ? 'They’ll be told that someone thinks they’re making a difference. The committee reads every nomination when choosing the next Member of the Month.'
-          : 'The committee reads every nomination when choosing the next Member of the Month. (We couldn’t match that name to an account, so they haven’t been notified.)') + '</p>' +
+          ? 'They’ll be told that someone thinks they’re making a difference. The committee reads every nomination when choosing the next Member of the Semester.'
+          : 'The committee reads every nomination when choosing the next Member of the Semester. (We couldn’t match that name to an account, so they haven’t been notified.)') + '</p>' +
         (unlockedNow ? '<p class="motm-nom-unlock">Your nomination just hit the goal' + (goal.reward ? ' – ' + esc(goal.reward) + ' is unlocked!' : '!') + '</p>' : '') +
         (meterHtml(goal) ? '<div class="motm-nom-meter">' + meterHtml(goal) + '</div>' : '') +
         '<div class="guide-actions" style="justify-content:center;"><button type="button" class="btn btn-primary" data-nom-close>Done</button></div>' +

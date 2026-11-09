@@ -17,7 +17,7 @@ This is a plain description of how the LACMS website works today: what informati
 
 - **Who runs it.** The LACMS student committee. It is the society's own website, not an official Students' Union website, and the footer of every page says so.
 - **Who it is for.** Students at the University of Lincoln and approved healthcare professionals who support the society. It is open to every course and background.
-- **What it does.** Public pages about the society; a members' hub (events, perks, news, resources, the Network, Member of the Month); the Sankofa mentoring programme and its Hub; private messaging between members; and a committee dashboard.
+- **What it does.** Public pages about the society; a members' hub (events, perks, news, resources, the Network, Member of the Semester); the Sankofa mentoring programme and its Hub; private messaging between members; and a committee dashboard.
 - **Membership and payment.** Membership is bought from ULSU, which records it. The website never takes payment. Members request an account and the committee approves it after checking the membership.
 
 ## 3. Personal information the website holds
@@ -56,7 +56,7 @@ This is a plain description of how the LACMS website works today: what informati
 - **Members.** The Network (when opened by the committee, for members who have not switched themselves off), comments and board posts show a name; Circle members see each other's name, role and intro. Messages are visible only to the people in the conversation and, if a message is reported, to the committee reviewing that report.
 - **Healthcare professionals.** Can be given access to the Network by the committee.
 - **Event partners.** Can be given a private link to anonymised results. Names and emails are never shown.
-- **The public.** Only what the society deliberately publishes (committee page, events, gallery, Member of the Month winners).
+- **The public.** Only what the society deliberately publishes (committee page, events, gallery, Member of the Semester winners).
 - **Nothing is sold or shared with advertisers.**
 
 ## 7. How long information is kept

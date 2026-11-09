@@ -63,9 +63,9 @@
   };
   var PRO_CATEGORIES = { alumni_doctor: 'Alumni doctor', senior_doctor: 'Senior doctor', pharmacist: 'Pharmacist', other: 'Other professional' };
   var FEATURE_LABEL = {
-    perks: 'Perks', sankofa: 'Sankofa applications', network: 'Network', motm_nominate: 'Member of the Month', news_feed: 'News feed',
+    perks: 'Perks', sankofa: 'Sankofa applications', network: 'Network', motm_nominate: 'Member of the Semester', news_feed: 'News feed',
     resources: 'Resources', sankofa_hub: 'Sankofa Hub', journey: 'Journey',
-    dash_mmg: 'Dashboard: MMG', dash_sankofa: 'Dashboard: Sankofa', dash_motm: 'Dashboard: MoTM', dash_events: 'Dashboard: Events', dash_gallery: 'Dashboard: Gallery'
+    dash_mmg: 'Dashboard: MMG', dash_sankofa: 'Dashboard: Sankofa', dash_motm: 'Dashboard: Member of the Semester', dash_events: 'Dashboard: Events', dash_gallery: 'Dashboard: Gallery'
   };
 
   var nativeFetch = window.fetch ? window.fetch.bind(window) : null;

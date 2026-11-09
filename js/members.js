@@ -148,7 +148,7 @@
   }
 
   // The "thanks, we've got it" email after someone applies to Sankofa or
-  // nominates for Member of the Month (supabase/functions/send-member-email).
+  // nominates for Member of the Semester (supabase/functions/send-member-email).
   // Fire-and-forget: the application is already saved, so a missing function
   // or a failed send never gets in the way - it just logs to the console.
   // Sign-in pages can send people back where they came from (e.g. the event feedback
@@ -2780,7 +2780,7 @@
     }
 
     if (bioEl && winner.bio) bioEl.textContent = winner.bio;
-    if (monthBadge) monthBadge.textContent = winner.month_label || 'This month';
+    if (monthBadge) monthBadge.textContent = winner.month_label || 'This semester';
 
     if (winner.photo_url && photoImg && photoPlaceholder) {
       photoImg.src = winner.photo_url;
@@ -2849,7 +2849,7 @@
         var photoImg = document.getElementById('home-motm-photo-img');
 
         homeMotmNameEl.textContent = winner.full_name;
-        if (eyebrowEl) eyebrowEl.textContent = 'ACMS Member of the Month · ' + (winner.month_label || 'This month');
+        if (eyebrowEl) eyebrowEl.textContent = 'Member of the Semester · ' + (winner.month_label || 'This semester');
 
         var courseYear = [winner.course, winner.year_of_study].filter(Boolean).join(' · ');
         if (roleEl && courseYear) {
@@ -5031,10 +5031,10 @@
           linkedinBtn(record.linkedin_url);
       }
 
-      // One-tap Member of the Month nomination (js/nominate.js, migration 099).
+      // One-tap Member of the Semester nomination (js/nominate.js, migration 099).
       var nominateTarget = networkChatTarget(type, record);
       if (nominateTarget && window.lacmsNominate) {
-        body.insertAdjacentHTML('beforeend', '<div class="network-modal-nominate" hidden><button type="button" class="btn btn-outline" data-nominate-user="' + escapeHtml(nominateTarget) + '" data-nominate-name="' + escapeHtml(record.full_name) + '"><span aria-hidden="true">\u2605</span> Nominate for Member of the Month</button></div>');
+        body.insertAdjacentHTML('beforeend', '<div class="network-modal-nominate" hidden><button type="button" class="btn btn-outline" data-nominate-user="' + escapeHtml(nominateTarget) + '" data-nominate-name="' + escapeHtml(record.full_name) + '"><span aria-hidden="true">\u2605</span> Nominate for Member of the Semester</button></div>');
         var nominateBox = body.querySelector('.network-modal-nominate');
         window.lacmsNominate.allowed().then(function (ok) { if (ok && nominateBox) nominateBox.hidden = false; });
       }
@@ -5435,7 +5435,7 @@
         if (!dashCan('motm')) {
           // not shown to this person
         } else if (results[6].error) {
-          console.error('MoTM nominations failed to load:', results[6].error.message);
+          console.error('Member of the Semester nominations failed to load:', results[6].error.message);
           showSectionLoadError('motm-nominations-list', 'motm-nominations-empty', 'motm', results[6].error.message);
         } else {
           var motmList = results[6].data || [];
@@ -5632,7 +5632,7 @@
       'events.html': 'Events',
       'programmes.html': 'Programmes',
       'opportunities.html': 'Opportunities',
-      'motm.html': 'Member of the Month',
+      'motm.html': 'Member of the Semester',
       'news.html': 'News',
       'gallery.html': 'Gallery',
       'join.html': 'Join LACMS',
@@ -6296,7 +6296,7 @@
         if (!g || r.error || g.target === undefined) { host.innerHTML = ''; return; }
         host.innerHTML = '<div class="motm-goal-card">' +
           '<h3>Monthly nominations goal</h3>' +
-          '<p>Members see a meter on the Members Hub and the Member of the Month page: how many nominations so far this month, and what you unlock when it\'s reached. <strong>' + (g.count || 0) + '</strong> so far in ' + escapeHtml(g.month || 'this month') + '.</p>' +
+          '<p>Members see a meter on the Members Hub and the Member of the Semester page: how many nominations so far this month, and what you unlock when it\'s reached. <strong>' + (g.count || 0) + '</strong> so far in ' + escapeHtml(g.month || 'this month') + '.</p>' +
           '<label class="motm-goal-switch"><input type="checkbox" id="motm-goal-enabled"' + (g.enabled ? ' checked' : '') + '> Show the goal to members</label>' +
           '<div class="motm-goal-grid"><div><label for="motm-goal-target">Target</label><input type="number" id="motm-goal-target" min="1" max="1000" value="' + escapeHtml(g.target || 20) + '"></div>' +
           '<div><label for="motm-goal-reward">What it unlocks <span class="guide-optional">(optional)</span></label><input type="text" id="motm-goal-reward" maxlength="160" placeholder="e.g. a free pizza night" value="' + escapeHtml(g.reward || '') + '"></div></div>' +
@@ -7234,14 +7234,14 @@
       { key: 'perks', label: 'Discounts & opportunities', short: 'Perks', desc: 'Partner discount codes and members-first opportunities.', canLock: true },
       { key: 'sankofa', label: 'Sankofa Circle application', short: 'Sankofa', desc: 'Applying for a Sankofa mentorship Circle.', canLock: false },
       { key: 'network', label: 'The LACMS Network', short: 'Network', desc: 'The member and professional directory.', canLock: true },
-      { key: 'motm_nominate', label: 'Member of the Month nominations', short: 'MoTM', desc: 'Nominating someone for Member of the Month.', canLock: false },
+      { key: 'motm_nominate', label: 'Member of the Semester nominations', short: 'MoTS', desc: 'Nominating someone for Member of the Semester.', canLock: false },
       { key: 'news_feed', label: 'News & updates feed', short: 'News', desc: 'The announcements feed on the hub.', canLock: false },
       { key: 'sankofa_hub', label: 'Sankofa Hub', short: 'Sankofa Hub', desc: 'Who can SEE the Sankofa Hub - Circles, meetings, board, goals and rewards (Executive Committee only to start with). Managing it is a separate list: Dashboard > Sankofa Hub > Who can manage. People also have to be added to the Hub from Dashboard > Sankofa Hub.', canLock: false },
       { key: 'journey', label: 'Member journey', short: 'Journey', desc: 'XP, levels, badges and the small progress lines around the Members Hub (on for all members; each member can also hide it for themselves).', canLock: false },
       { key: 'resources', label: 'LACMS Resources', short: 'Resources', desc: 'The study resources library shared by members (until opened up, executives only).', canLock: true },
       { key: 'dash_mmg', label: 'Dashboard: MMG', short: 'MMG', desc: 'The MMG guests section of the Platform Activity Dashboard.', dash: true },
       { key: 'dash_sankofa', label: 'Dashboard: Sankofa', short: 'Sankofa', desc: 'Sankofa mentee and mentor applications on the dashboard.', dash: true },
-      { key: 'dash_motm', label: 'Dashboard: Nominations', short: 'Nominations', desc: 'Member of the Month nominations on the dashboard.', dash: true },
+      { key: 'dash_motm', label: 'Dashboard: Nominations', short: 'Nominations', desc: 'Member of the Semester nominations on the dashboard.', dash: true },
       { key: 'dash_events', label: 'Dashboard: Events', short: 'Events', desc: 'Who has registered for which event.', dash: true },
       { key: 'dash_gallery', label: 'Dashboard: Gallery', short: 'Gallery', desc: 'Member gallery submissions and the live gallery.', dash: true },
       { key: 'dash_activity', label: 'Dashboard: User Activity', short: 'User activity', desc: 'Who is online, who has set up their account, and who needs a nudge. Shows every member and professional\'s name, course and email.', dash: true },

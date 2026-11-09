@@ -126,7 +126,7 @@
     myEmail: '',
     siteEvents: [],          // [{ slug, name }] for the event pickers
     fbUnavailable: true,     // true until the feedback lists (migration 100) have loaded
-    motmUnavailable: true,   // true until the Member of the Month lists (migration 099) have loaded
+    motmUnavailable: true,   // true until the Member of the Semester lists (migration 099) have loaded
     motmNominators: {}       // lower(email) -> true: has nominated this month
   };
 
@@ -150,19 +150,19 @@
       message: 'Hi {first_name},\n\nA quick update on Sankofa Circles: [your update here].\n\nIf you have any questions, just email us at acms@lincolnsu.com.\n\nThe LACMS Committee'
     },
     {
-      id: 'motm-nudge', name: 'Member of the Month - who stood out?',
+      id: 'motm-nudge', name: 'Member of the Semester - who stood out?',
       subject: 'Who stood out for you lately?',
-      message: 'Hi {first_name},\n\nIs there someone who made a difference to you recently? Maybe they helped you revise, made you feel welcome, or showed up when it counted.\n\nNominating them for Member of the Month takes about ten seconds: tick a few reasons that fit and you are done. They will hear that someone thinks they are making a difference.\n\nhttps://lincolnacms.uk/motm.html#nominate\n\nThe LACMS Committee'
+      message: 'Hi {first_name},\n\nIs there someone who made a difference to you this semester? Maybe they helped you revise, made you feel welcome, or showed up when it counted.\n\nNominating them for Member of the Semester takes about ten seconds: tick a few reasons that fit and you are done. They will hear that someone thinks they are making a difference.\n\nhttps://lincolnacms.uk/motm.html#nominate\n\nThe LACMS Committee'
     },
     {
-      id: 'motm-close', name: 'Member of the Month - nominations close soon',
-      subject: 'Member of the Month nominations close soon',
-      message: 'Hi {first_name},\n\nNominations for this month\'s Member of the Month close on [date]. If someone deserves a thank you, there is still time.\n\nWe are [number] nominations away from [the goal and what it unlocks].\n\nhttps://lincolnacms.uk/motm.html#nominate\n\nThe LACMS Committee'
+      id: 'motm-close', name: 'Member of the Semester - nominations close soon',
+      subject: 'Member of the Semester nominations close soon',
+      message: 'Hi {first_name},\n\nNominations for this semester\'s Member of the Semester close on [date]. If someone deserves a thank you, there is still time.\n\nWe are [number] nominations away from [the goal and what it unlocks].\n\nhttps://lincolnacms.uk/motm.html#nominate\n\nThe LACMS Committee'
     },
     {
-      id: 'motm-thanks', name: 'Member of the Month - thank you for nominating',
+      id: 'motm-thanks', name: 'Member of the Semester - thank you for nominating',
       subject: 'Thank you for nominating',
-      message: 'Hi {first_name},\n\nThank you for nominating someone for Member of the Month. Recognising the people around us is what makes this community what it is.\n\nThe LACMS Committee'
+      message: 'Hi {first_name},\n\nThank you for nominating someone for Member of the Semester. Recognising the people around us is what makes this community what it is.\n\nThe LACMS Committee'
     },
     {
       id: 'fb-request', name: 'Event feedback - how was it?',
@@ -322,9 +322,9 @@
       match: function (p) { return p.hubRole === 'mentee'; } },
     { id: 'sk_hub_mentors', group: 'Sankofa', label: 'Mentors in the Sankofa Hub', refine: ['circle'],
       match: function (p) { return p.hubRole === 'mentor'; } },
-    { id: 'motm_not_yet', group: 'Member of the Month', label: 'Members who haven\'t nominated this month', refine: [], needs: 'motm',
+    { id: 'motm_not_yet', group: 'Member of the Semester', label: 'Members who haven\'t nominated this month', refine: [], needs: 'motm',
       match: function (p) { return !!p.kinds.member && !p.nominatedThisMonth; } },
-    { id: 'motm_done', group: 'Member of the Month', label: 'Members who nominated this month', refine: [], needs: 'motm',
+    { id: 'motm_done', group: 'Member of the Semester', label: 'Members who nominated this month', refine: [], needs: 'motm',
       match: function (p) { return !!p.kinds.member && !!p.nominatedThisMonth; } },
     { id: 'ev_registrants', group: 'Event feedback', label: 'People registered for an event', refine: ['event'], needs: 'fb',
       match: function (p) { return !!p.eventSlugs && Object.keys(p.eventSlugs).length > 0; } },

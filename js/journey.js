@@ -35,7 +35,7 @@
   var KIND_LABEL = {
     join: 'Joined LACMS', visit: 'Visited the Members Hub', bio: 'Added a bio', linkedin: 'Added your LinkedIn',
     event_reg: 'Registered for an event', disc_reveal: 'Tried a discount', disc_used: 'Used a discount',
-    motm_nominate: 'Nominated for Member of the Month', motm_kingmaker: 'Your nominee became Member of the Month', event_feedback: 'Gave event feedback', news_like: 'Liked a news post', news_comment: 'Commented on news',
+    motm_nominate: 'Nominated for Member of the Semester', motm_kingmaker: 'Your nominee became Member of the Semester', event_feedback: 'Gave event feedback', news_like: 'Liked a news post', news_comment: 'Commented on news',
     sankofa_apply: 'Applied for Sankofa', resource_shared: 'Shared a resource', resource_like: 'Liked a resource',
     resource_comment: 'Commented on a resource', resource_download: 'Used a resource', chat_first: 'Sent your first message',
     tenure: 'Another month with LACMS'

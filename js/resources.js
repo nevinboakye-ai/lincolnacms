@@ -1423,10 +1423,10 @@
     });
   }
 
-  // "Say thanks": nominate the person who shared this for Member of the Month (js/nominate.js).
+  // "Say thanks": nominate the person who shared this for Member of the Semester (js/nominate.js).
   function thanksHtml(r) {
     if (r.status !== 'approved' || !r.uploader_id || r.uploader_id === userId || !window.lacmsNominate) return '';
-    return '<div class="res-thanks"><button type="button" class="res-thanks-btn" data-nominate-user="' + escapeHtml(r.uploader_id) + '" data-nominate-name="' + escapeHtml(r.uploader_name || '') + '"><span aria-hidden="true">\u2605</span> Helpful? Nominate ' + escapeHtml(uploaderFirst(r)) + ' for Member of the Month</button></div>';
+    return '<div class="res-thanks"><button type="button" class="res-thanks-btn" data-nominate-user="' + escapeHtml(r.uploader_id) + '" data-nominate-name="' + escapeHtml(r.uploader_name || '') + '"><span aria-hidden="true">\u2605</span> Helpful? Nominate ' + escapeHtml(uploaderFirst(r)) + ' for Member of the Semester</button></div>';
   }
 
   function previewResource(r, opts) {

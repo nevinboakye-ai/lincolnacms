@@ -1,5 +1,5 @@
 // Guidance for signed-in users: gentle reminders to nominate for Member of
-// the Month / apply for Sankofa, a "complete your Network profile" prompt,
+// the Semester / apply for Sankofa, a "complete your Network profile" prompt,
 // and an optional guided tour of the members hub and the rest of the site.
 //
 // Everything here is optional and dismissible, and none of it runs for
@@ -135,7 +135,7 @@
   var NUDGES = [
     // Sankofa first - it's the one with a deadline.
     { key: 'sankofa', cardId: 'sankofa-apply-card', badge: 'Apply now', href: 'member-sankofa.html', hidePages: ['member-sankofa.html'], text: 'Applications for a Sankofa Circle are open - apply today' },
-    { key: 'motm', cardId: 'motm-nominate-card', badge: 'Prizes to win', href: 'motm.html#nominate', hidePages: ['motm.html'], text: 'Nominate someone for Member of the Month - the winner and runners-up win LACMS prizes' }
+    { key: 'motm', cardId: 'motm-nominate-card', badge: 'Prizes to win', href: 'motm.html#nominate', hidePages: ['motm.html'], text: 'Nominate someone for Member of the Semester - the winner and runners-up win LACMS prizes' }
   ];
   var QUIET_PAGES = ['member-login.html', 'login.html', 'request-account.html', 'request-professional-account.html', 'join.html', 'mmg-login.html', 'president-dashboard.html', 'member-hub.html'];
 
@@ -401,7 +401,7 @@
     { page: HUB, target: ['#sankofa-apply-card'], title: 'Sankofa Circles', body: 'Our mentorship programme. Medicine members can apply here to be matched into a Circle of mentors and mentees.', optional: true },
     { page: HUB, target: ['#network-card', '#network-locked-card'], title: 'The LACMS Network', body: 'A directory of members and the professionals supporting us. It\'s being built right now and opens up soon.', optional: true },
     { page: HUB, target: ['a.quick-link-card[href="events.html"]'], title: 'Events', body: 'See what\'s coming up and register for events straight from your account.', optional: true },
-    { page: HUB, target: ['#motm-nominate-card'], title: 'Member of the Month', body: 'Nominate someone who\'s gone above and beyond - the winner and runners-up win exciting LACMS prizes.', optional: true },
+    { page: HUB, target: ['#motm-nominate-card'], title: 'Member of the Semester', body: 'Nominate someone who\'s gone above and beyond - the winner and runners-up win exciting LACMS prizes.', optional: true },
     { page: HUB, target: ['#member-hub-mmg-section'], title: 'Midlands Medics Gala', body: 'If you\'re part of the Gala, your updates from the committee show up here.', optional: true },
     { page: HUB, target: ['#president-dashboard-card'], title: 'Platform dashboard', body: 'The committee\'s tools for running LACMS - you only see this because you\'ve been given access.', optional: true },
     { page: HUB, target: ['.notif-bell'], title: 'Notifications', body: 'The bell shows how much new content has appeared since you last looked - discounts, events, news and more. Open it to jump straight there.', optional: true },
@@ -412,7 +412,7 @@
     { page: 'events.html', target: ['.event-list'], title: 'Events', body: 'Open any event for the details, and use Register to reserve your place. You can cancel a registration from here too.' },
     { page: 'programmes.html', target: ['.programme-card'], title: 'Programmes', body: 'What LACMS runs beyond events - mentorship, study skills, widening access and more.', optional: true },
     { page: 'opportunities.html', target: ['#opportunities-list', '#opportunities-locked-wrap'], title: 'Opportunities', body: 'Work experience, bursaries and volunteering shared by the society.', optional: true },
-    { page: 'motm.html', target: ['#nominate'], title: 'Nominate for Member of the Month', body: 'Tell us who deserves recognition and why. The winner and runners-up win exciting LACMS prizes - and you can nominate once a month.' },
+    { page: 'motm.html', target: ['#nominate'], title: 'Nominate for Member of the Semester', body: 'Tell us who deserves recognition and why. The winner and runners-up win exciting LACMS prizes - and you can nominate once a month.' },
     { page: 'news.html', target: ['#news-feed-list', '#main .section'], title: 'News', body: 'Stories from the society. Members can like and comment on posts.' },
     { page: 'gallery.html', target: ['#gallery-submit-form-wrap', '#main .section'], title: 'Gallery', body: 'Photos from our events - and you can send in your own for the committee to feature.', optional: true },
     { page: 'about.html', target: ['#committee'], title: 'Meet the committee', body: 'The people who run LACMS. Tap a card to read their story.' },
@@ -908,11 +908,11 @@
     perks: { title: 'Discounts & opportunities', sub: 'Member discounts, offers and opportunities', href: 'member-perks.html' },
     sankofa: { title: 'Sankofa', sub: 'Apply to join a Sankofa Circle', href: 'member-sankofa.html' },
     network: { title: 'The Network', sub: 'Connect with LACMS members and professionals', href: 'member-network.html' },
-    motm_nominate: { title: 'Member of the Month nominations', sub: 'Nominate someone - the winner and runners-up win prizes', href: 'motm.html#nominate' },
+    motm_nominate: { title: 'Member of the Semester nominations', sub: 'Nominate someone - the winner and runners-up win prizes', href: 'motm.html#nominate' },
     resources: { title: 'LACMS Resources', sub: 'Study resources shared by LACMS members', href: 'member-resources.html' },
     sankofa_hub: { title: 'The Sankofa Hub', sub: 'Your Circle, mentor, meetings and rewards', href: 'member-sankofa-hub.html' }
   };
-  var DASH_LABELS = { dash_mmg: 'Midlands Medics Gala', dash_sankofa: 'Sankofa', dash_motm: 'Member of the Month', dash_events: 'Events', dash_gallery: 'Gallery' };
+  var DASH_LABELS = { dash_mmg: 'Midlands Medics Gala', dash_sankofa: 'Sankofa', dash_motm: 'Member of the Semester', dash_events: 'Events', dash_gallery: 'Gallery' };
   var ICONS = {
     spark: '<path d="M12 3l2.1 5.4L20 10l-5.9 1.6L12 17l-2.1-5.4L4 10l5.9-1.6z"/><path d="M19 17v4M17 19h4"/>',
     todo: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -1078,7 +1078,7 @@
           sub: ctx.sankofa.appliedBefore ? 'A new phase is open - you\'re welcome to apply again' : 'You haven\'t applied yet - don\'t miss out', href: 'member-sankofa.html'
         });
       }
-      if (ctx.nudges.motm) waiting.push({ icon: 'todo', title: 'Nominate someone for Member of the Month', sub: 'You haven\'t nominated this month - the winner and runners-up win prizes', href: 'motm.html#nominate' });
+      if (ctx.nudges.motm) waiting.push({ icon: 'todo', title: 'Nominate someone for Member of the Semester', sub: 'You haven\'t nominated this month - the winner and runners-up win prizes', href: 'motm.html#nominate' });
       if (waiting.length) groups.push({ title: 'Waiting for you', items: waiting });
 
       // -- Since you were last here

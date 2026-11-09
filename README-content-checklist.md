@@ -25,7 +25,7 @@ Real photos are wired in for the homepage hero, the Programmes page's Sankofa te
 - `Media/study-skills.jpg`, `Media/widening-access.jpg` — Programmes page
 - `Media/sankofa-circle.jpg` — Sankofa Mentorship page (see §10)
 - Committee headshots on the About page: `nevin-boakye.jpg`, `jemimah-omotola.jpg`, `stephen-archer-jr.jpg`, `roberta-arthur.jpg`, `martin-oti.jpg`, `gloria-ndarigumije.jpg`
-- `Media/motm-2026-09.jpg` — September's Member of the Month (see §7d)
+- `Media/motm-2026-09.jpg` — September's Member of the Semester (see §7d)
 
 ## 2b. Gallery slideshow — done
 
@@ -101,7 +101,7 @@ Both pages now show: **6 active members**, **20 Professional Mentors**, **10+ ev
 - The "Who we are" section's single photo is now a **5-image crossfade carousel** (pure CSS, no JS), cycling through a selection of real photos from `Media/ACMS Gallery/`. To change which photos it shows, edit the `<img class="wwa-carousel-img">` tags in `index.html`'s Who We Are section — each has a staggered negative `animation-delay` (0s, -4s, -8s, -12s, -16s) that keeps them cycling in order; keep that stagger pattern if you add/remove images.
 - Underneath, the old single "Meet the committee" link is now a 3-link stack: **Meet the committee**, **Explore our programmes**, **Browse our opportunities** — pointing at `about.html#committee`, `programmes.html` and `opportunities.html` respectively. This is now the homepage's only route into Programmes/Opportunities content (besides the main nav).
 
-## 7d. ACMS Member of the Month (motm.html) — new, outstanding
+## 7d. ACMS Member of the Semester (motm.html) — new, outstanding
 
 New page + homepage teaser, added to the main nav (positioned between Opportunities and Gallery), mobile drawer and footer on every page.
 

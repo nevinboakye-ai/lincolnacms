@@ -3,7 +3,7 @@
 // Sends the automatic confirmation emails members get after they do something
 // on the site:
 //   * sankofa_application - "we've received your Sankofa application"
-//   * motm_nomination     - "thanks for nominating <name> for Member of the Month"
+//   * motm_nomination     - "thanks for nominating <name> for Member of the Semester"
 // Sent through Resend (https://resend.com), the same as send-account-email.
 //
 // ---------------------------------------------------------------------
@@ -124,18 +124,18 @@ function sankofaEmail(first: string, phase: string) {
 }
 
 function motmEmail(first: string, nominee: string, monthLabel: string, reason: string) {
-  const when = monthLabel ? ' for ' + escapeHtml(monthLabel) : '';
+  const when = monthLabel ? ' (nominated in ' + escapeHtml(monthLabel) + ')' : '';
   return {
-    subject: 'Thanks for nominating ' + nominee.replace(/[\r\n]+/g, ' ') + ' for Member of the Month',
+    subject: 'Thanks for nominating ' + nominee.replace(/[\r\n]+/g, ' ') + ' for Member of the Semester',
     html: renderEmailShell(
       'Your nomination is in.',
       '<h1 style="' + H1 + '">Thank you, ' + escapeHtml(first) + '.</h1>' +
-      '<p>Your nomination of <strong>' + escapeHtml(nominee) + '</strong> for Member of the Month' + when + ' is in. It means a lot that you took the time to recognise someone.</p>' +
+      '<p>Your nomination of <strong>' + escapeHtml(nominee) + '</strong> for Member of the Semester' + when + ' is in. It means a lot that you took the time to recognise someone.</p>' +
       (reason
         ? '<p style="margin-bottom:6px;' + MUTED + '">What you said:</p><p style="margin-top:0; padding:10px 14px; border-left:3px solid ' + GOLD + '; background:rgba(255,255,255,0.04); font-style:italic;">' + escapeHtml(reason).replace(/\n/g, '<br>') + '</p>'
         : '') +
-      '<p>The committee reviews every nomination, and the winner and runners-up win LACMS prizes. Winners are shared on the Member of the Month page. You can make one nomination a month, so you\'re welcome to nominate again from the 1st of next month.</p>' +
-      emailButton(SITE + '/motm.html', 'See Member of the Month') +
+      '<p>The committee reviews every nomination, and the winner and runners-up win LACMS prizes. Winners are shared on the Member of the Semester page. You can make one nomination a month, so you\'re welcome to nominate again from the 1st of next month.</p>' +
+      emailButton(SITE + '/motm.html', 'See Member of the Semester') +
       '<p style="' + MUTED + ' margin-bottom:0;">- The LACMS Committee</p>'
     )
   };
