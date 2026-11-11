@@ -23,7 +23,7 @@
   var $live = document.getElementById('wr-live');
 
   var SNAP_KEY = 'lacms-wrapped-snapshot';
-  var S = { data: null, steps: [], i: 0, ans: {}, oth: {}, email: '', member: '', sending: false, err: '', stale: false, locked: false };
+  var S = { data: null, steps: [], i: 0, ans: {}, oth: {}, why: {}, name: '', email: '', member: '', sending: false, err: '', stale: false, locked: false };
 
   // ---------------------------------------------------------------------
   // Small helpers
@@ -74,6 +74,25 @@
   }
   function answeredCount() { return cats().filter(answered).length; }
 
+  // Required questions and "why" boxes
+  var WHY_MIN = 10, WHY_MAX = 500;
+  function whyOk(c) { return (S.why[c.key] || '').trim().length >= WHY_MIN; }
+  function unanswerable(c) { return (c.kind === 'choice' || c.kind === 'multi') && !(c.options || []).length && !c.allow_other; }
+  // What stops someone moving on from this question: '' (nothing), 'answer' (required and empty) or 'why' (answered, but the explanation is missing)
+  function need(c) {
+    if (answered(c)) return c.ask_reason && !whyOk(c) ? 'why' : '';
+    return c.required && !unanswerable(c) ? 'answer' : '';
+  }
+  function missingCats() { return cats().filter(function (c) { return need(c); }); }
+  function canSend() { return answeredCount() > 0 && !missingCats().length; }
+  function reasons() {
+    var o = {};
+    cats().forEach(function (c) { if (c.ask_reason && answered(c) && whyOk(c)) o[c.key] = (S.why[c.key] || '').trim().slice(0, WHY_MAX); });
+    return o;
+  }
+  var LETTER = (function () { try { return new RegExp('\\p{L}', 'u'); } catch (e) { return /[A-Za-z]/; } })();
+  function nameOk(v) { v = (v || '').trim(); return v.length >= 2 && LETTER.test(v); }
+
   function payload() {
     var out = {};
     cats().forEach(function (c) {
@@ -103,7 +122,7 @@
   }
 
   function saveDraft() {
-    lsSet(DRAFT_KEY, JSON.stringify({ ans: S.ans, oth: S.oth, email: S.email, member: S.member }));
+    lsSet(DRAFT_KEY, JSON.stringify({ ans: S.ans, oth: S.oth, why: S.why, name: S.name, email: S.email, member: S.member }));
   }
   function loadDraft() {
     var raw = lsGet(DRAFT_KEY); if (!raw) return;
@@ -118,7 +137,9 @@
       else if (c.kind === 'choice' && typeof v === 'string' && okKey(v)) S.ans[c.key] = v;
       else if (c.kind === 'multi' && Array.isArray(v)) S.ans[c.key] = v.filter(okKey).slice(0, c.max_picks);
       if (d.oth && typeof d.oth[c.key] === 'string') S.oth[c.key] = d.oth[c.key].slice(0, c.max_len);
+      if (c.ask_reason && d.why && typeof d.why[c.key] === 'string') S.why[c.key] = d.why[c.key].slice(0, WHY_MAX);
     });
+    if (typeof d.name === 'string') S.name = d.name.slice(0, 80);
     if (typeof d.email === 'string') S.email = d.email.slice(0, 200);
     if (['member', 'not_member', 'unsure'].indexOf(d.member) > -1) S.member = d.member;
   }
@@ -141,7 +162,7 @@
   function navLabel() {
     var s = S.steps[S.i];
     if (s.t !== 'cat') return 'Next';
-    return answered(s.c) ? 'Next' : 'Skip';
+    return answered(s.c) || need(s.c) ? 'Next' : 'Skip';
   }
   function drawNav() {
     var s = S.steps[S.i];
@@ -149,21 +170,24 @@
       $nav.hidden = false;
       $nav.innerHTML =
         '<button type="button" class="wr-btn wr-btn--ghost wr-btn--icon" data-act="back" aria-label="Back to the questions">' + ICON.back + '</button>' +
-        '<button type="button" class="wr-btn wr-btn--main" id="wr-send" data-act="send"' + (answeredCount() ? '' : ' disabled') + '>' + ICON.send + 'Send my votes</button>';
+        '<button type="button" class="wr-btn wr-btn--main" id="wr-send" data-act="send"' + (canSend() ? '' : ' disabled') + '>' + ICON.send + 'Send my votes</button>';
       return;
     }
     if (s.t !== 'cat') { $nav.hidden = true; $nav.innerHTML = ''; return; }
     $nav.hidden = false;
-    var skip = !answered(s.c);
+    var blocked = !!need(s.c), skip = !blocked && !answered(s.c);
     $nav.innerHTML =
       '<button type="button" class="wr-btn wr-btn--ghost wr-btn--icon" data-act="back" aria-label="Previous question">' + ICON.back + '</button>' +
-      '<button type="button" class="wr-btn wr-btn--main' + (skip ? ' is-skip' : '') + '" data-act="next">' + navLabel() + ICON.next + '</button>';
+      '<button type="button" class="wr-btn wr-btn--main' + (skip ? ' is-skip' : '') + (blocked ? ' is-blocked' : '') + '" data-act="next"' + (blocked ? ' aria-disabled="true"' : '') + '>' + navLabel() + ICON.next + '</button>';
   }
   function refreshNavLabel() {
     var b = $nav.querySelector('[data-act="next"]'); if (!b) return;
-    var s = S.steps[S.i]; var skip = !answered(s.c);
+    var s = S.steps[S.i]; var blocked = !!need(s.c), skip = !blocked && !answered(s.c);
     b.classList.toggle('is-skip', skip);
+    b.classList.toggle('is-blocked', blocked);
+    if (blocked) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled');
     b.innerHTML = navLabel() + ICON.next;
+    var n = document.getElementById('wr-need'); if (n && !blocked) n.hidden = true;
   }
 
   // The phone's back button (or edge swipe) walks back through the questions instead of closing the app. Each forward step
@@ -219,7 +243,8 @@
     var c = S.data.campaign, n = cats().length;
     var chips = '<span class="wr-chip"><i></i>Voting is open</span>';
     if (c.closes_at) chips += '<span class="wr-chip">Closes ' + esc(fmtDate(c.closes_at)) + '</span>';
-    chips += '<span class="wr-chip">About a minute</span>';
+    var total = cats().length, req = cats().filter(function (k) { return k.required && !unanswerable(k); }).length;
+    chips += '<span class="wr-chip">' + (req ? 'A couple of minutes' : 'About a minute') + '</span>';
     if (S.stale) chips += '<span class="wr-chip">Saved copy</span>';
     var title = esc(c.title || 'LACMS Wrapped');
     var parts = title.replace(/^LACMS\s+/i, '');
@@ -228,12 +253,13 @@
       '<h1 class="wr-title-big" data-focus>' + big + (c.subtitle ? '<em>' + esc(c.subtitle) + '</em>' : '') + '</h1>' +
       '<p class="wr-sub">' + esc(c.intro || 'We are making a look back at the semester. Tell us what should be in it: who made it, what you loved and what to do next. Everyone can vote, member or not.') + '</p>' +
       '<div class="wr-chips">' + chips + '</div>' +
-      '<p class="wr-sub">' + n + ' quick questions. Every one is optional, so skip anything you like. No account needed.</p>' +
+      '<p class="wr-sub">' + (req && req >= total ? n + ' quick questions, and each one needs an answer. ' : req ? n + ' quick questions. ' + req + ' of them need an answer; skip the rest if you like. ' : n + ' quick questions. Every one is optional, so skip anything you like. ') +
+        'You&rsquo;ll give your name at the end. No account needed.</p>' +
       '<div class="wr-actions"><button type="button" class="wr-btn wr-btn--main wr-btn--block" data-act="next">Let&rsquo;s go' + ICON.next + '</button></div>' + app('pill');
   }
 
   function catHtml(c, idx) {
-    var head = '<p class="wr-kicker">' + idx + ' / ' + cats().length + '</p>' +
+    var head = '<p class="wr-kicker">' + idx + ' / ' + cats().length + (c.required && !unanswerable(c) ? '<span class="wr-req">Required</span>' : '') + '</p>' +
       (c.emoji ? '<div class="wr-emoji" aria-hidden="true">' + esc(c.emoji) + '</div>' : '') +
       '<h1 class="wr-q" data-focus id="wr-h">' + esc(c.title) + '</h1>' +
       '<p class="wr-sub">' + esc(c.prompt) + '</p>';
@@ -256,7 +282,14 @@
         (empty ? '<p class="wr-sub">Nothing to pick from yet, so this one is skipped.</p>' : '<ul class="wr-opts' + (multi ? ' wr-opts--multi' : '') + '" role="group" aria-labelledby="wr-h">' + opts + '</ul>') +
         (c.allow_other ? '<div class="wr-other" id="wr-other"' + (cur.indexOf('other') > -1 ? '' : ' hidden') + '><input class="wr-input" type="text" data-input="other" maxlength="' + c.max_len + '" autocomplete="off" enterkeyhint="next" aria-label="Your answer" placeholder="Type your answer…" value="' + esc(S.oth[c.key] || '') + '"></div>' : '');
     }
-    return head + body;
+    var why = '';
+    if (c.ask_reason) {
+      var w = S.why[c.key] || '';
+      why = '<div class="wr-why"><label class="wr-why-l" for="wr-why">' + esc(c.reason_label || 'Why did you choose this?') + '</label>' +
+        '<textarea class="wr-input wr-input--area" id="wr-why" data-input="why" rows="3" maxlength="' + WHY_MAX + '" autocomplete="off" autocapitalize="sentences" placeholder="A sentence or two is plenty…">' + esc(w) + '</textarea>' +
+        '<p class="wr-count" aria-hidden="true"><span id="wr-wn">' + w.length + '</span> / ' + WHY_MAX + ' &middot; at least ' + WHY_MIN + ' characters</p></div>';
+    }
+    return head + body + why + '<p class="wr-msg" id="wr-need" role="alert" hidden></p>';
   }
   function optBtn(key, label, sub, on) {
     return '<li><button type="button" class="wr-opt' + (on ? ' is-on' : '') + '" data-opt="' + esc(key) + '" aria-pressed="' + on + '">' +
@@ -270,16 +303,23 @@
     var seg = [['member', 'I&rsquo;m a LACMS member'], ['not_member', 'Not a member'], ['unsure', 'Not sure']].map(function (m) {
       return '<label><input type="radio" name="wr-member" value="' + m[0] + '"' + (S.member === m[0] ? ' checked' : '') + '>' + m[1] + '</label>';
     }).join('');
+    var miss = missingCats().map(function (c) {
+      var at = -1; S.steps.forEach(function (st, k) { if (st.c === c) at = k; });
+      return '<li><button type="button" class="wr-link" data-goto="' + at + '">' + (c.emoji ? esc(c.emoji) + ' ' : '') + esc(c.title) + (need(c) === 'why' ? ' (add your reason)' : '') + '</button></li>';
+    }).join('');
     return '<p class="wr-kicker">Last step</p>' +
       '<h1 class="wr-q" data-focus>Send in your votes</h1>' +
+      (miss ? '<div class="wr-missing" role="alert"><p>These still need an answer before you can send:</p><ul>' + miss + '</ul></div>' : '') +
       (n ? '<p class="wr-sub">You answered ' + n + ' of ' + total + '.</p><div class="wr-summary">' + chips + '</div>' :
         '<p class="wr-sub">You have not answered anything yet. Go back and pick at least one question to answer.</p>') +
+      '<div class="wr-field"><label for="wr-name">Your full name</label>' +
+      '<input class="wr-input" id="wr-name" type="text" autocomplete="name" autocapitalize="words" spellcheck="false" maxlength="80" enterkeyhint="next" placeholder="First and last name" value="' + esc(S.name) + '" data-input="name"></div>' +
       '<div class="wr-field"><label for="wr-email">Your email</label>' +
       '<input class="wr-input" id="wr-email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" maxlength="200" placeholder="you@example.com" value="' + esc(S.email) + '" data-input="email"></div>' +
       '<fieldset class="wr-seg"><legend>Are you a member?</legend>' + seg + '</fieldset>' +
       '<div class="wr-hp" aria-hidden="true"><label>Leave this empty<input type="text" id="wr-hp" tabindex="-1" autocomplete="off"></label></div>' +
       '<p class="wr-msg" id="wr-err" role="alert"' + (S.err ? '' : ' hidden') + '>' + esc(S.err) + '</p>' +
-      '<p class="wr-fine">One vote per email, to keep it fair. We turn your address into a scrambled code so it can&rsquo;t be read back, and your answers are never linked to your name. See the <a href="privacy.html" target="_blank" rel="noopener">privacy notice</a>.</p>';
+      '<p class="wr-fine">One vote per email, to keep it fair. We ask for your name so the committee can check that votes are genuine. It is stored with your vote, only the committee can see it, and it is never shown publicly. Your email is turned into a scrambled code so it can&rsquo;t be read back. See the <a href="privacy.html" target="_blank" rel="noopener">privacy notice</a>.</p>';
   }
 
   function doneHtml() {
@@ -357,8 +397,19 @@
     if (on) { var i = o.querySelector('input'); if (i) window.setTimeout(function () { try { i.focus({ preventScroll: false }); } catch (e) { i.focus(); } }, 30); }
   }
 
+  // Someone tried to move on from a question that still needs something: say what, and nudge the box to fill in.
+  function nudge(kind) {
+    var n = document.getElementById('wr-need'); if (!n) return;
+    var text = kind === 'why' ? 'Tell us why in a sentence or two (at least ' + WHY_MIN + ' characters) to continue.' : 'This question needs an answer before you can continue.';
+    n.textContent = text; n.hidden = false; say(text); buzz([25, 40, 25]);
+    if (!reduced()) n.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'translateX(0)' }], { duration: 260 });
+    n.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' });
+    if (kind === 'why') { var w = document.getElementById('wr-why'); if (w) try { w.focus({ preventScroll: true }); } catch (e) { w.focus(); } }
+  }
+
   function next() {
     var s = cur();
+    if (s.t === 'cat') { var nd = need(s.c); if (nd) { nudge(nd); return; } }
     if (s.t === 'cat' && s.c.kind === 'multi' && !answered(s.c) && (S.ans[s.c.key] || []).indexOf('other') > -1) { /* an empty "something else" counts as skipped */ }
     if (S.i < S.steps.length - 1) go(S.i + 1);
   }
@@ -369,6 +420,8 @@
       case 'bad_email': return 'That email address does not look right. Please check it.';
       case 'disposable': return 'Please use your own email address, not a throw-away one.';
       case 'empty': return 'Please answer at least one question before sending.';
+      case 'bad_name': return 'Please enter your name (at least two letters).';
+      case 'missing': return 'Some questions still need an answer. Go back and check the ones marked Required.';
       case 'busy': return 'A lot of people are voting right now. Give it a minute and try again.';
       case 'already_voted': return 'That email address has already voted, thank you. Each email can vote once.';
       case 'timeout': return 'That took too long. Check your connection and press Send again.';
@@ -383,22 +436,25 @@
   }
   function busy(on) {
     var b = document.getElementById('wr-send'); if (!b) return;
-    b.disabled = on || !answeredCount(); S.sending = on;
+    b.disabled = on || !canSend(); S.sending = on;
     b.innerHTML = on ? '<span class="wr-spin" style="width:20px;height:20px;border-width:2.5px"></span>Sending…' : ICON.send + 'Send my votes';
     if (on) b.setAttribute('aria-busy', 'true'); else b.removeAttribute('aria-busy');
   }
 
   function send() {
     if (S.sending) return;
+    var nm = document.getElementById('wr-name'); S.name = (nm ? nm.value : S.name).trim();
     var em = document.getElementById('wr-email'); S.email = (em ? em.value : S.email).trim();
     var mem = document.querySelector('input[name="wr-member"]:checked'); S.member = mem ? mem.value : S.member;
     saveDraft();
     if (!answeredCount()) { showErr(errText('empty')); return; }
+    if (missingCats().length) { showErr(errText('missing')); return; }
+    if (!nameOk(S.name)) { showErr(errText('bad_name')); if (nm) nm.focus(); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(S.email)) { showErr(errText('bad_email')); if (em) em.focus(); return; }
     var hp = document.getElementById('wr-hp');
     if (hp && hp.value) { finishOk(); return; }   // a bot filled the hidden box: pretend it worked, send nothing
     showErr(''); busy(true);
-    rpcT('wrapped_submit', { p_email: S.email, p_member: S.member || 'unsure', p_answers: payload() }).then(function (res) {
+    rpcT('wrapped_submit', { p_email: S.email, p_member: S.member || 'unsure', p_answers: payload(), p_name: S.name, p_reasons: reasons() }).then(function (res) {
       busy(false);
       if (res.error) { showErr(errText(res.timeout ? 'timeout' : res.network ? 'network' : 'server')); return; }
       var d = res.data || {};
@@ -410,7 +466,7 @@
   function finishOk() {
     lsSet(VOTED_KEY, '1');
     try { window.localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ }
-    S.ans = {}; S.oth = {};
+    S.ans = {}; S.oth = {}; S.why = {}; S.name = '';
     go(S.steps.length - 1); buzz([12, 50, 18]);
     if (window.UnityFx) window.UnityFx.confetti({ count: 190 });
   }
@@ -431,7 +487,8 @@
   // ---------------------------------------------------------------------
   // Events (delegated; the screens are re-rendered but these stay)
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-act],[data-opt],[data-rate]'); if (!t) return;
+    var t = e.target.closest('[data-act],[data-opt],[data-rate],[data-goto]'); if (!t) return;
+    if (t.hasAttribute('data-goto')) { var gi = Number(t.getAttribute('data-goto')); if (gi >= 0) go(gi); return; }
     if (t.hasAttribute('data-opt')) { pick(t); return; }
     if (t.hasAttribute('data-rate')) {
       var c = cur().c, n = Number(t.getAttribute('data-rate')), same = S.ans[c.key] === n;
@@ -452,8 +509,10 @@
   document.addEventListener('input', function (e) {
     var t = e.target; var k = t.getAttribute && t.getAttribute('data-input'); if (!k) return;
     if (k === 'email') { S.email = t.value; saveDraft(); return; }
+    if (k === 'name') { S.name = t.value; saveDraft(); return; }
     var c = cur().c; if (!c) return;
-    if (k === 'write') { S.ans[c.key] = t.value; var n = document.getElementById('wr-n'); if (n) n.textContent = t.value.length; }
+    if (k === 'why') { S.why[c.key] = t.value; var wn = document.getElementById('wr-wn'); if (wn) wn.textContent = t.value.length; }
+    else if (k === 'write') { S.ans[c.key] = t.value; var n = document.getElementById('wr-n'); if (n) n.textContent = t.value.length; }
     else if (k === 'other') S.oth[c.key] = t.value;
     saveDraft(); refreshNavLabel();
   });
@@ -464,7 +523,11 @@
     var t = e.target;
     if (e.key === 'Enter' && t && t.matches && t.matches('input[data-input]')) {
       e.preventDefault();
-      if (t.getAttribute('data-input') === 'email') send(); else next();
+      var ik = t.getAttribute('data-input');
+      if (ik === 'email') send();
+      else if (ik === 'name') { var ee = document.getElementById('wr-email'); if (ee) ee.focus(); }
+      else if (ik === 'write' && cur().c && cur().c.ask_reason && document.getElementById('wr-why')) document.getElementById('wr-why').focus();
+      else next();
     }
   });
 

@@ -2,7 +2,7 @@
 //
 // Runs the Wrapped vote (wrapped.html): open / close it, reveal the results, watch the tallies come in, change the
 // questions and the answers people can pick, export the results, and tidy up afterwards.
-// Everything goes through the committee-only database functions in migration 133, which check the same permission.
+// Everything goes through the committee-only database functions in migrations 133 and 135, which check the same permission.
 
 (function () {
   'use strict';
@@ -12,8 +12,8 @@
   if (!root) return;
   var countEl = document.getElementById('dash-count-wrapped');
 
-  var D = null, tab = 'overview', loading = false, lastSig = '';
-  try { var st = window.sessionStorage.getItem('lacms-wa-tab'); if (st && /^(overview|results|questions)$/.test(st)) tab = st; } catch (e) { /* ignore */ }
+  var D = null, V = null, tab = 'overview', loading = false, lastSig = '';
+  try { var st = window.sessionStorage.getItem('lacms-wa-tab'); if (st && /^(overview|results|voters|questions)$/.test(st)) tab = st; } catch (e) { /* ignore */ }
   var KINDS = { write_in: 'Type an answer', choice: 'Pick one', multi: 'Pick several', rating: 'Rate 1 to 10' };
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -35,7 +35,7 @@
     return supabaseClient.rpc('wrapped_admin_get').then(function (res) {
       loading = false;
       if (res.error || !res.data || !res.data.ok) {
-        if (!D) root.innerHTML = '<div class="ua-card ua-card--warn"><h3>LACMS Wrapped isn\'t set up in the database yet</h3><p class="ua-hint">' + esc(res.error && res.error.message || '') + '</p><p class="ua-hint">In Supabase, open <strong>SQL Editor</strong> and run <code>db/migrations/133-lacms-wrapped.sql</code> (it needs migrations 114 and 116 run first). Then reload this page.</p></div>';
+        if (!D) root.innerHTML = '<div class="ua-card ua-card--warn"><h3>LACMS Wrapped isn\'t set up in the database yet</h3><p class="ua-hint">' + esc(res.error && res.error.message || '') + '</p><p class="ua-hint">In Supabase, open <strong>SQL Editor</strong> and run <code>db/migrations/133-lacms-wrapped.sql</code> (it needs migrations 114 and 116 run first), then <code>135-wrapped-names-required.sql</code>. Then reload this page.</p></div>';
         if (countEl) countEl.textContent = 'Not set up yet';
         return;
       }
@@ -48,12 +48,12 @@
   function isEditing() { var a = document.activeElement; return a && root.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName); }
 
   function render() {
-    var tabs = [['overview', 'Overview'], ['results', 'Results'], ['questions', 'Questions']];
+    var tabs = [['overview', 'Overview'], ['results', 'Results'], ['voters', 'Voters & reasons'], ['questions', 'Questions']];
     var c = D.campaign;
     root.innerHTML = '<div class="ua-top"><a class="btn btn-outline" href="wrapped.html" target="_blank" rel="noopener">Open the vote page</a><div class="ua-status"><span class="ua-dot ' + (c.is_open_now ? 'is-on' : '') + '"></span>Voting ' + (c.is_open_now ? 'open' : 'closed') +
       ' <span class="ua-dot ' + (c.show_results ? 'is-on' : '') + '"></span>Results ' + (c.show_results ? 'public' : 'hidden') + '</div></div>' +
       '<div class="ua-tabs" role="tablist">' + tabs.map(function (t) { return '<button type="button" role="tab" class="ua-tab' + (tab === t[0] ? ' is-active' : '') + '" data-wa-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + esc(t[1]) + '</button>'; }).join('') + '</div>' +
-      '<p class="ua-msg" data-wa-msg role="status"></p><div class="ua-pane">' + ({ overview: overviewHtml, results: resultsHtml, questions: questionsHtml }[tab])() + '</div>';
+      '<p class="ua-msg" data-wa-msg role="status"></p><div class="ua-pane">' + ({ overview: overviewHtml, results: resultsHtml, voters: votersHtml, questions: questionsHtml }[tab])() + '</div>';
   }
 
   // ---------------------------------------------------------------------
@@ -63,7 +63,7 @@
     var c = D.campaign, b = D.ballots;
     var closesNote = c.closes_at && c.open ? (c.is_open_now ? 'It closes by itself at the time below.' : 'It closed by itself at the time below.') : '';
     return '<div class="ua-card"><h3>Votes so far</h3><div class="wa-stats">' + stat(b.total, 'votes in') + stat(b.member, 'members') + stat(b.not_member, 'not members') + stat(b.unsure, 'not sure') + '</div>' +
-      '<p class="ua-hint">One vote per email address. Answers are saved without a name or an email, so a vote can\'t be traced back to a person.</p></div>' +
+      '<p class="ua-hint">One vote per email address. Every vote is saved with the voter\'s name, which only the committee can see (see the Voters tab). Emails are kept only as a scrambled code.</p></div>' +
       '<div class="ua-card"><h3>Go live</h3><div class="ua-switches">' +
       sw('open', 'Voting is open', 'People can vote on the Wrapped page. The promo on the welcome screen and homepage shows while this is on. ' + closesNote, c.open) +
       sw('show_results', 'Show results to everyone', 'Leave off while people are voting. Turn on when you are ready to reveal what won.', c.show_results) +
@@ -79,9 +79,9 @@
       '<button type="button" class="btn btn-primary" data-wa-save-campaign>Save details</button></div>' +
       '<div class="ua-card"><h3>Share the link</h3><div class="ua-row"><input class="wa-link" readonly value="' + esc(pageUrl()) + '" aria-label="Link to the vote page"><button type="button" class="btn btn-outline" data-wa-copy>Copy link</button></div></div>' +
       '<div class="ua-card"><h3>Export and tidy up</h3>' +
-      '<p class="ua-hint">After voting closes, "Forget emails" removes the scrambled email codes (' + b.with_email + ' still stored). The answers stay: they were never linked to a person. Do this once you have your results.</p>' +
+      '<p class="ua-hint">After voting closes, "Forget emails and names" removes the scrambled email codes (' + b.with_email + ' still stored) and the voters\' names (' + (b.with_name == null ? 0 : b.with_name) + ' still stored). The answers and reasons stay, with nothing left to link them to a person. Do this once you have chosen your winners and checked the votes.</p>' +
       '<div class="ua-row"><button type="button" class="btn btn-outline" data-wa-csv>Download results (CSV)</button>' +
-      '<button type="button" class="btn btn-outline" data-wa-tidy' + (c.is_open_now ? ' disabled title="Close voting first"' : '') + '>Forget emails</button>' +
+      '<button type="button" class="btn btn-outline" data-wa-tidy' + (c.is_open_now ? ' disabled title="Close voting first"' : '') + '>Forget emails and names</button>' +
       '<button type="button" class="btn btn-outline sh-btn-danger" data-wa-reset>Clear all votes (testing)</button></div></div>';
   }
 
@@ -107,6 +107,43 @@
     }).join('');
   }
 
+  // ---------------------------------------------------------------------
+  // Voters & reasons (names are shown to the committee only)
+  function loadVoters() {
+    return supabaseClient.rpc('wrapped_admin_voters').then(function (res) {
+      if (res.error || !res.data || !res.data.ok) { fail(res.error || { message: 'Could not load the voters. Has migration 135 been run?' }); return; }
+      V = res.data; if (tab === 'voters' && !isEditing()) render();
+    }, function () { note('Could not reach the server. Try again.', true); });
+  }
+  var STATUS = { member: 'Member', not_member: 'Not a member', unsure: 'Not sure' };
+  function when(iso) { try { return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+  function votersHtml() {
+    if (!V) { loadVoters(); return '<div class="ua-card"><p class="ua-hint">Loading the voters…</p></div>'; }
+    var dupes = V.voters.filter(function (v) { return v.same_name > 1; });
+    var h = '<div class="ua-card"><h3>Reasons people gave</h3>' +
+      (V.reasons.length ? '<p class="ua-hint">Each reason is shown with the name of the person who wrote it. Keep these inside the committee.</p>' + V.reasons.map(function (r) {
+        return '<div class="wa-why"><p><strong>' + esc(r.title) + ':</strong> ' + esc(r.answer || '') + '</p><blockquote>' + esc(r.reason) + '</blockquote><small>' + esc(r.voter || 'Name removed') + ' · ' + esc(STATUS[r.status] || '') + ' · ' + esc(when(r.at)) + '</small></div>';
+      }).join('') : '<p class="ua-hint">No reasons yet. They appear here for any question that asks people to explain their answer.</p>') + '</div>';
+    h += '<div class="ua-card"><h3>Voters (' + V.voters.length + ')</h3>' +
+      (dupes.length ? '<p class="ua-hint"><strong>' + dupes.length + ' vote' + (dupes.length === 1 ? ' uses' : 's use') + ' a name that appears more than once</strong> (marked below). That can be two different people, or one person voting with two email addresses.</p>' : '') +
+      (V.voters.length ? '<div class="wa-table"><table><thead><tr><th>Name</th><th>Said they are</th><th>Voted</th></tr></thead><tbody>' + V.voters.map(function (v) {
+        return '<tr' + (v.same_name > 1 ? ' class="is-dupe"' : '') + '><td>' + esc(v.name || 'Name removed or not given') + (v.same_name > 1 ? ' <span class="ua-pill">same name ×' + v.same_name + '</span>' : '') + '</td><td>' + esc(STATUS[v.status] || '') + '</td><td>' + esc(when(v.at)) + '</td></tr>';
+      }).join('') + '</tbody></table></div><div class="ua-row"><button type="button" class="btn btn-outline" data-wa-vcsv>Download voters and reasons (CSV)</button></div>' : '<p class="ua-hint">Nobody has voted yet.</p>') + '</div>';
+    return h;
+  }
+  function download(name, rows) {
+    var text = rows.map(function (r) { return r.map(function (v) { v = String(v == null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','); }).join('\r\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' })); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); window.setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  }
+  function votersCsv() {
+    var rows = [['Reasons'], ['Question', 'Answer', 'Reason', 'Voter name', 'Said they are', 'Voted at']];
+    V.reasons.forEach(function (r) { rows.push([r.title, r.answer, r.reason, r.voter || '', STATUS[r.status] || '', r.at]); });
+    rows.push([]); rows.push(['Voters']); rows.push(['Name', 'Said they are', 'Voted at', 'Same name used by']);
+    V.voters.forEach(function (v) { rows.push([v.name || '', STATUS[v.status] || '', v.at, v.same_name > 1 ? v.same_name : '']); });
+    download('lacms-wrapped-voters.csv', rows);
+  }
+
   function csv() {
     var rows = [['Question', 'Answer', 'Votes']];
     D.categories.forEach(function (k) {
@@ -130,11 +167,14 @@
         '<div class="ua-grid">' +
         field('Title', '<input data-wa-q="title" maxlength="60" value="' + esc(k.title) + '">') +
         field('Emoji', '<input data-wa-q="emoji" maxlength="8" value="' + esc(k.emoji || '') + '">') +
-        field('The question people see', '<input data-wa-q="prompt" maxlength="200" value="' + esc(k.prompt) + '">', true);
+        field('The question people see', '<input data-wa-q="prompt" maxlength="200" value="' + esc(k.prompt) + '">', true) +
+        field('Label above the "why" box (used when "Ask them why" is on)', '<input data-wa-q="reason_label" maxlength="120" value="' + esc(k.reason_label || '') + '" placeholder="Why did you choose this?">', true);
       if (k.kind === 'write_in') h += field('Hint inside the box', '<input data-wa-q="placeholder" maxlength="80" value="' + esc(k.placeholder || '') + '">');
       if (k.kind === 'multi') h += field('Most people can pick', '<input type="number" min="1" max="10" data-wa-q="max_picks" value="' + esc(k.max_picks) + '">');
       h += '</div><div class="ua-switches">' +
         sw('active', 'Show this question', 'Turn off to hide it from the vote without losing its answers.', k.active).replace('data-wa-set', 'data-wa-q') +
+        sw('required', 'Answer required', 'People must answer this before they can move on, and a vote without it is refused.', k.required).replace('data-wa-set', 'data-wa-q') +
+        sw('ask_reason', 'Ask them why', 'Adds a box under the question asking people to explain their answer (at least 10 characters). Shown with their name on the Voters tab.', k.ask_reason).replace('data-wa-set', 'data-wa-q') +
         ((k.kind === 'choice' || k.kind === 'multi') ? sw('allow_other', 'Let people type their own answer', 'Adds a "Something else…" option.', k.allow_other).replace('data-wa-set', 'data-wa-q') : '') + '</div>';
       if (isList) {
         h += '<h4>Answers to pick from</h4><ul class="wa-opts">' + k.options.map(function (o) {
@@ -147,7 +187,15 @@
       h += '<div class="ua-row"><button type="button" class="btn btn-primary" data-wa-qsave>Save question</button><button type="button" class="btn btn-outline sh-btn-danger" data-wa-qdel>Delete question</button></div></div>';
       return h;
     }).join('');
-    return cards +
+    var bulk = '<div class="ua-card"><h3>Required answers</h3><p class="ua-hint">A required question must be answered before someone can carry on, and a vote missing one is refused. Switch them on for a whole type of question here, or one question at a time below. Hidden questions are left alone.</p><div class="wa-bulk">' +
+      [['all', 'Every question'], ['write_in', KINDS.write_in], ['choice', KINDS.choice], ['multi', KINDS.multi], ['rating', KINDS.rating]].map(function (b) {
+        var qs = D.categories.filter(function (k) { return k.active && (b[0] === 'all' || k.kind === b[0]); });
+        var req = qs.filter(function (k) { return k.required; }).length;
+        return '<div class="wa-bulk-row"><span><strong>' + esc(b[1]) + '</strong><small>' + req + ' of ' + qs.length + ' required</small></span>' +
+          '<button type="button" class="btn btn-outline" data-wa-bulk="' + b[0] + '" data-wa-bulk-on="1"' + (qs.length ? '' : ' disabled') + '>Require</button>' +
+          '<button type="button" class="btn btn-outline" data-wa-bulk="' + b[0] + '" data-wa-bulk-on="0"' + (qs.length ? '' : ' disabled') + '>Make optional</button></div>';
+      }).join('') + '</div></div>';
+    return bulk + cards +
       '<div class="ua-card"><h3>Add a question</h3><div class="ua-grid">' +
       field('Title', '<input data-wa-new-title maxlength="60" placeholder="e.g. Best dressed">') +
       field('Type', '<select data-wa-new-kind>' + Object.keys(KINDS).map(function (k) { return '<option value="' + k + '">' + esc(KINDS[k]) + '</option>'; }).join('') + '</select>') +
@@ -167,7 +215,8 @@
 
   root.addEventListener('click', function (e) {
     var t = e.target.closest('button'); if (!t || t.disabled) return;
-    if (t.hasAttribute('data-wa-tab')) { tab = t.getAttribute('data-wa-tab'); try { window.sessionStorage.setItem('lacms-wa-tab', tab); } catch (x) { /* ignore */ } render(); return; }
+    if (t.hasAttribute('data-wa-tab')) { tab = t.getAttribute('data-wa-tab'); try { window.sessionStorage.setItem('lacms-wa-tab', tab); } catch (x) { /* ignore */ } if (tab === 'voters') V = null; render(); return; }
+    if (t.hasAttribute('data-wa-vcsv')) { if (V) votersCsv(); return; }
     if (t.hasAttribute('data-wa-save-campaign')) {
       var p = {};
       $$('[data-wa-f]').forEach(function (el) {
@@ -187,14 +236,18 @@
     }
     if (t.hasAttribute('data-wa-csv')) { csv(); return; }
     if (t.hasAttribute('data-wa-tidy')) {
-      if (!window.confirm('Remove the scrambled email codes from every vote? The answers stay. After this, nobody can be stopped from voting again, so only do it once voting is closed.')) return;
-      supabaseClient.rpc('wrapped_admin_tidy').then(function (res) { if (res.error) { fail(res.error); return; } note('Done. Removed ' + res.data + ' email code' + (res.data === 1 ? '' : 's') + '.'); load(); });
+      if (!window.confirm('Remove the scrambled email codes AND the voters\' names from every vote? The answers and reasons stay, but you will no longer be able to see who wrote what. After this, nobody can be stopped from voting again, so only do it once voting is closed and you have finished checking the votes.')) return;
+      supabaseClient.rpc('wrapped_admin_tidy').then(function (res) { if (res.error) { fail(res.error); return; } note('Done. Cleared the emails and names from ' + res.data + ' vote' + (res.data === 1 ? '' : 's') + '.'); V = null; load(); });
       return;
     }
     if (t.hasAttribute('data-wa-reset')) {
       var typed = window.prompt('This deletes every vote so far and cannot be undone. Use it to clear test votes before going live.\n\nType RESET to confirm.');
       if (typed !== 'RESET') { if (typed != null) note('Nothing was deleted: you needed to type RESET.', true); return; }
       rpc('wrapped_admin_reset', {}, 'All votes cleared.'); return;
+    }
+    if (t.hasAttribute('data-wa-bulk')) {
+      var kind = t.getAttribute('data-wa-bulk'), on = t.getAttribute('data-wa-bulk-on') === '1';
+      rpc('wrapped_admin_set_required', { p_kind: kind, p_required: on }, on ? 'Those questions are now required.' : 'Those questions are now optional.'); return;
     }
     var card = t.closest('[data-wa-cat]'), id = card && card.getAttribute('data-wa-cat');
     if (t.hasAttribute('data-wa-qsave')) {
@@ -242,6 +295,6 @@
   });
 
   // refresh the numbers while the panel is on screen and nobody is typing
-  window.setInterval(function () { if (root.offsetParent !== null && !document.hidden) load(true); }, 15000);
+  window.setInterval(function () { if (root.offsetParent !== null && !document.hidden) { load(true); if (tab === 'voters') loadVoters(); } }, 15000);
   load();
 })();

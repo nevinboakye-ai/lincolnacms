@@ -250,3 +250,21 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overscroll-behavi
 @media (prefers-reduced-motion: reduce) {
   .wr-sheet-back, .wr-sheet-card, .wr-toast { transition: none; }
 }
+
+/* =========================================================
+   Required questions, "why" boxes and the name field
+   ========================================================= */
+.wr-req { display: inline-block; margin-left: 10px; padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.28); color: #fff; font: 800 0.66rem var(--font-body); letter-spacing: 0.14em; text-transform: uppercase; }
+.wr-why { display: grid; gap: 8px; }
+.wr-why-l { font: 800 0.78rem var(--font-body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--wr-muted); }
+.wr-input--area { min-height: 104px; padding: 14px 16px; border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 18px; background: rgba(255, 255, 255, 0.08); font: 600 1.08rem/1.5 var(--font-body); resize: none; }
+.wr-input--area:focus { border-color: #fff; background: rgba(255, 255, 255, 0.13); }
+.wr-why .wr-count { margin: 0; }
+.wr-btn.is-blocked { opacity: 0.55; box-shadow: none; }
+.wr-btn.is-blocked:hover { transform: none; }
+.wr-missing { padding: 14px 16px; border-radius: 18px; background: rgba(255, 255, 255, 0.1); border: 1.5px solid rgba(255, 255, 255, 0.35); }
+.wr-missing p { margin: 0 0 8px; font: 700 0.92rem/1.4 var(--font-body); }
+.wr-missing ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.wr-link { padding: 8px 14px; border-radius: 999px; background: #fff; color: #14110a; border: 0; font: 800 0.86rem var(--font-body); cursor: pointer; }
+.wr-link:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.wr-need[hidden], #wr-need[hidden] { display: none; }

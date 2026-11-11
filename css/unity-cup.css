@@ -1675,3 +1675,16 @@ body:has(.uc-votebar:not([hidden]):not(.is-away)) .uc-toast { bottom: calc(92px 
 .wa-dist { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; align-items: center; font-size: 0.8rem; }
 .wa-dist .ua-bar { margin: 0; height: 18px; }
 .wa-dist .ua-bar b { line-height: 18px; }
+.wa-bulk { display: grid; gap: 8px; }
+.wa-bulk-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 12px; border-radius: 10px; background: var(--color-surface-raised); }
+.wa-bulk-row > span { flex: 1 1 180px; display: grid; gap: 2px; }
+.wa-bulk-row small { color: var(--color-text-muted); font-size: 0.8rem; }
+.wa-why { padding: 12px 14px; border-radius: 12px; background: var(--color-surface-raised); margin-top: 10px; }
+.wa-why p { margin: 0 0 6px; font-size: 0.9rem; }
+.wa-why blockquote { margin: 0 0 6px; padding: 0 0 0 12px; border-left: 3px solid var(--uc-gold); font-size: 0.95rem; line-height: 1.5; overflow-wrap: anywhere; }
+.wa-why small { color: var(--color-text-muted); }
+.wa-table { overflow-x: auto; }
+.wa-table table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.wa-table th, .wa-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--color-border); }
+.wa-table th { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); }
+.wa-table tr.is-dupe td { background: rgba(212, 166, 43, 0.12); }
